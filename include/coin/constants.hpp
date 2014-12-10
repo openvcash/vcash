@@ -26,11 +26,6 @@
 
 #include <coin/big_number.hpp>
 
-/**
- * Enables GUI related function calls.
- */
-#define COIN_USE_GUI 1
-
 namespace coin {
 namespace constants {
 
@@ -90,7 +85,7 @@ namespace constants {
     /**
      * The maximum money supply.
      */
-    static const std::int64_t max_money_supply = 39735360 * coin;
+    static const std::int64_t max_money_supply = 30735360 * coin;
     
     /**
      * The minimum transaction fee.
