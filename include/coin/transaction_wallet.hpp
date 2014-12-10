@@ -1,0 +1,379 @@
+/*
+ * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ *
+ * This file is part of vanillacoin.
+ *
+ * vanillacoin is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License with
+ * additional permissions to the one published by the Free Software
+ * Foundation, either version 3 of the License, or (at your option)
+ * any later version. For more information see LICENSE.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#ifndef COIN_TRANSACTION_WALLET_HPP
+#define COIN_TRANSACTION_WALLET_HPP
+
+#include <cstdint>
+#include <vector>
+
+#include <coin/transaction_merkle.hpp>
+
+namespace coin {
+
+    class data_buffer;
+    class tcp_connection_manager;
+    class wallet;
+    
+    /**
+     * Implements a wallet transaction. It includes any unrecorded transactions
+     * needed to link it back to the block chain.
+     */
+    class transaction_wallet : public transaction_merkle
+    {
+        public:
+        
+            /**
+             * Constructor
+             */
+            transaction_wallet();
+        
+            /**
+             * Constructor
+             */
+            transaction_wallet(
+                const wallet * ptr_wallet, const transaction & tx_in
+            );
+        
+            /**
+             * Encodes
+             */
+            void encode();
+        
+            /**
+             * Encodes
+             * @param buffer The data_buffer.
+             */
+            void encode(data_buffer & buffer);
+        
+            /**
+             * Decodes
+             */
+            void decode();
+        
+            /**
+             * Decodes
+             * @param buffer The data_buffer.
+             */
+            void decode(data_buffer & buffer);
+
+            /**
+             * Initialize
+             * @param ptr_wallet The wallet.
+             */
+            void initialize(const wallet * ptr_wallet);
+
+            /**
+             * Adds supporting transactions.
+             * @param tx_db The db_tx.
+             */
+            void add_supporting_transactions(db_tx & tx_db);
+        
+            /**
+             * Accepts a wallet transaction.
+             * @param tx_db The db_tx.
+             */
+            bool accept_wallet_transaction(db_tx & tx_db);
+
+            /**
+             * Accepts a wallet transaction.
+             */
+            bool accept_wallet_transaction();
+
+            /**
+             * Marks certain transaction out's as spent.
+             * @param spent_new The new spent.
+             */
+            bool update_spent(const std::vector<char> & spent_new) const;
+    
+            /**
+             * Marks dirty so balances are recalculated.
+             */
+            void mark_dirty();
+
+            /**
+             * Binds a wallet.
+             * @param value The wallet.
+             */
+            void bind_wallet(const wallet & value);
+        
+            /** 
+             * Marks spent.
+             * @param out The out.
+             */
+            void mark_spent(const std::uint32_t & out);
+    
+            /** 
+             * Marks unspent.
+             * @param out The out.
+             */
+            void mark_unspent(const std::uint32_t & out);
+
+            /**
+             * If true it is spent.
+             * @param out The out.
+             */
+            bool is_spent(const std::uint32_t & out) const;
+        
+            /**
+             * Gets debit.
+             */
+            std::int64_t get_debit() const;
+
+            /**
+             * Gets credit.
+             * @param use_cache If true the cache will be used.
+             */
+            std::int64_t get_credit(const bool & use_cache = true) const;
+
+            /**
+             * Gets the available credit.
+             * @param use_cache If true the cache will be used.
+             */
+            std::int64_t
+                get_available_credit(const bool & use_cache = true) const
+            ;
+    
+            /**
+             * Writes to disk.
+             */
+            bool write_to_disk();
+        
+            /**
+             * Relays a wallet transaction.
+             * @param connection_manager The tcp_connection_manager.
+             */
+            void relay_wallet_transaction(
+                const std::shared_ptr<tcp_connection_manager> &
+                connection_manager
+            );
+        
+            /**
+             * Relays a wallet transaction.
+             * @param tx_db The db_tx.
+             * @param connection_manager The tcp_connection_manager.
+             */
+            void relay_wallet_transaction(
+                db_tx & tx_db,
+                const std::shared_ptr<tcp_connection_manager> &
+                connection_manager
+            );
+
+            /**
+             * The previous transactions.
+             */
+            const std::vector<transaction_merkle> &
+                previous_transactions() const
+            ;
+        
+            /**
+             * The values.
+             */
+            std::map<std::string, std::string> & values();
+        
+            /**
+             * Sets the time received is trnsaction time.
+             * @param value The value.
+             */
+            void set_time_received_is_tx_time(
+                const std::uint32_t & value
+            );
+        
+            /**
+             * The time received is transaction time.
+             */
+            const std::uint32_t & time_received_is_tx_time() const;
+        
+            /**
+             * Set the time received.
+             * @param value The value.
+             */
+            void set_time_received(const std::uint32_t & value);
+        
+            /**
+             * The time received (by this node).
+             */
+            const std::uint32_t & time_received() const;
+        
+            /**
+             * Set the time smart.
+             * @param value The value.
+             */
+            void set_time_smart(const std::uint32_t & value);
+        
+            /**
+             * The time smart.
+             */
+            const std::uint32_t & time_smart() const;
+        
+            /**
+             * Sets is from me.
+             * @Param value The value.
+             */
+            void set_is_from_me(const bool & value);
+        
+            /**
+             * If true it is from me.
+             */
+            const bool & is_from_me() const;
+        
+            /**
+             * The from account.
+             */
+            std::string & from_account();
+        
+            /**
+             * If true it is confirmed.
+             */
+            bool is_confirmed() const;
+        
+            /**
+             * The outputs which are already spent.
+             */
+            const std::vector<char> & spent() const;
+        
+            /**
+             * Sets the order position.
+             * @param value The value.
+             */
+            void set_order_position(const std::int64_t & value);
+        
+            /** 
+             * The position in the ordered transaction list.
+             */
+            const std::int64_t & order_position() const;
+        
+            /**
+             * friend bool operator <
+             */
+            friend bool operator < (
+                const transaction_wallet & left,
+                const transaction_wallet & right
+                )
+            {
+                /**
+                 * @note This is only used for std::set compatibility.
+                 */
+                return &left < &right;
+            }
+        
+            /**
+             * The number of blocks before it is confirmed.
+             */
+            enum { confirmations = 1 };
+        
+        private:
+        
+            /**
+             * The previous transactions.
+             */
+            std::vector<transaction_merkle> m_previous_transactions;
+        
+            /**
+             * The values.
+             */
+            std::map<std::string, std::string> m_values;
+        
+            /**
+             *
+             */
+            std::vector< std::pair<std::string, std::string> > m_order_form;
+        
+            /**
+             * The time received is transaction time.
+             */
+            std::uint32_t m_time_received_is_tx_time;
+        
+            /**
+             * The time received (by this node).
+             */
+            std::uint32_t m_time_received;
+        
+            /**
+             * The time smart.
+             */
+            std::uint32_t m_time_smart;
+        
+            /**
+             * If true it is from me.
+             */
+            bool m_is_from_me;
+        
+            /**
+             * The from account.
+             */
+            std::string m_from_account;
+    
+            /**
+             * The outputs which are already spent.
+             */
+            mutable std::vector<char> m_spent;
+        
+            /** 
+             * The position in the ordered transaction list.
+             */
+            std::int64_t m_order_position;
+        
+        protected:
+        
+            /**
+             * The wallet.
+             */
+            const wallet * wallet_;
+        
+            /**
+             * If true the credit is cached.
+             */
+            mutable bool credit_is_cached_;
+        
+            /**
+             * The amount of cached credit.
+             */
+            mutable std::int64_t credit_cached_;
+        
+            /**
+             * If true the debit is cached.
+             */
+            mutable bool debit_is_cached_;
+        
+            /**
+             * The amount of cached debit.
+             */
+            mutable std::int64_t debit_cached_;
+        
+            /**
+             * If true available credit is cached.
+             */
+            mutable bool available_credit_is_cached_;
+        
+            /**
+             * The amount of available cached credit
+             */
+            mutable std::int64_t available_credit_cached_;
+        
+            /**
+             * If true if change is cached.
+             */
+            mutable bool change_is_cached_;
+    };
+
+} // namespace coin
+
+#endif // COIN_TRANSACTION_WALLET_HPP
