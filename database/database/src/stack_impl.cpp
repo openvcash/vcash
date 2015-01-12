@@ -52,15 +52,9 @@ void stack_impl::start(const stack::configuration & config)
     m_node->start(config);
     
     /**
-     * Calculate the number of threads.
+     * Optimal operation requires only is a single thread.
      */
-    std::size_t threads = 1
-        /*
-        //:FIXME: There is a deadlock somewhere, udp stops working
-        (std::thread::hardware_concurrency() == 0 ? 1 :
-        std::thread::hardware_concurrency())
-        */
-    ;
+    std::size_t threads = 1;
     
     log_info(
         "Stack is starting with " << threads << " concurrent threads."
