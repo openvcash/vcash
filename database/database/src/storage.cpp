@@ -142,9 +142,6 @@ void storage::store(const std::shared_ptr<entry> e)
     
         if (boost::iequals(qs1, qs2))
         {
-            // for testing
-            //printf("OLD/NEW: %s:%s\n", qs1.c_str(), qs2.c_str());
-            
             /**
              * Copy the timestamp from the older entry.
              */
