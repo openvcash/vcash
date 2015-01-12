@@ -233,17 +233,13 @@ const std::vector< std::shared_ptr<entry> > storage::find(
                     continue;
                 }
 
-                // key == key
                 if (boost::iequals(j.first, k.first))
                 {
                     log_debug(j.second << ":" << k.second);
-                    
-                    //matches |= boost::iequals(j.second, k.second);
-                    
-                    // value == value
+
                     if (boost::iequals(j.second, k.second))
                     {
-                        //matches = true;
+
                     }
                     else
                     {
@@ -260,7 +256,7 @@ const std::vector< std::shared_ptr<entry> > storage::find(
             }
         }
         
-        if (matches/* && !mismatch*/)
+        if (matches)
         {
             log_debug("Insert result= " << i->query_string());
             
