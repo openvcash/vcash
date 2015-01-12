@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of coinpp.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * coinpp is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -79,6 +79,37 @@ namespace coin {
              * @param ptr_wallet The wallet.
              */
             void initialize(const wallet * ptr_wallet);
+
+            /**
+             * Gets the amounts.
+             * @param generated_immature The number of coins generated but not
+             * yet matured.
+             * @param generated_mature The number of coins generated and
+             * matured.
+             * @param received The coins received.
+             * @param sent The coins sent.
+             * @param fee The transaction fee.
+             * @param account_sent The account sent.
+             */
+            void get_amounts(
+                std::int64_t & generated_immature, std::int64_t & generated_mature,
+                std::list< std::pair<destination::tx_t, std::int64_t> > & received,
+                std::list< std::pair<destination::tx_t, std::int64_t> > & sent,
+                std::int64_t & fee, std::string & account_sent
+            ) const;
+
+            /**
+             * Gets the amounts from the give account.
+             * @param account The account name.
+             * @param generated The number of coins generated.
+             * @param received The number of coins received.
+             * @param sent The number of coins sent.
+             * @param fee The fee.
+             */
+            void get_account_amounts(
+                const std::string & account, std::int64_t & generated,
+                std::int64_t & received, std::int64_t & sent, std::int64_t & fee
+            ) const;
 
             /**
              * Adds supporting transactions.
@@ -233,6 +264,12 @@ namespace coin {
              * If true it is from me.
              */
             const bool & is_from_me() const;
+        
+            /**
+             * Set the from account.
+             * @param val The value.
+             */
+            void set_from_account(const std::string & val);
         
             /**
              * The from account.

@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of coinpp.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * coinpp is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -47,10 +47,13 @@ namespace coin {
     class db_env;
     class mining_manager;
     class nat_pmp_client;
+    class rpc_manager;
     class stack;
+    class status_manager;
     class tcp_acceptor;
     class tcp_connection;
     class tcp_connection_manager;
+    class upnp_client;
     
     /**
      * The stack implementation.
@@ -80,9 +83,8 @@ namespace coin {
              * @param amount The amount.
              * @param destination The destination.
              * @param wallet_values The wallet ke/values.
-             * @return An std::map<std::string, std::string>
              */
-            std::map<std::string, std::string> send_coins(
+            void send_coins(
                 const std::int64_t & amount, const std::string & destination,
                 const std::map<std::string, std::string> & wallet_values
             );
@@ -181,6 +183,16 @@ namespace coin {
             std::shared_ptr<alert_manager> & get_alert_manager();
         
             /**
+             * The mining_manager.
+             */
+            std::shared_ptr<mining_manager> & get_mining_manager();
+        
+            /**
+             * The status_manager.
+             */
+            std::shared_ptr<status_manager> & get_status_manager();
+        
+            /**
              * The tcp_acceptor.
              */
             std::shared_ptr<tcp_acceptor> & get_tcp_acceptor();
@@ -244,8 +256,17 @@ namespace coin {
 
             /**
              * The block difficulty.
+             * index The block_index.
              */
-            double difficulty() const;
+            double difficulty(
+                const std::shared_ptr<block_index> & index = 0
+            ) const;
+
+            /**
+             * Calculates the average network hashes per second based on the
+             * last N blocks.
+             */
+            std::uint64_t network_hash_per_second(std::int32_t lookup);
 
             /**
              * Called when an error occurs.
@@ -273,15 +294,18 @@ namespace coin {
         
             /**
              * Called periodically to inform about blocks.
-             * @param pairs The pairs.
              */
             void on_status_block();
         
             /**
              * Called periodically to inform about wallet.
-             * @param pairs The pairs.
              */
             void on_status_wallet();
+        
+            /**
+             * Called periodically to inform about blockchain.
+             */
+            void on_status_blockchain();
         
             /**
              * The local endpoint.
@@ -314,6 +338,16 @@ namespace coin {
             std::shared_ptr<nat_pmp_client> m_nat_pmp_client;
         
             /**
+             * The rpc_manager.
+             */
+            std::shared_ptr<rpc_manager> m_rpc_manager;
+        
+            /**
+             * The status_manager.
+             */
+            std::shared_ptr<status_manager> m_status_manager;
+            
+            /**
              * The tcp_acceptor.
              */
             std::shared_ptr<tcp_acceptor> m_tcp_acceptor;
@@ -322,6 +356,11 @@ namespace coin {
              * The tcp_connection_manager.
              */
             std::shared_ptr<tcp_connection_manager> m_tcp_connection_manager;
+        
+            /**
+             * The upnp_client.
+             */
+            std::shared_ptr<upnp_client> m_upnp_client;
         
             /**
              * The db_env
@@ -381,6 +420,12 @@ namespace coin {
              * The main loop.
              */
             void loop();
+
+            /**
+             * Checks for centrally hosted bootstrap peers.
+             * @param interval The interval.
+             */
+            void do_check_peers(const std::uint32_t & interval);
         
             /**
              * The stack.
@@ -415,6 +460,13 @@ namespace coin {
             boost::asio::basic_waitable_timer<
                 std::chrono::steady_clock
             > timer_status_block_;
+        
+            /**
+             * The blockchain status timer.
+             */
+            boost::asio::basic_waitable_timer<
+                std::chrono::steady_clock
+            > timer_status_blockchain_;
         
             /**
              * The wallet status timer.

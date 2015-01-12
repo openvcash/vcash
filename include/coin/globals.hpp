@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of coinpp.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * coinpp is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -36,15 +36,11 @@
 #include <coin/point_out.hpp>
 #include <coin/sha256.hpp>
 
-/**
- * Enable to use whirlpool over scrypt.
- */
-#define USE_WHIRLPOOL 1
-
 namespace coin {
 
     class block;
     class data_buffer;
+    class script;
     class wallet;
     
     /**
@@ -71,23 +67,7 @@ namespace coin {
             /**
              * Constructor
              */
-            globals()
-                : m_strand(m_io_service)
-                , m_state(state_none)
-                , m_debug(true)
-                , m_is_client(false)
-                , m_version_nonce(0)
-                , m_best_block_height(-1)
-                , m_time_best_received(0)
-                , m_transactions_updated(0)
-                , m_peer_block_counts(5, 0)
-                , m_transaction_fee(constants::min_tx_fee)
-                , m_wallet_unlocked_mint_only(false)
-                , m_last_coin_stake_search_interval(0)
-                , m_option_rescan(false)
-            {
-                // ...
-            }
+            globals();
         
             /**
              * The singleton accessor.
@@ -477,6 +457,14 @@ namespace coin {
             }
         
             /**
+             * The number of transactions in the last block.
+             */
+            const std::uint64_t & last_block_transactions() const
+            {
+                return m_last_block_transactions;
+            }
+        
+            /**
              * Sets the last block size.
              * @param val The value.
              */
@@ -484,6 +472,53 @@ namespace coin {
             {
                 m_last_block_size = val;
             }
+        
+            /**
+             * The last block size.
+             */
+            const std::uint64_t & last_block_size() const
+            {
+                return m_last_block_size;
+            }
+        
+            /**
+             * Set the money supply.
+             * @param val The value.
+             */
+            void set_money_supply(const std::uint64_t & val)
+            {
+                m_money_supply = val;
+            }
+        
+            /**
+             * The money supply.
+             */
+            const std::uint64_t & money_supply() const
+            {
+                return m_money_supply;
+            }
+        
+            /**
+             * Sets our public address as seen by others.
+             * @param val The value.
+             */
+            void set_address_public(const boost::asio::ip::address & val)
+            {
+                m_address_public = val;
+            }
+        
+            /**
+             * Our public address as seen by others.
+             */
+            const boost::asio::ip::address & address_public() const
+            {
+                return m_address_public;
+            }
+        
+            /**
+             * The coinbase flags.
+             */
+            script & coinbase_flags();
         
         private:
         
@@ -634,6 +669,21 @@ namespace coin {
              * The last block size.
              */
             std::uint64_t m_last_block_size;
+        
+            /**
+             * The money supply.
+             */
+            std::uint64_t m_money_supply;
+        
+            /**
+             * Our public address as seen by others.
+             */
+            boost::asio::ip::address m_address_public;
+        
+            /**
+             * The coinbase flags.
+             */
+            std::shared_ptr<script> m_coinbase_flags;
         
         protected:
         

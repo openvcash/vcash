@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of coinpp.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * coinpp is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -32,6 +32,7 @@ namespace coin {
     class block;
     class block_index;
     class point_out;
+    class tcp_connection;
     class transaction;
     
     class kernel
@@ -145,12 +146,14 @@ namespace coin {
             );
 
             /**
-             * Check kernel hash target and coinstake signature
+             * Check kernel hash target and coinstake signature.
+             * @param connection The tcp_connection if any.
              * @param tx The transaction.
              * @param bit The number of bits.
              * @param hash_pos The hash of the proof-of-stake.
              */
             static bool check_proof_of_stake(
+                const std::shared_ptr<tcp_connection> & connection,
                 const transaction & tx, const std::uint32_t & bits,
                 sha256 & hash_pos
             );

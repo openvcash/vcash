@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of coinpp.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * coinpp is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -21,9 +21,14 @@
 #ifndef COIN_TCP_TRANSPORT_HPP
 #define COIN_TCP_TRANSPORT_HPP
 
+
 #include <cstdint>
 #include <deque>
 #include <memory>
+
+#if (defined __IPHONE_OS_VERSION_MAX_ALLOWED)
+#import <CFNetwork/CFSocketStream.h>
+#endif // __IPHONE_OS_VERSION_MAX_ALLOWED
 
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
@@ -51,8 +56,11 @@ namespace coin {
             /**
              * Constructor
              * @param ios The boost::asio::io_service.
+             * @param s The boost::asio::strand.
              */
-            tcp_transport(boost::asio::io_service & ios);
+            tcp_transport(
+                boost::asio::io_service & ios, boost::asio::strand & s
+            );
 
             /**
              * Destructor
@@ -117,7 +125,7 @@ namespace coin {
             boost::asio::ssl::stream<
                 boost::asio::ip::tcp::socket
             >::lowest_layer_type & socket();
-        
+
             /**
              * If true the conneciton will close as soon as it's write queue is
              * exhausted.
@@ -136,6 +144,16 @@ namespace coin {
              * @param val The value.
              */
             void set_write_timeout(const std::uint32_t &);
+        
+            /**
+             * The time of the last read.
+             */
+            const std::time_t & time_last_read();
+        
+            /**
+             * The time of the last write.
+             */
+            const std::time_t & time_last_write();
         
             /**
              * Runs the test case.
@@ -185,6 +203,7 @@ namespace coin {
             std::shared_ptr<
                 boost::asio::ssl::stream<boost::asio::ip::tcp::socket>
             > m_socket;
+
             /**
              * If true the conneciton will close as soon as it's write queue is
              * exhausted.
@@ -201,6 +220,16 @@ namespace coin {
              */
             std::uint32_t m_write_timeout;
         
+            /**
+             * The time of the last read.
+             */
+            std::time_t m_time_last_read;
+        
+            /**
+             * The time of the last write.
+             */
+            std::time_t m_time_last_write;
+    
             /**
              * The completion handler.
              */
@@ -219,6 +248,11 @@ namespace coin {
         protected:
         
             /**
+             * Set's up the socket for VoIP operation on iOS.
+             */
+            void set_voip();
+        
+            /**
              * The boost::asio::io_service.
              */
             boost::asio::io_service & io_service_;
@@ -226,7 +260,7 @@ namespace coin {
             /**
              * The boost::asio::strand.
              */
-            boost::asio::strand strand_;
+            boost::asio::strand & strand_;
 
             /**
              * The connect timeout timer.
@@ -258,6 +292,14 @@ namespace coin {
              * The read buffer.
              */
             char read_buffer_[1024];
+        
+#if (defined __IPHONE_OS_VERSION_MAX_ALLOWED)
+            /**
+             * Read and Write streams for background voip usage on iOS.
+             */
+            CFReadStreamRef readStreamRef_;
+            CFWriteStreamRef writeStreamRef_;
+#endif // __IPHONE_OS_VERSION_MAX_ALLOWED
     };
     
 } // namespace database

@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of coinpp.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * coinpp is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -43,12 +43,22 @@ namespace protocol {
         /**
          * The version.
          */
-        enum { version = 60002 };
+        enum { version = 60001 };
     
         /**
-         * The default tcp port.
+         * The minimum version.
+         */
+        enum { minimum_version = 60001 };
+    
+        /**
+         * The default peer port.
          */
         enum { default_tcp_port = 9194 };
+    
+        /**
+         * The default rpc port.
+         */
+        enum { default_rpc_port = 9195 };
     
         /**
          * Ihe ipv4 mapped prefix.
@@ -111,7 +121,7 @@ namespace protocol {
              * The last timed tried.
              */
             std::uint64_t last_try;
-            
+                        
             /**
              * operator <
              */
@@ -166,7 +176,6 @@ namespace protocol {
                     
                     auto ip = ep.address().to_v4().to_ulong();
                     
-                    // :FIXME:
                     ip = ntohl(ip);
                     
                     std::memcpy(
@@ -579,7 +588,7 @@ namespace protocol {
             }
             
         } network_address_t;
-    
+
         /**
          * The inventory vector string representations.
          */
@@ -693,7 +702,7 @@ namespace protocol {
          */
         typedef struct
         {
-            std::shared_ptr<alert> alert;
+            std::shared_ptr<alert> a;
         } alert_t;
     
         /** */

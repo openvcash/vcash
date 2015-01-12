@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of coinpp.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * coinpp is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -34,6 +34,7 @@ namespace coin {
     class file;
     class key_store;
     class point_out;
+    class tcp_connection;
     class tcp_connection_manager;
     class tx_db;
     
@@ -222,10 +223,12 @@ namespace coin {
             
             /**
              * Checks the block.
+             * @param connection The tcp_connection if any.
              * @param check_pow If true the proof-of-work will be checked.
              * @param check_merkle_root If true the merkle root will be checked.
              */
             bool check_block(
+                const std::shared_ptr<tcp_connection> & connection = 0,
                 const bool & check_pow = true,
                 const bool & check_merkle_root = true
             );

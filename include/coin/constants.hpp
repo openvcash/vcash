@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of coinpp.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * coinpp is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -26,6 +26,11 @@
 
 #include <coin/big_number.hpp>
 
+/**
+ * Enables GUI related function calls.
+ */
+#define COIN_USE_GUI 1
+
 namespace coin {
 namespace constants {
 
@@ -37,12 +42,12 @@ namespace constants {
     /**
      * The client version minor.
      */
-    enum { version_client_minor = 0 };
+    enum { version_client_minor = 1 };
 
     /**
      * The client version revision.
      */
-    enum { version_client_revision = 9 };
+    enum { version_client_revision = 7 };
     
     /**
      * The client version build.
@@ -65,7 +70,7 @@ namespace constants {
     /**
      * The version string.
      */
-    static const std::string version_string = "0.0.9";
+    static const std::string version_string = "0.1.7";
     
     /**
      * The name of the coin.
@@ -125,22 +130,27 @@ namespace constants {
     /**
      * The chain start time.
      */
-    static const std::int64_t chain_start_time = 1417259067;
+    static const std::int64_t chain_start_time = 1419310800;
 
     /**
      * The number of blocks after which a coin matures.
      */
-    enum { coinbase_maturity = 18 };
+    enum { coinbase_maturity = 200 };
     
     /**
-     * The proof of work limit.
+     * The initial proof of work limit.
      * 0.0002441
      */
     static big_number proof_of_work_limit(~sha256(0) >> 20);
     
     /**
+     * The proof of work limit ceiling.
+     * 0.00390625
+     */
+    static big_number proof_of_work_limit_ceiling(~sha256(0) >> 24);
+    
+    /**
      * The proof of stake limit.
-     * 0.00012205
      */
     static big_number proof_of_stake_limit(~sha256(0) >> 10);
     
@@ -150,9 +160,9 @@ namespace constants {
     static const std::int64_t max_mint_proof_of_stake = 0.007 * coin;
     
     /**
-     * The minimum stake age (coinbase_maturity / 4) (~4.5 hours).
+     * The minimum stake age.
      */
-    enum { min_stake_age = 60 * 60 * (coinbase_maturity / 4) * 1 };
+    enum { min_stake_age = 60 * 60 * 8 };
 
     /**
      * The stake age full weight (365 days).
@@ -165,15 +175,15 @@ namespace constants {
     enum { max_clock_drift = 2 * 60 * 60 };
 
     /**
-     * Threshold for transaction lock time (Tue Nov  5 00:53:20 1985 UTC).
+     * Threshold for transaction lock time (Tue Nov 5 00:53:20 1985 UTC).
      */
     static const std::uint64_t locktime_threshold = 500000000;
-    
+
     /**
      * The work and stake target spacing.
      */
     enum { work_and_stake_target_spacing = 200 };
-    
+
     /**
      * The proof-of-work cutoff block.
      */

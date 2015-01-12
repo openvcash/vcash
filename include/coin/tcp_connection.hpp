@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of coinpp.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * coinpp is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -95,6 +95,12 @@ namespace coin {
              */
             void stop();
         
+            /** 
+             * Stops after the specified interval.
+             * @param interval The interval in seconds.
+             */
+            void stop_after(const std::uint32_t & interval);
+        
             /**
              * Sends a raw buffer.
              * @param buf The buffer.
@@ -102,6 +108,13 @@ namespace coin {
              */
             void send(const char * buf, const std::size_t & len);
         
+            /**
+             * Sends an addr message.
+             * @param local_address_only If true only the local address will
+             * be sent.
+             */
+            void send_addr_message(const bool & local_address_only = false);
+            
             /**
              * Sends a getblocks message.
              * @param index_begin The start block index.
@@ -156,14 +169,46 @@ namespace coin {
             void send_checkpoint_message(checkpoint_sync & checkpoint);
         
             /**
+             * The tcp_transport.
+             */
+            std::weak_ptr<tcp_transport> & get_tcp_transport();
+        
+            /**
+             * The direction.
+             */
+            const direction_t & direction() const;
+        
+            /**
              * The (remote) protocol version.
              */
             const std::uint32_t & protocol_version() const;
         
             /**
+             * The (remote) protocol version services.
+             */
+            const std::uint64_t & protocol_version_services() const;
+        
+            /**
+             * The (remote) protocol version timestamp.
+             */
+            const std::uint64_t & protocol_version_timestamp() const;
+        
+            /**
              * The (remote) protocol version start height.
              */
             const std::int32_t & protocol_version_start_height() const;
+        
+            /**
+             * The (remote) protocol version user agent.
+             */
+            const std::string & protocol_version_user_agent() const;
+        
+            /**
+             * The (remote) protocol version source address.
+             */
+            const protocol::network_address_t &
+                protocol_version_addr_src() const
+            ;
         
             /**
              * Sets the hash of the known checkpoint.
@@ -180,6 +225,17 @@ namespace coin {
              * The "seen" protocol::network_address_t objects.
              */
             std::set<protocol::network_address_t> & seen_network_addresses();
+        
+            /**
+             * Sets the Denial-of-Service score.
+             * @param val The value.
+             */
+            void set_dos_score(const std::uint8_t & val);
+        
+            /**
+             * The Denial-of-Service score.
+             */
+            const std::uint8_t & dos_score() const;
         
             /**
              * If true the transport is valid (usable).
@@ -210,13 +266,6 @@ namespace coin {
              * @param addr The address.
              */
             void send_addr_message(const protocol::network_address_t & addr);
-        
-            /**
-             * Sends an addr message.
-             * @param local_address_only If true only the local address will
-             * be sent.
-             */
-            void send_addr_message(const bool & local_address_only = false);
         
             /**
              * Sends a getaddr message.
@@ -301,6 +350,11 @@ namespace coin {
             void do_rebroadcast_addr_messages(const std::uint32_t & interval);
         
             /**
+             * The tcp_transport.
+             */
+            std::weak_ptr<tcp_transport> m_tcp_transport;
+        
+            /**
              * The direction.
              */
             direction_t m_direction;
@@ -311,9 +365,29 @@ namespace coin {
             std::uint32_t m_protocol_version;
         
             /**
+             * The (remote) protocol version services.
+             */
+            std::uint64_t m_protocol_version_services;
+        
+            /**
+             * The (remote) protocol version timestamp.
+             */
+            std::uint64_t m_protocol_version_timestamp;
+        
+            /**
              * The (remote) protocol version start height.
              */
             std::int32_t m_protocol_version_start_height;
+        
+            /**
+             * The (remote) protocol version user agent.
+             */
+            std::string m_protocol_version_user_agent;
+        
+            /**
+             * The (remote) protocol version source address.
+             */
+            protocol::network_address_t m_protocol_version_addr_src;
         
             /**
              * Our public address as advertised in the version message.
@@ -340,6 +414,16 @@ namespace coin {
              */
             std::set<protocol::network_address_t> m_seen_network_addresses;
         
+            /**
+             * The Denial-of-Service score.
+             */
+            std::uint8_t m_dos_score;
+        
+            /**
+             * The seen alerts to prevent broadcasting duplicates.
+             */
+            std::set<sha256> m_seen_alerts;
+        
         protected:
         
             /**
@@ -356,11 +440,6 @@ namespace coin {
              * The stack_impl.
              */
             stack_impl & stack_impl_;
-        
-            /**
-             * The tcp_transport.
-             */
-            std::weak_ptr<tcp_transport> tcp_transport_;
 
             /**
              * The read queue.
@@ -423,6 +502,13 @@ namespace coin {
              * The time the last block was received.
              */
             std::time_t time_last_block_received_;
+        
+            /**
+             * The delayed stop timer.
+             */
+            boost::asio::basic_waitable_timer<
+                std::chrono::steady_clock
+            > timer_delayed_stop_;
         
             /**
              * The getblocks timer.

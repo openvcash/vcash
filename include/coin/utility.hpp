@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of coinpp.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * coinpp is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -212,7 +212,7 @@ namespace coin {
                 {
                     auto val = static_cast<std::uint8_t> (*it);
                     
-                    if(spaces && it != it_begin)
+                    if (spaces && it != it_begin)
                     {
                         rv.push_back(' ');
                     }
@@ -237,6 +237,24 @@ namespace coin {
                 )
             {
                 return hex_string(bytes.begin(), bytes.end(), spaces);
+            }
+        
+            /**
+             * Converts bits to a hexidecimal string representation.
+             */
+            static std::string hex_string_from_bits(const std::uint32_t & bits)
+            {
+                union
+                {
+                    std::int32_t n;
+                    char c[4];
+                } u;
+                
+                u.n = htonl(bits);
+
+                return hex_string(
+                    ((char *)&(u.c)), (char *)&((&(u.c))[1])
+                );
             }
         
             /**

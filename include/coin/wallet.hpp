@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of coinpp.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * coinpp is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -258,6 +258,12 @@ namespace coin {
             std::int64_t get_credit(const transaction & tx) const;
     
             /**
+             * If true the transaction_out is change.
+             * @param tx_out The transaction_out.
+             */
+            bool is_change(const transaction_out & tx_out) const;
+
+            /**
              * Sets the best chain.
              * @param value The block_locator.
              */
@@ -303,6 +309,18 @@ namespace coin {
              */
             void reaccept_wallet_transactions();
         
+            /**
+             * Fixes spent coins.
+             * @param mismatch_spent The mismatch spent.
+             * @param The balance in question.
+             * @param If true a check will be performed only.
+             */
+            void fix_spent_coins(
+                std::int32_t & mismatch_spent,
+                std::int64_t & balance_in_question,
+                const bool & check_only = false
+            );
+    
             /**
              * Disable transaction (only for coinstake) (ppcoin).
              */
@@ -423,6 +441,11 @@ namespace coin {
             std::int64_t get_stake() const;
 
             /**
+             * Gets the new mint.
+             */
+            std::int64_t get_new_mint() const;
+        
+            /**
              * Selects coins.
              * @param target_value The target value.
              * @param spend_time The spend time.
@@ -498,7 +521,7 @@ namespace coin {
              */
             bool send_money(
                 const script & script_pub_key, const std::int64_t & value,
-                transaction_wallet & wtx_new
+                const transaction_wallet & wtx_new
             );
         
             /**
@@ -509,7 +532,7 @@ namespace coin {
              */
             bool send_money_to_destination(
                 const destination::tx_t & address, const std::int64_t & value,
-                transaction_wallet & wtx_new
+                const transaction_wallet & wtx_new
             );
         
             /**
@@ -580,6 +603,11 @@ namespace coin {
             std::map<destination::tx_t, std::string> & address_book();
         
             /**
+             * The address book.
+             */
+            const std::map<destination::tx_t, std::string> & address_book() const;
+        
+            /**
              * Sets the order position next.
              * @param val The value.
              */
@@ -610,8 +638,35 @@ namespace coin {
                 std::map<std::string, std::string> & value
             );
         
+            /**
+             * Gets an account balance given wallet database and name.
+             * @param wallet_db The db_wallet.
+             * @param account_name The account name.
+             * @param minimum_depth The minimum depth in the blockchain.
+             */
+            static std::int64_t get_account_balance(
+                db_wallet & wallet_db, const std::string & account_name,
+                const std::size_t & minimum_depth
+            );
+
+            /**
+             * Gets an account balance given name.
+             * @param account_name The account name.
+             * @param minimum_depth The minimum depth in the blockchain.
+             */
+            static std::int64_t get_account_balance(
+                const std::string & account_name,
+                const std::size_t & minimum_depth
+            );
+        
         private:
 
+            /**
+             * Checks the wallet integrity and performs repairs if necessary.
+             * @param ec The boost::system::error_code.
+             */
+            void check_tick(const boost::system::error_code & ec);
+        
             /**
              * Resends any transactions that have not yet made it into a block.
              * @param ec The boost::system::error_code.
@@ -700,7 +755,19 @@ namespace coin {
             bool is_file_backed_;
         
             /**
-             * The timeout timer.
+             * The check interval.
+             */
+            enum { interval_check = 86400 };
+        
+            /**
+             * The check timer.
+             */
+            boost::asio::basic_waitable_timer<
+                std::chrono::steady_clock
+            > check_timer_;
+        
+            /**
+             * The resend transactions timer.
              */
             boost::asio::basic_waitable_timer<
                 std::chrono::steady_clock

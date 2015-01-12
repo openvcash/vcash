@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of coinpp.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * coinpp is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -284,12 +284,7 @@ namespace coin {
             /**
              * Constructor
              */
-            script(int b) { operator << (b); }
-        
-            /**
-             * Constructor
-             */
-            script(long b) { operator << (b); }
+            script(std::int32_t b) { operator << (b); }
         
             /**
              * Constructor
@@ -409,12 +404,12 @@ namespace coin {
 
             /**
              * get_op
-             * @param it The const_iterator.
+             * @param it The iterator.
              * @param out The op_t.
              */
-            bool get_op(const_iterator & it, op_t & out)
+            bool get_op(iterator & it, op_t & out)
             {
-                 auto it2 = it;
+                 const_iterator it2 = it;
                 
                  auto ret = get_op2(it2, out, 0);
                 
@@ -591,7 +586,7 @@ namespace coin {
                     return ret;
                 }
                 
-                const_iterator it = begin();
+                iterator it = begin();
                 
                 op_t opcode;
                 
@@ -736,6 +731,29 @@ namespace coin {
             );
         
             /**
+             * Extracts a destination from a script.
+             * @param script_public_key The script.
+             * @param address_out The destination::tx_t.
+             */
+            static bool extract_destination(
+                const script & script_public_key,
+                destination::tx_t & address_out
+            );
+
+            /**
+             * Extracts destinations from a script.
+             * @param script_public_key The script.
+             * @param type_out The types::tx_out_t.
+             * @param address_out The destination::tx_t objects.
+             * @param required_out The required out.
+             */
+            static bool extract_destinations(
+                const script & script_public_key, types::tx_out_t & type_out,
+                std::vector<destination::tx_t> & address_out,
+                std::int32_t & required_out
+            );
+        
+            /**
              * Sign signature.
              * @param keystore The key_store.
              * @param pub_key_from The script public key (from).
@@ -826,12 +844,7 @@ namespace coin {
             /**
              * operator <<
              */
-            script & operator << (int b) { return push_int64(b); }
-        
-            /**
-             * operator <<
-             */
-            script & operator << (long b) { return push_int64(b); }
+            script & operator << (std::int32_t b) { return push_int64(b); }
         
             /**
              * operator <<
@@ -846,17 +859,12 @@ namespace coin {
             /**
              * operator <<
              */
-            script & operator << (unsigned int b) { return push_uint64(b); }
-        
-            /**
-             * operator <<
-             */
             script & operator << (std::uint16_t b) { return push_uint64(b); }
         
             /**
              * operator <<
              */
-            script & operator << (unsigned long b) { return push_uint64(b); }
+            script & operator << (std::uint32_t b) { return push_uint64(b); }
         
             /**
              * operator <<
@@ -1111,4 +1119,4 @@ namespace coin {
     
 } // namespace coin
 
-#endif // COIN_SCRYPT_HPP
+#endif // COIN_SCRIPT_HPP

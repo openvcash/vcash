@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of coinpp.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * coinpp is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -40,6 +40,11 @@ namespace coin {
                 boost::asio::io_service & ios, 
                 boost::system::error_code & ec
             );
+        
+            /**
+             * Returns the local ip address.
+             */
+            static boost::asio::ip::address local_address();
         
             typedef struct
             {
@@ -82,8 +87,16 @@ namespace coin {
              */
             static std::vector<network_interface_t> routes(
                 boost::asio::io_service & ios, boost::system::error_code & ec
-            );   
-            
+            );
+        
+            /**
+             * Gets the local interfaces.
+             * @param ec The boost::system::error_code.
+             */
+            static std::vector<network_interface_t> local_interfaces(
+                boost::system::error_code & ec
+            );
+        
         protected:
 
             /**
@@ -109,6 +122,18 @@ namespace coin {
             static bool address_is_loopback(
                 const boost::asio::ip::address & addr
             );
+
+            /**
+             * If true the address is multicast.
+             */
+            static bool address_is_multicast(
+                const boost::asio::ip::address & addr
+            );
+        
+            /**
+             * If true the address is any.
+             */
+            static bool address_is_any(const boost::asio::ip::address & addr);
     };
     
 } // namespace coin

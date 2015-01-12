@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of coinpp.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * coinpp is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -66,6 +66,23 @@ namespace coin {
              */
             static std::uint16_t uint16_random_range(
                 const std::uint16_t & low, const std::uint16_t & high
+                )
+            {
+                static std::random_device rd;
+                static std::mt19937_64 gen(rd());
+
+                std::uniform_int_distribution<> dist(low, high);
+                
+                return dist(gen);
+            }
+        
+            /**
+             * Generates a random std::uint32_t in the given range.
+             * @param low The low range.
+             * @param high The high range.
+             */
+            static std::uint32_t uint32_random_range(
+                const std::uint32_t & low, const std::uint32_t & high
                 )
             {
                 static std::random_device rd;

@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of coinpp.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * coinpp is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -22,6 +22,7 @@
 #define COIN_CONFIGURATION_HPP
 
 #include <cstdint>
+#include <map>
 #include <mutex>
 #include <string>
 #include <vector>
@@ -56,6 +57,17 @@ namespace coin {
             bool save();
 
             /**
+             * Sets the arguments.
+             * @param val The arguments.
+             */
+            void set_args(const std::map<std::string, std::string>  & val);
+        
+            /** 
+             * The arguments.
+             */
+            std::map<std::string, std::string> & args();
+        
+            /**
              * Sets the network TCP port.
              */
             void set_network_port_tcp(const std::uint16_t & val);
@@ -64,6 +76,17 @@ namespace coin {
              * The network TCP port.
              */
             const std::uint16_t & network_port_tcp() const;
+        
+            /**
+             * Sets the maximum number of inbound TCP connections.
+             * @param val The value.
+             */
+            void set_network_tcp_inbound_maximum(const std::size_t & val);
+        
+            /**
+             * The maximum number of inbound TCP connections;
+             */
+            const std::size_t & network_tcp_inbound_maximum() const;
         
             /**
              * Sets the bootstrap nodes.
@@ -104,10 +127,20 @@ namespace coin {
         
         private:
         
+            /** 
+             * The arguments.
+             */
+            std::map<std::string, std::string> m_args;
+        
             /**
              * The network TCP port.
              */
             std::uint16_t m_network_port_tcp;
+        
+            /**
+             * The maximum number of inbound TCP connections;
+             */
+            std::size_t m_network_tcp_inbound_maximum;
         
             /**
              * The bootstrap nodes.

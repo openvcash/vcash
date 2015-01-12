@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of coinpp.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * coinpp is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -20,6 +20,13 @@
 
 #ifndef COIN_MINING_MANAGER_HPP
 #define COIN_MINING_MANAGER_HPP
+
+/**
+ * Workaround bug in gcc 4.7:  https://gcc.gnu.org/bugzilla/show_bug.cgi?id=52680
+ */
+#if (defined __linux__)
+#define _GLIBCXX_USE_NANOSLEEP 1
+#endif // __linux__
 
 #include <cstdint>
 #include <mutex>
@@ -93,6 +100,11 @@ namespace coin {
              */
             void stop_proof_of_work();
         
+            /**
+             * The number of hashes per second.
+             */
+            const double & hashes_per_second() const;
+        
         private:
         
             /**
@@ -138,11 +150,12 @@ namespace coin {
              * @param blk The block.
              * @paramw w The wallet.
              * @param reserved_key The key_reserved.
+             * @param is_proof_of_stake If true it is Proof-of-Stake.
              */
             void check_work(
                 std::shared_ptr<block> & blk,
                 const std::shared_ptr<wallet> & w,
-                key_reserved & reserve_key
+                key_reserved & reserve_key, const bool & is_proof_of_stake
             );
         
             /**

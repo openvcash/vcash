@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of coinpp.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * coinpp is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -43,8 +43,12 @@ namespace coin {
             
             /**
              * Starts the stack.
+             * @param args The arguments.
              */
-            void start();
+            void start(
+                const std::map<std::string, std::string> & args =
+                std::map<std::string, std::string> ()
+            );
             
             /**
              * Stops the stack.
@@ -56,9 +60,8 @@ namespace coin {
              * @param amount The amount.
              * @param destination The destination.
              * @param wallet_values The wallet ke/values.
-             * @return An std::map<std::string, std::string>
              */
-            std::map<std::string, std::string> send_coins(
+            void send_coins(
                 const std::int64_t & amount, const std::string & destination,
                 const std::map<std::string, std::string> & wallet_values
             );
