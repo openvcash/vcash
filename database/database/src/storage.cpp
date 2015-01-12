@@ -252,13 +252,6 @@ const std::vector< std::shared_ptr<entry> > storage::find(
                     
                     log_debug("matches = " << matches);
                 }
-//                else
-//                {
-//                    /**
-//                     * This key is in the entry but not the query, make it a match.
-//                     */
-//                    matches = true;
-//                }
                 
                 if (!matches)
                 {
