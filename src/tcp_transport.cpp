@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
+ * This file is part of vanillacoin.
  *
- * coinpp is free software: you can redistribute it and/or modify
+ * Vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -27,44 +27,6 @@
 #include <coin/tcp_transport.hpp>
 
 using namespace coin;
-
-boost::system::error_code use_private_key(SSL_CTX * ctx, char * buf)
-{
-    boost::system::error_code ec;
-    
-    BIO * bio = ::BIO_new_mem_buf(buf, -1);
-    
-    if (bio == 0)
-    {
-        ec = boost::asio::error::invalid_argument;
-        return ec;
-    }
-
-    EVP_PKEY * pkey = PEM_read_bio_PrivateKey(
-        bio, 0, ctx->default_passwd_callback,
-        ctx->default_passwd_callback_userdata
-    );
-    
-    BIO_free(bio);
-    
-    if (pkey == 0)
-    {
-        ec = boost::asio::error::invalid_argument;
-        return ec;
-    }
-
-    if (SSL_CTX_use_PrivateKey(ctx, pkey) != 1)
-    {
-        ec = boost::asio::error::invalid_argument;
-        return ec;
-    }
-    
-    EVP_PKEY_free(pkey);
-
-    ec = boost::system::error_code();
-    
-    return ec;
-}
 
 boost::system::error_code use_tmp_dh(SSL_CTX * ctx, char * buf)
 {
@@ -108,65 +70,6 @@ boost::system::error_code use_tmp_dh(SSL_CTX * ctx, char * buf)
     ret = boost::system::error_code();
     
     return ret;
-}
-
-boost::system::error_code use_certificate_chain(SSL_CTX * ctx, char * buf)
-{
-    boost::system::error_code ec;
-    
-    BIO * bio = ::BIO_new_mem_buf(buf, -1);
-    
-    if (bio == 0)
-    {
-        ec = boost::asio::error::invalid_argument;
-        
-        return ec;
-    }
-    
-	X509 * x = PEM_read_bio_X509(bio, 0, 0, 0);
-    
-    if (x == 0)
-    {
-        ec = boost::asio::error::invalid_argument;
-        
-        return ec;
-    }
-
-    if (SSL_CTX_use_certificate(ctx, x) != 1)
-    {
-        ec = boost::asio::error::invalid_argument;
-        
-        return ec;
-    }
-    
-    X509_free(x);
-
-    X509 * ca = 0;
-		
-    if (ctx->extra_certs != 0)
-    {
-        sk_X509_pop_free(ctx->extra_certs, X509_free);
-        ctx->extra_certs = 0;
-    }
-
-    while (
-        (ca = PEM_read_bio_X509( bio, 0, ctx->default_passwd_callback,
-        ctx->default_passwd_callback_userdata)
-        ) != 0)
-    {
-        if (SSL_CTX_add_extra_chain_cert(ctx, ca) != 1)
-        {
-            X509_free(ca);
-            
-            return boost::asio::error::invalid_argument;
-        }
-    }
- 
-    BIO_free(bio);
-
-    ec = boost::system::error_code();
-    
-    return ec;
 }
 
 void print_cipher_list(const SSL * s)
@@ -242,7 +145,6 @@ tcp_transport::tcp_transport(
         boost::asio::ssl::context::single_dh_use
     );
 
-
     /**
      * Use temporary Diffie-Hellman paramaters.
      */
@@ -273,15 +175,9 @@ tcp_transport::tcp_transport(
     
     /**
      * Create the cipher list.
-     * + TLS_ECDH_anon_WITH_RC4_128_SHA        AECDH-RC4-SHA
-     * + TLS_ECDH_anon_WITH_3DES_EDE_CBC_SHA   AECDH-DES-CBC3-SHA
      * + TLS_ECDH_anon_WITH_AES_128_CBC_SHA    AECDH-AES128-SHA
      * + TLS_ECDH_anon_WITH_AES_256_CBC_SHA    AECDH-AES256-SHA
      */
-    cipher_list += "AECDH-RC4-SHA";
-    cipher_list += " ";
-    cipher_list += "AECDH-DES-CBC3-SHA";
-    cipher_list += " ";
     cipher_list += "AECDH-AES128-SHA";
     cipher_list += " ";
     cipher_list += "AECDH-AES256-SHA";
@@ -310,7 +206,7 @@ tcp_transport::tcp_transport(
      */
     m_socket->set_verify_mode(boost::asio::ssl::context::verify_none);
 
-    if (globals::instance().debug() && false)
+    if (globals::instance().debug())
     {
         /**
          * Print the cipher list.
@@ -360,6 +256,11 @@ void tcp_transport::start(
         }
         else
         {
+            log_none(
+                "TCP transport connect operation timed out after 8 "
+                "seconds, closing."
+            );
+            
             /**
              * Stop
              */
@@ -898,4 +799,44 @@ void tcp_transport::set_voip()
         log_error("TCP transport unable open write stream.");
     }
 #endif // __IPHONE_OS_VERSION_MAX_ALLOWED
+}
+
+int tcp_transport::run_test()
+{
+    boost::asio::io_service ios;
+    
+    boost::asio::strand s(ios);
+    
+    std::shared_ptr<tcp_transport> t =
+        std::make_shared<tcp_transport>(ios, s)
+    ;
+    
+    t->start("google.com", 80,
+        [](boost::system::error_code ec, std::shared_ptr<tcp_transport> t)
+    {
+        if (ec)
+        {
+            std::cerr <<
+                "tcp_transport connect failed, message = " <<
+                ec.message() <<
+            std::endl;
+        }
+        else
+        {
+            std::cout <<
+                "tcp_transport connect success" <<
+            std::endl;
+            
+            std::stringstream ss;
+            ss << "GET" << " "  << "/" << " HTTP/1.0\r\n";
+            ss << "Host: " << "google.com" << "\r\n";
+            ss << "Accept: */*\r\n";
+            ss << "Connection: close\r\n\r\n";
+            t->write(ss.str().data(), ss.str().size());
+        }
+    });
+    
+    ios.run();
+
+    return 0;
 }

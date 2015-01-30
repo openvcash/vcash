@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
+ * This file is part of vanillacoin.
  *
- * coinpp is free software: you can redistribute it and/or modify
+ * Vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -110,6 +110,16 @@ void http_transport::start(
         ssl_socket_->set_verify_callback(
             [this](bool preverified, boost::asio::ssl::verify_context & ctx)
             {
+#if 0
+                char subject_name[256];
+                X509 * cert = X509_STORE_CTX_get_current_cert(
+                    ctx.native_handle()
+                );
+                X509_NAME_oneline(
+                    X509_get_subject_name(cert), subject_name, 256
+                );
+                std::cout << "Verifying " << subject_name << "\n";
+#endif
                 return preverified;
             }
         );
@@ -819,4 +829,48 @@ std::string http_transport::urlencode(const std::string & c)
         }
     }
     return ret;
+}
+
+int http_transport::run_test()
+{
+    boost::asio::io_service ios;
+    
+    std::shared_ptr<http_transport> t =
+        std::make_shared<http_transport>(ios,
+        "http://google.com/")
+    ;
+
+    t->start(
+        [](boost::system::error_code ec, std::shared_ptr<http_transport> t)
+        {
+            if (ec)
+            {
+                std::cerr <<
+                    "http_transport request failed, message = " <<
+                    ec.message() <<
+                std::endl;
+            }
+            else
+            {
+                if (t->status_code() == 200)
+                {
+                    std::cout <<
+                        "http_transport success, body = " <<
+                        t->response_body() <<
+                    std::endl;
+                }
+                else
+                {
+                    std::cerr <<
+                        "http_transport request failed, status code = " <<
+                        t->status_code() <<
+                    std::endl;
+                }
+            }
+        }
+    );
+    
+    ios.run();
+
+    return 0;
 }

@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
+ * This file is part of vanillacoin.
  *
- * coinpp is free software: you can redistribute it and/or modify
+ * Vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -208,7 +208,14 @@ bool address_manager::load()
              * The number of buckets.
              */
             auto number_buckets = data.read_uint32();
-
+            
+            log_none(
+                "Address manager read version = " << (int)version <<
+                ", key_length = " << (int)key_length << ", number_new = " <<
+                number_new_ << ", number_tried = " <<
+                number_tried_ << ", number_buckets = " << number_buckets << "."
+            );
+            
             assert(number_buckets == 256);
             
             /**
@@ -281,6 +288,13 @@ bool address_manager::load()
                  * Read the last attempts.
                  */
                 info.last_attempts = data.read_uint32();
+                
+                log_none(
+                    "NEW: version = " << (int)info.addr.version <<
+                    ", ep = " << info.addr.ipv4_mapped_address() << ":" <<
+                    info.addr.port << ", last_success = " << info.last_success <<
+                    ", last_attempts = " << info.last_attempts << "."
+                );
 
                 address_info_map_[i] = info;
                 network_address_map_[info.addr] = i;
@@ -343,6 +357,14 @@ bool address_manager::load()
                  * Read the last attempts.
                  */
                 info.last_attempts = data.read_uint32();
+                
+                log_none(
+                    "TRIED: i = " << i << ", version = " <<
+                    (int)info.addr.version << ", ep = " <<
+                    info.addr.ipv4_mapped_address() << ":" << info.addr.port <<
+                    ", last_success = " << info.last_success <<
+                    ", last_attempts = " << info.last_attempts << "."
+                );
                 
                 auto & tried = buckets_tried_[info.calculate_tried_bucket(key_)];
                 
@@ -779,6 +801,11 @@ void address_manager::mark_good(
     const protocol::network_address_t & addr, const std::uint64_t &  timestamp
     )
 {
+    log_none(
+        "Address manager is marking " <<
+        addr.ipv4_mapped_address() << ":" << addr.port << " as good."
+    );
+
     std::uint32_t nid;
     
     if (auto * ptr_info = find(addr, &nid))

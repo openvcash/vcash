@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
+ * This file is part of vanillacoin.
  *
- * coinpp is free software: you can redistribute it and/or modify
+ * Vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -22,8 +22,12 @@
 #include <coin/block_index.hpp>
 #include <coin/globals.hpp>
 #include <coin/hash.hpp>
+#include <coin/point_out.hpp>
 #include <coin/stack_impl.hpp>
 #include <coin/time.hpp>
+#include <coin/transaction_index.hpp>
+#include <coin/transaction_pool.hpp>
+#include <coin/transaction_position.hpp>
 #include <coin/utility.hpp>
 
 using namespace coin;
@@ -354,6 +358,46 @@ const std::shared_ptr<block_index> utility::get_last_block_index(
     return tmp;
 }
 
+std::shared_ptr<block_index> utility::find_block_index_by_height(
+    const std::uint32_t & height
+    )
+{
+    std::shared_ptr<block_index> ret;
+    
+    if (height < stack_impl::get_block_index_best()->height() / 2)
+    {
+        ret = stack_impl::get_block_index_genesis();
+    }
+    else
+    {
+        ret = stack_impl::get_block_index_best();
+    }
+    
+    if (
+        globals::instance().block_index_fbbh_last() &&
+        std::abs(static_cast<std::int64_t> (height - ret->height())) >
+        std::abs(static_cast<std::int64_t> (height - globals::instance(
+        ).block_index_fbbh_last()->height()))
+        )
+    {
+        ret = globals::instance().block_index_fbbh_last();
+    }
+    
+    while (ret->height() > height)
+    {
+        ret = ret->block_index_previous();
+    }
+    
+    while (ret->height() < height)
+    {
+        ret = ret->block_index_next();
+    }
+    
+    globals::instance().set_block_index_fbbh_last(ret);
+    
+    return ret;
+}
+
 std::uint32_t utility::compute_max_bits(
     big_number target_limit, std::uint32_t base, std::int64_t time
     )
@@ -465,7 +509,7 @@ std::uint32_t utility::get_next_target_required(
      * DigiShield-like retarget.
      */
     std::int64_t blocks_to_go_back = 0;
-    
+
     std::int64_t target_timespan_re = 0;
     std::int64_t target_spacing_re = 0;
 
@@ -523,23 +567,6 @@ std::uint32_t utility::get_next_target_required(
      * Limit adjustment step.
      */
     std::int64_t actual_timespan = index_last->time() - index_first->time();
-    
-    if (globals::instance().debug())
-    {
-        log_debug(
-            "Utility, get next target required, actual_timespan = " <<
-            actual_timespan << " before bounds."
-        );
-    }
-    
-    if (globals::instance().debug())
-    {
-        log_debug(
-            "Utility, get next target required, actual_timespan " <<
-            "limiting: " << (retarget_timespan - (retarget_timespan / 4)) <<
-            ":" << (retarget_timespan + (retarget_timespan / 2)) << "."
-        );
-    }
 
     if (actual_timespan < (retarget_timespan - (retarget_timespan / 4)))
     {
@@ -568,120 +595,158 @@ std::uint32_t utility::get_next_target_required(
     {
         bn_new = target_limit;
     }
-    
+
     /**
-     * This implements part of the fair solo-mining fixed range difficulty
-     * algorithm. Elsewhere we reject blocks that exceed the ceiling via
-     * global network conensus. This forces all types of CPU's, GPU's, etc
-     * to operate within the fixed target range without being able to
-     * over-power one another (they both have a fair chance at solving 
-     * Proof-of-Work blocks). Proof-of-Stake will drive the difficulty up
-     * causing periodic times where few Proof-of-Work blocks will be solved. As
-     * the difficulty drops Proof-of-Work block generation will start up again.
-     * This results in a variable block generation time where money supply 
-     * will be very slow for some time and then speed up for some time.
-     * Because of this you cannot predict when you will have a chance to solve
-     * a Proof-of-Work block. When pooled mining is supported via RPC the
-     * block timing will remain at the fixed constant which is specified as
-     * 200 seconds.
+     * Only perform this for blocks less than N after fair solo-mining.
      */
-    if (is_pos == false)
+    if (height < 43200)
     {
         /**
-         * If we have reached the minimum difficulty raise it. If we have
-         * breached the ceiling lower the difficulty.
+         * This implements part of the fair solo-mining fixed range difficulty
+         * algorithm. Elsewhere we reject blocks that exceed the ceiling via
+         * global network conensus. This forces all types of CPU's, GPU's, etc
+         * to operate within the fixed target range without being able to
+         * over-power one another (they both have a fair chance at solving 
+         * Proof-of-Work blocks). Proof-of-Stake will drive the difficulty up
+         * causing periodic times where few Proof-of-Work blocks will be solved.
+         * As the difficulty drops Proof-of-Work block generation will start up
+         * again. This results in a variable block generation time where money
+         * supply will be very slow for some time and then speed up for some
+         * time. Because of this you cannot predict when you will have a chance
+         * to solve a Proof-of-Work block. When pooled mining is supported via
+         * RPC the block timing will remain at the fixed constant which is
+         * specified as 200 seconds.
          */
-        if (bn_new >= constants::proof_of_work_limit)
+        if (is_pos == false)
         {
             /**
-             * Raise the difficulty to 0.00388934.
+             * If we have reached the minimum difficulty raise it. If we have
+             * breached the ceiling lower the difficulty.
              */
-            bn_new.set_compact(503382300);
-        }
-        else if (bn_new < constants::proof_of_work_limit_ceiling)
-        {
-            /**
-             * Lower the difficulty to 0.00388934.
-             */
-            bn_new.set_compact(503382300);
-        }
-        else
-        {
-            /**
-             * The f difficulty.
-             */
-            std::int32_t f = 0;
-            
-            /**
-             * Gets the one's digit.
-             */
-            auto ones_digit = index_last->height() % 10;
-            
-            switch (ones_digit)
+            if (bn_new >= constants::proof_of_work_limit)
             {
-                case 0:
-                {
-                    f = 100;
-                }
-                break;
-                case 1:
-                {
-                    f = -100;
-                }
-                break;
-                case 2:
-                {
-                    f = 105;
-                }
-                break;
-                case 3:
-                {
-                    f = -105;
-                }
-                break;
-                case 4:
-                {
-                    f = 110;
-                }
-                break;
-                case 5:
-                {
-                    f = -110;
-                }
-                break;
-                case 6:
-                {
-                    f = 115;
-                }
-                break;
-                case 7:
-                {
-                    f = -115;
-                }
-                break;
-                case 8:
-                {
-                    f = 120;
-                }
-                break;
-                case 9:
-                {
-                    f = -120;
-                }
-                break;
-                default:
-                {
-                    f = 0;
-                }
-                break;
+                /**
+                 * Raise the difficulty to 0.00388934.
+                 */
+                bn_new.set_compact(503382300);
             }
-            
-            /**
-             * Set the f difficulty.
-             */
-            bn_new.set_compact(bn_new.get_compact() + f);
+            else if (bn_new < constants::proof_of_work_limit_ceiling)
+            {
+                /**
+                 * Lower the difficulty to 0.00388934.
+                 */
+                bn_new.set_compact(503382300);
+            }
+            else
+            {
+                /**
+                 * The f difficulty.
+                 */
+                std::int32_t f = 0;
+                
+                /**
+                 * Gets the one's digit.
+                 */
+                auto ones_digit = index_last->height() % 10;
+                
+                switch (ones_digit)
+                {
+                    case 0:
+                    {
+                        f = 100;
+                    }
+                    break;
+                    case 1:
+                    {
+                        f = -100;
+                    }
+                    break;
+                    case 2:
+                    {
+                        f = 105;
+                    }
+                    break;
+                    case 3:
+                    {
+                        f = -105;
+                    }
+                    break;
+                    case 4:
+                    {
+                        f = 110;
+                    }
+                    break;
+                    case 5:
+                    {
+                        f = -110;
+                    }
+                    break;
+                    case 6:
+                    {
+                        f = 115;
+                    }
+                    break;
+                    case 7:
+                    {
+                        f = -115;
+                    }
+                    break;
+                    case 8:
+                    {
+                        f = 120;
+                    }
+                    break;
+                    case 9:
+                    {
+                        f = -120;
+                    }
+                    break;
+                    default:
+                    {
+                        f = 0;
+                    }
+                    break;
+                }
+                
+                /**
+                 * Set the f difficulty.
+                 */
+                bn_new.set_compact(bn_new.get_compact() + f);
+            }
         }
     }
 
     return bn_new.get_compact();
+}
+
+bool utility::get_transaction(
+    const sha256 & hash_tx, transaction & tx, sha256 & hash_block_out
+    )
+{
+    if (transaction_pool::instance().exists(hash_tx))
+    {
+        tx = transaction_pool::instance().lookup(hash_tx);
+        
+        return true;
+    }
+    
+    db_tx tx_db("r");
+    
+    transaction_index index;
+    
+    if (tx.read_from_disk(tx_db, point_out(hash_tx, 0), index))
+    {
+        block blk;
+        
+        if (
+            blk.read_from_disk(index.get_transaction_position().file_index(),
+            index.get_transaction_position().block_position(), false)
+            )
+        {
+            hash_block_out = blk.get_hash();
+        }
+        return true;
+    }
+    
+    return false;
 }

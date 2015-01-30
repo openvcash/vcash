@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
+ * This file is part of vanillacoin.
  *
- * coinpp is free software: you can redistribute it and/or modify
+ * Vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -428,6 +428,13 @@ namespace coin {
             void do_check_peers(const std::uint32_t & interval);
         
             /**
+             * The selfishness tick handler that checks central servers for
+             * banned selfish miners.
+             * @param interval The interval.
+             */
+            void do_check_selfishness(const std::uint32_t & interval);
+        
+            /**
              * The stack.
              */
             coin::stack & stack_;
@@ -474,6 +481,13 @@ namespace coin {
             boost::asio::basic_waitable_timer<
                 std::chrono::steady_clock
             > timer_status_wallet_;
+        
+            /**
+             * The selfish timer.
+             */
+            boost::asio::basic_waitable_timer<
+                std::chrono::steady_clock
+            > timer_selfish_;
     };
     
 } // namespace coin

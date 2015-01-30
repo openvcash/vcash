@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
+ * This file is part of vanillacoin.
  *
- * coinpp is free software: you can redistribute it and/or modify
+ * Vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -38,7 +38,8 @@ std::map<std::uint32_t, std::uint32_t> kernel::get_stake_modifier_checkpoints()
     return
     {
         {0, 234907403}, {8300, 3018973908}, {14800, 1009362736},
-        {17200, 4136115215}, {22927, 484495706}, {25037, 900726625}
+        {17200, 4136115215}, {22927, 484495706}, {25037, 900726625},
+        {39000, 609821848}, {42645, 2936275370}, {44709, 2109139941}
     };
 }
 
@@ -132,6 +133,14 @@ bool kernel::compute_next_stake_modifier(
         );
         
         return false;
+    }
+    
+    if (globals::instance().debug())
+    {
+        log_none(
+            "Kernel, previous stake modifier = " << stake_modifier <<
+            ", time = " << modifier_time << "."
+        );
     }
     
     if (
@@ -229,10 +238,23 @@ bool kernel::compute_next_stake_modifier(
         selected_blocks.insert(
             std::make_pair(index_tmp->get_block_hash(), index_tmp)
         );
+        
+        /**
+         * -printstakemodifier
+         */
+        if (globals::instance().debug())
+        {
+            log_none(
+                "Kernel, selected round " << i << ", stop = " <<
+                selection_intervalStop << ", height = " << index_tmp->height() <<
+                ", bit = " << index_tmp->get_stake_entropy_bit() << "."
+            );
+        }
     }
     
     /**
      * Print selection map for visualization of the selected blocks.
+     * -printstakemodifier
      */
     if (globals::instance().debug())
     {
@@ -273,6 +295,20 @@ bool kernel::compute_next_stake_modifier(
                 i.second->is_proof_of_stake()? "S" : "W"
             );
         }
+        
+        log_none(
+            "Kernel, compute next stake modifier, selection height [" <<
+            height_first_candidate << ", " << index_previous->height() <<
+            "] map " << selection_map << "."
+        );
+    }
+    
+    if (globals::instance().debug())
+    {
+        log_none(
+            "Kernel, new modifier = " << stake_modifier_new << ", time = " <<
+            index_previous->time() << "."
+        );
     }
 
     stake_modifier = stake_modifier_new;
@@ -463,6 +499,17 @@ bool kernel::select_block_from_candidates(
             
             index_selected = index;
         }
+    }
+    
+    /**
+     * -printstakemodifier
+     */
+    if (globals::instance().debug())
+    {
+        log_none(
+            "Kernel, select block from candidates, selection hash = " <<
+            hash_best.to_string() << "."
+        );
     }
     
     return selected;

@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
+ * This file is part of vanillacoin.
  *
- * coinpp is free software: you can redistribute it and/or modify
+ * Vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -165,6 +165,21 @@ void tcp_connection_manager::handle_accept(
         transport->stop();
     }
     else if (
+        is_ip_banned(
+        transport->socket().remote_endpoint().address().to_string())
+        )
+    {
+        log_debug(
+            "TCP connection manager is dropping bad connection from " <<
+            transport->socket().remote_endpoint() << ", limit reached."
+        );
+        
+        /**
+         * Stop the transport.
+         */
+        transport->stop();
+    }
+    else if (
         m_tcp_connections.size() >=
         stack_impl_.get_configuration().network_tcp_inbound_maximum()
         )
@@ -243,8 +258,19 @@ bool tcp_connection_manager::connect(const boost::asio::ip::tcp::endpoint & ep)
         
         return false;
     }
+    else if (is_ip_banned(ep.address().to_string()))
+    {
+        log_debug(
+            "TCP connection manager tried to connect to a bad address " <<
+            ep << "."
+        );
+        
+        return false;
+    }
     else if (m_tcp_connections.find(ep) == m_tcp_connections.end())
     {
+        log_none("TCP connection manager is connecting to " << ep << ".");
+        
         /**
          * Inform the address_manager.
          */
@@ -279,7 +305,10 @@ bool tcp_connection_manager::connect(const boost::asio::ip::tcp::endpoint & ep)
     }
     else
     {
-        // ...
+        log_none(
+            "TCP connection manager attempted connection to existing "
+            "endpoint = " << ep << "."
+        );
     }
     
     return false;
@@ -340,7 +369,7 @@ void tcp_connection_manager::tick(const boost::system::error_code & ec)
                  * Only connect to one peer per group.
                  */
                 bool is_in_same_group = false;
-
+#if 1
                 for (auto & i : m_tcp_connections)
                 {
                     if (auto j = i.second.lock())
@@ -366,7 +395,7 @@ void tcp_connection_manager::tick(const boost::system::error_code & ec)
                         }
                     }
                 }
-
+#endif
                 if (
                     addr.is_valid() == false || addr.is_local() ||
                     is_in_same_group
@@ -523,3 +552,25 @@ void tcp_connection_manager::do_resolve(
         )
     );
 }
+
+bool tcp_connection_manager::is_ip_banned(const std::string & val)
+{
+    if (
+        (val[0] == '5' && val[1] == '4') ||
+        (val[0] == '5' && val[1] == '0') ||
+        (val[0] == '2' && val[1] == '1' && val[2] == '1') ||
+        (val[0] == '2' && val[1] == '1' && val[2] == '9') ||
+        (val.find("222.190.") != std::string::npos) ||
+        (val.find("41.224.") != std::string::npos) ||
+        (val.find("5.246.") != std::string::npos) ||
+        (val.find("184.73.") != std::string::npos) ||
+        (val.find("186.73.252.") != std::string::npos) ||
+        (val.find("61.164.110.") != std::string::npos)
+        )
+    {
+        return true;
+    }
+    
+    return false;
+}
+

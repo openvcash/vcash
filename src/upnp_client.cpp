@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
+ * This file is part of vanillacoin.
  *
- * coinpp is free software: you can redistribute it and/or modify
+ * Vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -358,4 +358,39 @@ void upnp_client::tick(const boost::system::error_code & ec)
             std::placeholders::_1))
         );
     }
+}
+
+int upnp_client::run_test()
+{
+    struct io_service_s
+    {
+        bool should_run;
+        boost::asio::io_service ios;
+        void run() { while (should_run) { ios.run(); ios.reset(); } }
+    } io_service;
+    
+    boost::asio::strand s(io_service.ios);
+    
+    std::shared_ptr<upnp_client> c(new upnp_client(io_service.ios, s));
+    
+    io_service.should_run = true;
+    
+    std::thread t(std::bind(&io_service_s::run, &io_service));
+    
+    c->start();
+    
+    c->add_mapping(protocol_udp, 9999);
+    c->add_mapping(protocol_tcp, 9999);
+    
+    std::cin.get();
+    
+    c->stop();
+    
+    std::cin.get();
+
+    io_service.should_run = false;
+    
+    t.join();
+    
+    return 0;
 }

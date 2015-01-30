@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
+ * This file is part of vanillacoin.
  *
- * coinpp is free software: you can redistribute it and/or modify
+ * Vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -59,6 +59,17 @@ namespace coin {
             );
         
         private:
+        
+            /**
+             * Miner's coin base reward for the ppcoin algorithm.
+             * @param height The height.
+             * @param fees The fees.
+             * @param hash_previous The sha256.
+             */
+            static std::int64_t get_proof_of_work_ppcoin(
+                const std::int32_t & height, const std::int64_t & fees,
+                const sha256 & hash_previous
+            );
 
             /**
              * Miner's coin base reward for the vanilla algorithm.
@@ -69,6 +80,18 @@ namespace coin {
             static std::int64_t get_proof_of_work_vanilla(
                 const std::int32_t & height, const std::int64_t & fees,
                 const sha256 & hash_previous
+            );
+        
+            /**
+             * Gets the reward for the proof of stake for the ppcoin algorithm.
+             * @param coin_age The coin age.
+             * @param bits The bits.
+             * @param time The time.
+             * @param height The height.
+             */
+            static std::int64_t get_proof_of_stake_ppcoin(
+                const std::int64_t & coin_age, const std::uint32_t & bits,
+                const std::uint32_t & time, const std::int32_t & height
             );
         
             /**

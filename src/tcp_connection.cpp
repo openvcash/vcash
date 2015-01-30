@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
+ * This file is part of vanillacoin.
  *
- * coinpp is free software: you can redistribute it and/or modify
+ * Vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -81,11 +81,13 @@ void tcp_connection::start()
     {
         if (auto transport = m_tcp_transport.lock())
         {
+            auto self(shared_from_this());
+            
             /**
              * Set the transport on read handler.
              */
             transport->set_on_read(
-                [this](std::shared_ptr<tcp_transport> t,
+                [this, self](std::shared_ptr<tcp_transport> t,
                 const char * buf, const std::size_t & len)
             {
                 on_read(buf, len);
@@ -95,8 +97,6 @@ void tcp_connection::start()
              * Start the transport accepting the connection.
              */
             transport->start();
-            
-            auto self(shared_from_this());
             
             /**
              * Start the ping timer.
@@ -160,6 +160,11 @@ void tcp_connection::start(const boost::asio::ip::tcp::endpoint & ep)
                 {
                     if (ec)
                     {
+                        log_none(
+                            "TCP connection to " << ep << " failed, "
+                            "message = " << ec.message() << "."
+                        );
+                        
                         self->stop();
                     }
                     else
@@ -347,6 +352,8 @@ void tcp_connection::send_getblocks_message(
          */
         msg.protocol_getblocks().hash_stop = hash_end;
         
+        log_none("TCP connection is sending getblocks.");
+        
         /**
          * Encode the message.
          */
@@ -385,6 +392,8 @@ void tcp_connection::send_inv_message(
          * Set the count.
          */
         msg.protocol_inv().count = msg.protocol_inv().inventory.size();
+        
+        log_none("TCP connection is sending inv.");
         
         /**
          * Encode the message.
@@ -428,6 +437,11 @@ void tcp_connection::send_inv_message(
          * Set the count.
          */
         msg.protocol_inv().count = msg.protocol_inv().inventory.size();
+        
+        log_none(
+            "TCP connection is sending inv, count = " <<
+            msg.protocol_inv().count << "."
+        );
         
         /**
          * Encode the message.
@@ -660,9 +674,16 @@ void tcp_connection::on_read(const char * buf, const std::size_t & len)
                  * Decode the message.
                  */
                 msg.decode();
+                
+                log_none("TCP connection got " << msg.header().command << ".");
             }
             catch (std::exception & e)
             {
+                log_none(
+                    "TCP connection failed to decode message, "
+                    "what = " << e.what() << "."
+                );
+
                 break;
             }
             
@@ -973,6 +994,11 @@ void tcp_connection::send_getdata_message()
              */
             getdata_.clear();
             
+            log_none(
+                "TCP connection is sending getdata, count = " <<
+                msg.protocol_getdata().inventory.size() << "."
+            );
+            
             /**
              * Encode the message.
              */
@@ -1003,6 +1029,12 @@ void tcp_connection::send_block_message(const block & blk)
          * Set the block.
          */
         msg.protocol_block().blk = std::make_shared<block> (blk);
+        
+        log_none(
+            "TCP connection is sending block " <<
+            msg.protocol_block().blk->get_hash().to_string().substr(0, 20) <<
+            "."
+        );
         
         /**
          * Encode the message.
@@ -1308,6 +1340,11 @@ bool tcp_connection::handle_message(message & msg)
                  */
                 if (m_protocol_version < protocol::minimum_version)
                 {
+                    log_info(
+                        "TCP connection got old protocol version = " <<
+                        m_protocol_version << ", calling stop."
+                    );
+                    
                     /**
                      * Stop
                      */
@@ -1341,6 +1378,10 @@ bool tcp_connection::handle_message(message & msg)
                 m_protocol_version_start_height =
                     msg.protocol_version().start_height
                 ;
+                
+                log_none(
+                    "TCP connection got version = " << m_protocol_version << "."
+                );
 
                 /**
                  * Set the protocol version source address.
@@ -1546,6 +1587,11 @@ bool tcp_connection::handle_message(message & msg)
         }
         else
         {
+            log_debug(
+                "TCP transport got " << msg.protocol_addr().count <<
+                " addresses."
+            );
+
             /**
              * Use the peer adjusted time.
              */
@@ -1568,6 +1614,15 @@ bool tcp_connection::handle_message(message & msg)
                  * Insert the seen address.
                  */
                 m_seen_network_addresses.insert(i);
+
+                log_debug(
+                    "TCP connection got addr.address = " <<
+                    i.ipv4_mapped_address().to_string() <<
+                    ", addr.port = " << i.port <<
+                    ", is_local = " << i.is_local() <<
+                    ", timestamp = " <<
+                    ((std::time(0) - i.timestamp) / 60) << " mins."
+                );
                 
                 if (i.is_local() == false)
                 {
@@ -1749,6 +1804,14 @@ bool tcp_connection::handle_message(message & msg)
                 inventory_cache_.insert(i);
 
                 auto already_have = inventory_vector::already_have(tx_db, i);
+                
+                if (globals::instance().debug() && false)
+                {
+                    log_debug(
+                        "Connection got inv = " << i.to_string() <<
+                        (already_have ? " have" : " new") << "."
+                    );
+                }
                 
                 if (already_have == false)
                 {
@@ -2100,10 +2163,16 @@ bool tcp_connection::handle_message(message & msg)
     }
     else if (msg.header().command == "getheaders")
     {
-        // ...
+        log_debug("got getheaders");
+        
+        /**
+         * :JC: If there is high enough demand I will implement this.
+         */
     }
     else if (msg.header().command == "tx")
     {
+        log_debug("Got tx");
+
         const auto & tx = msg.protocol_tx().tx;
         
         std::vector<sha256> queue_work;
@@ -2238,6 +2307,14 @@ bool tcp_connection::handle_message(message & msg)
     {
         if (msg.protocol_block().blk)
         {
+            log_none(
+                "Connection received block " <<
+                msg.protocol_block().blk->get_hash().to_string().substr(0, 20)
+                << "."
+            );
+#if 0
+            msg.protocol_block().blk->print();
+#endif
             /**
              * Set the time we received this block.
              */
@@ -2274,6 +2351,8 @@ bool tcp_connection::handle_message(message & msg)
     }
     else if (msg.header().command == "mempool")
     {
+        log_debug("Got mempool");
+        
         std::vector<sha256> block_hashes;
         
         transaction_pool::instance().query_hashes(block_hashes);

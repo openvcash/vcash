@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
+ * This file is part of vanillacoin.
  *
- * coinpp is free software: you can redistribute it and/or modify
+ * Vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -112,9 +112,7 @@ bool configuration::load()
     
     if (m_args.size() > 0)
     {
-#if (!defined _MSC_VER)
-        #warning :TODO: Iterate the args and override the variables (if found).
-#endif
+
     }
     
     return true;

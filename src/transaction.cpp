@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
+ * This file is part of vanillacoin.
  *
- * coinpp is free software: you can redistribute it and/or modify
+ * Vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -710,7 +710,7 @@ bool transaction::fetch_inputs(
     )
 {
     /**
-     * If the transaction is invalid this will be set to true.s
+     * If the transaction is invalid this will be set to true.
      */
     invalid = false;
 
@@ -806,7 +806,7 @@ bool transaction::fetch_inputs(
                 previous_out.get_hash()
             );
            
-             if (found == false)
+            if (found == false)
             {
                 tx_index.spent().resize(tx_prev.transactions_out().size());
             }
@@ -1424,11 +1424,21 @@ bool transaction::get_coin_age(db_tx & tx_db, std::uint64_t & coin_age) const
             big_number(value_in) *
             (m_time - tx_previous.time()) / constants::cent
         ;
+
+        log_none(
+            "Transaction coin age value_in = " << value_in <<
+            ", time diff = " << m_time - tx_previous.time() <<
+            ", cent_seconds = " << cent_second.to_string() << "."
+        );
     }
 
     big_number coin_day =
         cent_second * constants::cent / constants::coin / (24 * 60 * 60)
     ;
+
+    log_none(
+        "Transaction coin age coin_day = " << coin_day.to_string() << "."
+    );
     
     coin_age = coin_day.get_uint64();
     
@@ -1596,4 +1606,9 @@ const std::vector<transaction_in> & transaction::transactions_in() const
 const std::vector<transaction_out> & transaction::transactions_out() const
 {
     return m_transactions_out;
+}
+
+const std::uint32_t & transaction::time_lock() const
+{
+    return m_time_lock;
 }

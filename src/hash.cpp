@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
+ * This file is part of vanillacoin.
  *
- * coinpp is free software: you can redistribute it and/or modify
+ * Vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -98,6 +98,7 @@ std::uint32_t hash::sha256d_checksum(
     
     return *reinterpret_cast<std::uint32_t *>(&digest[0]);
 }
+
 
 std::array<std::uint8_t, 20> hash::sha256_ripemd160(
     const std::uint8_t * buf, const std::size_t & len

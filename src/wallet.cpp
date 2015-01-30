@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
+ * This file is part of vanillacoin.
  *
- * coinpp is free software: you can redistribute it and/or modify
+ * Vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -366,6 +366,7 @@ bool wallet::new_key_pool()
     {
         /**
          * Get the number of keys.
+         * -keypool
          */
         auto target_size = std::max(100, 0);
         
@@ -409,6 +410,7 @@ bool wallet::top_up_key_pool()
 
     /**
      * Top up (off) the key pool.
+     * -keypool
      */
     auto target_size = std::max(100, 0);
     
@@ -485,6 +487,11 @@ void wallet::reserve_key_from_key_pool(
     }
     
     assert(keypool.get_key_public().is_valid());
+    
+    /**
+     * -printkeypool
+     */
+    log_none("Wallet reserved key " << index << " from pool.");
 }
 
 void wallet::keep_key(const std::int64_t & index)
@@ -512,6 +519,8 @@ void wallet::return_key(const std::int64_t & index)
      * Return to the key_pool.
      */
     m_key_pool.insert(index);
+
+    log_none("Wallet key pool return key " << index << ".");
 }
 
 bool wallet::get_key_from_pool(key_public & result, const bool & allow_reuse)
@@ -1128,6 +1137,13 @@ void wallet::fix_spent_coins(
                 (tx_index.spent().size() <= n || tx_index.spent()[n].is_null())
                 )
             {
+                log_info(
+                    "Wallet, fix spent coins found lost coin " <<
+                    utility::format_money(i->transactions_out()[n].value()) <<
+                    ":" << i->get_hash().to_string() << "[" << n << "], " <<
+                    (check_only ? "repair not attempted" : "repairing") << "."
+                );
+                
                 mismatch_spent++;
                 
                 balance_in_question += i->transactions_out()[n].value();
@@ -1145,6 +1161,13 @@ void wallet::fix_spent_coins(
                 tx_index.spent()[n].is_null() == false)
                 )
             {
+                log_info(
+                    "Wallet, fix spent coins found spent coin " <<
+                    utility::format_money(i->transactions_out()[n].value()) <<
+                    i->get_hash().to_string() << "[" << n << "], " <<
+                    (check_only ? "repair not attempted" : "repairing") << "."
+                );
+                
                 mismatch_spent++;
                 
                 balance_in_question += i->transactions_out()[n].value();
@@ -1240,6 +1263,11 @@ wallet::tx_items_t wallet::ordered_tx_items(
      */
     tx_items_t tx_ordered;
 
+    /**
+     * Maintaining indices in the database of (account, time) --> txid and
+     * (account, time) --> acentry would make this much faster for applications
+     * that do this a lot.
+     */
     for (auto it = m_transactions.begin(); it != m_transactions.end(); ++it)
     {
         auto wtx = &it->second;
@@ -1263,6 +1291,13 @@ wallet::tx_items_t wallet::ordered_tx_items(
 
 void wallet::update_spent(const transaction & tx) const
 {
+    /**
+     * Anytime a signature is successfully verified, it's proof the out point
+     * is spent. Update the wallet spent flag if it doesn't know due to
+     * wallet.dat being restored from backup or the user making copies of
+     * wallet.dat.
+     */
+
     std::lock_guard<std::recursive_mutex> l1(mutex_);
     
     for (auto & i : tx.transactions_in())
@@ -1285,6 +1320,13 @@ void wallet::update_spent(const transaction & tx) const
                 is_mine(wtx.transactions_out()[i.previous_out().n()]) == false
                 )
             {
+                log_debug(
+                    "Wallet, update found spent coin " <<
+                    utility::format_money(wtx.get_credit()) << ":" <<
+                    wtx.get_hash().to_string().substr(0, 10) <<
+                    "."
+                );
+
                 wtx.mark_spent(i.previous_out().n());
                 
                 wtx.write_to_disk();
@@ -1358,6 +1400,10 @@ bool wallet::add_to_wallet(const transaction_wallet & wtx_in)
                 
                 std::uint32_t latest_entry = 0;
 
+                /**
+                 * Tolerate times up to the last timestamp in the wallet not
+                 * more than 5 minutes into the future.
+                 */
                 std::int64_t latest_tolerated = latest_now + 300;
                 
                 std::list<accounting_entry> acentries;
@@ -1460,6 +1506,12 @@ bool wallet::add_to_wallet(const transaction_wallet & wtx_in)
         
         updated |= wtx.update_spent(wtx_in.spent());
     }
+    
+    log_debug(
+        "Wallet, add to, incoming = " <<
+        wtx_in.get_hash().to_string().substr(0, 10) <<
+        (inserted_new ? " new" : " ") << (updated ? "update" : "") << "."
+    );
 
     /**
      * Write to disk.
@@ -1472,6 +1524,36 @@ bool wallet::add_to_wallet(const transaction_wallet & wtx_in)
         }
     }
     
+#if (defined COIN_USE_GUI && COIN_USE_GUI)
+    // ...
+#else
+        /**
+         * If default receiving address gets used, replace it with a new one.
+         */
+        script script_default_key;
+    
+        script_default_key.set_destination(m_key_public_default.get_id());
+    
+        for (auto & i : wtx.transactions_out())
+        {
+            if (i.script_public_key() == script_default_key)
+            {
+                key_public new_default_key;
+                
+                if (get_key_from_pool(new_default_key, false))
+                {
+                    set_key_public_default(new_default_key, true);
+                    
+                    set_address_book_name(m_key_public_default.get_id(), "");
+                }
+            }
+        }
+#endif // COIN_USE_GUI
+    
+    /**
+     * Since add_to_wallet is called directly for self-originating
+     * transactions, check for consumption of our own coins.
+     */
     update_spent(wtx);
 
     globals::instance().io_service().post(globals::instance().strand().wrap(
@@ -1616,6 +1698,13 @@ bool wallet::add_to_wallet(const transaction_wallet & wtx_in)
          * Callback on new or updated transaction.
          */
         stack_impl_.get_status_manager()->insert(status);
+
+        /**
+         * Notify an external script when a wallet transaction comes in or is
+         * updated.
+         * Call -walletnotify and run command replacing %s with
+         * wtx_in.get_hash().to_string().
+         */
      }));
     
     return true;
@@ -2190,6 +2279,24 @@ bool wallet::create_transaction(
     return create_transaction(scripts, tx_new, reserved_key, fee_out, control);
 }
 
+bool wallet::get_transaction(
+    const sha256 & hash_tx, transaction_wallet & wtx_out
+    )
+{
+    std::lock_guard<std::recursive_mutex> l1(mutex_);
+    
+    auto it = m_transactions.find(hash_tx);
+
+    if (it != m_transactions.end())
+    {
+        wtx_out = it->second;
+        
+        return true;
+    }
+
+    return false;
+}
+
 bool wallet::commit_transaction(
     transaction_wallet & wtx_new, key_reserved & reserve_key
     )
@@ -2393,9 +2500,15 @@ bool wallet::commit_transaction(
          */
         
         log_error(
-            "Wallet, commit transaction failed, transaction is not valid."
+            "Wallet, commit transaction failed, transaction is not valid," <<
+            " performing check."
         );
-        
+#if 1
+        /**
+         * Start the check timer.
+         */
+        check_tick(boost::system::error_code());
+#endif
         return false;
     }
     
@@ -2450,6 +2563,18 @@ bool wallet::create_coin_stake(
      */
     std::int64_t balance = get_balance();
     std::int64_t reserve_balance = 0;
+
+    /**
+     * -reservebalance
+     */
+    if (0)
+    {
+        log_error(
+            "Wallet failed to create coin stake, invalid reserve balance."
+        );
+        
+        return false;
+    }
     
     if (balance <= reserve_balance)
     {
@@ -2546,6 +2671,11 @@ bool wallet::create_coin_stake(
                 hash_proof_of_stake)
                 )
             {
+                if (globals::instance().debug())
+                {
+                    log_debug("Wallet, create coin stake found kernel.");
+                }
+                
                 std::vector< std::vector<std::uint8_t> > solutions;
                 
                 types::tx_out_t which_type;
@@ -2562,7 +2692,22 @@ bool wallet::create_coin_stake(
                     solutions) == false
                     )
                 {
+                    if (globals::instance().debug())
+                    {
+                        log_debug(
+                            "Wallet, create coin stake failed to parse kernel."
+                        );
+                    }
+                    
                     break;
+                }
+                
+                if (globals::instance().debug())
+                {
+                    log_debug(
+                        "Wallet, create coin stake parsed kernel type = " <<
+                        which_type << "."
+                    );
                 }
                 
                 if (
@@ -2570,6 +2715,14 @@ bool wallet::create_coin_stake(
                     which_type != types::tx_out_pubkeyhash
                     )
                 {
+                    if (globals::instance().debug())
+                    {
+                        log_debug(
+                            "Wallet, create coin stake no support for kernel "
+                            "type = " << which_type << "."
+                        );
+                    }
+                    
                     break;
                 }
                 
@@ -2579,6 +2732,14 @@ bool wallet::create_coin_stake(
 
                     if (keystore.get_key(ripemd160(solutions[0]), k) == false)
                     {
+                        if (globals::instance().debug())
+                        {
+                            log_debug(
+                                "Wallet, create coin stake failed to get key "
+                                "for kernel type = " << which_type << "."
+                            );
+                        }
+                        
                         break;
                     }
                     
@@ -2609,6 +2770,14 @@ bool wallet::create_coin_stake(
                 {
                     tx_new.transactions_out().push_back(
                         transaction_out(0, script_pub_key_out)
+                    );
+                }
+                
+                if (globals::instance().debug())
+                {
+                    log_debug(
+                        "Wallet, create coin stake added kernel type = " <<
+                        which_type << "."
                     );
                 }
                 
@@ -2791,6 +2960,17 @@ bool wallet::create_coin_stake(
         }
         else
         {
+            /**
+             * -printfee
+             */
+            if (globals::instance().debug())
+            {
+                log_debug(
+                    "Wallet, create coin stake, fee = " <<
+                    utility::format_money(min_fee) << "."
+                );
+            }
+            
             break;
         }
     }
@@ -3128,6 +3308,28 @@ bool wallet::select_coins_min_conf(
                 coins_out.insert(values[i].second);
                 value_out += values[i].first;
             }
+        }
+        
+        /**
+         * -printpriority
+         */
+        if (globals::instance().debug())
+        {
+            std::stringstream ss;
+            
+            ss << "Wallet is selecting coins, best subset: ";
+            
+            for (auto i = 0; i < values.size(); i++)
+            {
+                if (bests[i])
+                {
+                    ss << utility::format_money(values[i].first);
+                }
+            }
+            
+            ss << "total: \n" << utility::format_money(best_count);
+            
+            log_debug(ss.str());
         }
     }
 

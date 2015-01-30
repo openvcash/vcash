@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
+ * This file is part of vanillacoin.
  *
- * coinpp is free software: you can redistribute it and/or modify
+ * Vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -42,6 +42,33 @@ std::int64_t reward::get_proof_of_stake(
     return get_proof_of_stake_vanilla(coin_age, bits, time, height);
 }
 
+std::int64_t reward::get_proof_of_stake_ppcoin(
+    const std::int64_t & coin_age, const std::uint32_t & bits,
+    const std::uint32_t & time, const std::int32_t & height
+    )
+{
+    static std::int64_t coin_reward_year = constants::cent;
+    
+    std::int64_t subsidy = coin_age * 33 / (365 * 33 + 8) * coin_reward_year;
+   
+    log_debug(
+        "Reward (ppcoin) create = " << subsidy << ", coin age = " << coin_age <<
+        ", bits = " << bits << "."
+    );
+    
+    return subsidy;
+}
+
+std::int64_t reward::get_proof_of_work_ppcoin(
+    const std::int32_t & height, const std::int64_t & fees,
+    const sha256 & hash_previous
+    )
+{
+    // :TODO: get_proof_of_work_ppcoin
+    
+    return -1;
+}
+
 std::int64_t reward::get_proof_of_work_vanilla(
     const std::int32_t & height, const std::int64_t & fees,
     const sha256 & hash_previous
@@ -71,14 +98,19 @@ std::int64_t reward::get_proof_of_work_vanilla(
     
     subsidy *= 1000000;
 
-    /**
-     * :NOTE: This MAY have to be incresed one time to keep the reward from
-     * prematurely dropping due to a high amount of stake blocks generated
-     * during the fair-solo mining stage.
-     */
-    for (auto i = 40000; i <= height; i += 40000)
+    if (height <= 50000)
     {
-        subsidy -= subsidy / 6;
+        for (auto i = 50000; i <= height; i += 50000)
+        {
+            subsidy -= subsidy / 6;
+        }
+    }
+    else
+    {
+        for (auto i = 40000; i <= height; i += 40000)
+        {
+            subsidy -= subsidy / 6;
+        }
     }
     
     /**
@@ -108,11 +140,6 @@ std::int64_t reward::get_proof_of_stake_vanilla(
     coin_reward_year = 1 * constants::max_mint_proof_of_stake;
     
     std::int64_t subsidy = coin_age * coin_reward_year / 365;
-    
-    log_debug(
-        "Reward (vanilla) create = " << subsidy << ", coin age = " <<
-        coin_age << ", bits = " << bits << "."
-    );
     
     return subsidy;
 }

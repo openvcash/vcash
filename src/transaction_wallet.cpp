@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
+ * This file is part of vanillacoin.
  *
- * coinpp is free software: you can redistribute it and/or modify
+ * Vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -487,7 +487,7 @@ bool transaction_wallet::accept_wallet_transaction(db_tx & tx_db)
      */
     for (auto & i : m_previous_transactions)
     {
-        if ((i.is_coin_base() || i.is_coin_stake()) == false)
+        if (i.is_coin_base() == false && i.is_coin_stake() == false)
         {
             auto hash_tx = i.get_hash();
             
@@ -655,6 +655,10 @@ std::int64_t transaction_wallet::get_available_credit(
 {
     std::int64_t ret = 0;
     
+    /**
+     * We must wait until the coinbase is (safely) deep enough in the chain
+     * before valuing it.
+     */
     if ((is_coin_base() || is_coin_stake()) && get_blocks_to_maturity() > 0)
     {
         return 0;
@@ -771,6 +775,11 @@ std::map<std::string, std::string> & transaction_wallet::values()
     return m_values;
 }
 
+const std::map<std::string, std::string> & transaction_wallet::values() const
+{
+    return m_values;
+}
+
 void transaction_wallet::set_time_received_is_tx_time(
     const std::uint32_t & value
     )
@@ -825,6 +834,9 @@ std::string & transaction_wallet::from_account()
 
 bool transaction_wallet::is_confirmed() const
 {
+    /**
+     * Quick answer in most cases.
+     */
     if (is_final() == false)
     {
         return false;
@@ -840,6 +852,10 @@ bool transaction_wallet::is_confirmed() const
         return false;
     }
     
+    /**
+     * If no confirmations but it's from us, we can still consider it
+     * confirmed if all dependencies are confirmed.
+     */
     std::map<sha256, const transaction_merkle *> previous_transactions;
     std::vector<const transaction_merkle *> work_queue;
     

@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
+ * This file is part of vanillacoin.
  *
- * coinpp is free software: you can redistribute it and/or modify
+ * Vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -230,7 +230,9 @@ void message::decode()
      * Decode the header magic from little endian.
      */
     m_header.magic = read_uint32();
-
+    
+    log_none("Message got header magic = " << m_header.magic << ".");
+    
     if (verify_header_magic() == false)
     {
         throw std::runtime_error("invalid header magic");
@@ -286,16 +288,22 @@ void message::decode()
             );
         }
     }
-
+    
+    log_none("Message got header command = " << m_header.command << ".");
+    
     /**
      * Decode the header length from little endian.
      */
     m_header.length = read_uint32();
-
+    
+    log_none("Message got header length = " << m_header.length << ".");
+    
     /**
      * Read the header checksum.
      */
     m_header.checksum = read_uint32();
+    
+    log_none("Message got header checksum = " << m_header.checksum << ".");
 
     if (remaining() < m_header.length)
     {
@@ -338,6 +346,14 @@ void message::decode()
                 m_protocol_version.user_agent.size()
             );
             m_protocol_version.start_height = read_uint32();
+
+            log_none("version = " << m_protocol_version.version);
+            log_none("services = " << m_protocol_version.services);
+            log_none("timestamp = " << m_protocol_version.timestamp);
+            log_none("addr_src.port = " << m_protocol_version.addr_src.port);
+            log_none("nonce = " << m_protocol_version.nonce);
+            log_none("user_agent = " << m_protocol_version.user_agent);
+            log_none("start_height = " << m_protocol_version.start_height);
         }
         else if (m_header.command == "addr")
         {
@@ -409,7 +425,9 @@ void message::decode()
             for (auto i = 0; i < m_protocol_getdata.count; i++)
             {
                 inventory_vector inv = read_inventory_vector();
-
+                
+                log_none("getdata inv.type = " << inv.type());
+                
                 if (inv.type() > inventory_vector::type_error)
                 {
                     /**
@@ -540,7 +558,7 @@ const std::uint32_t message::header_magic()
         /**
          * The first four bytes of the header.
          */
-        std::uint8_t magic[4] = { 0x80, 0xcf, 0xa9, 0xce };
+        std::uint8_t magic[4] = { 0xce, 0xa9, 0xcf, 0x80 };
         
         /**
          * Copy into a 32-bit unsigned integer.

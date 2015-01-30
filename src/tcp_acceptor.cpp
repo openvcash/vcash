@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
+ * This file is part of vanillacoin.
  *
- * coinpp is free software: you can redistribute it and/or modify
+ * Vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -240,7 +240,7 @@ void tcp_acceptor::do_ipv4_accept()
             }
             catch (std::exception & e)
             {
-                // ...
+                log_none("TCP acceptor remote_endpoint, what = " << e.what());
             }
             
             do_ipv4_accept();
@@ -282,7 +282,7 @@ void tcp_acceptor::do_ipv6_accept()
             }
             catch (std::exception & e)
             {
-                // ...
+                log_none("TCP acceptor remote_endpoint, what = " << e.what());
             }
             
             do_ipv6_accept();
@@ -321,4 +321,62 @@ void tcp_acceptor::do_tick(const std::uint32_t & seconds)
             do_tick(seconds);
         }
     }));
+}
+
+int tcp_acceptor::run_test(
+    boost::asio::io_service & ios, boost::asio::strand & s
+    )
+{
+    auto acceptor = std::make_shared<tcp_acceptor> (ios, s);
+    
+    acceptor->set_on_accept(
+        [] (std::shared_ptr<tcp_transport> transport)
+        {
+            transport->start();
+        }
+    );
+    
+    bool ret = false;
+    
+    try
+    {
+        std::uint16_t port = protocol::default_tcp_port;
+        
+        while (ret == false)
+        {
+            ret = acceptor->open(port);
+            
+            if (ret == false)
+            {
+                port += 2;
+            }
+            else
+            {
+                break;
+            }
+            
+            /**
+             * Try 50 even ports.
+             */
+            if (port > protocol::default_tcp_port + 100)
+            {
+                break;
+            }
+        }
+        
+        std::cout <<
+            "tcp_acceptor::run_test opened on port = " << port <<
+        std::endl;
+    }
+    catch (std::exception & e)
+    {
+        std::cerr << "what = " << e.what() << std::endl;
+    }
+    
+    if (ret == false)
+    {
+        std::cerr << "tcp_acceptor::run_test failed" << std::endl;
+    }
+
+    return 0;
 }

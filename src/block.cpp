@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
+ * This file is part of vanillacoin.
  *
- * coinpp is free software: you can redistribute it and/or modify
+ * Vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -118,6 +118,12 @@ bool block::decode(data_buffer & buffer, const bool & block_header_only)
     m_header.bits = buffer.read_uint32();
     m_header.nonce = buffer.read_uint32();
     
+    log_none(
+        "version = " << m_header.version << ", timestamp = " <<
+        m_header.timestamp << ", bits = " << m_header.bits <<
+        ", nonce = " << m_header.nonce
+    );
+    
     if (block_header_only)
     {
         // ...
@@ -155,17 +161,20 @@ bool block::decode(data_buffer & buffer, const bool & block_header_only)
          */
         auto len = buffer.read_var_int();
         
-        /**
-         * Read the signature.
-         */
-        auto bytes = buffer.read_bytes(len);
-        
-        /**
-         * Insert the signature.
-         */
-        m_signature.insert(
-            m_signature.begin(), bytes.begin(), bytes.end()
-        );
+        if (len > 0)
+        {
+            /**
+             * Read the signature.
+             */
+            auto bytes = buffer.read_bytes(len);
+            
+            /**
+             * Insert the signature.
+             */
+            m_signature.insert(
+                m_signature.begin(), bytes.begin(), bytes.end()
+            );
+        }
     }
     
     return true;
@@ -227,7 +236,7 @@ sha256 block::get_hash_genesis()
 sha256 block::get_hash_genesis_test_net()
 {
     static const sha256 ret(
-        ""
+        "d27872cc9c3fa0a01f73d08b5c52a2dbd62f8f5dabf99f14e2c43f7d174ebeff"
     );
 
     return ret;
@@ -246,6 +255,11 @@ const block::header_t & block::header() const
 std::vector<transaction> & block::transactions()
 {
     return m_transactions;
+}
+
+std::vector<std::uint8_t> & block::signature()
+{
+    return m_signature;
 }
 
 void block::update_time(block_index & previous)
@@ -293,6 +307,7 @@ std::shared_ptr<block> block::create_new(
 
     /**
      * Calculate the largest block we're willing to create.
+     * -blockmaxsize
     */
     auto max_size = constants::max_block_size_gen / 2;
     
@@ -306,6 +321,7 @@ std::shared_ptr<block> block::create_new(
     /**
      * How much of the block should be dedicated to high-priority transactions,
      * included regardless of the fees they pay.
+     * -blockprioritysize
      */
     auto priority_size = 27000;
     
@@ -314,13 +330,14 @@ std::shared_ptr<block> block::create_new(
     /**
      * Minimum block size you want to create; block will be filled with free transactions
      * until there are no more or the block reaches this size:
+     * -blockminsize
      */
     auto min_size = 0;
     
     min_size = std::min(max_size, min_size);
     
     /**
-     * min_tx_fee
+     * -mintxfee
      */
     std::int64_t min_transaction_fee = constants::min_tx_fee;
 
@@ -667,6 +684,18 @@ std::shared_ptr<block> block::create_new(
         fees += transaction_fees;
 
         /**
+         * -printpriority;
+         */
+        if (globals::instance().debug() && false)
+        {
+            log_debug(
+                "Block, create new, priority = " << priority <<
+                ", fee_per_kilobyte = " << fee_per_kilobyte <<
+                ", hash(tx id) = " << tx.get_hash().to_string() << "."
+            );
+        }
+
+        /**
          * Add the transactions that depend on this one to the priority queue.
          */
         sha256 hash = tx.get_hash();
@@ -706,6 +735,14 @@ std::shared_ptr<block> block::create_new(
      * Set the last block size.
      */
     globals::instance().set_last_block_size(block_size);
+
+    /**
+     * -printpriority
+     */
+    if (globals::instance().debug())
+    {
+        log_debug("Block, create new total size = " << block_size << ".");
+    }
     
     if (ret->is_proof_of_work())
     {
@@ -805,7 +842,7 @@ bool block::connect_block(
     {
         /**
          * Check it again in case a previous version let a bad block in.
-         * jc: Is this check_only needed?
+         * jc: Is this crap needed anymore?
          */
         if (check_block(0, check_only == false, check_only == false) == false)
         {
@@ -991,6 +1028,15 @@ bool block::connect_block(
         
         return false;
     }
+    
+    /**
+     * Fees are not collected by miners as in bitcoin instead they are
+     * destroyed to compensate the entire network (ppcoin).
+     * -printcreation
+     */
+    log_none(
+        "Block connect, destroy fees = " << utility::format_money(fees) << "."
+    );
 
     if (check_only)
     {
@@ -1062,6 +1108,10 @@ std::uint32_t block::get_stake_entropy_bit(const std::uint32_t & height) const
      * Take the last bit of the block hash as the entropy bit.
      */
     std::uint32_t entropy_bit = get_hash().to_uint64() & 1llu;
+    
+    log_none(
+        "Block " << height << ", entropy bit = " << entropy_bit << "."
+    );
     
     return entropy_bit;
 }
@@ -1597,6 +1647,9 @@ bool block::accept_block(
      */
     if (checkpoints::instance().check_sync(hash_block, index_previous) == false)
     {
+        /**
+         * -nosynccheckpoints
+         */
         auto nosynccheckpoints = false;
         
         if (nosynccheckpoints == false)
@@ -2069,6 +2122,19 @@ bool block::set_best_chain(
     globals::instance().set_transactions_updated(
         globals::instance().transactions_updated() + 1
     );
+    
+    log_debug(
+        "Block, set best chain, new best = " <<
+        globals::instance().hash_best_chain().to_string() <<
+        ", height = " << globals::instance().best_block_height() <<
+        ", trust = " << stack_impl::get_best_chain_trust().to_string() <<
+        ", date = " << stack_impl::get_block_index_best()->time() << "."
+    );
+    
+    log_debug(
+        "Block, stake checkpoint = " <<
+        stack_impl::get_block_index_best()->stake_modifier_checksum() << "."
+    );
 
     /**
      * Check the version of the last 100 blocks to see if we need to upgrade.
@@ -2102,6 +2168,10 @@ bool block::set_best_chain(
             log_warn("Block detected obsolete version, upgrade required.");
         }
     }
+
+    /*
+     * -blocknotify
+     */
 
     return true;
 }
@@ -2574,7 +2644,9 @@ std::string block::get_file_path(const std::uint32_t & file_index)
     std::stringstream ss;
     
     ss << filesystem::data_path() << boost::format("blk%04u.dat") % file_index;
-
+    
+    log_none("Block got file path = " << ss.str() << ".");
+    
     return ss.str();
 }
 
@@ -2626,8 +2698,15 @@ std::shared_ptr<file> block::file_append(std::uint32_t & index)
         {
             if (f->seek_end())
             {
+                /**
+                 * A 2 gigabyte file size limit.
+                 */
                 enum { max_file_size = 0x02000000 };
-
+                
+                /**
+                 * FAT32 file size is a maximum of 4GB, fseek and ftell are a
+                 * maximum 2GB, so we must stay under 2GB.
+                 */
                 if (ftell(f->get_FILE()) < (long)(0x7F000000 - max_file_size))
                 {
                     index = current_block_file;
@@ -2664,7 +2743,11 @@ bool block::check_proof_of_work(const sha256 & hash, const std::uint32_t & bits)
      * Set the compact bits.
      */
     target.set_compact(bits);
-
+    
+    /**
+     * Remove this after fair solo-mining.
+     */
+#if 0
     /**
      * Check the range.
      */
@@ -2674,7 +2757,7 @@ bool block::check_proof_of_work(const sha256 & hash, const std::uint32_t & bits)
 
         return false;
     }
-
+#endif
     /**
      * Check the range.
      */
@@ -2802,4 +2885,25 @@ void block::print()
         ", transactions = " << ss_transactions.str() <<
         ", merkle tree = " << ss_merkle_tree.str() << "."
     );
+}
+
+int block::run_test()
+{
+    auto f1 = block::file_open(1, 0, "rb");
+    
+    if (f1)
+    {
+        printf("block::run_test: test 1 passed!\n");
+    }
+    
+    std::uint32_t index = 1;
+    
+    auto f2 = block::file_append(index);
+    
+    if (f2)
+    {
+        printf("block::run_test: test 2 passed!\n");
+    }
+    
+    return 0;
 }

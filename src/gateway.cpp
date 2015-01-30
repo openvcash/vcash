@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
+ * This file is part of vanillacoin.
  *
- * coinpp is free software: you can redistribute it and/or modify
+ * Vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -159,6 +159,8 @@ boost::asio::ip::address gateway::local_address()
             continue;
         }
         
+        // Other flags, IFF_UP, etc...
+
         /**
          * Prefer an ipv4 address over v6.
          */
@@ -673,6 +675,7 @@ std::vector<gateway::network_interface_t> gateway::local_interfaces(
     return ret;
 }
 
+
 boost::asio::ip::address gateway::sockaddr_to_address(
     const sockaddr * addr
     )
@@ -744,6 +747,7 @@ bool gateway::address_is_any(const boost::asio::ip::address & addr)
     {
         return addr.to_v4() == boost::asio::ip::address_v4::any();
     }
+
 
     return addr.to_v6() == boost::asio::ip::address_v6::any();
 }

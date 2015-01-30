@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
+ * This file is part of vanillacoin.
  *
- * coinpp is free software: you can redistribute it and/or modify
+ * Vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -166,45 +166,48 @@ bool alert_manager::process(const alert & val)
          */
         if (val.applies_to_me())
         {
-            /**
-             * Allocate the pairs.
-             */
-            std::map<std::string, std::string> pairs;
-        
-            /**
-             * Set the pairs type.
-             */
-            pairs["type"] = "alert";
+            if (val.status().size() > 0 && val.comment().size() > 0)
+            {
+                /**
+                 * Allocate the pairs.
+                 */
+                std::map<std::string, std::string> pairs;
             
-            /**
-             * Set the pairs value.
-             */
-            pairs["value"] = "new";
+                /**
+                 * Set the pairs type.
+                 */
+                pairs["type"] = "alert";
+                
+                /**
+                 * Set the pairs value.
+                 */
+                pairs["value"] = "new";
 
-            /**
-             * Set the pairs hash.
-             */
-            pairs["alert.hash"] = val.get_hash().to_string();
+                /**
+                 * Set the pairs hash.
+                 */
+                pairs["alert.hash"] = val.get_hash().to_string();
+                
+                /**
+                 * Set the pairs comment.
+                 */
+                pairs["alert.comment"] = val.comment();
+                
+                /**
+                 * Set the pairs status.
+                 */
+                pairs["alert.status"] = val.status();
+                
+                /**
+                 * Set the pairs reserved.
+                 */
+                pairs["alert.reserved"] = val.comment();
             
-            /**
-             * Set the pairs comment.
-             */
-            pairs["alert.comment"] = val.comment();
-            
-            /**
-             * Set the pairs status.
-             */
-            pairs["alert.status"] = val.status();
-            
-            /**
-             * Set the pairs reserved.
-             */
-            pairs["alert.reserved"] = val.comment();
-            
-            /**
-             * Callback
-             */
-            stack_impl_.on_alert(pairs);
+                /**
+                 * Callback
+                 */
+                stack_impl_.on_alert(pairs);
+            }
         }
 
         log_debug(

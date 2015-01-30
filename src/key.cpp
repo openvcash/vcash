@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
+ * This file is part of vanillacoin.
  *
- * coinpp is free software: you can redistribute it and/or modify
+ * Vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -388,7 +388,7 @@ void key::make_new_key(const bool & compressed)
         throw std::runtime_error("EC_KEY_generate_key failed");
     }
     
-    if (m_compressed)
+    if (compressed)
     {
         set_compressed_public_key();
     }
@@ -599,48 +599,47 @@ bool key::sign_compact(
     signature.clear();
     signature.resize(65, 0);
     
-    auto bits_r = BN_num_bits(sig->r);
-    auto bits_s = BN_num_bits(sig->s);
+    int nBitsR = BN_num_bits(sig->r);
+    int nBitsS = BN_num_bits(sig->s);
     
-    if (bits_r <= 256 && bits_s <= 256)
+    if (nBitsR <= 256 && nBitsS <= 256)
     {
-        int id_rec = -1;
+        int nRecId = -1;
         
         for (auto i = 0; i < 4; i++)
         {
-            key key_rec;
+            key keyRec;
             
-            key_rec.m_set = true;
+            keyRec.m_set = true;
             
             if (m_compressed)
             {
-                key_rec.set_compressed_public_key();
+                keyRec.set_compressed_public_key();
             }
             
             if (
-                ECDSA_SIG_recover_key_GFp(key_rec.m_EC_KEY,
+                ECDSA_SIG_recover_key_GFp(keyRec.m_EC_KEY,
                 sig, h.digest(), sha256::digest_length,
                 i, 1) == 1
                 )
             {
-                if (key_rec.get_public_key() == get_public_key())
+                if (keyRec.get_public_key() == get_public_key())
                 {
-                    id_rec = i;
-                    
+                    nRecId = i;
                     break;
                 }
             }
         }
 
-        if (id_rec == -1)
+        if (nRecId == -1)
         {
             throw std::runtime_error("unable to construct recoverable key");
         }
         
-        signature[0] = id_rec + 27 + (m_compressed ? 4 : 0);
+        signature[0] = nRecId + 27 + (m_compressed ? 4 : 0);
         
-        BN_bn2bin(sig->r, &signature[33 - (bits_r + 7) / 8]);
-        BN_bn2bin(sig->s, &signature[65 - (bits_s + 7) / 8]);
+        BN_bn2bin(sig->r, &signature[33 - (nBitsR + 7) / 8]);
+        BN_bn2bin(sig->s, &signature[65 - (nBitsS + 7) / 8]);
         
         ret = true;
     }
@@ -709,10 +708,6 @@ bool key::verify(
         
         ECDSA_SIG * ecdsa_sig = 0;
         
-        /**
-         * Make sure that the signature looks like a valid signature before
-         * sending it to OpenSSL (like in the test cases).
-         */
         if (
             (ecdsa_sig = d2i_ECDSA_SIG(
             0, &ptr_signature, signature.size())) != 0
@@ -787,3 +782,136 @@ void key::set_compressed_public_key()
     m_compressed = true;
 }
 
+#include <coin/address.hpp>
+#include <coin/destination.hpp>
+#include <coin/secret.hpp>
+
+int key::run_test()
+{
+    log_test("Testing class key.");
+    
+    secret s1, s2, s3, s4, s5;
+    
+    assert(s1.set_string("6EFa4mpu3ShjZmjgsaK99mc4tQ9wg5ZkAwHXgNX6uCeubQZo6KA"));
+    assert(s2.set_string("6EG1ubjQW4AWKHPH5S3g5taq6jWBkVmeWVh7Bu8pkTaaRhr5yhE"));
+    assert(s3.set_string("Q5VJwerQhnSnseTQzE34yhsn9sCUKV9XYrbxQmys3QSK8da3z4Pc"));
+    assert(s4.set_string("Q5XH1AJAjExxPhKKxZYoWagKJJbpSyz4ZBe2K77XkpKCXisSkjV8"));
+
+    /**
+     * A bad address.
+     */
+    assert(!s5.set_string("1HV9Lc3sNHZxwj4Zk6fB38tEmBryq2cBiF"));
+    
+    key k1, k2, k3, k4;
+    
+    bool compressed;
+    
+    secret_t secret1  = s1.get_secret(compressed);
+    
+    assert(compressed == false);
+    
+    secret_t secret2  = s2.get_secret(compressed);
+    
+    assert(compressed == false);
+    
+    secret_t secret1C = s3.get_secret(compressed);
+    
+    assert(compressed == true);
+    
+    secret_t secret2C = s4.get_secret(compressed);
+    
+    assert(compressed == true);
+
+    k1.set_secret(secret1, false);
+    k2.set_secret(secret2, false);
+    k3.set_secret(secret1C, true);
+    k4.set_secret(secret2C, true);
+    
+    address
+        a1(k1.get_public_key().get_id()), a2(k2.get_public_key().get_id()),
+        a1c(k3.get_public_key().get_id()), a2c(k4.get_public_key().get_id())
+    ;
+    
+    log_test("class address var a1 " << a1.to_string());
+    log_test("class address var a2 " << a2.to_string());
+    log_test("class address var a1c " << a1c.to_string());
+    log_test("class address var a2c " << a2c.to_string());
+
+    assert("CUbKWmahSBZ1SW5MVrdcEguRxbG3Umt31o" == a1.to_string());
+    assert("CSLUWXteM7wc4hX2VK4KprezuLU6VtftfX" == a2.to_string());
+    assert("CRFi3TYETX1NoR1jXy3MkQjzTaPh7VqUVj" == a1c.to_string());
+    assert("CQ7DiTA96ZHwGcPuumjVRNW9RLDgUd2yuK" == a2c.to_string());
+    
+    assert(secret1 == secret1C);
+    assert(secret2 == secret2C);
+    
+    assert(a1.get() == destination::tx_t(k1.get_public_key().get_id()));
+    assert(a2.get() == destination::tx_t(k2.get_public_key().get_id()));
+    assert(a1c.get() == destination::tx_t(k3.get_public_key().get_id()));
+    assert(a2c.get() == destination::tx_t(k4.get_public_key().get_id()));
+
+    for (auto i = 0; i < 16; i++)
+    {
+        std::string msg = "Top Secret Test #" + std::to_string(i) + ".";
+
+        sha256 hash_msg = sha256(
+            reinterpret_cast<const std::uint8_t *> (msg.c_str()), msg.size()
+        );
+
+        /**
+         * Normal Signatures.
+         */
+        std::vector<std::uint8_t> sign1, sign2, sign1c, sign2c;
+
+        assert(k1.sign(hash_msg, sign1));
+        assert(k2.sign(hash_msg, sign2));
+        assert(k3.sign(hash_msg, sign1c));
+        assert(k4.sign(hash_msg, sign2c));
+
+        assert(k1.verify(hash_msg, sign1));
+        assert(!k1.verify(hash_msg, sign2));
+        assert(k1.verify(hash_msg, sign1c));
+        assert(!k1.verify(hash_msg, sign2c));
+
+        assert(!k2.verify(hash_msg, sign1));
+        assert(k2.verify(hash_msg, sign2));
+        assert(!k2.verify(hash_msg, sign1c));
+        assert(k2.verify(hash_msg, sign2c));
+
+        assert(k3.verify(hash_msg, sign1));
+        assert(!k3.verify(hash_msg, sign2));
+        assert(k3.verify(hash_msg, sign1c));
+        assert(!k3.verify(hash_msg, sign2c));
+
+        assert(!k4.verify(hash_msg, sign1));
+        assert(k4.verify(hash_msg, sign2));
+        assert(!k4.verify(hash_msg, sign1c));
+        assert(k4.verify(hash_msg, sign2c));
+
+        /**
+         * Compact signatures with key recovery.
+         */
+        std::vector<std::uint8_t> csign1, csign2, csign1c, csign2c;
+
+        assert(k1.sign_compact(hash_msg, csign1));
+        assert(k2.sign_compact(hash_msg, csign2));
+        assert(k3.sign_compact(hash_msg, csign1c));
+        assert(k4.sign_compact(hash_msg, csign2c));
+
+        key rkey1, rkey2, rkey1C, rkey2c;
+
+        assert(rkey1.set_compact_signature (hash_msg, csign1));
+        assert(rkey2.set_compact_signature (hash_msg, csign2));
+        assert(rkey1C.set_compact_signature(hash_msg, csign1c));
+        assert(rkey2c.set_compact_signature(hash_msg, csign2c));
+
+        assert(rkey1.get_public_key()  == k1.get_public_key());
+        assert(rkey2.get_public_key()  == k2.get_public_key());
+        assert(rkey1C.get_public_key() == k3.get_public_key());
+        assert(rkey2c.get_public_key() == k4.get_public_key());
+    }
+    
+    log_test("Done testing class key.");
+    
+    return 0;
+}

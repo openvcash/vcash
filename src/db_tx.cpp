@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
+ * This file is part of vanillacoin.
  *
- * coinpp is free software: you can redistribute it and/or modify
+ * Vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -154,6 +154,14 @@ bool db_tx::load_block_index(stack_impl & impl)
             stack_impl::get_block_index_best()->chain_trust()
         ;
         
+        log_debug(
+            "DB TX hash best chain = " <<
+            globals::instance().hash_best_chain().to_string() << ", height = " <<
+            stack_impl::get_block_index_best()->m_height << ", trust = " <<
+            stack_impl::get_block_index_best()->m_chain_trust.to_string() <<
+            ", time = " << stack_impl::get_block_index_best()->m_time << "."
+        );
+        
         /**
          * Read the sync checkpoint into the checkpoints::hash_sync_checkpoint.
          */
@@ -167,12 +175,21 @@ bool db_tx::load_block_index(stack_impl & impl)
             return false;
         }
         
+        log_info(
+            "DB TX synchronized checkpoint " <<
+            checkpoints::instance().get_hash_sync_checkpoint().to_string() <<
+            "."
+        );
+        
         /**
          * Read the best invalid trust if it is found, okay if not found.
          */
         if (read_best_invalid_trust(stack_impl::get_best_invalid_trust()))
         {
-            // ...
+            log_info(
+                "DB TX read best invalid trust " <<
+                stack_impl::get_best_invalid_trust().to_string() << "."
+            );
         }
         
         /**
@@ -193,6 +210,11 @@ bool db_tx::load_block_index(stack_impl & impl)
             check_depth = globals::instance().best_block_height();
         }
         
+        log_debug(
+            "DB TX is verifying " << check_depth <<
+            " blocks at level << " << check_level << "."
+        );
+
         std::shared_ptr<block_index> index_fork = 0;
         
         std::map<
@@ -273,11 +295,21 @@ bool db_tx::load_block_index(stack_impl & impl)
                      */
                     if (check_level > 0 && blk.check_block() == false)
                     {
+                        log_error(
+                            "DB TX Found bad block at " << i->m_height <<
+                            ", hash = " << i->get_block_hash().to_string() << "."
+                        );
+                        
                         index_fork = i->block_index_previous();
                     }
                 }
                 catch (...)
                 {
+                    log_error(
+                        "DB TX Found bad block at " << i->m_height <<
+                        ", hash = " << i->get_block_hash().to_string() << "."
+                    );
+                    
                     index_fork = i->block_index_previous();
                 }
 
@@ -305,6 +337,11 @@ bool db_tx::load_block_index(stack_impl & impl)
                             globals::state_stopping
                             )
                         {
+                            log_debug(
+                                "DB TX load is aborting, state >= "
+                                "state_stopping."
+                            );
+                            
                             return false;
                         }
                         
@@ -340,6 +377,12 @@ bool db_tx::load_block_index(stack_impl & impl)
                                     ) == false
                                     )
                                 {
+                                    log_debug(
+                                        "DB TX cannot read mislocated "
+                                        "transaction " <<
+                                        hash_tx.to_string() << "."
+                                    );
+
                                     /**
                                      * Fork
                                      */
@@ -347,6 +390,13 @@ bool db_tx::load_block_index(stack_impl & impl)
                                 }
                                 else if (tx_found.get_hash() != hash_tx)
                                 {
+                                    log_debug(
+                                        "DB TX invalid transaction "
+                                        "position for transaction " <<
+                                        tx_found.get_hash().to_string() <<
+                                        ":" << hash_tx.to_string() << "."
+                                    );
+
                                     /**
                                      * Fork
                                      */
@@ -373,6 +423,11 @@ bool db_tx::load_block_index(stack_impl & impl)
                                     
                                     if (block_positions.count(find) == 0)
                                     {
+                                        log_error(
+                                            "DB TX found bad spend at " <<
+                                            i->m_height << "."
+                                        );
+
                                         index_fork =
                                             i->block_index_previous()
                                         ;
@@ -389,12 +444,26 @@ bool db_tx::load_block_index(stack_impl & impl)
                                         
                                         if (tx_spend.read_from_disk(k) == false)
                                         {
+                                            log_error(
+                                                "DB TX cannot read spending "
+                                                "transaction " <<
+                                                hash_tx.to_string() << ":" <<
+                                                output << " from disk."
+                                            );
+
                                             index_fork =
                                                 i->block_index_previous()
                                             ;
                                         }
                                         else if (tx_spend.check() == false)
                                         {
+                                            log_error(
+                                                "DB TX got invalid spending "
+                                                "transaction " <<
+                                                hash_tx.to_string() << ":" <<
+                                                output << "."
+                                            );
+
                                             index_fork =
                                                 i->block_index_previous()
                                             ;
@@ -423,6 +492,14 @@ bool db_tx::load_block_index(stack_impl & impl)
                                             
                                             if (found == false)
                                             {
+                                                log_error(
+                                                    "DB TX spending "
+                                                    "transaction " <<
+                                                    hash_tx.to_string() <<
+                                                    ":" << output << " does "
+                                                    "not spend it."
+                                                );
+
                                                 index_fork =
                                                     i->block_index_previous()
                                                 ;
@@ -457,6 +534,14 @@ bool db_tx::load_block_index(stack_impl & impl)
                                         k.previous_out().n()].is_null()
                                         )
                                     {
+                                        log_error(
+                                            "DB TX found unspent previous "
+                                            "out " <<
+                                            k.previous_out().get_hash().to_string()
+                                            << ":" << k.previous_out().n() <<
+                                            " in " << hash_tx.to_string() << "."
+                                        );
+                                        
                                         index_fork = i->block_index_previous();
                                     }
                                 }
@@ -475,6 +560,11 @@ bool db_tx::load_block_index(stack_impl & impl)
 
         if (index_fork)
         {
+            log_info(
+                "DB TX is moving best chain pointer back to block " <<
+                index_fork->m_height << "."
+            );
+            
             block b;
             
             if (b.read_from_disk(index_fork) == false)
@@ -619,6 +709,11 @@ bool db_tx::load_block_index_guts()
         {
             if (globals::instance().state() >= globals::state_stopping)
             {
+                log_debug(
+                    "DB TX load block index is aborting, state >= "
+                    "state_stopping."
+                );
+                
                 return false;
             }
             
@@ -641,10 +736,17 @@ bool db_tx::load_block_index_guts()
             
             if (ret == DB_NOTFOUND)
             {
+                log_error("DB TX failed to load block index guts, not found");
+                
                 break;
             }
             else if (ret != 0)
             {
+                log_error(
+                    "DB TX failed to load block index guts, ret = " <<
+                    ret << "."
+                );
+                
                 return false;
             }
             
@@ -730,6 +832,8 @@ bool db_tx::load_block_index_guts()
                     
                     if (index_new->is_proof_of_stake())
                     {
+                        log_none("DB TX got proof of stake.");
+                        
                         stack_impl::get_seen_stake().insert(
                             std::make_pair(index_new->m_previous_out_stake,
                             index_new->m_stake_time)
@@ -791,6 +895,8 @@ bool db_tx::reorganize(
     db_tx & tx_db, std::shared_ptr<block_index> & index_new
     )
 {
+    log_debug("Db Tx reorganize started.");
+
     /**
      * Find the fork.
      */
@@ -804,6 +910,11 @@ bool db_tx::reorganize(
         {
             if (!(longer = longer->block_index_previous()))
             {
+                log_error(
+                    "Db Tx reorganize failed, (longer) previous block "
+                    "index is null."
+                );
+                
                 return false;
             }
         }
@@ -815,6 +926,11 @@ bool db_tx::reorganize(
         
         if (!(fork = fork->block_index_previous()))
         {
+            log_error(
+                "Db Tx reorganize failed, (fork) previous block "
+                "index is null."
+            );
+            
             return false;
         }
     }
@@ -847,6 +963,18 @@ bool db_tx::reorganize(
     
     std::reverse(to_connect.begin(), to_connect.end());
     
+    log_debug(
+        "Db Tx reorganize is disconnecting " << to_disconnect.size() <<
+        " blocks; " << fork->get_block_hash().to_string().substr(0, 20) <<
+        ".." << stack_impl::get_block_index_best()->get_block_hash().to_string(
+        ).substr() << ".");
+    
+    log_debug(
+        "Db Tx reorganize is connecting " << to_connect.size() << " blocks; " <<
+        fork->get_block_hash().to_string().substr(0, 20) << ".." <<
+        index_new->get_block_hash().to_string().substr() << "."
+    );
+    
     /**
      * Disconnect shorter branch.
      */
@@ -858,11 +986,18 @@ bool db_tx::reorganize(
         
         if (blk.read_from_disk(i) == false)
         {
+            log_error("Db Tx reorganize failed, read from disk failed.");
+            
             return false;
         }
 
         if (blk.disconnect_block(tx_db, i) == false)
         {
+            log_error(
+                "Db Tx reorganize failed, disconnect_block failed " <<
+                i->get_block_hash().to_string().substr(0, 20) << "."
+            );
+            
             return false;
         }
 
@@ -891,11 +1026,23 @@ bool db_tx::reorganize(
         
         if (blk.read_from_disk(pindex) == false)
         {
+            log_error(
+                "Db Tx reorganize failed, read_from_disk for connect failed."
+            );
+        
             return false;
         }
         
         if (blk.connect_block(tx_db, pindex) == false)
         {
+            /**
+             * Invalid block.
+             */
+            log_error(
+                "Db Tx reorganize failed, connect block " <<
+                pindex->get_block_hash().to_string().substr(0, 20) << " failed."
+            );
+            
             return false;
         }
 
@@ -913,6 +1060,8 @@ bool db_tx::reorganize(
      */
     if (tx_db.write_hash_best_chain(index_new->get_block_hash()) == false)
     {
+        log_error("Db Tx reorganize failed, write best hash chain failed.");
+        
         return false;
     }
     
@@ -922,6 +1071,8 @@ bool db_tx::reorganize(
      */
     if (tx_db.txn_commit() == false)
     {
+        log_error("Db Tx reorganize failed, txn_commit failed.");
+        
         return false;
     }
     
@@ -962,6 +1113,8 @@ bool db_tx::reorganize(
     {
         transaction_pool::instance().remove(i);
     }
+
+    log_debug("Db Tx reorganize finished.");
     
     return true;
 }
@@ -1012,6 +1165,8 @@ bool db_tx::read_string(const std::string & key, std::string & val)
     }
     catch (std::exception & e)
     {
+        log_error("DB TX read failed, what = " << e.what() << ".");
+        
         return false;
     }
 
@@ -1215,6 +1370,8 @@ bool db_tx::read(const data_buffer & key, T & value)
     }
     catch (std::exception & e)
     {
+        log_error("DB TX read failed, what = " << e.what() << ".");
+        
         return false;
     }
 

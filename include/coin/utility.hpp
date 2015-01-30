@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
+ * This file is part of vanillacoin.
  *
- * coinpp is free software: you can redistribute it and/or modify
+ * Vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -338,6 +338,14 @@ namespace coin {
             );
         
             /**
+             * Finds a block by it's height.
+             * @param height The height.
+             */
+            static std::shared_ptr<block_index> find_block_index_by_height(
+                const std::uint32_t & height
+            );
+        
+            /**
              * The maximum bits value could possibly be required time after
              * minimum proof-of-work required was base.
              * @param target_limit The target limit.
@@ -391,6 +399,18 @@ namespace coin {
                 
                 return (ret << 16) | (ret >> 16);
             }
+        
+            /**
+             * Gets a transaction from the pool. If it exists in a block the
+             * hash will be set.
+             * @param hash_tx The hash of the transaction.
+             * @param tx The transaction.
+             * @param hash_block_out The hash of the block (out) if found.
+             */
+            static bool get_transaction(
+                const sha256 & hash_tx, transaction & tx,
+                sha256 & hash_block_out
+            );
         
             /**
              * Align by increasing pointer, must have extra space at end

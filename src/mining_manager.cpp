@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
+ * This file is part of vanillacoin.
  *
- * coinpp is free software: you can redistribute it and/or modify
+ * Vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -56,7 +56,7 @@ void mining_manager::start()
      * Start mining Proof-of-Stake.
      */
     start_proof_of_stake();
-    
+
     auto args = stack_impl_.get_configuration().args();
     
     auto it = args.find("mine-cpu");
@@ -71,6 +71,7 @@ void mining_manager::start()
             start_proof_of_work();
         }
     }
+
 }
 
 void mining_manager::stop()
@@ -101,14 +102,12 @@ void mining_manager::start_proof_of_work()
         m_state_pow = state_pow_starting;
 
         /**
-         * For energy efficient mining we use only 1 of the CPU cores. With the
-         * solo-fairness algorithm it doesn't matter how many cores there are
-         * because you must stay within an ever changing fixed difficulty where
-         * too many threads could penalize you. This has been tested with up to
-         * 8 cores and the fairness algorithm has shown to work effectively
-         * within the given moving targets.
+         * Calculate the number of cores.
          */
-        auto cores = 1;
+        auto cores = std::max(
+            static_cast<std::uint32_t> (1),
+            std::thread::hardware_concurrency()
+        );
 
         log_info(
             "Mining manager is adding " << cores << " Proof-of-Work threads."
@@ -131,11 +130,6 @@ void mining_manager::start_proof_of_work()
          */
         m_state_pow = state_pow_started;
     }
-}
-
-const double & mining_manager::hashes_per_second() const
-{
-    return m_hashes_per_second;
 }
 
 void mining_manager::stop_proof_of_work()
@@ -199,9 +193,7 @@ void mining_manager::stop_proof_of_work()
             pairs["mining.hashes_per_second"] =
                 std::to_string(m_hashes_per_second)
             ;
-#if (! defined _MSC_VER)
-#warning :TODO: Add timer and insert status mining.hashes_per_second_network, hashes_per_second_network(128);
-#endif
+
             /**
              * Callback
              */
@@ -278,6 +270,11 @@ void mining_manager::stop_proof_of_stake()
          */
         m_state_pos = state_pos_stopped;
     }
+}
+
+const double & mining_manager::hashes_per_second() const
+{
+    return m_hashes_per_second;
 }
 
 void mining_manager::loop(const bool & is_proof_of_stake)
@@ -371,8 +368,7 @@ void mining_manager::loop(const bool & is_proof_of_stake)
             /**
              * We attempt to stake at most one time per minute. Sleeping for 60
              * seconds total, 1/2 second 120 times to allow for quicker program
-             * termination. This is crude but effective as I will not use
-             * boost::thread just for it's interruption point feature.
+             * termination.
              */
             
             /**
@@ -424,9 +420,6 @@ void mining_manager::loop(const bool & is_proof_of_stake)
 
         mining::format_hash_buffers(blk, midstate, data, hash1);
 
-        auto & block_time =
-            *reinterpret_cast<std::uint32_t *> (data + 64 + 4)
-        ;
         auto & block_nonce =
             *reinterpret_cast<std::uint32_t *> (data + 64 + 12)
         ;
@@ -465,7 +458,6 @@ void mining_manager::loop(const bool & is_proof_of_stake)
                 mining::scan_hash_whirlpool(&blk->header(), max_nonce,
                 hashes_done, result.digest(), &res_header
             );
-
             /**
              * Check if we have found a solution.
              */
@@ -574,9 +566,7 @@ void mining_manager::loop(const bool & is_proof_of_stake)
                         pairs["mining.hashes_per_second"] =
                             std::to_string(m_hashes_per_second)
                         ;
-#if (! defined _MSC_VER)
-    #warning :TODO: Add timer and insert status mining.hashes_per_second_network, hashes_per_second_network(128);
-#endif
+
                         /**
                          * Callback
                          */
@@ -634,8 +624,6 @@ void mining_manager::loop(const bool & is_proof_of_stake)
              * Update the time.
              */
             blk->update_time(*index_previous);
-            
-            block_time = utility::byte_reverse(blk->header().timestamp);
 
             if (
                 blk->header().timestamp >=

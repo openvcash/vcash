@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
+ * This file is part of vanillacoin.
  *
- * coinpp is free software: you can redistribute it and/or modify
+ * Vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -49,6 +49,15 @@ checkpoints::checkpoints()
     );
     m_checkpoints[25037] = sha256(
         "000000f0316fc6613116f86bb9db5d0148b11fe656504c2dee7963bda6a7f49b"
+    );
+    m_checkpoints[39152] = sha256(
+        "45efa8799d197cb8cf68434feb368ba915659466bed0c59a7501a5f44bbe637b"
+    );
+    m_checkpoints[42645] = sha256(
+        "e19e67db37789791b2a73b88e66d3437e696cc41efb507fbef133af57c2dab51"
+    );
+    m_checkpoints[44709] = sha256(
+        "a64bad605bd4964057b146af621fae6d4fa4325be74bb544480eba08211be8e1"
     );
 
     m_checkpoints_test_net[0] = block::get_hash_genesis_test_net();

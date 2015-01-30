@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
+ * This file is part of vanillacoin.
  *
- * coinpp is free software: you can redistribute it and/or modify
+ * Vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -51,6 +51,38 @@ void stack::start(const std::map<std::string, std::string> & args)
          * Set the arguments.
          */
         stack_impl_->get_configuration().set_args(args);
+
+        /**
+         * QEMU
+         */
+        stack_impl_->get_configuration().bootstrap_nodes().push_back(
+            std::make_pair("94.102.60.170", 55555)
+        );
+        
+        /**
+         * MT
+         */
+        stack_impl_->get_configuration().bootstrap_nodes().push_back(
+            std::make_pair("72.47.234.147", 50982)
+        );
+        
+        /**
+         * MT
+         */
+        stack_impl_->get_configuration().bootstrap_nodes().push_back(
+            std::make_pair("72.47.234.148", 45874)
+        );
+
+        /**
+         * Add bootstrap nodes to the configuration for DNS resolution.
+         */
+        for (auto i = 1; i < 8; i++)
+        {
+            stack_impl_->get_configuration().bootstrap_nodes().push_back(
+                std::make_pair("p0" + std::to_string(i) + ".vanillacoin.net",
+                55555)
+            );
+        }
 
         /**
          * Start the stack implementation.
@@ -174,11 +206,11 @@ void stack::on_error(const std::map<std::string, std::string> & pairs)
 
 void stack::on_status(const std::map<std::string, std::string> & pairs)
 {
-    // ...
+    log_none("Stack got info, pairs = " << pairs.size() << ".");
 }
 
 void stack::on_alert(const std::map<std::string, std::string> & pairs)
 {
-    // ...
+    log_none("Stack got alert, pairs = " << pairs.size() << ".");
 }
 

@@ -1,0 +1,3578 @@
+/*
+ * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ *
+ * This file is part of vanillacoin.
+ *
+ * Vanillacoin is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License with
+ * additional permissions to the one published by the Free Software
+ * Foundation, either version 3 of the License, or (at your option)
+ * any later version. For more information see LICENSE.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <sstream>
+#include <vector>
+
+#include <boost/asio.hpp>
+#include <boost/algorithm/string.hpp>
+#include <boost/property_tree/json_parser.hpp>
+
+#include <coin/big_number.hpp>
+#include <coin/block.hpp>
+#include <coin/block_index.hpp>
+#include <coin/db_tx.hpp>
+#include <coin/key_reserved.hpp>
+#include <coin/logger.hpp>
+#include <coin/mining_manager.hpp>
+#include <coin/network.hpp>
+#include <coin/protocol.hpp>
+#include <coin/rpc_connection.hpp>
+#include <coin/rpc_transport.hpp>
+#include <coin/script.hpp>
+#include <coin/secret.hpp>
+#include <coin/stack_impl.hpp>
+#include <coin/tcp_connection.hpp>
+#include <coin/tcp_connection_manager.hpp>
+#include <coin/tcp_transport.hpp>
+#include <coin/transaction_in.hpp>
+#include <coin/transaction_index.hpp>
+#include <coin/transaction_out.hpp>
+#include <coin/transaction_pool.hpp>
+#include <coin/utility.hpp>
+
+using namespace coin;
+
+rpc_connection::rpc_connection(
+    boost::asio::io_service & ios, boost::asio::strand & s,
+    stack_impl & owner, std::shared_ptr<rpc_transport> transport
+    )
+    : io_service_(ios)
+    , strand_(s)
+    , stack_impl_(owner)
+    , rpc_transport_(transport)
+{
+    // ...
+}
+
+rpc_connection::~rpc_connection()
+{
+    // ...
+}
+
+void rpc_connection::start()
+{
+    if (auto transport = rpc_transport_.lock())
+    {
+        auto self(shared_from_this());
+        
+        /**
+         * Set the transport on read handler.
+         */
+        transport->set_on_read(
+            [this, self](std::shared_ptr<rpc_transport> t,
+            const char * buf, const std::size_t & len)
+        {
+            on_read(buf, len);
+        });
+
+        /**
+         * Start the transport accepting the connection.
+         */
+        transport->start();
+    }
+}
+
+void rpc_connection::stop()
+{
+    if (auto t = rpc_transport_.lock())
+    {
+        t->stop();
+    }
+}
+
+bool rpc_connection::is_transport_valid()
+{
+    if (auto transport = rpc_transport_.lock())
+    {
+        return true;
+    }
+    
+    return false;
+}
+
+void rpc_connection::on_read(const char * buf, const std::size_t & len)
+{
+    if (buffer_.size() > 0)
+    {
+        buffer_ += std::string(buf, len);
+    }
+    else
+    {
+        buffer_ = std::string(buf, len);
+    }
+    
+    std::map<std::string, std::string> headers_out;
+    
+    std::string body_out;
+    
+    if (auto transport = rpc_transport_.lock())
+    {
+        if (parse(0, 0, headers_out, body_out))
+        {
+            /**
+             * Check if it is an array (6 Batch).
+             */
+            bool is_array = body_out.size() > 0 && body_out[0] == '[';
+            
+            if (is_array)
+            {
+                std::stringstream ss;
+
+                ss << body_out;
+
+                boost::property_tree::ptree pt;
+                
+                try
+                {
+                    read_json(ss, pt);
+                    
+                    /**
+                     * The responses.
+                     */
+                    std::vector<json_rpc_response_t> responses;
+                    
+                    for (auto & i : pt)
+                    {
+                        /**
+                         * Allocate the request.
+                         */
+                        json_rpc_request_t request;
+                        
+                        for (auto & j : i.second)
+                        {
+                            if (j.first == "method")
+                            {
+                                request.method = j.second.get<std::string> ("");
+                            }
+                            else if (j.first == "params")
+                            {
+                                request.params = j.second;
+                            }
+                            else if (j.first == "id")
+                            {
+                                request.id = j.second.get<std::string> ("");
+                            }
+                        }
+                        
+                        /**
+                         * Allocate the response.
+                         */
+                        json_rpc_response_t response;
+                        
+                        if (handle_json_rpc_request(request, response))
+                        {
+                            responses.push_back(response);
+                        }
+                        else
+                        {
+                            log_error(
+                                "RPC connection failed to handle "
+                                "JSON-RPC message, request = " <<
+                                request.id << "."
+                            );
+                        }
+                    }
+                    
+                    /**
+                     * Send the JSON-RPC responses.
+                     */
+                    send_json_rpc_responses(responses);
+                }
+                catch (std::exception & e)
+                {
+                    log_error(
+                        "RPC connection failed to parse JSON-RPC body, "
+                        "what = " << e.what() << "."
+                    );
+                }
+            }
+            else
+            {
+                /**
+                 * Allocate the request.
+                 */
+                json_rpc_request_t request;
+
+                if (parse_json_rpc_request(body_out, request))
+                {
+                    /**
+                     * Allocate the response.
+                     */
+                    json_rpc_response_t response;
+                    
+                    if (handle_json_rpc_request(request, response))
+                    {
+                        /**
+                         * Send the JSON-RPC response.
+                         */
+                        send_json_rpc_response(response);
+                    }
+                    else
+                    {
+                        log_error(
+                            "RPC connection failed to handle JSON-RPC message, "
+                            "request = " << body_out << "."
+                        );
+                    }
+                }
+                else
+                {
+                    log_error(
+                        "RPC connection failed to parse JSON-RPC message, "
+                        "request = " << body_out << "."
+                    );
+                    
+                    /**
+                     * Stop
+                     */
+                    stop();
+                }
+            }
+        }
+        else
+        {
+            /**
+             * Keep parsing the stream.
+             */
+        }
+    }
+}
+
+bool rpc_connection::parse(
+    const char * buf, const std::size_t & len,
+    std::map<std::string, std::string> & headers_out, std::string & body_out
+    )
+{
+    auto status_length = parse_status(buffer_);
+
+    if (status_length > 0)
+    {
+        auto buffer = buffer_.substr(status_length, buffer_.size());
+        
+        /**
+         * Parse the header.
+         */
+        auto header_length = parse_header(buffer, headers_out);
+        
+        auto it = headers_out.find("content-length");
+        
+        if (it != headers_out.end())
+        {
+            auto content_length = std::stoi(it->second);
+        
+            if (
+                buffer_.size() -
+                (status_length + header_length) != content_length
+                )
+            {
+                return false;
+            }
+            else
+            {
+                body_out = std::string(
+                    buffer_.data() + status_length + header_length,
+                    content_length
+                );
+            }
+        }
+    }
+    else
+    {
+        /**
+         * Stop
+         */
+        stop();
+    }
+    
+    buffer_.clear();
+
+    return true;
+}
+
+std::size_t rpc_connection::parse_status(std::string & buffer)
+{
+    std::istringstream stream(buffer);
+    
+    std::string status;
+    
+    std::getline(stream, status);
+
+    std::vector<std::string> parts;
+    
+    boost::split(parts, status, boost::is_any_of(" "));
+    
+    if (parts.size() < 2)
+    {
+        log_error("RPC connection got bad status line = " << status << ".");
+    
+        return false;
+    }
+    
+    return status.size();
+}
+
+std::size_t rpc_connection::parse_header(
+    const std::string & buffer,
+    std::map<std::string, std::string> & headers_out
+    )
+{
+    std::size_t ret = 0;
+    
+    ret = buffer.find("\n");
+    
+    if (ret != std::string::npos)
+    {
+        std::istringstream stream(buffer.substr(ret));
+        
+        std::string line;
+        
+        /**
+         * Read the \n.
+         */
+        std::getline(stream, line);
+
+        while (std::getline(stream, line) && line != "\r")
+        {
+            try
+            {
+                parse_header_line(line, headers_out);
+            }
+            catch (std::exception & e)
+            {
+                log_error(
+                    "RPC connection failed to parse header, what = " <<
+                    e.what() << "."
+                );
+            }
+        }
+        
+        ret = buffer.find("\r\n\r\n");
+        
+        if (ret != std::string::npos)
+        {
+            ret += 4;
+        }
+    }
+    
+    return ret;
+}
+
+void rpc_connection::parse_header_line(
+    std::string & buffer, std::map<std::string, std::string> & headers_out
+    )
+{
+    std::string t;
+    
+    std::string::size_type i;
+
+    while ((i = buffer.find("\r")) != std::string::npos)
+    {
+        t = buffer.substr(0, i);
+        
+        buffer.erase(0, i + 1);
+        
+        if (t == "")
+        {
+            break;
+        }
+        
+        i = t.find(": ");
+        
+        if (i == std::string::npos)
+        {
+            throw std::runtime_error(
+                "RPC connection message got bad header line " + t + "."
+            );
+        }
+        else
+        {
+            /**
+             * Find the key.
+             */
+            std::string key = t.substr(0, i);
+            
+            /**
+             * Find the value.
+             */
+            std::string value = t.substr(i + 2);
+
+            /**
+             * Trim whitespace.
+             */
+            boost::algorithm::trim(key);
+            
+            /**
+             * Normalize
+             */
+            boost::to_lower(key);
+            
+            /**
+             * Trim whitespace.
+             */
+            boost::algorithm::trim(value);
+            
+            /**
+             * Normalize
+             */
+            boost::to_lower(value);
+                
+            /**
+             * Insert the header field.
+             */
+            headers_out.insert(std::make_pair(key, value));
+        }
+    }
+}
+
+bool rpc_connection::parse_json_rpc_request(
+    const std::string & request_in, json_rpc_request_t & request_out
+    )
+{
+    /**
+     * Example: {"id":"2","method":"login","params":["first","second"]}
+     */
+    if (request_in.size() > 0)
+    {
+        std::stringstream ss;
+
+        ss << request_in;
+
+        boost::property_tree::ptree pt;
+        
+        std::map<std::string, std::string> result;
+        
+        try
+        {
+            read_json(ss, pt);
+
+            auto & method = pt.get_child("method");
+            
+            request_out.method = method.get<std::string> ("");
+            
+            auto & params = pt.get_child("params");
+            
+            request_out.params = params;
+            
+            auto & id = pt.get_child("id");
+            
+            request_out.id = id.get<std::string> ("");
+        }
+        catch (std::exception & e)
+        {
+            log_error(
+                "RPC connection failed to parse JSON-RPC request, what = " <<
+                e.what() << "."
+            );
+        }
+    }
+    else
+    {
+        return false;
+    }
+
+    return true;
+}
+
+bool rpc_connection::handle_json_rpc_request(
+    const json_rpc_request_t & request, json_rpc_response_t & response
+    )
+{
+    log_debug(
+        "RPC connection got JSON-RPC request, id = " << request.id <<
+        ", method = " << request.method
+    );
+
+    if (request.method == "dumpprivkey")
+    {
+        response = json_dumpprivkey(request);
+    }
+    else if (request.method == "getaccount")
+    {
+        response = json_getaccount(request);
+    }
+    else if (request.method == "getbalance")
+    {
+        response = json_getbalance(request);
+    }
+    else if (request.method == "getblock")
+    {
+        response = json_getblock(request);
+    }
+    else if (request.method == "getblockhash")
+    {
+        response = json_getblockhash(request);
+    }
+    else if (request.method == "getblocktemplate")
+    {
+        response = json_getblocktemplate(request);
+    }
+    else if (request.method == "getdifficulty")
+    {
+        response = json_getdifficulty(request);
+    }
+    else if (request.method == "getinfo")
+    {
+        response.result = json_getinfo();
+    }
+    else if (request.method == "getmininginfo")
+    {
+        response = json_getmininginfo(request);
+    }
+    else if (request.method == "getnetworkhashps")
+    {
+        response = json_getnetworkhashps(request);
+    }
+    else if (request.method == "getpeerinfo")
+    {
+        response = json_getpeerinfo(request);
+    }
+    else if (request.method == "getrawtransaction")
+    {
+        response = json_getrawtransaction(request);
+    }
+    else if (request.method == "gettransaction")
+    {
+        response = json_gettransaction(request);
+    }
+    else if (request.method == "submitblock")
+    {
+        response = json_submitblock(request);
+    }
+    else if (request.method == "sendmany")
+    {
+        response = json_sendmany(request);
+    }
+    else if (request.method == "validateaddress")
+    {
+        response.result = json_validateaddress(request);
+    }
+    else
+    {
+        response.error = "invalid method";
+    }
+    
+    /**
+     * Set the id from the request.
+     */
+    response.id = request.id;
+
+    return true;
+}
+
+bool rpc_connection::send_json_rpc_response(
+    const json_rpc_response_t & response
+    )
+{
+    if (auto transport = rpc_transport_.lock())
+    {
+        /**
+         * Allocate the response.
+         */
+        std::string http_response;
+        
+        /**
+         * Formulate the response.
+         */
+        http_response += "HTTP/1.1 200 OK\r\n";
+        http_response +=
+            "Date: " + network::instance().rfc1123_time() + "\r\n"
+        ;
+        http_response += "Connection: close\r\n";
+        http_response += "Content-Type: application/json\r\n";
+        
+        /**
+         * Allocate the body.
+         */
+        std::string body;
+
+        try
+        {
+            boost::property_tree::ptree pt;
+            
+            /**
+             * Put the result into property tree.
+             */
+            pt.put_child("result", response.result);
+
+            /**
+             * If the error is empty set it to null.
+             */
+            if (response.error.size() > 0)
+            {
+                /**
+                 * Put error into property tree.
+                 */
+                pt.put(
+                    "error", response.error,
+                    rpc_json_parser::translator<std::string> ()
+                );
+            }
+            else
+            {
+                /**
+                 * Put error into property tree.
+                 */
+                pt.put("error", "null");
+            }
+
+            /**
+             * Put id into property tree.
+             */
+            pt.put(
+                "id", response.id, rpc_json_parser::translator<std::string> ()
+            );
+            
+            /**
+             * The std::stringstream.
+             */
+            std::stringstream ss;
+            
+            /**
+             * Write property tree to json file.
+             */
+            rpc_json_parser::write_json(ss, pt, false);
+            
+            /**
+             * Set the body.
+             */
+            body = ss.str();
+        }
+        catch (std::exception & e)
+        {
+            log_error(
+                "RPC Connection failed to create response, what = " <<
+                e.what() << "."
+            );
+            
+            return false;
+        }
+        
+        http_response += "Content-Length: " +
+            std::to_string(body.size()) + "\r\n"
+        ;
+        http_response += "Server: Vanillacoin JSON-RPC 2.0\r\n";
+        http_response += "\r\n";
+        
+        http_response += body;
+
+        /**
+         * Write the response.
+         */
+        if (transport)
+        {
+            transport->write(http_response.data(), http_response.size());
+        }
+        
+        return true;
+    }
+
+    return false;
+}
+
+bool rpc_connection::send_json_rpc_responses(
+    const std::vector<json_rpc_response_t> & responses
+    )
+{
+    if (auto transport = rpc_transport_.lock())
+    {
+        /**
+         * Allocate the response.
+         */
+        std::string http_response;
+        
+        /**
+         * Formulate the response.
+         */
+        http_response += "HTTP/1.1 200 OK\r\n";
+        http_response +=
+            "Date: " + network::instance().rfc1123_time() + "\r\n"
+        ;
+        http_response += "Connection: close\r\n";
+        http_response += "Content-Type: application/json\r\n";
+        
+        /**
+         * Allocate the body.
+         */
+        std::string body;
+        
+        try
+        {
+            boost::property_tree::ptree pt;
+            
+            for (auto & i : responses)
+            {
+                boost::property_tree::ptree pt_child;
+                
+                if (i.id.size() == 0)
+                {
+                    continue;
+                }
+                
+                /**
+                 * Put the result into property tree.
+                 */
+                pt_child.put_child("result", i.result);
+
+                /**
+                 * If the error is empty set it to null.
+                 */
+                if (i.error.size() > 0)
+                {
+                    /**
+                     * Put error into property tree.
+                     */
+                    pt_child.put(
+                        "error", i.error,
+                        rpc_json_parser::translator<std::string> ()
+                    );
+                }
+                else
+                {
+                    /**
+                     * Put error into property tree.
+                     */
+                    pt_child.put("error", "null");
+                }
+
+                /**
+                 * Put id into property tree.
+                 */
+                pt_child.put(
+                    "id", i.id, rpc_json_parser::translator<std::string> ()
+                );
+
+                
+                pt.push_back(std::make_pair("", pt_child));
+            }
+            
+            /**
+             * The std::stringstream.
+             */
+            std::stringstream ss;
+            
+            /**
+             * Write property tree to json file.
+             */
+            rpc_json_parser::write_json(ss, pt, false);
+            
+            /**
+             * Set the body.
+             */
+            body = ss.str();
+        }
+        catch (std::exception & e)
+        {
+            log_error(
+                "RPC Connection failed to create response, what = " <<
+                e.what() << "."
+            );
+            
+            return false;
+        }
+        
+        http_response += "Content-Length: " +
+            std::to_string(body.size()) + "\r\n"
+        ;
+        http_response += "Server: VanillaCoin JSON-RPC 2.0\r\n";
+        http_response += "\r\n";
+        
+        http_response += body;
+        
+        /**
+         * Write the response.
+         */
+        if (transport)
+        {
+            transport->write(http_response.data(), http_response.size());
+        }
+        
+        return true;
+    }
+
+    return false;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_dumpprivkey(
+    const json_rpc_request_t & request
+    )
+{
+    json_rpc_response_t ret;
+    
+    /**
+     * Set the id from the request.
+     */
+    ret.id = request.id;
+    
+    try
+    {
+        if (request.params.size() == 1)
+        {
+            /**
+             * Get the address parameter.
+             */
+            auto param_address =
+                request.params.front().second.get<std::string> ("")
+            ;
+
+            address addr;
+            
+            if (addr.set_string(param_address) == false)
+            {
+                boost::property_tree::ptree pt_result;
+                
+                pt_result.put("", "null");
+                
+                /**
+                 * :TODO: rpc_type_incalid_address_or_key
+                 */
+                return json_rpc_response_t{
+                    pt_result, "rpc_type_incalid_address_or_key", request.id
+                };
+            }
+            
+            if (globals::instance().wallet_unlocked_mint_only())
+            {
+                boost::property_tree::ptree pt_result;
+                
+                pt_result.put("", "null");
+                
+                /**
+                 * :TODO: rpc_type_wallet_unlock_needed
+                 */
+                return json_rpc_response_t{
+                    pt_result, "rpc_type_wallet_unlock_needed", request.id
+                };
+            }
+            
+            types::id_key_t key_id;
+            
+            if (addr.get_id_key(key_id) == false)
+            {
+                boost::property_tree::ptree pt_result;
+                
+                pt_result.put("", "null");
+                
+                /**
+                 * :TODO: rpc_type_error
+                 */
+                return json_rpc_response_t{
+                    pt_result, "rpc_type_error", request.id
+                };
+            }
+            
+            key::secret_t s;
+            
+            bool compressed = false;
+            
+            if (
+                globals::instance().wallet_main()->get_secret(
+                key_id, s, compressed) == false
+                )
+            {
+                boost::property_tree::ptree pt_result;
+                
+                pt_result.put("", "null");
+                
+                /**
+                 * :TODO: rpc_wallet_error
+                 */
+                return json_rpc_response_t{
+                    pt_result, "rpc_wallet_error", request.id
+                };
+            }
+            
+            ret.result.put(
+                "", secret(s, compressed).to_string(),
+                rpc_json_parser::translator<std::string> ()
+            );
+        }
+        else
+        {
+            // ...
+        }
+    }
+    catch (std::exception & e)
+    {
+        boost::property_tree::ptree pt_result;
+        
+        pt_result.put("", "null");
+        
+        /**
+         * :TODO: error_code_???
+         */
+        return json_rpc_response_t{
+            pt_result, e.what(), request.id
+        };
+    }
+    
+    /**
+     * Set the error to null.
+     */
+    ret.error = "";
+    
+    return ret;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_getaccount(
+    const json_rpc_request_t & request
+    )
+{
+    json_rpc_response_t ret;
+    
+    /**
+     * Set the id from the request.
+     */
+    ret.id = request.id;
+    
+    try
+    {
+        if (request.params.size() == 1)
+        {
+            try
+            {
+                /**
+                 * Get the account parameter.
+                 */
+                auto account =
+                    request.params.front().second.get<std::string> ("")
+                ;
+
+                auto address_book =
+                    globals::instance().wallet_main()->address_book()
+                ;
+                
+                for (auto & i : address_book)
+                {
+                    const address & addr = i.first;
+                    const auto & name = i.second;
+                    
+                    if (account == name)
+                    {
+                        ret.result.put(
+                            "", addr.to_string(),
+                            rpc_json_parser::translator<std::string> ()
+                        );
+                    }
+                }
+            }
+            catch (std::exception & e)
+            {
+                boost::property_tree::ptree pt_result;
+                
+                pt_result.put("", "null");
+                
+                /**
+                 * :TODO: error_code_???
+                 */
+                return json_rpc_response_t{
+                    pt_result, e.what(), request.id
+                };
+            }
+        }
+        else
+        {
+            // ...
+        }
+    }
+    catch (std::exception & e)
+    {
+        boost::property_tree::ptree pt_result;
+        
+        pt_result.put("", "null");
+        
+        /**
+         * :TODO: error_code_???
+         */
+        return json_rpc_response_t{
+            pt_result, e.what(), request.id
+        };
+    }
+    
+    /**
+     * Set the error to null.
+     */
+    ret.error = "";
+    
+    return ret;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_getbalance(
+    const json_rpc_request_t & request
+    )
+{
+    json_rpc_response_t ret;
+    
+    /**
+     * Set the id from the request.
+     */
+    ret.id = request.id;
+    
+    try
+    {
+        if (request.params.size() == 0)
+        {
+            ret.result.put(
+                "", static_cast<double> (
+                globals::instance().wallet_main()->get_balance()) /
+                static_cast<double> (constants::coin)
+            );
+            
+            /**
+             * Set the error to null.
+             */
+            ret.error = "";
+            
+            return ret;
+        }
+        else if (request.params.size() > 1)
+        {
+            std::string account;
+            
+            auto minimum_depth_in_main_chain = 1;
+        
+            auto it1 = request.params.find("account");
+            
+            if (it1 != request.params.not_found())
+            {
+                if (it1->second.get<std::string> ("").size() > 0)
+                {
+                    account = it1->second.get<std::string> ("");
+                }
+            }
+            
+            auto it2 = request.params.find("minconf");
+            
+            if (it2 != request.params.not_found())
+            {
+                if (it2->second.get<std::string> ("").size() > 0)
+                {
+                    minimum_depth_in_main_chain = std::stoi(
+                        it2->second.get<std::string> ("")
+                    );
+                }
+            }
+    
+            if (account == "*")
+            {
+                std::int64_t balance = 0;
+                
+                auto transactions =
+                    globals::instance().wallet_main()->transactions()
+                ;
+                
+                for (auto & i : transactions)
+                {
+                    const auto & wtx = i.second;
+                    
+                    if (wtx.is_final() == false)
+                    {
+                        continue;
+                    }
+                    
+                    std::int64_t
+                        all_generated_immature, all_generated_mature, all_fee
+                    ;
+                    
+                    all_generated_immature = all_generated_mature = all_fee = 0;
+
+                    std::string send_account;
+                    
+                    std::list< std::pair<destination::tx_t, std::int64_t> > r;
+                    std::list< std::pair<destination::tx_t, std::int64_t> > s;
+                    
+                    wtx.get_amounts(
+                        all_generated_immature, all_generated_mature, r, s,
+                        all_fee, send_account
+                    );
+                    
+                    if (
+                        wtx.get_depth_in_main_chain() >=
+                        minimum_depth_in_main_chain
+                        )
+                    {
+                        for (auto & j : r)
+                        {
+                            balance += j.second;
+                        }
+                    }
+                    
+                    for (auto & j : s)
+                    {
+                        balance += j.second;
+                    }
+                    
+                    balance -= all_fee;
+                    balance += all_generated_mature;
+                }
+                
+                ret.result.put(
+                    "", static_cast<double> (balance) /
+                    static_cast<double> (constants::coin)
+                );
+                
+                /**
+                 * Set the error to null.
+                 */
+                ret.error = "";
+                
+                return ret;
+            }
+            else
+            {
+                auto balance = wallet::get_account_balance(
+                    account, minimum_depth_in_main_chain
+                );
+
+                ret.result.put(
+                    "", static_cast<double> (balance) /
+                    static_cast<double> (constants::coin)
+                );
+                
+                /**
+                 * Set the error to null.
+                 */
+                ret.error = "";
+                
+                return ret;
+            }
+        }
+    }
+    catch (std::exception & e)
+    {
+        boost::property_tree::ptree pt_result;
+        
+        pt_result.put("", "null");
+        
+        /**
+         * :TODO: error_code_???
+         */
+        return json_rpc_response_t{
+           pt_result, e.what(), request.id
+        };
+    }
+    
+    /**
+     * Set the error to null.
+     */
+    ret.error = "";
+    
+    return ret;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_getdifficulty(
+    const json_rpc_request_t & request
+    )
+{
+    json_rpc_response_t ret;
+    
+    /**
+     * Set the id from the request.
+     */
+    ret.id = request.id;
+    
+    try
+    {
+        if (request.params.size() == 0)
+        {
+            /**
+             * Put proof-of-work into property tree.
+             */
+            ret.result.put("proof-of-work", stack_impl_.difficulty());
+            
+            /**
+             * Put proof-of-stake into property tree.
+             */
+            ret.result.put(
+                "proof-of-stake",
+                stack_impl_.difficulty(utility::get_last_block_index(
+                stack_impl::get_block_index_best(), true))
+            );
+            
+            /**
+             * Put search-interval into property tree.
+             */
+            ret.result.put(
+                "search-interval",
+                globals::instance().last_coin_stake_search_interval()
+            );
+        }
+    }
+    catch (std::exception & e)
+    {
+        boost::property_tree::ptree pt_result;
+        
+        pt_result.put("", "null");
+        
+        /**
+         * :TODO: error_code_???
+         */
+        return json_rpc_response_t{
+            pt_result, e.what(), request.id
+        };
+    }
+
+    /**
+     * Set the error to null.
+     */
+    ret.error = "";
+    
+    return ret;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_getblock(
+    const json_rpc_request_t & request
+    )
+{
+    json_rpc_response_t ret;
+    
+    /**
+     * Set the id from the request.
+     */
+    ret.id = request.id;
+
+    try
+    {
+        if (request.params.size() >= 1 && request.params.size() <= 2)
+        {
+            sha256 hash_block(
+                request.params.front().second.get<std::string> ("")
+            );
+            
+            if (globals::instance().block_indexes().count(hash_block) == 0)
+            {
+                boost::property_tree::ptree pt_result;
+                
+                pt_result.put("", "null");
+                
+                /**
+                 * :TODO: error_code_invalid_address_or_key
+                 */
+                return json_rpc_response_t{
+                    pt_result,  "block not found", request.id
+                };
+            }
+            else
+            {
+                block blk;
+                
+                auto index = globals::instance().block_indexes()[hash_block];
+                
+                blk.read_from_disk(index, true);
+                
+                ret.result.put(
+                    "hash", blk.get_hash().to_string(),
+                    rpc_json_parser::translator<std::string> ()
+                );
+                
+                transaction_merkle tx(blk.transactions()[0]);
+                
+                tx.set_merkle_branch(&blk);
+                
+                ret.result.put("confirmations", tx.get_depth_in_main_chain());
+                ret.result.put("size", blk.size());
+                ret.result.put("height", index->height());
+                ret.result.put("version", blk.header().version);
+                ret.result.put(
+                    "merkleroot", blk.header().hash_merkle_root.to_string(),
+                    rpc_json_parser::translator<std::string> ()
+                );
+                ret.result.put("mint", index->mint() / constants::coin);
+                ret.result.put("time", blk.header().timestamp);
+                ret.result.put("nonce", blk.header().nonce);
+                ret.result.put(
+                    "bits", utility::hex_string_from_bits(blk.header().bits),
+                    rpc_json_parser::translator<std::string> ()
+                );
+                ret.result.put("difficulty", stack_impl_.difficulty(index));
+                
+                if (index->block_index_previous())
+                {
+                    ret.result.put(
+                        "previousblockhash",
+                        index->block_index_previous(
+                        )->get_block_hash().to_string(),
+                        rpc_json_parser::translator<std::string> ()
+                    );
+                }
+                
+                if (index->block_index_next())
+                {
+                    ret.result.put(
+                        "nextblockhash",
+                        index->block_index_next()->get_block_hash().to_string(),
+                        rpc_json_parser::translator<std::string> ()
+                    );
+                }
+                
+                ret.result.put(
+                    "flags",
+                    std::string(index->is_proof_of_stake()? "proof-of-stake" :
+                    "proof-of-work") +
+                    std::string(index->generated_stake_modifier() ?
+                    " stake-modifier": ""),
+                    rpc_json_parser::translator<std::string> ()
+                );
+                
+                ret.result.put(
+                    "proofhash",
+                    (index->is_proof_of_stake() ?
+                    index->hash_proof_of_stake().to_string() :
+                    index->get_block_hash().to_string()),
+                    rpc_json_parser::translator<std::string> ()
+                );
+                
+                ret.result.put(
+                    "entropybit", index->get_stake_entropy_bit()
+                );
+
+                /**
+                 * :TODO: %016
+                 */
+                ret.result.put(
+                    "modifier", index->stake_modifier()
+                );
+                
+                /**
+                 * :TODO: %08x
+                 */
+                ret.result.put(
+                    "modifierchecksum", index->stake_modifier_checksum()
+                );
+
+                boost::property_tree::ptree pt_txinfo;
+                
+                for (auto & i : blk.transactions())
+                {
+                    pt_txinfo.put(
+                        "", i.get_hash().to_string(),
+                        rpc_json_parser::translator<std::string> ()
+                    );
+                }
+
+                ret.result.put_child("tx", pt_txinfo);
+                
+                /**
+                 * Get the block signature.
+                 */
+                const auto & signature = blk.signature();
+
+                ret.result.put(
+                    "signature",
+                    utility::hex_string(signature.begin(), signature.end()),
+                    rpc_json_parser::translator<std::string> ()
+                );
+            }
+        }
+        else
+        {
+            // ...
+        }
+    }
+    catch (std::exception & e)
+    {
+        boost::property_tree::ptree pt_result;
+        
+        pt_result.put("", "null");
+        
+        /**
+         * :TODO: error_code_???
+         */
+        return json_rpc_response_t{ pt_result,  e.what(), request.id };
+    }
+    
+    /**
+     * Set the error to null.
+     */
+    ret.error = "";
+    
+    return ret;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_getblockhash(
+    const json_rpc_request_t & request
+    )
+{
+    json_rpc_response_t ret;
+    
+    /**
+     * Set the id from the request.
+     */
+    ret.id = request.id;
+
+    try
+    {
+        if (request.params.size() == 1)
+        {
+            auto height = std::stoi(
+                request.params.front().second.get<std::string> ("")
+            );
+            
+            if (height < globals::instance().best_block_height())
+            {
+                auto index = utility::find_block_index_by_height(height);
+                
+                if (index)
+                {
+                    ret.result.put(
+                        "", index->get_block_hash().to_string(),
+                        rpc_json_parser::translator<std::string> ()
+                    );
+                }
+            }
+        }
+        else
+        {
+            // ...
+        }
+    }
+    catch (std::exception & e)
+    {
+        boost::property_tree::ptree pt_result;
+        
+        pt_result.put("", "null");
+        
+        /**
+         * :TODO: error_code_???
+         */
+        return json_rpc_response_t{ pt_result,  e.what(), request.id };
+    }
+    
+    /**
+     * Set the error to null.
+     */
+    ret.error = "";
+    
+    return ret;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_getblocktemplate(
+    const json_rpc_request_t & request
+    )
+{
+    json_rpc_response_t ret;
+    
+    /**
+     * Set the id from the request.
+     */
+    ret.id = request.id;
+ 
+    /**
+     * BIP-0022: https://en.bitcoin.it/wiki/BIP_0022
+     */
+    try
+    {
+        std::string mode = "template";
+
+        if (request.params.size() > 0)
+        {
+            auto it = request.params.find("mode");
+            
+            if (it != request.params.not_found())
+            {
+                if (it->second.get<std::string> ("").size() > 0)
+                {
+                    mode = it->second.get<std::string> ("");
+                }
+                else
+                {
+                    boost::property_tree::ptree pt_result;
+                    
+                    pt_result.put("", "null");
+                
+                    /**
+                     * error_code_invalid_parameter
+                     */
+                    return json_rpc_response_t{
+                        pt_result, "invalid parameter", request.id
+                    };
+                }
+            }
+        }
+
+        if (mode != "template")
+        {
+            boost::property_tree::ptree pt_result;
+            
+            pt_result.put("", "null");
+            
+            /**
+             * error_code_invalid_parameter
+             */
+            return json_rpc_response_t{
+                pt_result, "invalid parameter (mode)", request.id
+            };
+        }
+
+        if (
+            stack_impl_.get_tcp_connection_manager(
+            )->tcp_connections().size() == 0
+            )
+        {
+            boost::property_tree::ptree pt_result;
+            
+            pt_result.put("", "null");
+            
+            /**
+             * error_code_client_not_connected
+             */
+            return json_rpc_response_t{
+                pt_result, "error_code_client_not_connected", request.id
+            };
+        }
+
+        if (utility::is_initial_block_download())
+        {
+            boost::property_tree::ptree pt_result;
+            
+            pt_result.put("", "null");
+            
+            /**
+             * error_code_client_in_initial_download
+             */
+            return json_rpc_response_t{
+                pt_result, "error_code_client_in_initial_download", request.id
+            };
+        }
+
+        /**
+         * Update the block.
+         */
+        static std::uint32_t transactions_updated_last;
+        static std::shared_ptr<block_index> index_previous;
+        static std::time_t start;
+        static std::shared_ptr<block> blk;
+        
+        static key_reserved reserved_key(*globals::instance().wallet_main());
+
+        if (
+            index_previous != stack_impl::get_block_index_best() ||
+            (globals::instance().transactions_updated() !=
+            transactions_updated_last && std::time(0) - start > 5)
+            )
+        {
+            index_previous = 0;
+
+            transactions_updated_last =
+                globals::instance().transactions_updated()
+            ;
+            
+            auto index_previous_new = stack_impl::get_block_index_best();
+            
+            start = std::time(0);
+
+            /**
+             * Create a new block.
+             */
+            if (blk)
+            {
+                blk.reset();
+            }
+            
+            blk = block::create_new(
+                globals::instance().wallet_main(), false
+            );
+            
+            if (blk == 0)
+            {
+                boost::property_tree::ptree pt_result;
+                
+                pt_result.put("", "null");
+                
+                /**
+                 * error_code_out_of_memory
+                 */
+                return json_rpc_response_t{
+                    pt_result, "out of memory", request.id
+                };
+            }
+            
+            /**
+             * Update
+             */
+            index_previous = index_previous_new;
+        }
+        
+        /**
+         * Update the time.
+         */
+        blk->update_time(*index_previous);
+        blk->header().nonce = 0;
+
+        boost::property_tree::ptree transactions;
+        
+        std::map<sha256, std::int64_t> transaction_indexes;
+        
+        auto index = 0;
+        
+        db_tx tx_db("r");
+
+        for (auto & tx : blk->transactions())
+        {
+            auto hash_tx = tx.get_hash();
+            
+            transaction_indexes[hash_tx] = index++;
+
+            if (tx.is_coin_base())
+            {
+                continue;
+            }
+            
+            if (tx.is_coin_stake())
+            {
+                continue;
+            }
+
+            boost::property_tree::ptree entry;
+
+            data_buffer buffer;
+            
+            tx.encode(buffer);
+            
+            entry.put(
+                "data", utility::hex_string(buffer.data(),
+                buffer.data() + buffer.size()),
+                rpc_json_parser::translator<std::string> ()
+            );
+
+            entry.put(
+                "hash", hash_tx.to_string(),
+                rpc_json_parser::translator<std::string> ()
+            );
+
+            std::map<
+                sha256, std::pair<transaction_index, transaction>
+            > inputs;
+            
+            std::map<sha256, transaction_index> unused;
+            
+            bool invalid = false;
+
+            if (
+                tx.fetch_inputs(tx_db, unused, false, false, inputs, invalid)
+                )
+            {
+                entry.put(
+                    "fee",
+                    static_cast<std::int64_t> (tx.get_value_in(inputs) -
+                    tx.get_value_out())
+                );
+
+                boost::property_tree::ptree pt_deps;
+                
+                for (auto & i : inputs)
+                {
+                    if (transaction_indexes.count(i.first) > 0)
+                    {
+                        auto index = transaction_indexes[i.first];
+                        
+                        boost::property_tree::ptree pt_child;
+                        
+                        pt_child.put("", index);
+                        
+                        pt_deps.push_back(std::make_pair("", pt_child));
+                    }
+                }
+                
+                if (pt_deps.size() > 0)
+                {
+                    entry.put_child("depends", pt_deps);
+                }
+                else
+                {
+                    boost::property_tree::ptree pt_empty;
+                    
+                    pt_empty.push_back(
+                        std::make_pair("", boost::property_tree::ptree())
+                    );
+                    
+                    entry.put_child("depends", pt_empty);
+                }
+                
+                std::int64_t sigops = tx.get_legacy_sig_op_count();
+                
+                sigops += tx.get_p2sh_sig_op_count(inputs);
+                
+                entry.put("sigops", sigops);
+            }
+            
+            transactions.push_back(std::make_pair("", entry));
+        }
+
+        boost::property_tree::ptree aux;
+        
+        aux.put(
+            "flags",
+            utility::hex_string(
+            globals::instance().coinbase_flags().begin(),
+            globals::instance().coinbase_flags().end()),
+            rpc_json_parser::translator<std::string> ()
+        );
+
+        auto hashTarget = big_number().set_compact(
+            blk->header().bits
+        ).get_sha256();
+        
+        boost::property_tree::ptree pt_mutable;
+        boost::property_tree::ptree pt_child1, pt_child2, pt_child3;
+
+        pt_child1.put(
+            "", "time", rpc_json_parser::translator<std::string> ()
+        );
+        pt_child2.put(
+            "", "transactions", rpc_json_parser::translator<std::string> ()
+        );
+        pt_child3.put(
+            "", "prevblock", rpc_json_parser::translator<std::string> ()
+        );
+
+        pt_mutable.push_back(std::make_pair("", pt_child1));
+        pt_mutable.push_back(std::make_pair("", pt_child2));
+        pt_mutable.push_back(std::make_pair("", pt_child3));
+        
+        /**
+         * Put version into property tree.
+         */
+        ret.result.put("version", blk->header().version);
+        
+        /**
+         * Put previousblockhash into property tree.
+         */
+        ret.result.put(
+            "previousblockhash",
+            blk->header().hash_previous_block.to_string(),
+            rpc_json_parser::translator<std::string> ()
+        );
+
+        if (transactions.size() == 0)
+        {
+            boost::property_tree::ptree pt_empty;
+            
+            pt_empty.push_back(
+                std::make_pair("", boost::property_tree::ptree())
+            );
+            
+            /**
+             * Put transactions into property tree.
+             */
+            ret.result.put_child("transactions", pt_empty);
+        }
+        else
+        {
+            /**
+             * Put transactions into property tree.
+             */
+            ret.result.put_child("transactions", transactions);
+        }
+        
+        /**
+         * Put coinbaseaux into property tree.
+         */
+        ret.result.put_child("coinbaseaux", aux);
+        
+        /**
+         * Put coinbasevalue into property tree.
+         */
+        ret.result.put(
+            "coinbasevalue",
+            blk->transactions()[0].transactions_out()[0].value()
+        );
+        
+        /**
+         * Put target into property tree.
+         */
+        ret.result.put(
+            "target", hashTarget.to_string(),
+            rpc_json_parser::translator<std::string> ()
+        );
+        
+        /**
+         * Put mintime into property tree.
+         */
+        ret.result.put("mintime", index_previous->get_median_time_past() + 1);
+        
+        /**
+         * Put mutable into property tree.
+         */
+        ret.result.put_child("mutable", pt_mutable);
+        
+        /**
+         * Put noncerange into property tree.
+         */
+        ret.result.put(
+            "noncerange", "00000000ffffffff",
+            rpc_json_parser::translator<std::string> ()
+        );
+        
+        /**
+         * Put sigoplimit into property tree.
+         */
+        ret.result.put("sigoplimit", constants::max_block_sig_ops);
+        
+        /**
+         * Put sizelimit into property tree.
+         */
+        ret.result.put("sizelimit", constants::max_block_size);
+        
+        /**
+         * Put curtime into property tree.
+         */
+        ret.result.put("curtime", blk->header().timestamp);
+        
+        /**
+         * Put bits into property tree.
+         */
+        ret.result.put(
+            "bits", utility::hex_string_from_bits(blk->header().bits),
+            rpc_json_parser::translator<std::string> ()
+        );
+        
+        /**
+         * Put height into property tree.
+         */
+        ret.result.put("height", index_previous->height() + 1);
+    }
+    catch (std::exception & e)
+    {
+        boost::property_tree::ptree pt_result;
+        
+        pt_result.put("", "null");
+        
+        /**
+         * :TODO: error_code_???
+         */
+        return json_rpc_response_t{ pt_result,  e.what(), request.id };
+    }
+    
+    /**
+     * Set the error to null.
+     */
+    ret.error = "";
+    
+    return ret;
+}
+
+boost::property_tree::ptree rpc_connection::json_getinfo()
+{
+    boost::property_tree::ptree ret;
+
+    try
+    {
+        ret.put(
+            "version",
+            constants::client_name + ":" + constants::version_string,
+            rpc_json_parser::translator<std::string> ()
+        );
+        ret.put("protocolversion", protocol::version);
+        ret.put(
+            "walletversion", globals::instance().wallet_main()->get_version()
+        );
+        ret.put(
+            "balance", static_cast<double> (
+            globals::instance().wallet_main()->get_balance()) / constants::coin
+        );
+        ret.put(
+            "newmint",
+            static_cast<double> (
+            globals::instance().wallet_main()->get_new_mint()) /
+            constants::coin
+        );
+        ret.put(
+            "stake",
+            static_cast<double> (
+            globals::instance().wallet_main()->get_stake() /
+            constants::coin)
+        );
+        ret.put("blocks", globals::instance().best_block_height());
+        ret.put(
+            "moneysupply",
+            static_cast<double> (
+            globals::instance().money_supply()) / constants::coin
+        );
+        ret.put(
+            "connections",
+            stack_impl_.get_tcp_connection_manager()->tcp_connections().size()
+        );
+        ret.put(
+            "ip", globals::instance().address_public().to_string(),
+            rpc_json_parser::translator<std::string> ()
+        );
+        ret.put("difficulty", stack_impl_.difficulty());
+        ret.put(
+            "keypoolsize", transaction_pool::instance().size()
+        );
+        ret.put(
+            "paytxfee",
+            static_cast<double> (constants::min_tx_fee) / constants::coin
+        );
+        
+        /**
+         * The std::stringstream.
+         */
+        std::stringstream ss;
+        
+        /**
+         * Write property tree to json file.
+         */
+        rpc_json_parser::write_json(ss, ret, false);
+    }
+    catch (std::exception & e)
+    {
+        log_error(
+            "RPC Connection failed to create json_getinfo, what = " <<
+            e.what() << "."
+        );
+    }
+    
+    return ret;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_getmininginfo(
+    const json_rpc_request_t & request
+    )
+{
+    json_rpc_response_t ret;
+    
+    /**
+     * Set the id from the request.
+     */
+    ret.id = request.id;
+    
+    try
+    {
+        if (request.params.size() == 0)
+        {
+            ret.result.put("blocks", globals::instance().best_block_height());
+            ret.result.put(
+                "currentblocksize", globals::instance().last_block_size()
+            );
+            ret.result.put(
+                "currentblocktx", globals::instance().last_block_transactions()
+            );
+            ret.result.put("difficulty", stack_impl_.difficulty());
+            ret.result.put(
+                "errors", "", rpc_json_parser::translator<std::string> ()
+            );
+            ret.result.put("generate", false);
+            ret.result.put("genproclimit", 0);
+            ret.result.put(
+                "hashespersec",
+                stack_impl_.get_mining_manager()->hashes_per_second()
+            );
+            ret.result.put(
+                "networkhashps", stack_impl_.network_hash_per_second(120)
+            );
+            ret.result.put("pooledtx", transaction_pool().instance().size());
+            ret.result.put("testnet", constants::test_net);
+        }
+    }
+    catch (std::exception & e)
+    {
+        boost::property_tree::ptree pt_result;
+        
+        pt_result.put("", "null");
+  
+        /**
+         * :TODO: error_code_???
+         */
+        return json_rpc_response_t{
+            pt_result, e.what(), request.id
+        };
+    }
+    
+    /**
+     * Set the error to null.
+     */
+    ret.error = "";
+    
+    return ret;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_getnetworkhashps(
+    const json_rpc_request_t & request
+    )
+{
+    json_rpc_response_t ret;
+    
+    /**
+     * Set the id from the request.
+     */
+    ret.id = request.id;
+    
+    try
+    {
+        ret.result.put(
+            "", stack_impl_.network_hash_per_second(120)
+        );
+    }
+    catch (std::exception & e)
+    {
+        boost::property_tree::ptree pt_result;
+        
+        pt_result.put("", "null");
+  
+        /**
+         * :TODO: error_code_???
+         */
+        return json_rpc_response_t{
+            pt_result, e.what(), request.id
+        };
+    }
+    
+    /**
+     * Set the error to null.
+     */
+    ret.error = "";
+    
+    return ret;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_getpeerinfo(
+    const json_rpc_request_t & request
+    )
+{
+    json_rpc_response_t ret;
+    
+    /**
+     * Set the id from the request.
+     */
+    ret.id = request.id;
+    
+    try
+    {
+        auto tcp_connections =
+            stack_impl_.get_tcp_connection_manager()->tcp_connections()
+        ;
+        
+        for (auto & i : tcp_connections)
+        {
+            if (auto j = i.second.lock())
+            {
+                if (auto k = j->get_tcp_transport().lock())
+                {
+                    try
+                    {
+                        boost::property_tree::ptree pt_child;
+                        
+                        pt_child.put(
+                            "addr", k->socket().remote_endpoint().address(
+                            ).to_string() + ":" + std::to_string(
+                            j->protocol_version_addr_src().port),
+                            rpc_json_parser::translator<std::string> ()
+                        );
+                        pt_child.put(
+                            "services", j->protocol_version_services()
+                        );
+                        pt_child.put("lastsend", k->time_last_write());
+                        pt_child.put("lastrecv", k->time_last_read());
+                        pt_child.put(
+                            "conntime", j->protocol_version_timestamp()
+                        );
+                        pt_child.put("version", j->protocol_version());
+                        pt_child.put(
+                            "subver", j->protocol_version_user_agent(),
+                            rpc_json_parser::translator<std::string> ()
+                        );
+                        pt_child.put(
+                            "inbound",
+                            j->direction() == tcp_connection::direction_incoming
+                        );
+                        pt_child.put("releasetime", -1);
+                        pt_child.put(
+                            "startingheight", j->protocol_version_start_height()
+                        );
+                        pt_child.put("banscore", j->dos_score());
+
+                        ret.result.push_back(std::make_pair("", pt_child));
+                    }
+                    catch (...)
+                    {
+                        // ...
+                    }
+                }
+            }
+        }
+    }
+    catch (std::exception & e)
+    {
+        boost::property_tree::ptree pt_result;
+        
+        pt_result.put("", "null");
+        
+        /**
+         * :TODO: error_code_???
+         */
+        return json_rpc_response_t{
+            pt_result, e.what(), request.id
+        };
+    }
+    
+    /**
+     * Set the error to null.
+     */
+    ret.error = "";
+    
+    return ret;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_getrawtransaction(
+    const json_rpc_request_t & request
+    )
+{
+    rpc_connection::json_rpc_response_t ret;
+
+    try
+    {
+        if (request.params.size() >= 1 && request.params.size() <= 2)
+        {
+            std::string transaction_id;
+
+            bool verbose = false;
+            
+            auto index = 0;
+            
+            for (auto & i : request.params)
+            {
+                if (index == 0)
+                {
+                    transaction_id = i.second.get<std::string> ("");
+                }
+                else if (index == 1)
+                {
+                    verbose = i.second.get<std::uint8_t> ("") == 1;
+                }
+            
+                index++;
+            }
+            
+            sha256 hash_tx(transaction_id);
+
+            transaction tx;
+            
+            sha256 hash_block;
+            
+            if (utility::get_transaction(hash_tx, tx, hash_block) == false)
+            {
+                boost::property_tree::ptree pt_result;
+                
+                pt_result.put("", "null");
+                
+                /**
+                 * :TODO: error_code_invalid_key_or_address
+                 */
+                return json_rpc_response_t{
+                    pt_result, "error_code_invalid_key_or_address", request.id
+                };
+            }
+
+            data_buffer buffer;
+            
+            tx.encode(buffer);
+            
+            auto hex = utility::hex_string(
+                buffer.data(), buffer.data() + buffer.size()
+            );
+            
+            if (verbose)
+            {
+                ret.result.put(
+                    "hex", hex, rpc_json_parser::translator<std::string> ()
+                );
+                
+                ret.result.put(
+                    "txid", tx.get_hash().to_string(),
+                    rpc_json_parser::translator<std::string> ()
+                );
+                ret.result.put("version", tx.version());
+                ret.result.put("time", tx.time());
+                ret.result.put("locktime", tx.time_lock());
+
+                boost::property_tree::ptree pt_vin;
+                
+                for (auto & i : tx.transactions_in())
+                {
+                    boost::property_tree::ptree pt_in;
+                    
+                    if (tx.is_coin_base())
+                    {
+                        pt_in.put(
+                            "coinbase",
+                            utility::hex_string(i.script_signature().begin(),
+                            i.script_signature().end()),
+                            rpc_json_parser::translator<std::string> ()
+                        );
+                    }
+                    else
+                    {
+                        pt_in.put(
+                            "txid", i.previous_out().get_hash().to_string(),
+                            rpc_json_parser::translator<std::string> ()
+                        );
+                        pt_in.put(
+                            "vout", i.previous_out().n()
+                        );
+
+                        boost::property_tree::ptree pt_o;
+                        
+                        pt_o.put(
+                            "asm", i.script_signature().to_string(),
+                            rpc_json_parser::translator<std::string> ()
+                        );
+                        pt_o.put(
+                            "hex", utility::hex_string(
+                            i.script_signature().begin(),
+                            i.script_signature().end()),
+                            rpc_json_parser::translator<std::string> ()
+                        );
+                        
+                        pt_in.put_child("scriptSig", pt_o);
+                    }
+                    
+                    pt_in.put("sequence", i.sequence());
+                    
+                    pt_vin.push_back(std::make_pair("", pt_in));
+                }
+                
+                ret.result.put_child("vin", pt_vin);
+
+                boost::property_tree::ptree pt_outs;
+                
+                for (auto i = 0; i < tx.transactions_out().size(); i++)
+                {
+                    const auto & tx_out = tx.transactions_out()[i];
+                    
+                    boost::property_tree::ptree pt_out;
+                    
+                    pt_out.put("value", tx_out.value() / constants::coin);
+                    pt_out.put("n", i);
+                    
+                    boost::property_tree::ptree pt_o;
+                    
+                    types::tx_out_t type;
+                    
+                    std::vector<destination::tx_t> addresses;
+                    
+                    int required;
+
+                    pt_o.put(
+                        "asm", tx_out.script_public_key().to_string(),
+                        rpc_json_parser::translator<std::string> ()
+                    );
+                    pt_o.put(
+                        "hex", utility::hex_string(
+                        tx_out.script_public_key().begin(),
+                        tx_out.script_public_key().end()),
+                        rpc_json_parser::translator<std::string> ()
+                    );
+
+                    if (
+                        script::extract_destinations(tx_out.script_public_key(),
+                        type, addresses, required) == false
+                        )
+                    {
+                        pt_o.put(
+                            "type",
+                            script::get_txn_output_type(
+                            types::tx_out_nonstandard),
+                            rpc_json_parser::translator<std::string> ()
+                        );
+                    }
+                    else
+                    {
+                        pt_o.put("reqSigs", required);
+                        pt_o.put(
+                            "type", script::get_txn_output_type(type),
+                            rpc_json_parser::translator<std::string> ()
+                        );
+
+                        boost::property_tree::ptree pt_a;
+                        
+                        for (auto & i : addresses)
+                        {
+                            boost::property_tree::ptree pt_tmp;
+                            
+                            pt_tmp.put(
+                                "", address(i).to_string(),
+                                rpc_json_parser::translator<std::string> ()
+                            );
+            
+                            pt_a.push_back(std::make_pair("", pt_tmp));
+                        }
+                        
+                        pt_o.put_child("addresses", pt_a);
+                    }
+                    
+                    if (pt_o.size() > 0)
+                    {
+                        pt_out.put_child("scriptPubKey", pt_o);
+                    }
+                    else
+                    {
+                        pt_out.put_child(
+                            "scriptPubKey", boost::property_tree::ptree()
+                        );
+                    }
+                    
+                    pt_outs.push_back(std::make_pair("", pt_out));
+                }
+                
+                ret.result.put_child("vout", pt_outs);
+
+                if (hash_block != 0)
+                {
+                    ret.result.put(
+                        "blockhash", hash_block.to_string(),
+                        rpc_json_parser::translator<std::string> ()
+                    );
+                    
+                    auto block_indexes = globals::instance().block_indexes();
+                    
+                    auto it = block_indexes.find(hash_block);
+                    
+                    if (it != block_indexes.end() && it->second)
+                    {
+                        auto index = it->second;
+                        
+                        if (index->is_in_main_chain())
+                        {
+                            ret.result.put(
+                                "confirmations",
+                                1 + stack_impl::get_block_index_best(
+                                )->height() - index->height()
+                            );
+                            ret.result.put("time", index->time());
+                            ret.result.put("blocktime", index->time());
+                        }
+                        else
+                        {
+                            ret.result.put("confirmations", 0);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                ret.result.put(
+                    "", hex, rpc_json_parser::translator<std::string> ()
+                );
+            }
+        }
+        else
+        {
+            // ...
+        }
+    }
+    catch (std::exception & e)
+    {
+        boost::property_tree::ptree pt_result;
+        
+        pt_result.put("", "null");
+        
+        /**
+         * :TODO: error_code_???
+         */
+        return json_rpc_response_t{
+            pt_result, e.what(), request.id
+        };
+    }
+    
+    /**
+     * Set the error to null.
+     */
+    ret.error = "";
+    
+    return ret;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_gettransaction(
+    const json_rpc_request_t & request
+    )
+{
+    json_rpc_response_t ret;
+
+    try
+    {
+        if (request.params.size() == 1)
+        {
+            /**
+             * Get the txid parameter.
+             */
+            auto param_txid =
+                request.params.front().second.get<std::string> ("")
+            ;
+            
+            sha256 hash_txid(param_txid);
+            
+            const auto & transactions =
+                globals::instance().wallet_main()->transactions()
+            ;
+            
+            auto it = transactions.find(hash_txid);
+            
+            if (it != transactions.end())
+            {
+                const auto & wtx = it->second;
+
+                auto transactions = transaction_to_ptree(wtx, 0);
+                
+                for (auto & i : transactions)
+                {
+                    ret.result.push_back(std::make_pair(i.first, i.second));
+                }
+                
+                std::int64_t credit = wtx.get_credit();
+                std::int64_t debit = wtx.get_debit();
+                std::int64_t net = credit - debit;
+                std::int64_t fee =
+                    (wtx.is_from_me() ? wtx.get_value_out() - debit : 0)
+                ;
+
+                ret.result.put("amount", (net - fee) / constants::coin);
+                
+                if (wtx.is_from_me())
+                {
+                    ret.result.put("fee", fee / constants::coin);
+                }
+
+                auto details =
+                    transactions_to_ptree(
+                    globals::instance().wallet_main()->transactions()
+                    [hash_txid], "*", 0, false
+                );
+                
+                if (details.size() > 0)
+                {
+                    ret.result.put_child("details", details);
+                }
+            }
+            else
+            {
+                transaction tx;
+                
+                sha256 hash_block = 0;
+                
+                if (utility::get_transaction(hash_txid, tx, hash_block))
+                {
+                    ret.result.put(
+                        "txid", hash_txid.to_string(),
+                        rpc_json_parser::translator<std::string> ()
+                    );
+                    
+                    auto transactions = transaction_to_ptree(tx, 0);
+                    
+                    for (auto & i : transactions)
+                    {
+                        ret.result.push_back(
+                            std::make_pair(i.first, i.second)
+                        );
+                    }
+
+                    if (hash_block == 0)
+                    {
+                        ret.result.put("confirmations", 0);
+                    }
+                    else
+                    {
+                        ret.result.put(
+                            "blockhash", hash_block.to_string(),
+                            rpc_json_parser::translator<std::string> ()
+                        );
+                        
+                        auto it = globals::instance().block_indexes().find(
+                            hash_block
+                        );
+                        
+                        if (it != globals::instance().block_indexes().end())
+                        {
+                            const auto & index = it->second;
+                            
+                            if (index && index->is_in_main_chain())
+                            {
+                                ret.result.put(
+                                    "confirmations",
+                                    1 +
+                                    stack_impl::get_block_index_best()->height()
+                                    - index->height()
+                                );
+                                ret.result.put("txntime", tx.time());
+                                ret.result.put("time", index->time());
+                            }
+                            else
+                            {
+                                ret.result.put("confirmations", 0);
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    boost::property_tree::ptree pt_result;
+                    
+                    pt_result.put("", "null");
+    
+                    /**
+                     * error_code_invalid_address_or_key
+                     */
+                    return json_rpc_response_t{
+                        pt_result,
+                        "error_code_invalid_address_or_key", request.id
+                    };
+                }
+            }
+        }
+        else
+        {
+            // ...
+        }
+    
+    }
+    catch (std::exception & e)
+    {
+        log_error(
+            "RPC Connection failed to create json_gettransaction, what = " <<
+            e.what() << "."
+        );
+    }
+    
+    /**
+     * Set the error to null.
+     */
+    ret.error = "";
+    
+    return ret;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_sendmany(
+    const json_rpc_request_t & request
+    )
+{
+    json_rpc_response_t ret;
+
+    try
+    {
+        if (request.params.size() >= 2)
+        {
+            try
+            {
+                std::string account;
+                
+                boost::property_tree::ptree pt_addresses_and_amounts;
+                
+                boost::property_tree::ptree pt_minconf;
+
+                std::string comment;
+
+                auto index = 0;
+                
+                for (auto & i : request.params)
+                {
+                    if (index == 0)
+                    {
+                        account = i.second.get<std::string> ("");
+                    }
+                    else if (index == 1)
+                    {
+                        pt_addresses_and_amounts = i.second;
+                    }
+                    else if (index == 2)
+                    {
+                        pt_minconf = i.second;
+                    }
+                    else if (index == 3)
+                    {
+                        comment = i.second.get<std::string> ("");
+                    }
+                
+                    index++;
+                }
+
+                /**
+                 * Get the minimum depth in the main chain.
+                 */
+                auto minimum_depth_in_main_chain =
+                    pt_minconf.get<std::uint32_t> ("minconf", 1
+                );
+                
+                /**
+                 * Allocate the transaction_wallet.
+                 */
+                transaction_wallet wtx;
+                
+                /**
+                 * Set the from account.
+                 */
+                wtx.set_from_account(account);
+
+                if (comment.size() > 0)
+                {
+                    wtx.values()["comment"] = comment;
+                }
+                
+                std::set<address> addresses;
+                
+                std::vector< std::pair<script, std::int64_t> > to_send;
+                
+                std::int64_t total_amount = 0;
+                
+                for (auto & i : pt_addresses_and_amounts)
+                {
+                    address addr(i.first);
+                    
+                    log_info(
+                        "RPC connection sendmany address = " << i.first << "."
+                    );
+                    
+                    if (addr.is_valid())
+                    {
+                        /**
+                         * Do not allow duplicate addresses.
+                         */
+                        if (addresses.count(addr) > 0)
+                        {
+                            boost::property_tree::ptree pt_result;
+                            
+                            pt_result.put("", "null");
+                
+                            /**
+                             * error_code_invalid_parameter
+                             */
+                            return json_rpc_response_t{
+                                pt_result,
+                                "error_code_invalid_parameter", request.id
+                            };
+                        }
+                        else
+                        {
+                            addresses.insert(addr);
+
+                            script script_pub_key;
+                            
+                            /**
+                             * Set the destination.
+                             */
+                            script_pub_key.set_destination(addr.get());
+
+                            /**
+                             * Get the double value.
+                             */
+                            double value = i.second.get<double> ("");
+                            
+                            /**
+                             * Make sure the value is within limits.
+                             */
+                            if (
+                                value < 0.0f ||
+                                value > constants::max_money_supply
+                                )
+                            {
+                                boost::property_tree::ptree pt_result;
+                                
+                                pt_result.put("", "null");
+                
+                                /**
+                                 * error_code_invalid_amount
+                                 */
+                                return json_rpc_response_t{
+                                    pt_result,
+                                    "error_code_invalid_amount", request.id
+                                };
+                            }
+                            
+                            /**
+                             * Round the amount.
+                             */
+                            auto amount = static_cast<std::int64_t> (
+                                (value * constants::coin) > 0 ?
+                                (value * constants::coin) + 0.5 :
+                                (value * constants::coin) - 0.5
+                            );
+                            
+                            /**
+                             * Check that the amount is within the money range.
+                             */
+                            if (utility::money_range(amount) == false)
+                            {
+                                boost::property_tree::ptree pt_result;
+                                
+                                pt_result.put("", "null");
+                
+                                /**
+                                 * error_code_invalid_amount
+                                 */
+                                return json_rpc_response_t{
+                                    pt_result,
+                                    "error_code_invalid_amount", request.id
+                                };
+                            }
+
+                            /**
+                             * Make sure the amount is not less than the
+                             * minimum transaction fee.
+                             */
+                            if (amount < constants::min_tx_fee)
+                            {
+                                boost::property_tree::ptree pt_result;
+                                
+                                pt_result.put("", "null");
+                
+                                /**
+                                 * -101
+                                 */
+                                return json_rpc_response_t{
+                                    pt_result,
+                                    "amount too small", request.id
+                                };
+                            }
+                            
+                            total_amount += amount;
+
+                            /**
+                             * Append the transaction.
+                             */
+                            to_send.push_back(
+                                std::make_pair(script_pub_key, amount)
+                            );
+                        }
+                    }
+                    else
+                    {
+                        boost::property_tree::ptree pt_result;
+                        
+                        pt_result.put("", "null");
+                
+                        /**
+                         * error_code_invalid_address_or_key
+                         */
+                        return json_rpc_response_t{
+                            pt_result,
+                            "error_code_invalid_address_or_key(" +
+                            i.first + ")", request.id
+                        };
+                    }
+                }
+                
+                /**
+                 * Make sure the wallet is unlocked.
+                 */
+                if (globals::instance().wallet_main()->is_locked())
+                {
+                    boost::property_tree::ptree pt_result;
+                    
+                    pt_result.put("", "null");
+                
+                    /**
+                     * error_code_wallet_unlock_needed
+                     */
+                    return json_rpc_response_t{
+                        pt_result,
+                        "error_code_wallet_unlock_needed", request.id
+                    };
+                }
+                
+                /**
+                 * Make sure the wallet is not unlocked for minting only.
+                 */
+                if (globals::instance().wallet_unlocked_mint_only())
+                {
+                    boost::property_tree::ptree pt_result;
+                    
+                    pt_result.put("", "null");
+                
+                    /**
+                     * error_code_wallet_unlock_needed
+                     */
+                    return json_rpc_response_t{
+                        pt_result,
+                        "error_code_wallet_unlock_needed (mint only)",
+                        request.id
+                    };
+                }
+
+                /**
+                 * Get the account balance.
+                 */
+                std::int64_t balance = wallet::get_account_balance(
+                    account, minimum_depth_in_main_chain
+                );
+
+                if (total_amount > balance)
+                {
+                    boost::property_tree::ptree pt_result;
+                    
+                    pt_result.put("", "null");
+                
+                    /**
+                     * error_code_wallet_insufficient_funds
+                     */
+                    return json_rpc_response_t{
+                        pt_result,
+                        "error_code_wallet_insufficient_funds", request.id
+                    };
+                }
+
+                key_reserved k(*globals::instance().wallet_main());
+                
+                std::int64_t required_fee = 0;
+                
+                /**
+                 * Create the transaction.
+                 */
+                bool success =
+                    globals::instance().wallet_main()->create_transaction(
+                    to_send, wtx, k, required_fee
+                );
+                
+                if (success == false)
+                {
+                    if (
+                        total_amount + required_fee >
+                        globals::instance().wallet_main()->get_balance()
+                        )
+                    {
+                        boost::property_tree::ptree pt_result;
+                        
+                        pt_result.put("", "null");
+                
+                        /**
+                         * error_code_wallet_error
+                         */
+                        return json_rpc_response_t{
+                            pt_result,
+                            "insufficient funds", request.id
+                        };
+                    }
+
+                    boost::property_tree::ptree pt_result;
+                    
+                    pt_result.put("", "null");
+                
+                    /**
+                     * error_code_wallet_error
+                     */
+                    return json_rpc_response_t{
+                        pt_result,
+                        "failed to create transaction", request.id
+                    };
+                }
+                
+                /**
+                 * Commit the transaction.
+                 */
+                if (
+                    globals::instance().wallet_main()->commit_transaction(
+                    wtx, k) == false
+                    )
+                {
+                    boost::property_tree::ptree pt_result;
+                    
+                    pt_result.put("", "null");
+                    
+                    /**
+                     * error_code_wallet_error
+                     */
+                    return json_rpc_response_t{
+                        pt_result,
+                        "failed to commit transaction", request.id
+                    };
+                }
+                
+                /**
+                 * Put the hash of the wallet transaction.
+                 */
+                ret.result.put(
+                    "", wtx.get_hash().to_string(),
+                    rpc_json_parser::translator<std::string> ()
+                );
+            }
+            catch (...)
+            {
+                // ...
+            }
+        }
+    }
+    catch (std::exception & e)
+    {
+        log_error(
+            "RPC Connection failed to create json_sendmany, what = " <<
+            e.what() << "."
+        );
+    }
+    
+    /**
+     * Set the error to null.
+     */
+    ret.error = "";
+    
+    return ret;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_submitblock(
+    const json_rpc_request_t & request
+    )
+{
+    rpc_connection::json_rpc_response_t ret;
+
+    try
+    {
+        if (request.params.size() > 0 && request.params.size() < 2)
+        {
+            /**
+             * Decode the block data.
+             */
+            auto data(
+                utility::from_hex(
+                request.params.front().second.get<std::string> (""))
+            );
+            
+            /**
+             * Copy the decoded data into the buffer.
+             */
+            data_buffer buffer(
+                reinterpret_cast<const char *>(&data[0]), data.size()
+            );
+            
+            /**
+             * Allocate the block.
+             */
+            block blk;
+            
+            /**
+             * Try to decode the block.
+             */
+            if (blk.decode(buffer))
+            {
+                /**
+                 * Try to sign the block.
+                 */
+                if (blk.sign(*globals::instance().wallet_main()))
+                {
+                    /**
+                     * Try to accept the block.
+                     */
+                    if (
+                        blk.accept_block(
+                        stack_impl_.get_tcp_connection_manager())
+                        )
+                    {
+                        log_info("RPC connection accepted block.");
+                        
+                        ret.result.put("", "null");
+                    }
+                    else
+                    {
+                        log_info("RPC connection rejected block.");
+                        
+                        ret.result.put(
+                            "", "rejected",
+                            rpc_json_parser::translator<std::string> ()
+                        );
+                    }
+                }
+                else
+                {
+                    boost::property_tree::ptree pt_result;
+                    
+                    pt_result.put("", "null");
+                    
+                    /**
+                     * -100
+                     */
+                    return json_rpc_response_t{
+                        pt_result, "failed to sign block", request.id
+                    };
+                }
+            }
+            else
+            {
+                boost::property_tree::ptree pt_result;
+                
+                pt_result.put("", "null");
+                
+                /**
+                 * error_code_decode_error
+                 */
+                return json_rpc_response_t{
+                    pt_result, "failed to decode block", request.id
+                };
+            }
+        }
+        else
+        {
+            boost::property_tree::ptree pt_result;
+            
+            pt_result.put("", "null");
+            
+            /**
+             * error_code_decode_error
+             */
+            return json_rpc_response_t{
+                pt_result, "error_code_invalid_parameter", request.id
+            };
+        }
+    }
+    catch (std::exception & e)
+    {
+        log_error(
+            "RPC Connection failed to create json_submitblock, what = " <<
+            e.what() << "."
+        );
+    }
+    
+    /**
+     * Set the error to null.
+     */
+    ret.error = "";
+    
+    return ret;
+}
+
+boost::property_tree::ptree rpc_connection::json_validateaddress(
+    const json_rpc_request_t & request
+    )
+{
+    boost::property_tree::ptree ret;
+
+    try
+    {
+        if (request.params.size() == 1)
+        {
+            try
+            {
+                /**
+                 * Get the address parameter.
+                 */
+                auto param_addr =
+                    request.params.front().second.get<std::string> ("")
+                ;
+        
+                /**
+                 * Allocate the address from the single parameter.
+                 */
+                address addr(param_addr);
+                
+                auto is_valid = addr.is_valid();
+                
+                ret.put("isvalid", is_valid);
+                
+                if (is_valid)
+                {
+                    auto dest = addr.get();
+                    
+                    auto current_addr = addr.to_string();
+                    
+                    ret.put(
+                        "address", current_addr,
+                        rpc_json_parser::translator<std::string> ()
+                    );
+                    
+                    auto is_mine = script::is_mine(
+                        *globals::instance().wallet_main(), dest
+                    );
+                    
+                    ret.put("ismine", is_mine);
+                    
+                    if (is_mine)
+                    {
+                        auto pt_detail =
+                            boost::apply_visitor(describe_address_visitor(),
+                            dest)
+                        ;
+                        
+                        ret.insert(
+                            ret.begin(), pt_detail.begin(), pt_detail.end()
+                        );
+                    }
+                    
+                    auto it =
+                        globals::instance().wallet_main()->address_book(
+                        ).find(dest)
+                    ;
+                    
+                    if (
+                        it != globals::instance().wallet_main(
+                        )->address_book().end()
+                        )
+                    {
+                        ret.put(
+                            "account", it->second,
+                            rpc_json_parser::translator<std::string> ()
+                        );
+                    }
+                }
+            }
+            catch (std::exception & e)
+            {
+                log_error(
+                    "RPC connection failed to json_validateaddress, what = " <<
+                    e.what() << "."
+                );
+            }
+        }
+        else
+        {
+            // ...
+        }
+    }
+    catch (std::exception & e)
+    {
+        log_error(
+            "RPC Connection failed to create json_validateaddress, what = " <<
+            e.what() << "."
+        );
+    }
+    
+    return ret;
+}
+
+boost::property_tree::ptree rpc_connection::transaction_wallet_to_ptree(
+    const transaction_wallet & wtx
+    )
+{
+    boost::property_tree::ptree ret;
+    
+    auto depth = wtx.get_depth_in_main_chain();
+    
+    ret.put("confirmations", depth);
+    
+    if (wtx.is_coin_base() || wtx.is_coin_stake())
+    {
+        ret.put("generated", true);
+    }
+    
+    if (depth > 0)
+    {
+        ret.put(
+            "blockhash", wtx.block_hash().to_string(),
+            rpc_json_parser::translator<std::string> ()
+        );
+        ret.put("blockindex", wtx.index());
+        ret.put(
+            "blocktime",
+            globals::instance().block_indexes()[
+            wtx.block_hash()]->time()
+        );
+    }
+    
+    ret.put(
+        "txid", wtx.get_hash().to_string(),
+        rpc_json_parser::translator<std::string> ()
+    );
+    ret.put("time", wtx.time());
+    ret.put("timereceived", wtx.time_received());
+    
+    for (auto & i : wtx.values())
+    {
+        ret.put(
+            i.first, i.second, rpc_json_parser::translator<std::string> ()
+        );
+    }
+    
+    return ret;
+}
+
+boost::property_tree::ptree rpc_connection::transaction_to_ptree(
+    const transaction & tx, const sha256 & hash_block
+    )
+{
+    boost::property_tree::ptree ret;
+
+    try
+    {
+        ret.put(
+            "txid", tx.get_hash().to_string(),
+            rpc_json_parser::translator<std::string> ()
+        );
+        ret.put("version", tx.version());
+        ret.put("time", tx.time());
+        ret.put("locktime", tx.time_lock());
+
+        boost::property_tree::ptree pt_vin;
+        
+        for (auto & i : tx.transactions_in())
+        {
+            boost::property_tree::ptree pt_in;
+            
+            if (tx.is_coin_base())
+            {
+                pt_in.put(
+                    "coinbase",
+                    utility::hex_string(i.script_signature().begin(),
+                    i.script_signature().end()),
+                    rpc_json_parser::translator<std::string> ()
+                );
+            }
+            else
+            {
+                pt_in.put(
+                    "txid", i.previous_out().get_hash().to_string(),
+                    rpc_json_parser::translator<std::string> ()
+                );
+                pt_in.put(
+                    "vout", i.previous_out().n()
+                );
+
+                boost::property_tree::ptree pt_o;
+                
+                pt_o.put(
+                    "asm", i.script_signature().to_string(),
+                    rpc_json_parser::translator<std::string> ()
+                );
+                pt_o.put(
+                    "hex", utility::hex_string(
+                    i.script_signature().begin(),
+                    i.script_signature().end()),
+                    rpc_json_parser::translator<std::string> ()
+                );
+                
+                pt_in.put_child("scriptSig", pt_o);
+            }
+            
+            pt_in.put("sequence", i.sequence());
+            
+            pt_vin.push_back(std::make_pair("", pt_in));
+        }
+        
+        ret.put_child("vin", pt_vin);
+
+        boost::property_tree::ptree pt_outs;
+        
+        for (auto i = 0; i < tx.transactions_out().size(); i++)
+        {
+            const auto & tx_out = tx.transactions_out()[i];
+            
+            boost::property_tree::ptree pt_out;
+            
+            pt_out.put("value", tx_out.value() / constants::coin);
+            pt_out.put("n", i);
+            
+            boost::property_tree::ptree pt_o;
+            
+            types::tx_out_t type;
+            
+            std::vector<destination::tx_t> addresses;
+            
+            int required;
+
+            pt_o.put(
+                "asm", tx_out.script_public_key().to_string(),
+                rpc_json_parser::translator<std::string> ()
+            );
+            pt_o.put(
+                "hex", utility::hex_string(
+                tx_out.script_public_key().begin(),
+                tx_out.script_public_key().end()),
+                rpc_json_parser::translator<std::string> ()
+            );
+
+            if (
+                script::extract_destinations(tx_out.script_public_key(),
+                type, addresses, required) == false
+                )
+            {
+                pt_o.put(
+                    "type",
+                    script::get_txn_output_type(
+                    types::tx_out_nonstandard),
+                    rpc_json_parser::translator<std::string> ()
+                );
+            }
+            else
+            {
+                pt_o.put("reqSigs", required);
+                pt_o.put(
+                    "type", script::get_txn_output_type(type),
+                    rpc_json_parser::translator<std::string> ()
+                );
+
+                boost::property_tree::ptree pt_a;
+                
+                for (auto & i : addresses)
+                {
+                    boost::property_tree::ptree pt_tmp;
+                    
+                    pt_tmp.put(
+                        "", address(i).to_string(),
+                        rpc_json_parser::translator<std::string> ()
+                    );
+    
+                    pt_a.push_back(std::make_pair("", pt_tmp));
+                }
+                
+                pt_o.put_child("addresses", pt_a);
+            }
+            
+            if (pt_o.size() > 0)
+            {
+                pt_out.put_child("scriptPubKey", pt_o);
+            }
+            else
+            {
+                pt_out.put_child(
+                    "scriptPubKey", boost::property_tree::ptree()
+                );
+            }
+            
+            pt_outs.push_back(std::make_pair("", pt_out));
+        }
+        
+        ret.put_child("vout", pt_outs);
+
+        if (hash_block != 0)
+        {
+            ret.put(
+                "blockhash", hash_block.to_string(),
+                rpc_json_parser::translator<std::string> ()
+            );
+            
+            auto block_indexes = globals::instance().block_indexes();
+            
+            auto it = block_indexes.find(hash_block);
+            
+            if (it != block_indexes.end() && it->second)
+            {
+                auto index = it->second;
+                
+                if (index->is_in_main_chain())
+                {
+                    ret.put(
+                        "confirmations",
+                        1 + stack_impl::get_block_index_best(
+                        )->height() - index->height()
+                    );
+                    ret.put("time", index->time());
+                    ret.put("blocktime", index->time());
+                }
+                else
+                {
+                    ret.put("confirmations", 0);
+                }
+            }
+        }
+    }
+    catch (std::exception & e)
+    {
+        log_error(
+            "RPC connection failed to transaction to ptree, what = " <<
+            e.what() << "."
+        );
+    }
+
+    return ret;
+}
+
+boost::property_tree::ptree rpc_connection::transactions_to_ptree(
+    const transaction_wallet & wtx, const std::string & account,
+    const std::uint32_t & minimim_depth, const bool & include_transactions
+    )
+{
+    boost::property_tree::ptree ret;
+    
+    std::int64_t generated_immature, generated_mature, fee;
+    std::string account_sent;
+    
+    std::list< std::pair<destination::tx_t, std::int64_t> > received;
+    std::list< std::pair<destination::tx_t, std::int64_t> > sent;
+
+    wtx.get_amounts(
+        generated_immature, generated_mature, received, sent, fee,
+        account_sent
+    );
+
+    bool all_accounts = account == "*";
+
+    /**
+     * Generated
+     */
+    if (
+        (generated_mature + generated_immature) != 0 &&
+        (all_accounts || account == "")
+        )
+    {
+        boost::property_tree::ptree pt_entry;
+        
+        pt_entry.put(
+            "account", "", rpc_json_parser::translator<std::string> ()
+        );
+        
+        pt_entry.put(
+            "address",
+            address(globals::instance().wallet_main(
+            )->key_public_default().get_id()).to_string(),
+            rpc_json_parser::translator<std::string> ()
+        );
+        
+        if (generated_immature > 0)
+        {
+            pt_entry.put(
+                "category",
+                wtx.get_depth_in_main_chain() ? "immature" : "orphan",
+                rpc_json_parser::translator<std::string> ()
+            );
+            pt_entry.put("amount", generated_immature / constants::coin);
+        }
+        else
+        {
+            pt_entry.put(
+                "category", "generate",
+                rpc_json_parser::translator<std::string> ()
+            );
+            pt_entry.put("amount", generated_mature / constants::coin);
+        }
+        
+        if (include_transactions)
+        {
+            auto pt = transaction_wallet_to_ptree(wtx);
+            
+            for (auto & i : pt)
+            {
+                pt_entry.push_back(std::make_pair(i.first, i.second));
+            }
+        }
+        
+        ret.push_back(std::make_pair("", pt_entry));
+    }
+    
+    /**
+     * Sent
+     */
+    if (
+        (sent.size() > 0 || fee != 0) &&
+        (all_accounts || account == account_sent)
+        )
+    {
+        for (auto & s : sent)
+        {
+            boost::property_tree::ptree pt_entry;
+            
+            pt_entry.put(
+                "account", account_sent,
+                rpc_json_parser::translator<std::string> ()
+            );
+            pt_entry.put(
+                "address", address(s.first).to_string(),
+                rpc_json_parser::translator<std::string> ()
+            );
+            pt_entry.put(
+                "category", "send", rpc_json_parser::translator<std::string> ()
+            );
+            pt_entry.put("amount", -s.second / constants::coin);
+            pt_entry.put("fee", -fee / constants::coin);
+            
+            if (include_transactions)
+            {
+                auto pt = transaction_wallet_to_ptree(wtx);
+                
+                for (auto & i : pt)
+                {
+                    pt_entry.push_back(std::make_pair(i.first, i.second));
+                }
+                
+                ret.push_back(std::make_pair("", pt_entry));
+            }
+        }
+    }
+
+    /**
+     * Received
+     */
+    if (
+        received.size() > 0 &&
+        wtx.get_depth_in_main_chain() >= minimim_depth
+        )
+    {
+        for (auto & r : received)
+        {
+            std::string acct;
+            
+            const auto & address_book =
+                globals::instance().wallet_main()->address_book()
+            ;
+            
+            auto it = address_book.find(r.first);
+            
+            if (it != address_book.end())
+            {
+                acct = it->second;
+            }
+            
+            if (all_accounts || (acct == account))
+            {
+                boost::property_tree::ptree pt_entry;
+                
+                pt_entry.put(
+                    "account", account,
+                    rpc_json_parser::translator<std::string> ()
+                );
+                pt_entry.put(
+                    "address", address(r.first).to_string(),
+                    rpc_json_parser::translator<std::string> ()
+                );
+                
+                if (wtx.is_coin_base())
+                {
+                    if (wtx.get_depth_in_main_chain() < 1)
+                    {
+                        pt_entry.put(
+                            "category", "orphan",
+                            rpc_json_parser::translator<std::string> ()
+                        );
+                    }
+                    else if (wtx.get_blocks_to_maturity() > 0)
+                    {
+                        pt_entry.put(
+                            "category", "immature",
+                            rpc_json_parser::translator<std::string> ()
+                        );
+                    }
+                    else
+                    {
+                        pt_entry.put(
+                            "category", "generate",
+                            rpc_json_parser::translator<std::string> ()
+                        );
+                    }
+                }
+                else
+                {
+                    pt_entry.put(
+                        "category", "receive",
+                        rpc_json_parser::translator<std::string> ()
+                    );
+                }
+                
+                pt_entry.put("amount", r.second / constants::coin);
+            
+                if (include_transactions)
+                {
+                    auto pt = transaction_wallet_to_ptree(wtx);
+                    
+                    for (auto & i : pt)
+                    {
+                        pt_entry.push_back(std::make_pair(i.first, i.second));
+                    }
+                    
+                    ret.push_back(std::make_pair("", pt_entry));
+                }
+            }
+        }
+    }
+
+    return ret;
+}

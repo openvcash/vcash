@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
+ * This file is part of vanillacoin.
  *
- * coinpp is free software: you can redistribute it and/or modify
+ * Vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -274,6 +274,16 @@ void block_index_disk::decode()
      * Read the nonce.
      */
     m_nonce = read_uint32();
+
+    log_none(
+        ", m_version = " << m_version <<
+        ", hash = " << get_block_hash().to_string() <<
+        ", previous = " << m_hash_previous.to_string() <<
+        ", m_file = " << m_file <<
+        ", m_block_position = " << m_block_position << ", m_height = " <<
+        m_height << ", m_mint = " << m_mint << ", m_money_supply = " <<
+        m_money_supply << ", m_time = " << m_time << "."
+    );
 }
 
 void block_index_disk::set_hash_previous(const sha256 & value)
