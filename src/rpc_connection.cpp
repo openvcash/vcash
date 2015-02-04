@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of coinpp.
  *
- * Vanillacoin is free software: you can redistribute it and/or modify
+ * coinpp is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -18,6 +18,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <future>
 #include <sstream>
 #include <vector>
 
@@ -291,6 +292,8 @@ bool rpc_connection::parse(
                     buffer_.data() + status_length + header_length,
                     content_length
                 );
+                    
+                log_debug("RPC connection got http body = " << body_out);
             }
         }
     }
@@ -325,6 +328,8 @@ std::size_t rpc_connection::parse_status(std::string & buffer)
     
         return false;
     }
+    
+    log_none("RPC connection got status line = " << status << ".");
     
     return status.size();
 }
@@ -504,6 +509,10 @@ bool rpc_connection::handle_json_rpc_request(
     {
         response = json_dumpprivkey(request);
     }
+    else if (request.method == "encryptwallet")
+    {
+        response = json_encryptwallet(request);
+    }
     else if (request.method == "getaccount")
     {
         response = json_getaccount(request);
@@ -562,18 +571,20 @@ bool rpc_connection::handle_json_rpc_request(
     }
     else if (request.method == "validateaddress")
     {
-        response.result = json_validateaddress(request);
+        response = json_validateaddress(request);
     }
     else
     {
-        response.error = "invalid method";
+        response.error = create_error_object(
+            error_code_method_not_found, "method not found"
+        );
     }
     
     /**
      * Set the id from the request.
      */
     response.id = request.id;
-
+    
     return true;
 }
 
@@ -606,31 +617,20 @@ bool rpc_connection::send_json_rpc_response(
         try
         {
             boost::property_tree::ptree pt;
-            
-            /**
-             * Put the result into property tree.
-             */
-            pt.put_child("result", response.result);
 
-            /**
-             * If the error is empty set it to null.
-             */
             if (response.error.size() > 0)
             {
                 /**
                  * Put error into property tree.
                  */
-                pt.put(
-                    "error", response.error,
-                    rpc_json_parser::translator<std::string> ()
-                );
+                pt.put_child("error", response.error);
             }
             else
             {
                 /**
-                 * Put error into property tree.
+                 * Put the result into property tree.
                  */
-                pt.put("error", "null");
+                pt.put_child("result", response.result);
             }
 
             /**
@@ -668,7 +668,7 @@ bool rpc_connection::send_json_rpc_response(
         http_response += "Content-Length: " +
             std::to_string(body.size()) + "\r\n"
         ;
-        http_response += "Server: Vanillacoin JSON-RPC 2.0\r\n";
+        http_response += "Server: VanillaCoin JSON-RPC 2.0\r\n";
         http_response += "\r\n";
         
         http_response += body;
@@ -726,30 +726,19 @@ bool rpc_connection::send_json_rpc_responses(
                     continue;
                 }
                 
-                /**
-                 * Put the result into property tree.
-                 */
-                pt_child.put_child("result", i.result);
-
-                /**
-                 * If the error is empty set it to null.
-                 */
                 if (i.error.size() > 0)
                 {
                     /**
                      * Put error into property tree.
                      */
-                    pt_child.put(
-                        "error", i.error,
-                        rpc_json_parser::translator<std::string> ()
-                    );
+                    pt_child.put_child("error", i.error);
                 }
                 else
                 {
                     /**
-                     * Put error into property tree.
+                     * Put the result into property tree.
                      */
-                    pt_child.put("error", "null");
+                    pt_child.put_child("result", i.result);
                 }
 
                 /**
@@ -810,6 +799,93 @@ bool rpc_connection::send_json_rpc_responses(
     return false;
 }
 
+rpc_connection::json_rpc_response_t rpc_connection::json_encryptwallet(
+    const json_rpc_request_t & request
+    )
+{
+    json_rpc_response_t ret;
+    
+    /**
+     * Set the id from the request.
+     */
+    ret.id = request.id;
+    
+    try
+    {
+        if (request.params.size() == 1)
+        {
+            if (globals::instance().wallet_main()->is_crypted())
+            {
+                auto pt_error = create_error_object(
+                    error_code_wallet_wrong_enc_state, "crypted"
+                );
+                
+                /**
+                 * error_code_wallet_wrong_enc_state
+                 */
+                return json_rpc_response_t{
+                    boost::property_tree::ptree(), pt_error, request.id
+                };
+            }
+            
+            /**
+             * Get the passphrase parameter.
+             */
+            auto param_passphrase =
+                request.params.front().second.get<std::string> ("")
+            ;
+            
+            if (globals::instance().wallet_main()->encrypt(param_passphrase))
+            {
+                ret.result.put(
+                    "", "wallet encrypted, restart process",
+                    rpc_json_parser::translator<std::string> ()
+                );
+            }
+            else
+            {
+                boost::property_tree::ptree pt_result;
+                
+                pt_result.put("", "null");
+                
+                boost::property_tree::ptree pt_error;
+                
+                pt_error.put("code", 0);
+                pt_error.put(
+                    "message", "error_code_wallet_encryption_failed",
+                    rpc_json_parser::translator<std::string> ()
+                );
+                
+                /**
+                 * :TODO: error_code_wallet_encryption_failed
+                 */
+                return json_rpc_response_t{
+                    pt_result, pt_error, request.id
+                };
+            }
+        }
+        else
+        {
+            // ...
+        }
+    }
+    catch (std::exception & e)
+    {
+        auto pt_error = create_error_object(
+            error_code_misc_error, e.what()
+        );
+        
+        /**
+         * error_code_misc_error
+         */
+        return json_rpc_response_t{
+            boost::property_tree::ptree(), pt_error, request.id
+        };
+    }
+
+    return ret;
+}
+
 rpc_connection::json_rpc_response_t rpc_connection::json_dumpprivkey(
     const json_rpc_request_t & request
     )
@@ -836,29 +912,30 @@ rpc_connection::json_rpc_response_t rpc_connection::json_dumpprivkey(
             
             if (addr.set_string(param_address) == false)
             {
-                boost::property_tree::ptree pt_result;
-                
-                pt_result.put("", "null");
+                auto pt_error = create_error_object(
+                    error_code_invalid_address_or_key, "invalid address"
+                );
                 
                 /**
-                 * :TODO: rpc_type_incalid_address_or_key
+                 * error_code_invalid_address_or_key
                  */
                 return json_rpc_response_t{
-                    pt_result, "rpc_type_incalid_address_or_key", request.id
+                    boost::property_tree::ptree(), pt_error, request.id
                 };
             }
             
             if (globals::instance().wallet_unlocked_mint_only())
             {
-                boost::property_tree::ptree pt_result;
-                
-                pt_result.put("", "null");
+                auto pt_error = create_error_object(
+                    error_code_wallet_unlock_needed,
+                    "wallet is unlocked for minting only"
+                );
                 
                 /**
-                 * :TODO: rpc_type_wallet_unlock_needed
+                 * error_code_wallet_unlock_needed
                  */
                 return json_rpc_response_t{
-                    pt_result, "rpc_type_wallet_unlock_needed", request.id
+                    boost::property_tree::ptree(), pt_error, request.id
                 };
             }
             
@@ -866,15 +943,15 @@ rpc_connection::json_rpc_response_t rpc_connection::json_dumpprivkey(
             
             if (addr.get_id_key(key_id) == false)
             {
-                boost::property_tree::ptree pt_result;
-                
-                pt_result.put("", "null");
+                auto pt_error = create_error_object(
+                    error_code_type_error, "failed to get key id"
+                );
                 
                 /**
-                 * :TODO: rpc_type_error
+                 * error_code_type_error
                  */
                 return json_rpc_response_t{
-                    pt_result, "rpc_type_error", request.id
+                    boost::property_tree::ptree(), pt_error, request.id
                 };
             }
             
@@ -887,15 +964,15 @@ rpc_connection::json_rpc_response_t rpc_connection::json_dumpprivkey(
                 key_id, s, compressed) == false
                 )
             {
-                boost::property_tree::ptree pt_result;
-                
-                pt_result.put("", "null");
+                auto pt_error = create_error_object(
+                    error_code_wallet_error, "failed to get secret"
+                );
                 
                 /**
-                 * :TODO: rpc_wallet_error
+                 * error_code_wallet_error
                  */
                 return json_rpc_response_t{
-                    pt_result, "rpc_wallet_error", request.id
+                    boost::property_tree::ptree(), pt_error, request.id
                 };
             }
             
@@ -911,22 +988,17 @@ rpc_connection::json_rpc_response_t rpc_connection::json_dumpprivkey(
     }
     catch (std::exception & e)
     {
-        boost::property_tree::ptree pt_result;
-        
-        pt_result.put("", "null");
+        auto pt_error = create_error_object(
+            error_code_internal_error, e.what()
+        );
         
         /**
-         * :TODO: error_code_???
+         * error_code_internal_error
          */
         return json_rpc_response_t{
-            pt_result, e.what(), request.id
+            boost::property_tree::ptree(), pt_error, request.id
         };
     }
-    
-    /**
-     * Set the error to null.
-     */
-    ret.error = "";
     
     return ret;
 }
@@ -954,20 +1026,34 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getaccount(
                 auto account =
                     request.params.front().second.get<std::string> ("")
                 ;
-
-                auto address_book =
-                    globals::instance().wallet_main()->address_book()
-                ;
                 
-                for (auto & i : address_book)
+                address addr(account);
+                
+                if (addr.is_valid() == false)
                 {
-                    const address & addr = i.first;
-                    const auto & name = i.second;
+                    auto pt_error = create_error_object(
+                        error_code_invalid_address_or_key, "invalid address"
+                    );
                     
-                    if (account == name)
+                    /**
+                     * error_code_invalid_address_or_key
+                     */
+                    return json_rpc_response_t{
+                        boost::property_tree::ptree(), pt_error, request.id
+                    };
+                }
+                else
+                {
+                    auto address_book =
+                        globals::instance().wallet_main()->address_book()
+                    ;
+                    
+                    auto it = address_book.find(addr.get());
+                    
+                    if (it != address_book.end())
                     {
                         ret.result.put(
-                            "", addr.to_string(),
+                            "", it->second,
                             rpc_json_parser::translator<std::string> ()
                         );
                     }
@@ -975,41 +1061,45 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getaccount(
             }
             catch (std::exception & e)
             {
-                boost::property_tree::ptree pt_result;
-                
-                pt_result.put("", "null");
+                auto pt_error = create_error_object(
+                    error_code_internal_error, e.what()
+                );
                 
                 /**
-                 * :TODO: error_code_???
+                 * error_code_internal_error
                  */
                 return json_rpc_response_t{
-                    pt_result, e.what(), request.id
+                    boost::property_tree::ptree(), pt_error, request.id
                 };
             }
         }
         else
         {
-            // ...
+            auto pt_error = create_error_object(
+                error_code_invalid_params, "invalid parameter count"
+            );
+            
+            /**
+             * error_code_invalid_params
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
         }
     }
     catch (std::exception & e)
     {
-        boost::property_tree::ptree pt_result;
-        
-        pt_result.put("", "null");
+        auto pt_error = create_error_object(
+            error_code_internal_error, e.what()
+        );
         
         /**
-         * :TODO: error_code_???
+         * error_code_internal_error
          */
         return json_rpc_response_t{
-            pt_result, e.what(), request.id
+            boost::property_tree::ptree(), pt_error, request.id
         };
     }
-    
-    /**
-     * Set the error to null.
-     */
-    ret.error = "";
     
     return ret;
 }
@@ -1034,11 +1124,6 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getbalance(
                 globals::instance().wallet_main()->get_balance()) /
                 static_cast<double> (constants::coin)
             );
-            
-            /**
-             * Set the error to null.
-             */
-            ret.error = "";
             
             return ret;
         }
@@ -1128,11 +1213,6 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getbalance(
                     static_cast<double> (constants::coin)
                 );
                 
-                /**
-                 * Set the error to null.
-                 */
-                ret.error = "";
-                
                 return ret;
             }
             else
@@ -1146,33 +1226,36 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getbalance(
                     static_cast<double> (constants::coin)
                 );
                 
-                /**
-                 * Set the error to null.
-                 */
-                ret.error = "";
-                
                 return ret;
             }
+        }
+        else
+        {
+            auto pt_error = create_error_object(
+                error_code_invalid_params, "invalid parameter count"
+            );
+            
+            /**
+             * error_code_invalid_params
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
         }
     }
     catch (std::exception & e)
     {
-        boost::property_tree::ptree pt_result;
-        
-        pt_result.put("", "null");
+        auto pt_error = create_error_object(
+            error_code_internal_error, e.what()
+        );
         
         /**
-         * :TODO: error_code_???
+         * error_code_internal_error
          */
         return json_rpc_response_t{
-           pt_result, e.what(), request.id
+            boost::property_tree::ptree(), pt_error, request.id
         };
     }
-    
-    /**
-     * Set the error to null.
-     */
-    ret.error = "";
     
     return ret;
 }
@@ -1214,25 +1297,33 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getdifficulty(
                 globals::instance().last_coin_stake_search_interval()
             );
         }
+        else
+        {
+            auto pt_error = create_error_object(
+                error_code_invalid_params, "invalid parameter count"
+            );
+            
+            /**
+             * error_code_invalid_params
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
+        }
     }
     catch (std::exception & e)
     {
-        boost::property_tree::ptree pt_result;
-        
-        pt_result.put("", "null");
+        auto pt_error = create_error_object(
+            error_code_internal_error, e.what()
+        );
         
         /**
-         * :TODO: error_code_???
+         * error_code_internal_error
          */
         return json_rpc_response_t{
-            pt_result, e.what(), request.id
+            boost::property_tree::ptree(), pt_error, request.id
         };
     }
-
-    /**
-     * Set the error to null.
-     */
-    ret.error = "";
     
     return ret;
 }
@@ -1258,15 +1349,15 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getblock(
             
             if (globals::instance().block_indexes().count(hash_block) == 0)
             {
-                boost::property_tree::ptree pt_result;
-                
-                pt_result.put("", "null");
+                auto pt_error = create_error_object(
+                    error_code_invalid_address_or_key, "block not found"
+                );
                 
                 /**
-                 * :TODO: error_code_invalid_address_or_key
+                 * error_code_invalid_address_or_key
                  */
                 return json_rpc_response_t{
-                    pt_result,  "block not found", request.id
+                    boost::property_tree::ptree(), pt_error, request.id
                 };
             }
             else
@@ -1383,25 +1474,31 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getblock(
         }
         else
         {
-            // ...
+            auto pt_error = create_error_object(
+                error_code_invalid_params, "invalid parameter count"
+            );
+            
+            /**
+             * error_code_invalid_params
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
         }
     }
     catch (std::exception & e)
     {
-        boost::property_tree::ptree pt_result;
-        
-        pt_result.put("", "null");
+        auto pt_error = create_error_object(
+            error_code_internal_error, e.what()
+        );
         
         /**
-         * :TODO: error_code_???
+         * error_code_internal_error
          */
-        return json_rpc_response_t{ pt_result,  e.what(), request.id };
+        return json_rpc_response_t{
+            boost::property_tree::ptree(), pt_error, request.id
+        };
     }
-    
-    /**
-     * Set the error to null.
-     */
-    ret.error = "";
     
     return ret;
 }
@@ -1440,25 +1537,31 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getblockhash(
         }
         else
         {
-            // ...
+            auto pt_error = create_error_object(
+                error_code_invalid_params, "invalid parameter count"
+            );
+            
+            /**
+             * error_code_invalid_params
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
         }
     }
     catch (std::exception & e)
     {
-        boost::property_tree::ptree pt_result;
-        
-        pt_result.put("", "null");
+        auto pt_error = create_error_object(
+            error_code_internal_error, e.what()
+        );
         
         /**
-         * :TODO: error_code_???
+         * error_code_internal_error
          */
-        return json_rpc_response_t{ pt_result,  e.what(), request.id };
+        return json_rpc_response_t{
+            boost::property_tree::ptree(), pt_error, request.id
+        };
     }
-    
-    /**
-     * Set the error to null.
-     */
-    ret.error = "";
     
     return ret;
 }
@@ -1493,15 +1596,15 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getblocktemplate(
                 }
                 else
                 {
-                    boost::property_tree::ptree pt_result;
+                    auto pt_error = create_error_object(
+                        error_code_invalid_parameter, "invalid parameter"
+                    );
                     
-                    pt_result.put("", "null");
-                
                     /**
                      * error_code_invalid_parameter
                      */
                     return json_rpc_response_t{
-                        pt_result, "invalid parameter", request.id
+                        boost::property_tree::ptree(), pt_error, request.id
                     };
                 }
             }
@@ -1509,15 +1612,15 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getblocktemplate(
 
         if (mode != "template")
         {
-            boost::property_tree::ptree pt_result;
-            
-            pt_result.put("", "null");
+            auto pt_error = create_error_object(
+                error_code_invalid_parameter, "invalid parameter"
+            );
             
             /**
              * error_code_invalid_parameter
              */
             return json_rpc_response_t{
-                pt_result, "invalid parameter (mode)", request.id
+                boost::property_tree::ptree(), pt_error, request.id
             };
         }
 
@@ -1526,29 +1629,29 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getblocktemplate(
             )->tcp_connections().size() == 0
             )
         {
-            boost::property_tree::ptree pt_result;
-            
-            pt_result.put("", "null");
+            auto pt_error = create_error_object(
+                error_code_client_not_connected, "client not connected"
+            );
             
             /**
              * error_code_client_not_connected
              */
             return json_rpc_response_t{
-                pt_result, "error_code_client_not_connected", request.id
+                boost::property_tree::ptree(), pt_error, request.id
             };
         }
 
         if (utility::is_initial_block_download())
         {
-            boost::property_tree::ptree pt_result;
-            
-            pt_result.put("", "null");
+            auto pt_error = create_error_object(
+                error_code_client_in_initial_download, "in initial download"
+            );
             
             /**
              * error_code_client_in_initial_download
              */
             return json_rpc_response_t{
-                pt_result, "error_code_client_in_initial_download", request.id
+                boost::property_tree::ptree(), pt_error, request.id
             };
         }
 
@@ -1592,15 +1695,15 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getblocktemplate(
             
             if (blk == 0)
             {
-                boost::property_tree::ptree pt_result;
-                
-                pt_result.put("", "null");
+                auto pt_error = create_error_object(
+                    error_code_out_of_memory, "out of memory"
+                );
                 
                 /**
                  * error_code_out_of_memory
                  */
                 return json_rpc_response_t{
-                    pt_result, "out of memory", request.id
+                    boost::property_tree::ptree(), pt_error, request.id
                 };
             }
             
@@ -1851,20 +1954,17 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getblocktemplate(
     }
     catch (std::exception & e)
     {
-        boost::property_tree::ptree pt_result;
-        
-        pt_result.put("", "null");
+        auto pt_error = create_error_object(
+            error_code_internal_error, e.what()
+        );
         
         /**
-         * :TODO: error_code_???
+         * error_code_internal_error
          */
-        return json_rpc_response_t{ pt_result,  e.what(), request.id };
+        return json_rpc_response_t{
+            boost::property_tree::ptree(), pt_error, request.id
+        };
     }
-    
-    /**
-     * Set the error to null.
-     */
-    ret.error = "";
     
     return ret;
 }
@@ -1982,25 +2082,33 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getmininginfo(
             ret.result.put("pooledtx", transaction_pool().instance().size());
             ret.result.put("testnet", constants::test_net);
         }
+        else
+        {
+            auto pt_error = create_error_object(
+                error_code_invalid_params, "invalid parameter count"
+            );
+            
+            /**
+             * error_code_invalid_params
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
+        }
     }
     catch (std::exception & e)
     {
-        boost::property_tree::ptree pt_result;
+        auto pt_error = create_error_object(
+            error_code_internal_error, e.what()
+        );
         
-        pt_result.put("", "null");
-  
         /**
-         * :TODO: error_code_???
+         * error_code_internal_error
          */
         return json_rpc_response_t{
-            pt_result, e.what(), request.id
+            boost::property_tree::ptree(), pt_error, request.id
         };
     }
-    
-    /**
-     * Set the error to null.
-     */
-    ret.error = "";
     
     return ret;
 }
@@ -2024,22 +2132,17 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getnetworkhashps(
     }
     catch (std::exception & e)
     {
-        boost::property_tree::ptree pt_result;
+        auto pt_error = create_error_object(
+            error_code_internal_error, e.what()
+        );
         
-        pt_result.put("", "null");
-  
         /**
-         * :TODO: error_code_???
+         * error_code_internal_error
          */
         return json_rpc_response_t{
-            pt_result, e.what(), request.id
+            boost::property_tree::ptree(), pt_error, request.id
         };
     }
-    
-    /**
-     * Set the error to null.
-     */
-    ret.error = "";
     
     return ret;
 }
@@ -2112,22 +2215,17 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getpeerinfo(
     }
     catch (std::exception & e)
     {
-        boost::property_tree::ptree pt_result;
-        
-        pt_result.put("", "null");
+        auto pt_error = create_error_object(
+            error_code_internal_error, e.what()
+        );
         
         /**
-         * :TODO: error_code_???
+         * error_code_internal_error
          */
         return json_rpc_response_t{
-            pt_result, e.what(), request.id
+            boost::property_tree::ptree(), pt_error, request.id
         };
     }
-    
-    /**
-     * Set the error to null.
-     */
-    ret.error = "";
     
     return ret;
 }
@@ -2170,15 +2268,17 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getrawtransaction(
             
             if (utility::get_transaction(hash_tx, tx, hash_block) == false)
             {
-                boost::property_tree::ptree pt_result;
-                
-                pt_result.put("", "null");
+                auto pt_error = create_error_object(
+                    error_code_invalid_address_or_key,
+                    "invalid key or address"
+                );
                 
                 /**
-                 * :TODO: error_code_invalid_key_or_address
+                 * error_code_invalid_address_or_key
                  */
                 return json_rpc_response_t{
-                    pt_result, "error_code_invalid_key_or_address", request.id
+                    boost::property_tree::ptree(), pt_error,
+                    request.id
                 };
             }
 
@@ -2269,7 +2369,7 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getrawtransaction(
                     
                     std::vector<destination::tx_t> addresses;
                     
-                    int required;
+                    std::int32_t required;
 
                     pt_o.put(
                         "asm", tx_out.script_public_key().to_string(),
@@ -2376,28 +2476,32 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getrawtransaction(
         }
         else
         {
-            // ...
+            auto pt_error = create_error_object(
+                error_code_invalid_params, "invalid parameter count"
+            );
+            
+            /**
+             * error_code_invalid_params
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
         }
     }
     catch (std::exception & e)
     {
-        boost::property_tree::ptree pt_result;
-        
-        pt_result.put("", "null");
+        auto pt_error = create_error_object(
+            error_code_internal_error, e.what()
+        );
         
         /**
-         * :TODO: error_code_???
+         * error_code_internal_error
          */
         return json_rpc_response_t{
-            pt_result, e.what(), request.id
+            boost::property_tree::ptree(), pt_error, request.id
         };
     }
-    
-    /**
-     * Set the error to null.
-     */
-    ret.error = "";
-    
+
     return ret;
 }
 
@@ -2523,23 +2627,32 @@ rpc_connection::json_rpc_response_t rpc_connection::json_gettransaction(
                 }
                 else
                 {
-                    boost::property_tree::ptree pt_result;
+                    auto pt_error = create_error_object(
+                        error_code_invalid_address_or_key,
+                        "error_code_invalid_address_or_key"
+                    );
                     
-                    pt_result.put("", "null");
-    
                     /**
                      * error_code_invalid_address_or_key
                      */
                     return json_rpc_response_t{
-                        pt_result,
-                        "error_code_invalid_address_or_key", request.id
+                        boost::property_tree::ptree(), pt_error, request.id
                     };
                 }
             }
         }
         else
         {
-            // ...
+            auto pt_error = create_error_object(
+                error_code_invalid_params, "invalid parameter count"
+            );
+            
+            /**
+             * error_code_invalid_params
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
         }
     
     }
@@ -2550,12 +2663,7 @@ rpc_connection::json_rpc_response_t rpc_connection::json_gettransaction(
             e.what() << "."
         );
     }
-    
-    /**
-     * Set the error to null.
-     */
-    ret.error = "";
-    
+
     return ret;
 }
 
@@ -2646,16 +2754,17 @@ rpc_connection::json_rpc_response_t rpc_connection::json_sendmany(
                          */
                         if (addresses.count(addr) > 0)
                         {
-                            boost::property_tree::ptree pt_result;
+                            auto pt_error = create_error_object(
+                                error_code_invalid_parameter,
+                                "invalid parameter"
+                            );
                             
-                            pt_result.put("", "null");
-                
                             /**
                              * error_code_invalid_parameter
                              */
                             return json_rpc_response_t{
-                                pt_result,
-                                "error_code_invalid_parameter", request.id
+                                boost::property_tree::ptree(), pt_error,
+                                request.id
                             };
                         }
                         else
@@ -2682,16 +2791,16 @@ rpc_connection::json_rpc_response_t rpc_connection::json_sendmany(
                                 value > constants::max_money_supply
                                 )
                             {
-                                boost::property_tree::ptree pt_result;
+                                auto pt_error = create_error_object(
+                                    error_code_type_error, "invalid amount"
+                                );
                                 
-                                pt_result.put("", "null");
-                
                                 /**
-                                 * error_code_invalid_amount
+                                 * error_code_type_error
                                  */
                                 return json_rpc_response_t{
-                                    pt_result,
-                                    "error_code_invalid_amount", request.id
+                                    boost::property_tree::ptree(), pt_error,
+                                    request.id
                                 };
                             }
                             
@@ -2709,16 +2818,17 @@ rpc_connection::json_rpc_response_t rpc_connection::json_sendmany(
                              */
                             if (utility::money_range(amount) == false)
                             {
-                                boost::property_tree::ptree pt_result;
+                                auto pt_error = create_error_object(
+                                    error_code_type_error,
+                                    "invalid amount"
+                                );
                                 
-                                pt_result.put("", "null");
-                
                                 /**
-                                 * error_code_invalid_amount
+                                 * error_code_type_error
                                  */
                                 return json_rpc_response_t{
-                                    pt_result,
-                                    "error_code_invalid_amount", request.id
+                                    boost::property_tree::ptree(), pt_error,
+                                    request.id
                                 };
                             }
 
@@ -2728,16 +2838,17 @@ rpc_connection::json_rpc_response_t rpc_connection::json_sendmany(
                              */
                             if (amount < constants::min_tx_fee)
                             {
-                                boost::property_tree::ptree pt_result;
+                                auto pt_error = create_error_object(
+                                    error_code_amount_too_small,
+                                    "amount too small"
+                                );
                                 
-                                pt_result.put("", "null");
-                
                                 /**
-                                 * -101
+                                 * error_code_amount_too_small
                                  */
                                 return json_rpc_response_t{
-                                    pt_result,
-                                    "amount too small", request.id
+                                    boost::property_tree::ptree(), pt_error,
+                                    request.id
                                 };
                             }
                             
@@ -2753,17 +2864,17 @@ rpc_connection::json_rpc_response_t rpc_connection::json_sendmany(
                     }
                     else
                     {
-                        boost::property_tree::ptree pt_result;
+                        auto pt_error = create_error_object(
+                            error_code_invalid_address_or_key,
+                            "error_code_invalid_address_or_key(" + i.first +
+                            ")"
+                        );
                         
-                        pt_result.put("", "null");
-                
                         /**
-                         * error_code_invalid_address_or_key
+                         * :TODO: error_code_invalid_address_or_key
                          */
                         return json_rpc_response_t{
-                            pt_result,
-                            "error_code_invalid_address_or_key(" +
-                            i.first + ")", request.id
+                            boost::property_tree::ptree(), pt_error, request.id
                         };
                     }
                 }
@@ -2773,16 +2884,15 @@ rpc_connection::json_rpc_response_t rpc_connection::json_sendmany(
                  */
                 if (globals::instance().wallet_main()->is_locked())
                 {
-                    boost::property_tree::ptree pt_result;
+                    auto pt_error = create_error_object(
+                        error_code_wallet_unlock_needed, "wallet is locked"
+                    );
                     
-                    pt_result.put("", "null");
-                
                     /**
                      * error_code_wallet_unlock_needed
                      */
                     return json_rpc_response_t{
-                        pt_result,
-                        "error_code_wallet_unlock_needed", request.id
+                        boost::property_tree::ptree(), pt_error, request.id
                     };
                 }
                 
@@ -2791,17 +2901,16 @@ rpc_connection::json_rpc_response_t rpc_connection::json_sendmany(
                  */
                 if (globals::instance().wallet_unlocked_mint_only())
                 {
-                    boost::property_tree::ptree pt_result;
+                    auto pt_error = create_error_object(
+                        error_code_wallet_unlock_needed,
+                        "wallet is unlocked for minting only"
+                    );
                     
-                    pt_result.put("", "null");
-                
                     /**
                      * error_code_wallet_unlock_needed
                      */
                     return json_rpc_response_t{
-                        pt_result,
-                        "error_code_wallet_unlock_needed (mint only)",
-                        request.id
+                        boost::property_tree::ptree(), pt_error, request.id
                     };
                 }
 
@@ -2814,16 +2923,16 @@ rpc_connection::json_rpc_response_t rpc_connection::json_sendmany(
 
                 if (total_amount > balance)
                 {
-                    boost::property_tree::ptree pt_result;
+                    auto pt_error = create_error_object(
+                        error_code_wallet_insufficient_funds,
+                        "insufficient funds"
+                    );
                     
-                    pt_result.put("", "null");
-                
                     /**
                      * error_code_wallet_insufficient_funds
                      */
                     return json_rpc_response_t{
-                        pt_result,
-                        "error_code_wallet_insufficient_funds", request.id
+                        boost::property_tree::ptree(), pt_error, request.id
                     };
                 }
 
@@ -2846,30 +2955,19 @@ rpc_connection::json_rpc_response_t rpc_connection::json_sendmany(
                         globals::instance().wallet_main()->get_balance()
                         )
                     {
-                        boost::property_tree::ptree pt_result;
+                        auto pt_error = create_error_object(
+                            error_code_wallet_insufficient_funds,
+                            "insufficient funds"
+                        );
                         
-                        pt_result.put("", "null");
-                
                         /**
-                         * error_code_wallet_error
+                         * error_code_wallet_insufficient_funds
                          */
                         return json_rpc_response_t{
-                            pt_result,
-                            "insufficient funds", request.id
+                            boost::property_tree::ptree(), pt_error,
+                            request.id
                         };
                     }
-
-                    boost::property_tree::ptree pt_result;
-                    
-                    pt_result.put("", "null");
-                
-                    /**
-                     * error_code_wallet_error
-                     */
-                    return json_rpc_response_t{
-                        pt_result,
-                        "failed to create transaction", request.id
-                    };
                 }
                 
                 /**
@@ -2880,16 +2978,17 @@ rpc_connection::json_rpc_response_t rpc_connection::json_sendmany(
                     wtx, k) == false
                     )
                 {
-                    boost::property_tree::ptree pt_result;
-                    
-                    pt_result.put("", "null");
+                    auto pt_error = create_error_object(
+                        error_code_wallet_error,
+                        "failed to commit transaction"
+                    );
                     
                     /**
                      * error_code_wallet_error
                      */
                     return json_rpc_response_t{
-                        pt_result,
-                        "failed to commit transaction", request.id
+                        boost::property_tree::ptree(), pt_error,
+                        request.id
                     };
                 }
                 
@@ -2906,6 +3005,19 @@ rpc_connection::json_rpc_response_t rpc_connection::json_sendmany(
                 // ...
             }
         }
+        else
+        {
+            auto pt_error = create_error_object(
+                error_code_invalid_params, "invalid parameter count"
+            );
+            
+            /**
+             * error_code_invalid_params
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
+        }
     }
     catch (std::exception & e)
     {
@@ -2913,13 +3025,19 @@ rpc_connection::json_rpc_response_t rpc_connection::json_sendmany(
             "RPC Connection failed to create json_sendmany, what = " <<
             e.what() << "."
         );
+        
+        auto pt_error = create_error_object(
+            error_code_internal_error, e.what()
+        );
+        
+        /**
+         * error_code_internal_error
+         */
+        return json_rpc_response_t{
+            boost::property_tree::ptree(), pt_error, request.id
+        };
     }
-    
-    /**
-     * Set the error to null.
-     */
-    ret.error = "";
-    
+
     return ret;
 }
 
@@ -2987,43 +3105,43 @@ rpc_connection::json_rpc_response_t rpc_connection::json_submitblock(
                 }
                 else
                 {
-                    boost::property_tree::ptree pt_result;
-                    
-                    pt_result.put("", "null");
+                    auto pt_error = create_error_object(
+                        error_code_sign_block_failed, "failed to sign block"
+                    );
                     
                     /**
-                     * -100
+                     * error_code_sign_block_failed
                      */
                     return json_rpc_response_t{
-                        pt_result, "failed to sign block", request.id
+                        boost::property_tree::ptree(), pt_error, request.id
                     };
                 }
             }
             else
             {
-                boost::property_tree::ptree pt_result;
-                
-                pt_result.put("", "null");
+                auto pt_error = create_error_object(
+                    error_code_deserialization_error, "failed to decode block"
+                );
                 
                 /**
-                 * error_code_decode_error
+                 * error_code_deserialization_error
                  */
                 return json_rpc_response_t{
-                    pt_result, "failed to decode block", request.id
+                    boost::property_tree::ptree(), pt_error, request.id
                 };
             }
         }
         else
         {
-            boost::property_tree::ptree pt_result;
-            
-            pt_result.put("", "null");
+            auto pt_error = create_error_object(
+                error_code_invalid_parameter, "invalid parameter"
+            );
             
             /**
-             * error_code_decode_error
+             * error_code_invalid_parameter
              */
             return json_rpc_response_t{
-                pt_result, "error_code_invalid_parameter", request.id
+                boost::property_tree::ptree(), pt_error, request.id
             };
         }
     }
@@ -3035,19 +3153,14 @@ rpc_connection::json_rpc_response_t rpc_connection::json_submitblock(
         );
     }
     
-    /**
-     * Set the error to null.
-     */
-    ret.error = "";
-    
     return ret;
 }
 
-boost::property_tree::ptree rpc_connection::json_validateaddress(
+rpc_connection::json_rpc_response_t rpc_connection::json_validateaddress(
     const json_rpc_request_t & request
     )
 {
-    boost::property_tree::ptree ret;
+    rpc_connection::json_rpc_response_t ret;
 
     try
     {
@@ -3069,7 +3182,7 @@ boost::property_tree::ptree rpc_connection::json_validateaddress(
                 
                 auto is_valid = addr.is_valid();
                 
-                ret.put("isvalid", is_valid);
+                ret.result.put("isvalid", is_valid);
                 
                 if (is_valid)
                 {
@@ -3077,7 +3190,7 @@ boost::property_tree::ptree rpc_connection::json_validateaddress(
                     
                     auto current_addr = addr.to_string();
                     
-                    ret.put(
+                    ret.result.put(
                         "address", current_addr,
                         rpc_json_parser::translator<std::string> ()
                     );
@@ -3086,7 +3199,7 @@ boost::property_tree::ptree rpc_connection::json_validateaddress(
                         *globals::instance().wallet_main(), dest
                     );
                     
-                    ret.put("ismine", is_mine);
+                    ret.result.put("ismine", is_mine);
                     
                     if (is_mine)
                     {
@@ -3095,8 +3208,9 @@ boost::property_tree::ptree rpc_connection::json_validateaddress(
                             dest)
                         ;
                         
-                        ret.insert(
-                            ret.begin(), pt_detail.begin(), pt_detail.end()
+                        ret.result.insert(
+                            ret.result.begin(), pt_detail.begin(),
+                            pt_detail.end()
                         );
                     }
                     
@@ -3110,7 +3224,7 @@ boost::property_tree::ptree rpc_connection::json_validateaddress(
                         )->address_book().end()
                         )
                     {
-                        ret.put(
+                        ret.result.put(
                             "account", it->second,
                             rpc_json_parser::translator<std::string> ()
                         );
@@ -3123,11 +3237,31 @@ boost::property_tree::ptree rpc_connection::json_validateaddress(
                     "RPC connection failed to json_validateaddress, what = " <<
                     e.what() << "."
                 );
+                
+                auto pt_error = create_error_object(
+                    error_code_internal_error, e.what()
+                );
+                
+                /**
+                 * error_code_internal_error
+                 */
+                return json_rpc_response_t{
+                    boost::property_tree::ptree(), pt_error, request.id
+                };
             }
         }
         else
         {
-            // ...
+            auto pt_error = create_error_object(
+                error_code_invalid_params, "invalid parameter coiunt"
+            );
+            
+            /**
+             * error_code_invalid_params
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
         }
     }
     catch (std::exception & e)
@@ -3136,6 +3270,17 @@ boost::property_tree::ptree rpc_connection::json_validateaddress(
             "RPC Connection failed to create json_validateaddress, what = " <<
             e.what() << "."
         );
+        
+        auto pt_error = create_error_object(
+            error_code_internal_error, e.what()
+        );
+        
+        /**
+         * error_code_internal_error
+         */
+        return json_rpc_response_t{
+            boost::property_tree::ptree(), pt_error, request.id
+        };
     }
     
     return ret;
@@ -3574,5 +3719,19 @@ boost::property_tree::ptree rpc_connection::transactions_to_ptree(
         }
     }
 
+    return ret;
+}
+
+boost::property_tree::ptree rpc_connection::create_error_object(
+    const error_code_t & code, const std::string & message
+    )
+{
+    boost::property_tree::ptree ret;
+    
+    ret.put("code", code);
+    ret.put(
+        "message", message, rpc_json_parser::translator<std::string> ()
+    );
+    
     return ret;
 }

@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of coinpp.
  *
- * Vanillacoin is free software: you can redistribute it and/or modify
+ * coinpp is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -100,7 +100,7 @@ namespace coin {
             typedef struct
             {
                 boost::property_tree::ptree result;
-                std::string error;
+                boost::property_tree::ptree error;
                 std::string id;
             } json_rpc_response_t;
         
@@ -160,6 +160,39 @@ namespace coin {
             );
         
         protected:
+        
+            /**
+             * The error codes.
+             */
+            typedef enum error_code_s
+            {
+                error_code_invalid_request  = -32600,
+                error_code_method_not_found = -32601,
+                error_code_invalid_params = -32602,
+                error_code_internal_error = -32603,
+                error_code_parse_error = -32700,
+                error_code_misc_error = -1,
+                error_code_forbidden_by_safe_mode = -2,
+                error_code_type_error = -3,
+                error_code_invalid_address_or_key = -5,
+                error_code_out_of_memory = -7,
+                error_code_invalid_parameter = -8,
+                error_code_database_error = -20,
+                error_code_deserialization_error = -22,
+                error_code_client_not_connected = -9,
+                error_code_client_in_initial_download = -10,
+                error_code_wallet_error = -4,
+                error_code_wallet_insufficient_funds = -6,
+                error_code_wallet_invalid_account_name = -11,
+                error_code_wallet_keypool_ran_out = -12,
+                error_code_wallet_unlock_needed = -13,
+                error_code_wallet_passphrase_incorrect = -14,
+                error_code_wallet_wrong_enc_state = -15,
+                error_code_wallet_encryption_failed = -16,
+                error_code_wallet_already_unlocked = -17,
+                error_code_sign_block_failed = -100,
+                error_code_amount_too_small = -101,
+            } error_code_t;
         
             /**
              * A static visitor that describes an address.
@@ -238,9 +271,7 @@ namespace coin {
                                 rpc_json_parser::translator<std::string> ()
                             );
                             
-                            pt_addresses.push_back(
-                                std::make_pair("", pt_child)
-                            );
+                            pt_addresses.push_back(std::make_pair("", pt_child));
                         }
                         
                         pt.put_child("addresses", pt_addresses);
@@ -291,6 +322,14 @@ namespace coin {
              * @param request The json_rpc_request_t.
              */
             json_rpc_response_t json_dumpprivkey(
+                const json_rpc_request_t & request
+            );
+        
+            /**
+             * Encodes encryptwallet data into JSON format.
+             * @param request The json_rpc_request_t.
+             */
+            json_rpc_response_t json_encryptwallet(
                 const json_rpc_request_t & request
             );
         
@@ -407,7 +446,7 @@ namespace coin {
              * Performs a validateaddress operation.
              * @param request The json_rpc_request_t.
              */
-            boost::property_tree::ptree json_validateaddress(
+            json_rpc_response_t json_validateaddress(
                 const json_rpc_request_t & request
             );
         
@@ -441,6 +480,15 @@ namespace coin {
                 const transaction_wallet & wtx, const std::string & account,
                 const std::uint32_t & minimim_depth,
                 const bool & include_transactions
+            );
+        
+            /**
+             * Creates a JSON-RPC 2.0 error object.
+             * @param code The error_code_t.
+             * @param message The message.
+             */
+            boost::property_tree::ptree create_error_object(
+                const error_code_t & code, const std::string & message
             );
         
             /**
