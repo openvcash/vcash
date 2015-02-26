@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
- * Vanillacoin is free software: you can redistribute it and/or modify
+ * vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -32,6 +32,7 @@
 
 namespace coin {
     
+    class account;
     class block_locator;
     class data_buffer;
     class key_pool;
@@ -63,9 +64,13 @@ namespace coin {
         
             /**
              * Constructor
+             * @param file_name The file name.
              * @param file_mode The file mode.
              */
-            db_wallet(const std::string & file_mode = "+r");
+            db_wallet(
+                const std::string & file_name,
+                const std::string & file_mode = "+r"
+            );
         
             /**
              * Loads a wallet from the database into the wallet class.
@@ -105,6 +110,20 @@ namespace coin {
              */
             bool write_name(const std::string & addr, const std::string & name);
         
+            /**
+             * Reads an account.
+             * @param name The name of the account.
+             * @param acct The account.
+             */
+            bool read_account(const std::string & name, account & acct);
+        
+            /**
+             * Writes an account.
+             * @param name The name of the account.
+             * @param acct The account.
+             */
+            bool write_account(const std::string & name, account & acct);
+    
             /**
              * Erases a transaction.
              * @param val The sha256.

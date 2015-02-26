@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
- * Vanillacoin is free software: you can redistribute it and/or modify
+ * vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -283,13 +283,11 @@ void transaction_wallet::get_amounts(
     {
         if (get_blocks_to_maturity() > 0)
         {
-            generated_immature =
-                wallet_->get_credit(*this) - wallet_->get_debit(*this)
-            ;
+            generated_immature = wallet_->get_credit(*this);
         }
         else
         {
-            generated_mature = get_credit() - get_debit();
+            generated_mature = get_credit();
         }
         
         return;
@@ -308,9 +306,7 @@ void transaction_wallet::get_amounts(
     for (auto & i : transactions_out())
     {
         destination::tx_t address;
-        
-        std::vector<std::uint8_t> vchPubKey;
-        
+
         if (
             script::extract_destination(i.script_public_key(), address) == false
             )
@@ -480,7 +476,9 @@ void transaction_wallet::add_supporting_transactions(db_tx & tx_db)
     );
 }
 
-bool transaction_wallet::accept_wallet_transaction(db_tx & tx_db)
+std::pair<bool, std::string> transaction_wallet::accept_wallet_transaction(
+    db_tx & tx_db
+    )
 {
     /**
      * Add previous supporting transactions first.
@@ -504,7 +502,7 @@ bool transaction_wallet::accept_wallet_transaction(db_tx & tx_db)
     return transaction::accept_to_transaction_pool(tx_db);
 }
 
-bool transaction_wallet::accept_wallet_transaction()
+std::pair<bool, std::string> transaction_wallet::accept_wallet_transaction()
 {
     db_tx tx_db("r");
     
@@ -692,7 +690,7 @@ std::int64_t transaction_wallet::get_available_credit(
 
 bool transaction_wallet::write_to_disk()
 {
-    return db_wallet().write_tx(get_hash(), *this);
+    return db_wallet("wallet.dat").write_tx(get_hash(), *this);
 }
 
 void transaction_wallet::relay_wallet_transaction(

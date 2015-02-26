@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
- * Vanillacoin is free software: you can redistribute it and/or modify
+ * vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -979,6 +979,10 @@ void tcp_connection::send_getdata_message()
         
         if (getdata_.size() > 0)
         {
+            /**
+             * :FIXME: Keep track of sent inv's and retry after N if necessary?
+             */
+            
             /**
              * Allocate the message.
              */
@@ -2034,9 +2038,11 @@ bool tcp_connection::handle_message(message & msg)
         }
         
         /**
-         * We send a random number of blocks between 300 and 500.
+         * We send a random number of blocks between 300 and 900.
          */
-        auto limit = random::uint16_random_range(300, 500);
+        auto limit = static_cast<std::int16_t> (
+            random::uint16_random_range(300, 900)
+        );
         
         log_debug(
             "TCP connection getblocks " << (index ? index->height() : -1) <<
@@ -2196,7 +2202,7 @@ bool tcp_connection::handle_message(message & msg)
         
         tx->encode(buffer);
         
-        if (tx->accept_to_transaction_pool(txdb, &missing_inputs))
+        if (tx->accept_to_transaction_pool(txdb, &missing_inputs).first)
         {
             /**
              * Inform the wallet_manager.
@@ -2243,7 +2249,8 @@ bool tcp_connection::handle_message(message & msg)
                     bool missing_inputs2 = false;
 
                     if (
-                        tx2.accept_to_transaction_pool(txdb, &missing_inputs2)
+                        tx2.accept_to_transaction_pool(txdb,
+                        &missing_inputs2).first
                         )
                     {
                         log_debug(

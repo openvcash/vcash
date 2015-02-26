@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
- * Vanillacoin is free software: you can redistribute it and/or modify
+ * vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -27,6 +27,7 @@
 #include <mutex>
 #include <set>
 
+#include <coin/address.hpp>
 #include <coin/destination.hpp>
 #include <coin/db_wallet.hpp>
 #include <coin/key_public.hpp>
@@ -42,6 +43,7 @@
 
 namespace coin {
 
+    class account;
     class accounting_entry;
     class block_locator;
     class coin_control;
@@ -77,6 +79,12 @@ namespace coin {
                 feature_comprpubkey = 60000,
                 feature_latest = 60000
             } feature_t;
+        
+            /**
+             * We do not inform the status_manager of transactions older than
+             * this many days expressed in seconds.
+             */
+            enum { configuration_interval_history = 86400 * 365 };
 
             /**
              * Constructor
@@ -98,6 +106,12 @@ namespace coin {
              * Flushes the wallet to disk.
              */
             void flush();
+        
+            /**
+             * Encrypts the wallet.
+             * @param passphrase The passphrase.
+             */
+            bool encrypt(const std::string & passphrase);
         
             /**
              * Unlocks the wallet.
@@ -506,7 +520,7 @@ namespace coin {
              * @param wtx_new The transaction_wallet.
              * @param reserve_key The key_reserved.
              */
-            bool commit_transaction(
+            std::pair<bool, std::string> commit_transaction(
                 transaction_wallet & wtx_new, key_reserved & reserve_key
             );
         
@@ -528,7 +542,7 @@ namespace coin {
              * @param value The value.
              * @param wtx_new The new transaction_wallet.
              */
-            bool send_money(
+            std::pair<bool, std::string> send_money(
                 const script & script_pub_key, const std::int64_t & value,
                 const transaction_wallet & wtx_new
             );
@@ -539,7 +553,7 @@ namespace coin {
              * @param value The value.
              * @param wtx_new The new transaction_wallet.
              */
-            bool send_money_to_destination(
+            std::pair<bool, std::string> send_money_to_destination(
                 const destination::tx_t & address, const std::int64_t & value,
                 const transaction_wallet & wtx_new
             );
@@ -668,13 +682,16 @@ namespace coin {
                 const std::size_t & minimum_depth
             );
         
-        private:
-
             /**
-             * Checks the wallet integrity and performs repairs if necessary.
-             * @param ec The boost::system::error_code.
+             * Gets an account address.
+             * @param name The name of the account.
+             * @param addr_out The address (out).
              */
-            void check_tick(const boost::system::error_code & ec);
+            static std::pair<bool, std::string> get_account_address(
+                wallet & w, const std::string & name, address & addr_out
+            );
+        
+        private:
         
             /**
              * Resends any transactions that have not yet made it into a block.
@@ -685,7 +702,6 @@ namespace coin {
             /**
              * Encrypts the wallet.
              * @param passphrase The passphrase.
-             * @note You MUST restart the process after calling this function.
              */
             bool do_encrypt(const std::string & passphrase);
         
@@ -762,18 +778,6 @@ namespace coin {
              * If true the wallet is file backed.
              */
             bool is_file_backed_;
-        
-            /**
-             * The check interval.
-             */
-            enum { interval_check = 86400 };
-        
-            /**
-             * The check timer.
-             */
-            boost::asio::basic_waitable_timer<
-                std::chrono::steady_clock
-            > check_timer_;
         
             /**
              * The resend transactions timer.

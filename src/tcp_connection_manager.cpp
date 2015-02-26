@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
- * Vanillacoin is free software: you can redistribute it and/or modify
+ * vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -411,7 +411,7 @@ void tcp_connection_manager::tick(const boost::system::error_code & ec)
                      */
                     if (time::instance().get_adjusted() - addr.last_try < 600)
                     {
-                        log_debug(
+                        log_none(
                             "TCP connection manager attempted to "
                             "connect to " << addr.ipv4_mapped_address() <<
                             ":" << addr.port << " too soon, last try = " <<
@@ -429,7 +429,7 @@ void tcp_connection_manager::tick(const boost::system::error_code & ec)
                             addr.ipv4_mapped_address(), addr.port))
                             )
                         {
-                            log_debug(
+                            log_none(
                                 "TCP connection manager is connecting to " <<
                                 addr.ipv4_mapped_address() << ":" << addr.port <<
                                 ", last seen = " <<

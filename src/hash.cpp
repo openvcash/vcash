@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
- * Vanillacoin is free software: you can redistribute it and/or modify
+ * vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -124,9 +124,18 @@ std::array<std::uint8_t, whirlpool::digest_length / 2> hash::whirlpoolx(
     const std::uint8_t * buf, const std::size_t & len
     )
 {
-    #error This function is intentionally left blank.
+    std::array<std::uint8_t, whirlpool::digest_length / 2> ret;
     
-    return std::array<std::uint8_t, whirlpool::digest_length / 2> ();
+    auto digest = whirlpool::hash(buf, len);
+
+	for (auto i = 0; i < (whirlpool::digest_length / 2); i++)
+	{
+        ret[i] =
+            digest[i] ^ digest[i + ((whirlpool::digest_length / 2) / 2)]
+        ;
+	}
+    
+    return ret;
 }
 
 std::uint64_t hash::to_uint64(

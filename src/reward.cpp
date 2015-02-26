@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
- * Vanillacoin is free software: you can redistribute it and/or modify
+ * vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -140,6 +140,11 @@ std::int64_t reward::get_proof_of_stake_vanilla(
     coin_reward_year = 1 * constants::max_mint_proof_of_stake;
     
     std::int64_t subsidy = coin_age * coin_reward_year / 365;
+    
+    log_debug(
+        "Reward (vanilla) create = " << subsidy << ", coin age = " <<
+        coin_age << ", bits = " << bits << "."
+    );
     
     return subsidy;
 }

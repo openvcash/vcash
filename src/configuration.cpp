@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
- * Vanillacoin is free software: you can redistribute it and/or modify
+ * vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -31,12 +31,14 @@
 #include <coin/logger.hpp>
 #include <coin/network.hpp>
 #include <coin/protocol.hpp>
+#include <coin/wallet.hpp>
 
 using namespace coin;
 
 configuration::configuration()
     : m_network_port_tcp(protocol::default_tcp_port)
     , m_network_tcp_inbound_maximum(network::tcp_inbound_maximum)
+    , m_wallet_transaction_history_maximum(wallet::configuration_interval_history)
 {
     // ...
 }
@@ -102,6 +104,19 @@ bool configuration::load()
         {
             m_network_tcp_inbound_maximum = network::tcp_inbound_minimum;
         }
+        
+        /**
+         * Get the wallet.transaction.history.maximum.
+         */
+        m_wallet_transaction_history_maximum = std::stoul(pt.get(
+            "wallet.transaction.history.maximum",
+            std::to_string(wallet::configuration_interval_history))
+        );
+        
+        log_debug(
+            "Configuration read wallet.transaction.history.maximum = " <<
+            m_wallet_transaction_history_maximum << "."
+        );
     }
     catch (std::exception & e)
     {
@@ -112,7 +127,9 @@ bool configuration::load()
     
     if (m_args.size() > 0)
     {
-
+#if (!defined _MSC_VER)
+        #warning :TODO: Iterate the args and override the variables (if found).
+#endif
     }
     
     return true;
@@ -142,6 +159,14 @@ bool configuration::save()
         pt.put(
             "network.tcp.inbound.maximum",
             std::to_string(m_network_tcp_inbound_maximum)
+        );
+        
+        /**
+         * Put the wallet.transaction.history.maximum into property tree.
+         */
+        pt.put(
+            "wallet.transaction.history.maximum",
+            std::to_string(m_wallet_transaction_history_maximum)
         );
         
         /**

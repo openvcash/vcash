@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
- * Vanillacoin is free software: you can redistribute it and/or modify
+ * vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -19,6 +19,7 @@
  */
 
 #include <coin/key_wallet_master.hpp>
+#include <coin/logger.hpp>
 
 using namespace coin;
 
@@ -84,7 +85,7 @@ void key_wallet_master::decode(data_buffer & buffer)
      * Read the crypted key.
      */
     auto len = buffer.read_var_int();
-    
+
     if (len > 0)
     {
         m_crypted_key.resize(len);
@@ -129,6 +130,11 @@ void key_wallet_master::decode(data_buffer & buffer)
             m_other_derivation_parameters.size()
         );
     }
+}
+
+std::vector<std::uint8_t> & key_wallet_master::crypted_key()
+{
+    return m_crypted_key;
 }
 
 const std::vector<std::uint8_t> & key_wallet_master::crypted_key() const

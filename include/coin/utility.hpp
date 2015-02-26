@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
- * Vanillacoin is free software: you can redistribute it and/or modify
+ * vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -388,6 +388,16 @@ namespace coin {
             );
         
             /**
+             * Gets the next required target.
+             * @param index_last The last block index.
+             * @param is_pos If true it is proof-of-stake.
+             */
+            static std::uint32_t get_next_target_required_v020(
+                const std::shared_ptr<block_index> & index_last,
+                const bool & is_pos
+            );
+        
+            /**
              * Byte reversal.
              * @param val The std::uint32_t.
              */
@@ -411,6 +421,32 @@ namespace coin {
                 const sha256 & hash_tx, transaction & tx,
                 sha256 & hash_block_out
             );
+        
+            /**
+             * Calculates the difficulty given bits.
+             * @param bits The bits.
+             */
+            static double difficulty_from_bits(const std::uint32_t & bits)
+            {
+                int shift = (bits >> 24) & 0xff;
+
+                double diff =
+                    static_cast<double> (0x0000ffff) /
+                    static_cast<double> (bits & 0x00ffffff)
+                ;
+
+                while (shift < 29)
+                {
+                    diff *= 256.0, shift++;
+                }
+                
+                while (shift > 29)
+                {
+                    diff /= 256.0, shift--;
+                }
+
+                return diff;
+            }
         
             /**
              * Align by increasing pointer, must have extra space at end

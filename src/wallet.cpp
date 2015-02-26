@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
- * Vanillacoin is free software: you can redistribute it and/or modify
+ * vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -24,6 +24,7 @@
 
 #include <boost/lexical_cast.hpp>
 
+#include <coin/account.hpp>
 #include <coin/accounting_entry.hpp>
 #include <coin/address.hpp>
 #include <coin/block_locator.hpp>
@@ -54,7 +55,6 @@ wallet::wallet(stack_impl & impl)
     , stack_impl_(impl)
     , is_file_backed_(true)
     , resend_transactions_timer_(globals::instance().io_service())
-    , check_timer_(globals::instance().io_service())
     , time_last_resend_(0)
 {
     // ...
@@ -63,18 +63,9 @@ wallet::wallet(stack_impl & impl)
 void wallet::start()
 {
     /**
-     * Start the check timer.
-     */
-    check_timer_.expires_from_now(std::chrono::seconds(900));
-    check_timer_.async_wait(globals::instance().strand().wrap(
-        std::bind(&wallet::check_tick, this,
-        std::placeholders::_1))
-    );
-    
-    /**
      * Start the resend transactions timer.
      */
-    resend_transactions_timer_.expires_from_now(std::chrono::seconds(60));
+    resend_transactions_timer_.expires_from_now(std::chrono::seconds(300));
     resend_transactions_timer_.async_wait(globals::instance().strand().wrap(
         std::bind(&wallet::resend_transactions_tick, this,
         std::placeholders::_1))
@@ -84,7 +75,6 @@ void wallet::start()
 void wallet::stop()
 {
     resend_transactions_timer_.cancel();
-    check_timer_.cancel();
 }
 
 void wallet::flush()
@@ -123,6 +113,25 @@ void wallet::flush()
     }
 }
 
+bool wallet::encrypt(const std::string & passphrase)
+{
+    if (passphrase.size() == 0)
+    {
+        log_error("Wallet failed to encrypt, empty passphrase.");
+        
+        return false;
+    }
+    
+    if (is_crypted())
+    {
+        log_error("Wallet failed to encrypt, already encrypted.");
+        
+        return false;
+    }
+    
+    return do_encrypt(passphrase);
+}
+
 bool wallet::unlock(const std::string & passphrase)
 {
     if (is_locked())
@@ -143,7 +152,7 @@ bool wallet::unlock(const std::string & passphrase)
             {
                 return false;
             }
-            
+
             if (c.decrypt(i.second.crypted_key(), master_key) == false)
             {
                 return false;
@@ -155,7 +164,7 @@ bool wallet::unlock(const std::string & passphrase)
             }
         }
     }
-    
+
     return false;
 }
 
@@ -337,7 +346,7 @@ std::int64_t wallet::increment_order_position_next(
     }
     else
     {
-        db_wallet().write_orderposnext(m_order_position_next);
+        db_wallet("wallet.dat").write_orderposnext(m_order_position_next);
     }
     
     return ret;
@@ -347,7 +356,7 @@ bool wallet::new_key_pool()
 {
     std::lock_guard<std::recursive_mutex> l1(mutex_);
     
-    db_wallet wallet_db;
+    db_wallet wallet_db("wallet.dat");
     
     /**
      * Remove the old keys from the pool.
@@ -406,7 +415,7 @@ bool wallet::top_up_key_pool()
         return false;
     }
     
-    db_wallet wallet_db;
+    db_wallet wallet_db("wallet.dat");
 
     /**
      * Top up (off) the key pool.
@@ -466,7 +475,7 @@ void wallet::reserve_key_from_key_pool(
         return;
     }
     
-    db_wallet wallet_db;
+    db_wallet wallet_db("wallet.dat");
     
     index = *m_key_pool.begin();
     
@@ -503,7 +512,7 @@ void wallet::keep_key(const std::int64_t & index)
      */
     if (is_file_backed_)
     {
-        db_wallet wallet_db;
+        db_wallet wallet_db("wallet.dat");
         
         wallet_db.erase_pool(index);
     }
@@ -697,7 +706,7 @@ bool wallet::is_change(const transaction_out & tx_out) const
 
 void wallet::set_best_chain(const block_locator & value)
 {
-    db_wallet().write_bestblock(value);
+    db_wallet("wallet.dat").write_bestblock(value);
 }
 
 db_wallet::error_t wallet::load_wallet(bool & first_run)
@@ -712,7 +721,7 @@ db_wallet::error_t wallet::load_wallet(bool & first_run)
     {
         first_run = false;
         
-        ret = db_wallet("cr+").load(*this);
+        ret = db_wallet("wallet.dat", "cr+").load(*this);
         
         if (ret == db_wallet::error_need_rewrite)
         {
@@ -929,7 +938,7 @@ bool wallet::erase_from_wallet(const sha256 & val) const
     
     if (m_transactions.erase(val) > 0)
     {
-        db_wallet().erase_tx(val);
+        db_wallet("wallet.dat").erase_tx(val);
     }
     
     return true;
@@ -1255,7 +1264,7 @@ wallet::tx_items_t wallet::ordered_tx_items(
     std::list<accounting_entry> & entries, const std::string & account
     ) const
 {
-    db_wallet wallet_db;
+    db_wallet wallet_db("wallet.dat");
 
     /**
      * Get all transaction_wallet's and account_entry's into a sorted-by-order
@@ -1693,7 +1702,7 @@ bool wallet::add_to_wallet(const transaction_wallet & wtx_in)
              */
             status["wallet.transaction.type"] = "mined";
         }
-            
+        
         /**
          * Callback on new or updated transaction.
          */
@@ -1732,12 +1741,17 @@ bool wallet::set_address_book_name(
     
     m_address_book[addr] = name;
     
+    /**
+     * Callback that the address book has changed.
+     * :TODO: addr, name, is_mine(*this, addr), is_new ? new : updated
+     */
+    
     if (is_file_backed_ == false)
     {
         return false;
     }
     
-    return db_wallet().write_name(address(addr).to_string(), name);
+    return db_wallet("wallet.dat").write_name(address(addr).to_string(), name);
 }
 
 bool wallet::set_key_public_default(
@@ -1750,7 +1764,7 @@ bool wallet::set_key_public_default(
     {
         if (is_file_backed_)
         {
-            if (db_wallet().write_defaultkey(value) == false)
+            if (db_wallet("wallet.dat").write_defaultkey(value) == false)
             {
                 return false;
             }
@@ -1828,7 +1842,8 @@ bool wallet::set_min_version(
     if (is_file_backed_)
     {
         auto ptr =
-            ptr_db_wallet ? ptr_db_wallet : std::make_shared<db_wallet> ().get()
+            ptr_db_wallet ?
+            ptr_db_wallet : std::make_shared<db_wallet> ("wallet.dat").get()
         ;
         
         if (m_wallet_version > 40000)
@@ -2297,7 +2312,7 @@ bool wallet::get_transaction(
     return false;
 }
 
-bool wallet::commit_transaction(
+std::pair<bool, std::string> wallet::commit_transaction(
     transaction_wallet & wtx_new, key_reserved & reserve_key
     )
 {
@@ -2311,7 +2326,7 @@ bool wallet::commit_transaction(
      * Allocate the db_wallet.
      */
     std::unique_ptr<db_wallet> unused(
-        is_file_backed_ ? new db_wallet("r") : 0
+        is_file_backed_ ? new db_wallet("wallet.dat", "r") : 0
     );
 
     /**
@@ -2490,10 +2505,12 @@ bool wallet::commit_transaction(
      */
     m_request_counts[wtx_new.get_hash()] = 0;
 
+    auto ret = wtx_new.accept_to_memory_pool();
+
     /**
      * Accept to the transaction_pool.
      */
-    if (wtx_new.accept_to_memory_pool() == false)
+    if (ret.first == false)
     {
         /**
          * The transaction has been signed and recorded, something bad happened.
@@ -2503,13 +2520,8 @@ bool wallet::commit_transaction(
             "Wallet, commit transaction failed, transaction is not valid," <<
             " performing check."
         );
-#if 1
-        /**
-         * Start the check timer.
-         */
-        check_tick(boost::system::error_code());
-#endif
-        return false;
+
+        return std::make_pair(false, ret.second);
     }
     
     /**
@@ -2517,7 +2529,7 @@ bool wallet::commit_transaction(
      */
     wtx_new.relay_wallet_transaction(stack_impl_.get_tcp_connection_manager());
 
-    return true;
+    return std::make_pair(true, "");
 }
 
 bool wallet::create_coin_stake(
@@ -2978,7 +2990,7 @@ bool wallet::create_coin_stake(
     return true;
 }
 
-bool wallet::send_money(
+std::pair<bool, std::string> wallet::send_money(
     const script & script_pub_key, const std::int64_t & value,
     const transaction_wallet & wtx_new
     )
@@ -3000,7 +3012,9 @@ bool wallet::send_money(
             "transaction."
         );
         
-        return false;
+        return std::make_pair(
+            false, "wallet locked, unable to create transaction"
+        );
     }
     
     if (globals::instance().wallet_unlocked_mint_only())
@@ -3010,7 +3024,10 @@ bool wallet::send_money(
             "unable to create transaction."
         );
         
-        return false;
+        return std::make_pair(
+            false,
+            "wallet unlocked for minting only, unable to create transaction"
+        );
     }
     
     if (
@@ -3026,35 +3043,43 @@ bool wallet::send_money(
                 "insufficient funds, fee required = " <<
                 utility::format_money(fee_required) << "."
             );
+            
+            return std::make_pair(
+                false, "failed to create transaction, insufficient funds"
+            );
         }
         else
         {
             log_error("Wallet, send money failed, create transaction failed.");
+            
+            return std::make_pair(false, "failed to create transaction");
         }
-        
-        return false;
     }
 
     /**
      * Commit the transaction.
      */
-    if (
-        commit_transaction(*const_cast<transaction_wallet *> (&wtx_new),
-        *reserve_key) == false
-        )
+    auto ret_pair = commit_transaction(
+        *const_cast<transaction_wallet *> (&wtx_new), *reserve_key
+    );
+    
+    /**
+     * Commit the transaction.
+     */
+    if (ret_pair.first == false)
     {
         log_error(
             "Wallet, send money failed, commit transaction failed, "
             "wallet may need a rescan."
         );
         
-        return false;
+        return std::make_pair(ret_pair.first, ret_pair.second);
     }
 
-    return true;
+    return std::make_pair(true, "");
 }
 
-bool wallet::send_money_to_destination(
+std::pair<bool, std::string> wallet::send_money_to_destination(
     const destination::tx_t & address, const std::int64_t & value,
     const transaction_wallet & wtx_new
     )
@@ -3065,7 +3090,7 @@ bool wallet::send_money_to_destination(
             "Wallet, send money to destination failed, invalid amount."
         );
     
-        return false;
+        return std::make_pair(false, "invalid amount");
     }
     
     if (value + globals::instance().transaction_fee() > get_balance())
@@ -3078,7 +3103,7 @@ bool wallet::send_money_to_destination(
             ", balance = " << get_balance() << "."
         );
     
-        return false;
+        return std::make_pair(false, "insufficient funds");
     }
     
     script script_pub_key;
@@ -3179,7 +3204,10 @@ bool wallet::select_coins_min_conf(
     {
         const transaction_wallet & ref_coin = output.get_transaction_wallet();
 
-        if (output.get_depth() < (ref_coin.is_from_me() ? conf_mine : conf_theirs))
+        if (
+            output.get_depth() <
+            (ref_coin.is_from_me() ? conf_mine : conf_theirs)
+            )
         {
             continue;
         }
@@ -3194,7 +3222,7 @@ bool wallet::select_coins_min_conf(
             continue;
         }
         
-        std::int64_t n = ref_coin.transactions_out()[i].value();
+        auto n = ref_coin.transactions_out()[i].value();
 
         auto coin = std::make_pair(n, std::make_pair(ref_coin, i));
 
@@ -3519,46 +3547,68 @@ std::int64_t wallet::get_account_balance(
     return get_account_balance(wallet_db, account_name, minimum_depth);
 }
 
-void wallet::check_tick(const boost::system::error_code & ec)
+std::pair<bool, std::string> wallet::get_account_address(
+    wallet & w, const std::string & name, address & addr_out
+    )
 {
-    if (ec)
+    db_wallet wallet_db("wallet.dat");
+
+    account account;
+    
+    wallet_db.read_account(name, account);
+
+    /**
+     * First check if the key has been used.
+     */
+    bool was_used = false;
+
+    if (account.get_key_public().is_valid())
     {
-        // ...
-    }
-    else
-    {
-        /**
-         * The mismatch spent coins.
-         */
-        std::int32_t mismatch_spent = 0;
+        script s;
         
-        /**
-         * The balance in question.
-         */
-        std::int64_t balance_in_question = 0;
+        s.set_destination(account.get_key_public().get_id());
         
-        bool check_only = false;
+        auto it = w.transactions().begin();
         
-        /**
-         * If there coins marked spent that should not be then check and
-         * repair them.
-         */
-        fix_spent_coins(mismatch_spent, balance_in_question, check_only);
-        
-        if (mismatch_spent == 0)
+        for (
+            ; it != w.transactions().end() &&
+            account.get_key_public().is_valid(); ++it
+            )
         {
-            log_info("Wallet check passed.");
+            const auto & wtx = it->second;
+            
+            for (auto & i : wtx.transactions_out())
+            {
+                if (i.script_public_key() == s)
+                {
+                    was_used = true;
+                    
+                    break;
+                }
+            }
         }
-        
-        /**
-         * Start the check timer.
-         */
-        check_timer_.expires_from_now(std::chrono::seconds(interval_check));
-        check_timer_.async_wait(globals::instance().strand().wrap(
-            std::bind(&wallet::check_tick, this,
-            std::placeholders::_1))
-        );
     }
+
+    /**
+     * If the public key is not valid or it was used then generate a new key.
+     */
+    if (account.get_key_public().is_valid() == false || was_used)
+    {
+        if (w.get_key_from_pool(account.get_key_public(), false) == false)
+        {
+            return std::make_pair(
+                false, "keypool is empty, needs refill"
+            );
+        }
+
+        w.set_address_book_name(account.get_key_public().get_id(), name);
+        
+        wallet_db.write_account(name, account);
+    }
+
+    addr_out = address(account.get_key_public().get_id());
+    
+    return std::make_pair(true, "");
 }
 
 void wallet::resend_transactions_tick(const boost::system::error_code & ec)
@@ -3600,7 +3650,8 @@ void wallet::resend_transactions_tick(const boost::system::error_code & ec)
                  */
                 if (
                     globals::instance().time_best_received() -
-                    static_cast<std::int64_t> (wtx.time_received()) > 300
+                    static_cast<std::int64_t> (wtx.time_received()) >
+                    constants::work_and_stake_target_spacing
                     )
                 {
                     sorted.insert(
@@ -3616,43 +3667,29 @@ void wallet::resend_transactions_tick(const boost::system::error_code & ec)
                 try
                 {
                     /**
-                     * Make sure the transaction is from me.
+                     * Check the transaction.
                      */
-                    if (wtx.is_from_me())
+                    if (wtx.check())
                     {
                         /**
-                         * Check the transaction.
+                         * Relay the transaction to all connected peers.
                          */
-                        if (wtx.check())
-                        {
-                            /**
-                             * Relay the transaction to all connected peers.
-                             */
-                            wtx.relay_wallet_transaction(
-                                tx_db, stack_impl_.get_tcp_connection_manager()
-                            );
-                        }
-                        else
-                        {
-                            log_error(
-                                "Wallet, resend transactions failed, check "
-                                "failed for transaction " <<
-                                wtx.get_hash().to_string() << "."
-                            );
-                        }
+                        wtx.relay_wallet_transaction(
+                            tx_db, stack_impl_.get_tcp_connection_manager()
+                        );
                     }
                     else
                     {
-                        log_debug(
-                            "Wallet, resend transaction " <<
-                            wtx.get_hash().to_string().substr(0, 8) <<
-                            " is not from me, skipping."
+                        log_error(
+                            "Wallet, resend transactions failed, check "
+                            "failed for transaction " <<
+                            wtx.get_hash().to_string() << "."
                         );
                     }
                 }
                 catch (std::exception & e)
                 {
-                    log_error(
+                    log_debug(
                         "Wallet, resend transactions failed, what = " <<
                         e.what() << "."
                     );
@@ -3677,218 +3714,220 @@ bool wallet::do_encrypt(const std::string & passphrase)
 {
     if (is_crypted())
     {
-        return false;
-    }
-
-    /**
-     * The master key.
-     */
-    types::keying_material_t master_key;
-    
-    /**
-     * RAND_add
-     */
-    random::openssl_RAND_add();
-
-    /**
-     * Allocate the master key.
-     */
-    master_key.resize(crypter::wallet_key_size);
-    
-    /**
-     * Generate the master key.
-     */
-    RAND_bytes(&master_key[0], crypter::wallet_key_size);
-
-    key_wallet_master master_key_wallet;
-
-    /**
-     * RAND_add
-     */
-    random::openssl_RAND_add();
-    
-    /**
-     * Allocate the master key wallet's salt.
-     */
-    master_key_wallet.salt().resize(crypter::wallet_salt_size);
-    
-    /**
-     * Generate the master key wallet.
-     */
-    RAND_bytes(&master_key_wallet.salt()[0], crypter::wallet_salt_size);
-    
-    /**
-     * Allocate the crypter.
-     */
-    crypter c;
-    
-    /**
-     * Get the milliseconds since epoch.
-     */
-    auto time_start = std::chrono::duration_cast<
-        std::chrono::milliseconds> (
-        std::chrono::system_clock::now().time_since_epoch()
-    ).count();
-    
-    /**
-     * Set the key from the passphrase.
-     */
-    c.set_key_from_passphrase(
-        passphrase, master_key_wallet.salt(), 25000,
-        master_key_wallet.derivation_method()
-    );
-
-    /**
-     * Set the derive iterations.
-     */
-    master_key_wallet.set_derive_iterations(
-        2500000 / (static_cast<double> ((std::chrono::duration_cast<
-        std::chrono::milliseconds> (std::chrono::system_clock::now(
-        ).time_since_epoch()).count() - time_start)))
-    );
-
-    /**
-     * Set the start time.
-     */
-    time_start = std::chrono::duration_cast<
-        std::chrono::milliseconds> (
-        std::chrono::system_clock::now().time_since_epoch()
-    ).count();
-    
-    /**
-     * Set the key from the passphrase.
-     */
-    c.set_key_from_passphrase(
-        passphrase, master_key_wallet.salt(),
-        master_key_wallet.derive_iterations(),
-        master_key_wallet.derivation_method()
-    );
-    
-    /**
-     * Set the derive iterations.
-     */
-    master_key_wallet.set_derive_iterations(
-        (master_key_wallet.derive_iterations() +
-        master_key_wallet.derive_iterations() * 100 /
-        (static_cast<double> ((std::chrono::duration_cast<
-        std::chrono::milliseconds> (std::chrono::system_clock::now(
-        ).time_since_epoch()).count() - time_start)))) / 2
-    );
-
-    if (master_key_wallet.derive_iterations() < 25000)
-    {
-        master_key_wallet.set_derive_iterations(25000);
-    }
-    
-    log_debug(
-        "Wallet is encrypting with " <<
-        master_key_wallet.derive_iterations() << " derive iterations."
-    );
-
-    /**
-     * Set the key from the passphrase.
-     */
-    if (
-        c.set_key_from_passphrase(passphrase, master_key_wallet.salt(),
-        master_key_wallet.derive_iterations(),
-        master_key_wallet.derivation_method()) == false
-        )
-    {
-        return false;
-    }
-    
-    auto crypted_key = master_key_wallet.crypted_key();
-    
-    /**
-     * Encrypt the master key.
-     */
-    if (c.encrypt(master_key, crypted_key) == false)
-    {
-        return false;
-    }
-
-    std::lock_guard<std::recursive_mutex> l1(mutex_);
-    
-    m_master_keys[++m_master_key_max_id] = master_key_wallet;
-    
-    if (is_file_backed_)
-    {
-        m_db_wallet_encryption = std::make_shared<db_wallet> ();
+        log_error("Wallet tried to encrypt but is already encrypted.");
         
-        if (m_db_wallet_encryption->txn_begin() == false)
+        return false;
+    }
+    else
+    {
+        std::lock_guard<std::recursive_mutex> l1(mutex_);
+        
+        /**
+         * The master key.
+         */
+        types::keying_material_t master_key;
+        
+        /**
+         * RAND_add
+         */
+        random::openssl_RAND_add();
+
+        /**
+         * Allocate the master key.
+         */
+        master_key.resize(crypter::wallet_key_size);
+        
+        /**
+         * Generate the master key.
+         */
+        RAND_bytes(&master_key[0], crypter::wallet_key_size);
+
+        key_wallet_master master_key_wallet;
+
+        /**
+         * RAND_add
+         */
+        random::openssl_RAND_add();
+        
+        /**
+         * Allocate the master key wallet's salt.
+         */
+        master_key_wallet.salt().resize(crypter::wallet_salt_size);
+        
+        /**
+         * Generate the master key wallet.
+         */
+        RAND_bytes(&master_key_wallet.salt()[0], crypter::wallet_salt_size);
+        
+        /**
+         * Allocate the crypter.
+         */
+        crypter c;
+        
+        /**
+         * Get the milliseconds since epoch.
+         */
+        auto time_start = std::chrono::duration_cast<
+            std::chrono::milliseconds> (
+            std::chrono::system_clock::now().time_since_epoch()
+        ).count();
+        
+        /**
+         * Set the key from the passphrase.
+         */
+        c.set_key_from_passphrase(
+            passphrase, master_key_wallet.salt(), 25000,
+            master_key_wallet.derivation_method()
+        );
+
+        /**
+         * Set the derive iterations.
+         */
+        master_key_wallet.set_derive_iterations(
+            2500000 / (static_cast<double> ((std::chrono::duration_cast<
+            std::chrono::milliseconds> (std::chrono::system_clock::now(
+            ).time_since_epoch()).count() - time_start)))
+        );
+
+        /**
+         * Set the start time.
+         */
+        time_start = std::chrono::duration_cast<
+            std::chrono::milliseconds> (
+            std::chrono::system_clock::now().time_since_epoch()
+        ).count();
+        
+        /**
+         * Set the key from the passphrase.
+         */
+        c.set_key_from_passphrase(
+            passphrase, master_key_wallet.salt(),
+            master_key_wallet.derive_iterations(),
+            master_key_wallet.derivation_method()
+        );
+        
+        /**
+         * Set the derive iterations.
+         */
+        master_key_wallet.set_derive_iterations(
+            (master_key_wallet.derive_iterations() +
+            master_key_wallet.derive_iterations() * 100 /
+            (static_cast<double> ((std::chrono::duration_cast<
+            std::chrono::milliseconds> (std::chrono::system_clock::now(
+            ).time_since_epoch()).count() - time_start)))) / 2
+        );
+
+        if (master_key_wallet.derive_iterations() < 25000)
+        {
+            master_key_wallet.set_derive_iterations(25000);
+        }
+        
+        log_debug(
+            "Wallet is encrypting with " <<
+            master_key_wallet.derive_iterations() << " derive iterations."
+        );
+
+        /**
+         * Set the key from the passphrase.
+         */
+        if (
+            c.set_key_from_passphrase(passphrase, master_key_wallet.salt(),
+            master_key_wallet.derive_iterations(),
+            master_key_wallet.derivation_method()) == false
+            )
         {
             return false;
         }
         
-        m_db_wallet_encryption->write_master_key(
-            m_master_key_max_id, master_key_wallet
-        );
-    }
+        /**
+         * Encrypt the master key.
+         */
+        if (c.encrypt(master_key, master_key_wallet.crypted_key()) == false)
+        {
+            return false;
+        }
 
-    /** 
-     * Encrypt the keys.
-     */
-    if (encrypt_keys(master_key) == false)
-    {
+        m_master_keys[++m_master_key_max_id] = master_key_wallet;
+        
         if (is_file_backed_)
         {
-            m_db_wallet_encryption->txn_abort();
+            m_db_wallet_encryption = std::make_shared<db_wallet> ("wallet.dat");
+            
+            if (m_db_wallet_encryption->txn_begin() == false)
+            {
+                return false;
+            }
+            
+            m_db_wallet_encryption->write_master_key(
+                m_master_key_max_id, master_key_wallet
+            );
         }
-        
-        log_error(
-            "Wallet encrypting keys failed, restart to load the "
-            "unencrypted wallet."
-        );
-        
-        return false;
-    }
 
-    /**
-     * Set the minimum version.
-     */
-    set_min_version(feature_walletcrypt, m_db_wallet_encryption.get(), true);
-
-    if (is_file_backed_)
-    {
-        if (m_db_wallet_encryption->txn_commit() == false)
+        /** 
+         * Encrypt the keys.
+         */
+        if (encrypt_keys(master_key) == false)
         {
+            if (is_file_backed_)
+            {
+                m_db_wallet_encryption->txn_abort();
+            }
+            
             log_error(
-                "Wallet encrypting transaction commit failed, restart to "
-                "load the unencrypted wallet."
+                "Wallet encrypting keys failed, restart to load the "
+                "unencrypted wallet."
             );
             
             return false;
         }
+
+        /**
+         * Set the minimum version.
+         */
+        set_min_version(feature_walletcrypt, m_db_wallet_encryption.get(), true);
+
+        if (is_file_backed_)
+        {
+            if (m_db_wallet_encryption->txn_commit() == false)
+            {
+                log_error(
+                    "Wallet encrypting transaction commit failed, restart to "
+                    "load the unencrypted wallet."
+                );
+                
+                return false;
+            }
+            
+            m_db_wallet_encryption.reset();
+        }
+
+        /**
+         * Lock the wallet.
+         */
+        lock();
         
-        m_db_wallet_encryption.reset();
+        /**
+         * Unlock the wallet.
+         */
+        unlock(passphrase);
+        
+        /**
+         * Mark old keys as used and generate new ones.
+         */
+        new_key_pool();
+        
+        /**
+         * Lock the wallet.
+         */
+        lock();
+
+        /**
+         * Rewrite the dat file to remove any database remains of clear-text key
+         * material. The original data will still exist on the hard drive on some
+         * operating systems since this is not a secure wipe of the disk's bits.
+         */
+        db::rewrite("wallet.dat");
     }
-
-    /**
-     * Lock the wallet.
-     */
-    lock();
     
-    /**
-     * Unlock the wallet.
-     */
-    unlock(passphrase);
-    
-    /**
-     * Mark old keys as used and generate new ones.
-     */
-    new_key_pool();
-    
-    /**
-     * Lock the wallet.
-     */
-    lock();
-
-    /**
-     * Rewrite the dat file to remove any database remains of clear-text key
-     * material. The original data will still exist on the hard drive on some
-     * operating systems since this is not a secure wipe of the disk's bits.
-     */
-    db::rewrite("wallet.dat");
-
     return true;
 }

@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
- * Vanillacoin is free software: you can redistribute it and/or modify
+ * vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -42,12 +42,12 @@ namespace constants {
     /**
      * The client version minor.
      */
-    enum { version_client_minor = 1 };
+    enum { version_client_minor = 2 };
 
     /**
      * The client version revision.
      */
-    enum { version_client_revision = 8 };
+    enum { version_client_revision = 2 };
     
     /**
      * The client version build.
@@ -70,7 +70,7 @@ namespace constants {
     /**
      * The version string.
      */
-    static const std::string version_string = "0.1.8";
+    static const std::string version_string = "0.2.2";
     
     /**
      * The name of the coin.
@@ -180,7 +180,7 @@ namespace constants {
     static const std::uint64_t locktime_threshold = 500000000;
 
     /**
-     * The work and stake target spacing.
+     * The work and stake target spacing (variable by up to 1/3).
      */
     enum { work_and_stake_target_spacing = 200 };
 

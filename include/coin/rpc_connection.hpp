@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
+ * This file is part of vanillacoin.
  *
- * coinpp is free software: you can redistribute it and/or modify
+ * vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -318,6 +318,14 @@ namespace coin {
             );
         
             /**
+             * Performs a checkwallet operation.
+             * @param request The json_rpc_request_t.
+             */
+            json_rpc_response_t json_checkwallet(
+                const json_rpc_request_t & request
+            );
+        
+            /**
              * Encodes dumpprivkey data into JSON format.
              * @param request The json_rpc_request_t.
              */
@@ -342,6 +350,14 @@ namespace coin {
             );
         
             /**
+             * Encodes getaccountaddress data into JSON format.
+             * @param request The json_rpc_request_t.
+             */
+            json_rpc_response_t json_getaccountaddress(
+                const json_rpc_request_t & request
+            );
+        
+            /**
              * Encodes getbalance data into JSON format.
              * @param request The json_rpc_request_t.
              */
@@ -362,6 +378,14 @@ namespace coin {
              * @param request The json_rpc_request_t.
              */
             json_rpc_response_t json_getblock(
+                const json_rpc_request_t & request
+            );
+        
+            /**
+             * Encodes getblockcount data into JSON format.
+             * @param request The json_rpc_request_t.
+             */
+            json_rpc_response_t json_getblockcount(
                 const json_rpc_request_t & request
             );
         
@@ -403,6 +427,14 @@ namespace coin {
             );
         
             /**
+             * Encodes getnewaddress data into JSON format.
+             * @param request The json_rpc_request_t.
+             */
+            json_rpc_response_t json_getnewaddress(
+                const json_rpc_request_t & request
+            );
+        
+            /**
              * Encodes getpeerinfo data into JSON format.
              * @param request The json_rpc_request_t.
              */
@@ -427,10 +459,42 @@ namespace coin {
             );
         
             /**
+             * Encodes listblocksince data into JSON format.
+             * @param request The json_rpc_request_t.
+             */
+            json_rpc_response_t json_listsinceblock(
+                const json_rpc_request_t & request
+            );
+        
+            /**
+             * Performs a listtransactions operation.
+             * @param request The json_rpc_request_t.
+             */
+            json_rpc_response_t json_listtransactions(
+                const json_rpc_request_t & request
+            );
+        
+            /**
+             * Performs a repairwallet operation.
+             * @param request The json_rpc_request_t.
+             */
+            json_rpc_response_t json_repairwallet(
+                const json_rpc_request_t & request
+            );
+        
+            /**
              * Performs a sendmany operation.
              * @param request The json_rpc_request_t.
              */
             json_rpc_response_t json_sendmany(
+                const json_rpc_request_t & request
+            );
+        
+            /**
+             * Performs a sendtoaddress operation.
+             * @param request The json_rpc_request_t.
+             */
+            json_rpc_response_t json_sendtoaddress(
                 const json_rpc_request_t & request
             );
         

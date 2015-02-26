@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
- * Vanillacoin is free software: you can redistribute it and/or modify
+ * vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -22,6 +22,7 @@
 #include <openssl/evp.h>
 
 #include <coin/crypter.hpp>
+#include <coin/logger.hpp>
 
 using namespace coin;
 
@@ -106,7 +107,7 @@ bool crypter::encrypt(
     
     if (ok)
     {
-        ok = EVP_EncryptFinal_ex(&ctx, (&cipher_text[0]) + clen, &flen);
+        ok = EVP_EncryptFinal_ex(&ctx, &cipher_text[0] + clen, &flen);
     }
     
     EVP_CIPHER_CTX_cleanup(&ctx);
@@ -135,7 +136,7 @@ bool crypter::decrypt(
     
     int plen = len, flen = 0;
 
-    plain_text = types::keying_material_t(plen);
+    plain_text.resize(plen);
 
     EVP_CIPHER_CTX ctx;
 
@@ -157,7 +158,7 @@ bool crypter::decrypt(
     
     if (ok)
     {
-        ok = EVP_DecryptFinal_ex(&ctx, (&plain_text[0]) + plen, &flen);
+        ok = EVP_DecryptFinal_ex(&ctx, &plain_text[0] + plen, &flen);
     }
     
     EVP_CIPHER_CTX_cleanup(&ctx);

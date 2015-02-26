@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
- * Vanillacoin is free software: you can redistribute it and/or modify
+ * vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -46,6 +46,7 @@ mining_manager::mining_manager(
     , io_service_(ios)
     , strand_(ios)
     , stack_impl_(owner)
+    , timer_pos_(ios)
 {
     // ...
 }
@@ -230,18 +231,12 @@ void mining_manager::start_proof_of_stake()
          * Set the state.
          */
         m_state_pos = state_pos_starting;
-        
-        auto cores = 1;
 
-        log_info(
-            "Mining manager is adding " << cores << " Proof-of-Stake threads."
-        );
-        
-        /**
-         * Allocate the Proof-of-Stake thread.
-         */
-        thread_pos_ = std::thread(&mining_manager::loop, this, true);
-        
+    	timer_pos_.expires_from_now(std::chrono::seconds(8));
+    	timer_pos_.async_wait(std::bind(
+			&mining_manager::pos_tick, this, std::placeholders::_1)
+    	);
+
         /**
          * Set the state.
          */
@@ -259,12 +254,9 @@ void mining_manager::stop_proof_of_stake()
          * Set the state.
          */
         m_state_pos = state_pos_stopping;
-        
-        /**
-         * Join the thread.
-         */
-        thread_pos_.join();
-        
+
+        timer_pos_.cancel();
+
         /**
          * Set the state.
          */
@@ -366,28 +358,18 @@ void mining_manager::loop(const bool & is_proof_of_stake)
             }
             
             /**
-             * We attempt to stake at most one time per minute. Sleeping for 60
-             * seconds total, 1/2 second 120 times to allow for quicker program
-             * termination.
+             * We attempt to stake at most every 8 seconds.
              */
-            
-            /**
-             * The number of loops to perform.
-             */
-            enum { loop_count = 120 };
-            
-            /**
-             * The number of loops performed.
-             */
-            auto loops_performed = 0;
-            
-            while (
-                m_state_pos == state_pos_started && is_proof_of_stake &&
-                globals::instance().state() == globals::state_started &&
-                loops_performed++ < loop_count
-                )
+            for (auto i = 0; i < 16; i ++)
             {
-                std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                if (globals::instance().state() == globals::state_started)
+                {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                }
+                else
+                {
+                    break;
+                }
             }
             
             continue;
@@ -420,6 +402,9 @@ void mining_manager::loop(const bool & is_proof_of_stake)
 
         mining::format_hash_buffers(blk, midstate, data, hash1);
 
+        auto & block_time =
+            *reinterpret_cast<std::uint32_t *> (data + 64 + 4)
+        ;
         auto & block_nonce =
             *reinterpret_cast<std::uint32_t *> (data + 64 + 12)
         ;
@@ -458,6 +443,7 @@ void mining_manager::loop(const bool & is_proof_of_stake)
                 mining::scan_hash_whirlpool(&blk->header(), max_nonce,
                 hashes_done, result.digest(), &res_header
             );
+
             /**
              * Check if we have found a solution.
              */
@@ -490,6 +476,10 @@ void mining_manager::loop(const bool & is_proof_of_stake)
                     break;
                 }
             }
+
+            log_none(
+                "Mining manager performed " << hashes_done << " hashes."
+            );
 
             hashes_done += 1;
             
@@ -624,6 +614,8 @@ void mining_manager::loop(const bool & is_proof_of_stake)
              * Update the time.
              */
             blk->update_time(*index_previous);
+            
+            block_time = utility::byte_reverse(blk->header().timestamp);
 
             if (
                 blk->header().timestamp >=
@@ -639,6 +631,113 @@ void mining_manager::loop(const bool & is_proof_of_stake)
     log_debug(
         "Mining manager thread " << std::this_thread::get_id() << " stopped."
     );
+}
+void mining_manager::pos_tick(const boost::system::error_code & ec)
+{
+    if (ec)
+    {
+        // ...
+    }
+    else
+    {
+        key_reserved reserve_key(*globals::instance().wallet_main());
+        
+        static std::uint32_t g_extra_nonce = 0;
+        
+        if (
+            (m_state_pos == state_pos_starting ||
+            m_state_pos == state_pos_started) &&
+            globals::instance().state() == globals::state_started
+            )
+        {
+
+            if (
+                (utility::is_initial_block_download() ||
+                stack_impl_.get_tcp_connection_manager(
+                )->tcp_connections().size() == 0) &&
+                globals::instance().state() == globals::state_started
+                
+                )
+            {
+                log_debug(
+                    "Mining manager is waiting on the blockchain to download."
+                );
+            }
+            else if (
+                globals::instance().wallet_main()->is_locked() &&
+                globals::instance().state() == globals::state_started
+                )
+            {
+                log_info("Mining manager, wallet is locked.");
+            }
+            else
+            {
+                /**
+                 * Attempt to create a new block of transactions.
+                 */
+                auto blk = block::create_new(
+                    globals::instance().wallet_main(), true
+                );
+                
+                if (blk)
+                {
+                    if (globals::instance().debug())
+                    {
+                        /**
+                         * Encode the block to determine the size.
+                         */
+                        data_buffer buffer;
+                        
+                        blk->encode(buffer);
+                        
+                        log_debug(
+                            "Mining manager, mining (pos) with " <<
+                            blk->transactions().size() <<
+                            " transactions in block, bytes = " <<
+                            buffer.size() << "."
+                        );
+                    }
+                    
+                    auto index_previous = stack_impl::get_block_index_best();
+                
+                    increment_extra_nonce(blk, index_previous, g_extra_nonce);
+
+                    /**
+                     * If proof-of-stake block found then process it (ppcoin).
+                     */
+                    if (blk->is_proof_of_stake())
+                    {
+                        if (
+                            blk->sign(*globals::instance().wallet_main()
+                            ) == false)
+                        {
+                            // ..
+                        }
+                        else
+                        {
+                            log_info(
+                                "Mining manager found Proof-of-Stake block " <<
+                                blk->get_hash().to_string()
+                            );
+
+                            /**
+                             * Check the work.
+                             */
+                            check_work(
+                                blk, globals::instance().wallet_main(),
+                                reserve_key, true
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        timer_pos_.expires_from_now(std::chrono::seconds(8));
+    	timer_pos_.async_wait(std::bind(
+			&mining_manager::pos_tick, this, std::placeholders::_1)
+    	);
+    }
 }
 
 void mining_manager::check_work(

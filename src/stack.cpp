@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
- * Vanillacoin is free software: you can redistribute it and/or modify
+ * vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -52,37 +52,17 @@ void stack::start(const std::map<std::string, std::string> & args)
          */
         stack_impl_->get_configuration().set_args(args);
 
-        /**
-         * QEMU
-         */
         stack_impl_->get_configuration().bootstrap_nodes().push_back(
             std::make_pair("94.102.60.170", 55555)
         );
-        
-        /**
-         * MT
-         */
+
         stack_impl_->get_configuration().bootstrap_nodes().push_back(
             std::make_pair("72.47.234.147", 50982)
         );
-        
-        /**
-         * MT
-         */
+
         stack_impl_->get_configuration().bootstrap_nodes().push_back(
             std::make_pair("72.47.234.148", 45874)
         );
-
-        /**
-         * Add bootstrap nodes to the configuration for DNS resolution.
-         */
-        for (auto i = 1; i < 8; i++)
-        {
-            stack_impl_->get_configuration().bootstrap_nodes().push_back(
-                std::make_pair("p0" + std::to_string(i) + ".vanillacoin.net",
-                55555)
-            );
-        }
 
         /**
          * Start the stack implementation.
@@ -163,6 +143,30 @@ void stack::broadcast_alert(const std::map<std::string, std::string> & pairs)
     else
     {
         throw std::runtime_error("Stack is not allocated");
+    }
+}
+
+void stack::wallet_encrypt(const std::string & passphrase)
+{
+    if (stack_impl_)
+    {
+        stack_impl_->wallet_encrypt(passphrase);
+    }
+}
+
+void stack::wallet_lock()
+{
+    if (stack_impl_)
+    {
+        stack_impl_->wallet_lock();
+    }
+}
+
+void stack::wallet_unlock(const std::string & passphrase)
+{
+    if (stack_impl_)
+    {
+        stack_impl_->wallet_unlock(passphrase);
     }
 }
 

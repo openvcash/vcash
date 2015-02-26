@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
- * Vanillacoin is free software: you can redistribute it and/or modify
+ * vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -21,6 +21,8 @@
 #ifndef COIN_TCP_TRANSPORT_HPP
 #define COIN_TCP_TRANSPORT_HPP
 
+#define USE_TLS 1
+
 #include <cstdint>
 #include <deque>
 #include <memory>
@@ -30,7 +32,9 @@
 #endif // __IPHONE_OS_VERSION_MAX_ALLOWED
 
 #include <boost/asio.hpp>
+#if (defined USE_TLS && USE_TLS)
 #include <boost/asio/ssl.hpp>
+#endif // USE_TLS
 
 namespace coin {
 
@@ -121,10 +125,13 @@ namespace coin {
             /**
              * The socket.
              */
+#if (defined USE_TLS && USE_TLS)
             boost::asio::ssl::stream<
                 boost::asio::ip::tcp::socket
             >::lowest_layer_type & socket();
-
+#else
+            boost::asio::ip::tcp::socket & socket();
+#endif // USE_TLS
             /**
              * If true the conneciton will close as soon as it's write queue is
              * exhausted.
@@ -190,7 +197,7 @@ namespace coin {
              * The state.
              */
             state_t m_state;
-
+#if (defined USE_TLS && USE_TLS)
             /**
              * The boost::asio::ssl::context.
              */
@@ -202,7 +209,12 @@ namespace coin {
             std::shared_ptr<
                 boost::asio::ssl::stream<boost::asio::ip::tcp::socket>
             > m_socket;
-
+#else
+            /**
+             * The boost::asio::ip::tcp::socket.
+             */
+            std::shared_ptr<boost::asio::ip::tcp::socket> m_socket;
+#endif // USE_TLS
             /**
              * If true the conneciton will close as soon as it's write queue is
              * exhausted.

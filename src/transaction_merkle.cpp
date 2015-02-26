@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
- * Vanillacoin is free software: you can redistribute it and/or modify
+ * vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -78,13 +78,15 @@ void transaction_merkle::decode(data_buffer & buffer)
     m_index = buffer.read_int32();
 }
 
-bool transaction_merkle::accept_to_memory_pool(db_tx & tx_db)
+std::pair<bool, std::string> transaction_merkle::accept_to_memory_pool(
+    db_tx & tx_db
+    )
 {
     if (globals::instance().is_client())
     {
         if (is_in_main_chain() == false && client_connect_inputs() == false)
         {
-            return false;
+            return std::make_pair(false, "client unknown");
         }
         
         return transaction::accept_to_transaction_pool(tx_db);
@@ -94,10 +96,10 @@ bool transaction_merkle::accept_to_memory_pool(db_tx & tx_db)
         return transaction::accept_to_transaction_pool(tx_db);
     }
     
-    return false;
+    return std::make_pair(false, "unknown");
 }
 
-bool transaction_merkle::accept_to_memory_pool()
+std::pair<bool, std::string> transaction_merkle::accept_to_memory_pool()
 {
     db_tx tx_db("r");
     

@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
- * Vanillacoin is free software: you can redistribute it and/or modify
+ * vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -59,7 +59,10 @@ checkpoints::checkpoints()
     m_checkpoints[44709] = sha256(
         "a64bad605bd4964057b146af621fae6d4fa4325be74bb544480eba08211be8e1"
     );
-
+    m_checkpoints[50308] = sha256(
+        "0000000003a60f5afb4fdc3dfb6aad412ddda4500646461d5516aad433271f81"
+    );
+    
     m_checkpoints_test_net[0] = block::get_hash_genesis_test_net();
 }
 

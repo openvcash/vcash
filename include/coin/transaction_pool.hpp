@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
- * Vanillacoin is free software: you can redistribute it and/or modify
+ * vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -22,6 +22,7 @@
 #define COIN_TRANSACTION_POOL_HPP
 
 #include <mutex>
+#include <string>
 #include <vector>
 
 #include <coin/db_tx.hpp>
@@ -52,9 +53,11 @@ namespace coin {
             static transaction_pool & instance();
         
             /**
-             *
+             * Accepts a transaction.
+             * @param dbtx The db_tx.
+             * @param missing_inputs If set to true there are inputs missing.
              */
-            bool accept(
+            std::pair<bool, std::string> accept(
                 db_tx & dbtx, transaction & tx, bool * missing_inputs
             );
         

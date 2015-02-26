@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
- * Vanillacoin is free software: you can redistribute it and/or modify
+ * vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -18,6 +18,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <coin/account.hpp>
 #include <coin/accounting_entry.hpp>
 #include <coin/address.hpp>
 #include <coin/block_locator.hpp>
@@ -33,8 +34,10 @@ using namespace coin;
 
 std::uint64_t db_wallet::g_accounting_entry_number = 0;
 
-db_wallet::db_wallet(const std::string & file_mode)
-    : db("wallet.dat", file_mode)
+db_wallet::db_wallet(
+    const std::string & file_name, const std::string & file_mode
+    )
+    : db(file_name, file_mode)
     , m_wallet_updated(0)
 {
     // ...
@@ -686,6 +689,62 @@ bool db_wallet::write_name(const std::string & addr, const std::string & name)
     m_wallet_updated++;
     
     return write(std::make_pair(std::string("name"), addr), name);
+}
+
+bool db_wallet::read_account(const std::string & name, account & acct)
+{
+    std::string key_prefix = "acc";
+    
+    data_buffer buffer;
+
+    buffer.write_var_int(key_prefix.size());
+    buffer.write_bytes(key_prefix.data(), key_prefix.size());
+    buffer.write_var_int(name.size());
+    buffer.write_bytes(name.data(), name.size());
+    
+    return read(buffer, acct);
+}
+
+bool db_wallet::write_account(const std::string & name, account & acct)
+{
+    if (m_Db == 0)
+    {
+        return false;
+    }
+
+    if (m_is_read_only)
+    {
+        assert(!"Write called on database in read-only mode!");
+    }
+
+    data_buffer key_data;
+    
+    std::string key_prefix = "acc";
+    
+    key_data.write_var_int(key_prefix.size());
+    key_data.write((void *)key_prefix.data(), key_prefix.size());
+    key_data.write_var_int(name.size());
+    key_data.write((void *)name.data(), name.size());
+    
+    Dbt dat_key(
+        (void *)key_data.data(), static_cast<std::uint32_t> (key_data.size())
+    );
+    
+    data_buffer value_data;
+
+    acct.encode(value_data);
+
+    Dbt dat_value(
+        (void *)value_data.data(),
+        static_cast<std::uint32_t> (value_data.size())
+    );
+
+    auto ret = m_Db->put(m_DbTxn, &dat_key, &dat_value, 0);
+
+    std::memset(dat_key.get_data(), 0, dat_key.get_size());
+    std::memset(dat_value.get_data(), 0, dat_value.get_size());
+    
+    return ret == 0;
 }
 
 bool db_wallet::erase_tx(const sha256 & val)

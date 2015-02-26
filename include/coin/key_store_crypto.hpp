@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
- * Vanillacoin is free software: you can redistribute it and/or modify
+ * vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -87,11 +87,23 @@ namespace coin {
             bool add_key(const key & k);
         
             /**
+             * Checks if we have the key belonging to the address.
+             * @param address The types::id_key_t.
+             */
+            bool have_key(const types::id_key_t & address) const;
+            
+            /**
              * Gets a key.
              * @param address The address.
              * @param key_out The key_out.
              */
             bool get_key(const types::id_key_t & address, key & key_out) const;
+        
+            /**
+             * Gets keys.
+             * @param addresses The types::id_key_t's.
+             */
+            void get_keys(std::set<types::id_key_t> & addresses) const;
         
             /**
              * Gets a public key.
@@ -107,7 +119,7 @@ namespace coin {
              * @param public_key The key_public.
              * @param crypted_secret The crypted secret.
              */
-            bool add_crypted_key(
+            virtual bool add_crypted_key(
                 const key_public & public_key,
                 const std::vector<std::uint8_t> & crypted_secret
             );

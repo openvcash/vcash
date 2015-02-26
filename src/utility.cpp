@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
- * Vanillacoin is free software: you can redistribute it and/or modify
+ * vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -451,8 +451,6 @@ std::uint32_t utility::get_next_target_required(
      */
     auto height = index_last->height() + 1;
     
-    (void)height;
-    
     big_number bn_new;
     
     big_number target_limit = constants::proof_of_work_limit;
@@ -504,11 +502,40 @@ std::uint32_t utility::get_next_target_required(
         
         return bn_new.get_compact();
     }
+
+    /**
+     * The block height at which version 0.2.0 retargeting begins.
+     */
+    enum { block_height_v020_retargeting = 50399 };
+
+    /**
+     * Check for version 0.2.0 retargeting.
+     */
+    if (height > block_height_v020_retargeting)
+    {
+        return get_next_target_required_v020(index_last, is_pos);
+    }
     
+    /**
+     * Version 0.1 retargeting.
+     */
+
     /**
      * DigiShield-like retarget.
      */
     std::int64_t blocks_to_go_back = 0;
+
+    if (globals::instance().debug())
+    {
+        log_none(
+            "Utility, get next target required, actual_timespan limiting."
+        );
+    }
+    
+    /**
+     * We alter the block time so that coins will be generated at the same
+     * rate while using the fair solo-mining algorithm.
+     */
 
     std::int64_t target_timespan_re = 0;
     std::int64_t target_spacing_re = 0;
@@ -567,6 +594,23 @@ std::uint32_t utility::get_next_target_required(
      * Limit adjustment step.
      */
     std::int64_t actual_timespan = index_last->time() - index_first->time();
+    
+    if (globals::instance().debug() && false)
+    {
+        log_debug(
+            "Utility, get next target required, actual_timespan = " <<
+            actual_timespan << " before bounds."
+        );
+    }
+    
+    if (globals::instance().debug() && false)
+    {
+        log_debug(
+            "Utility, get next target required, actual_timespan " <<
+            "limiting: " << (retarget_timespan - (retarget_timespan / 4)) <<
+            ":" << (retarget_timespan + (retarget_timespan / 2)) << "."
+        );
+    }
 
     if (actual_timespan < (retarget_timespan - (retarget_timespan / 4)))
     {
@@ -578,7 +622,7 @@ std::uint32_t utility::get_next_target_required(
         actual_timespan = (retarget_timespan + (retarget_timespan / 2));
     }
     
-    if (globals::instance().debug())
+    if (globals::instance().debug() && false)
     {
         log_debug(
             "Utility, get next target required, corrected "
@@ -603,19 +647,7 @@ std::uint32_t utility::get_next_target_required(
     {
         /**
          * This implements part of the fair solo-mining fixed range difficulty
-         * algorithm. Elsewhere we reject blocks that exceed the ceiling via
-         * global network conensus. This forces all types of CPU's, GPU's, etc
-         * to operate within the fixed target range without being able to
-         * over-power one another (they both have a fair chance at solving 
-         * Proof-of-Work blocks). Proof-of-Stake will drive the difficulty up
-         * causing periodic times where few Proof-of-Work blocks will be solved.
-         * As the difficulty drops Proof-of-Work block generation will start up
-         * again. This results in a variable block generation time where money
-         * supply will be very slow for some time and then speed up for some
-         * time. Because of this you cannot predict when you will have a chance
-         * to solve a Proof-of-Work block. When pooled mining is supported via
-         * RPC the block timing will remain at the fixed constant which is
-         * specified as 200 seconds.
+         * algorithm. Elsewhere we reject blocks that exceed the ceiling.
          */
         if (is_pos == false)
         {
@@ -625,6 +657,10 @@ std::uint32_t utility::get_next_target_required(
              */
             if (bn_new >= constants::proof_of_work_limit)
             {
+                log_debug(
+                    "Utility, next target required is raising the difficulty."
+                );
+                
                 /**
                  * Raise the difficulty to 0.00388934.
                  */
@@ -632,6 +668,10 @@ std::uint32_t utility::get_next_target_required(
             }
             else if (bn_new < constants::proof_of_work_limit_ceiling)
             {
+                log_debug(
+                    "Utility, next target required is lowering the difficulty."
+                );
+                
                 /**
                  * Lower the difficulty to 0.00388934.
                  */
@@ -640,7 +680,7 @@ std::uint32_t utility::get_next_target_required(
             else
             {
                 /**
-                 * The f difficulty.
+                 * The flip difficulty.
                  */
                 std::int32_t f = 0;
                 
@@ -708,15 +748,105 @@ std::uint32_t utility::get_next_target_required(
                     break;
                 }
                 
+                log_debug(
+                    "Utility, next target required is flipping the "
+                    "difficulty " << f << " times."
+                );
+                
                 /**
-                 * Set the f difficulty.
+                 * Set the flipped difficulty.
                  */
                 bn_new.set_compact(bn_new.get_compact() + f);
             }
         }
     }
-
+    
     return bn_new.get_compact();
+}
+
+std::uint32_t utility::get_next_target_required_v020(
+    const std::shared_ptr<block_index> & index_last, const bool & is_pos
+    )
+{
+    big_number ret;
+    
+    /**
+     * Get the target limit.
+     */
+    big_number target_limit =
+        is_pos ? constants::proof_of_stake_limit :
+        constants::proof_of_work_limit
+    ;
+    
+    /**
+     * get the index of the previous index.
+     */
+    auto index_previous = get_last_block_index(index_last, is_pos);
+
+    assert(index_previous);
+    
+    /**
+     * Get the index of the previous index's index.
+     */
+    auto index_previous_previous =
+        get_last_block_index(index_previous->block_index_previous(), is_pos
+    );
+    
+    assert(index_previous_previous);
+
+    /**
+     * Calculate the actual spacing.
+     */
+    std::int64_t
+        actual_spacing = index_previous->time() -
+        index_previous_previous->time()
+    ;
+
+    /**
+     * One week.
+     */
+    static const std::int64_t target_timespan = 7 * 24 * 60 * 60;
+    
+    /**
+     * Two hours.
+     */
+    static const std::int64_t
+        target_spacing_work_max =
+        12 * (constants::work_and_stake_target_spacing * 3)
+    ;
+    
+    /**
+     * Spacing
+     */
+    std::int64_t target_spacing =
+        is_pos ? constants::work_and_stake_target_spacing :
+        std::min(target_spacing_work_max,
+        static_cast<std::int64_t> (constants::work_and_stake_target_spacing *
+        (1 + index_last->height() - index_previous->height())))
+    ;
+
+    /**
+     * Set the bits.
+     */
+    ret.set_compact(index_previous->bits());
+    
+    /**
+     * Retarget
+     */
+    ret *=
+        ((target_timespan / target_spacing - 1) *
+        target_spacing + actual_spacing + actual_spacing)
+    ;
+    ret /=
+        ((target_timespan / target_spacing + 1) * target_spacing)
+    ;
+
+    if (ret > target_limit)
+    {
+        ret = target_limit;
+    }
+
+    return ret.get_compact();
 }
 
 bool utility::get_transaction(
@@ -745,6 +875,7 @@ bool utility::get_transaction(
         {
             hash_block_out = blk.get_hash();
         }
+        
         return true;
     }
     

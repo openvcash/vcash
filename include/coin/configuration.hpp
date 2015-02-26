@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
- * Vanillacoin is free software: you can redistribute it and/or modify
+ * vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -125,6 +125,14 @@ namespace coin {
                 return m_bootstrap_nodes;
             }
         
+            /**
+             * The maximum transaction history.
+             */
+            const std::time_t & wallet_transaction_history_maximum() const
+            {
+                return m_wallet_transaction_history_maximum;
+            }
+        
         private:
         
             /** 
@@ -148,6 +156,11 @@ namespace coin {
             std::vector<
                 std::pair<std::string, std::uint16_t>
             > m_bootstrap_nodes;
+        
+            /**
+             * The maximum wallet transaction history.
+             */
+            std::time_t m_wallet_transaction_history_maximum;
         
         protected:
         

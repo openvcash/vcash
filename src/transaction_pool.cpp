@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
- * Vanillacoin is free software: you can redistribute it and/or modify
+ * vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -42,7 +42,7 @@ transaction_pool & transaction_pool::instance()
     return g_transaction_pool;
 }
 
-bool transaction_pool::accept(
+std::pair<bool, std::string> transaction_pool::accept(
     db_tx & dbtx, transaction & tx, bool * missing_inputs
     )
 {
@@ -58,7 +58,7 @@ bool transaction_pool::accept(
     {
         throw std::runtime_error("check transaction failed");
     
-        return false;
+        return std::make_pair(false, "check transaction failed");
     }
     
     /**
@@ -68,7 +68,7 @@ bool transaction_pool::accept(
     {
         throw std::runtime_error("coin base as individual transaction");
     
-        return false;
+        return std::make_pair(false, "coin base as individual transaction");
     }
     
     /**
@@ -78,7 +78,7 @@ bool transaction_pool::accept(
     {
         throw std::runtime_error("coin stake as individual transaction");
     
-        return false;
+        return std::make_pair(false, "coin stake as individual transaction");
     }
     
     /**
@@ -88,7 +88,7 @@ bool transaction_pool::accept(
     {
         throw std::runtime_error("nonstandard transaction type");
     
-        return false;
+        return std::make_pair(false, "nonstandard transaction type");
     }
     
     /**
@@ -100,12 +100,18 @@ bool transaction_pool::accept(
         
     if (m_transactions.count(hash) > 0)
     {
-        return false;
+        log_debug("Transaction pool failed to accept, hash already found.");
+        
+        return std::make_pair(false, "hash already found");
     }
     
     if (dbtx.contains_transaction(hash))
     {
-        return false;
+        log_error(
+            "Transaction pool failed to accept, db tx contains transaction."
+        );
+        
+        return std::make_pair(false, "db tx contains transaction.");
     }
     
     /**
@@ -119,18 +125,29 @@ bool transaction_pool::accept(
         
         if (transactions_next_.count(outpoint) > 0)
         {
+#if 1
+            log_error(
+                "Transaction pool failed to accept, replacement "
+                "transaction disabled."
+            );
+            
             /**
              * Disable replacement feature (disabled in reference
              * implementation).
              */
-            return false;
-
+            return std::make_pair(false, "replacement transaction disabled");
+#endif
             /**
              * Allow replacing with a newer version of the same transaction.
              */
             if (i != 0)
             {
-                return false;
+                log_error(
+                    "Transaction pool failed to accept, replacement "
+                    " i != 0."
+                );
+            
+                return std::make_pair(false, "replacement i != 0");
             }
             
             tx_old = const_cast<transaction *> (
@@ -139,12 +156,26 @@ bool transaction_pool::accept(
             
             if (tx_old->is_final())
             {
-                return false;
+                log_error(
+                    "Transaction pool failed to accept, replacement "
+                    "transaction old is final."
+                );
+            
+                return std::make_pair(
+                    false, "replacement transaction old is final"
+                );
             }
             
             if (tx.is_newer_than(*tx_old) == false)
             {
-                return false;
+                log_error(
+                    "Transaction pool failed to accept, replacement "
+                    "transaction is not newer."
+                );
+            
+                return std::make_pair(
+                    false, "replacement transaction is not newer"
+                );
             }
             
             for (auto & i : tx.transactions_in())
@@ -156,7 +187,14 @@ bool transaction_pool::accept(
                     &transactions_next_[outpoint].get_transaction() != tx_old
                     )
                 {
-                    return false;
+                    log_error(
+                        "Transaction pool failed to accept, replacement "
+                        "transaction != tx_old."
+                    );
+            
+                    return std::make_pair(
+                        false, "replacement transaction != tx_old"
+                    );
                 }
             }
             
@@ -189,7 +227,9 @@ bool transaction_pool::accept(
                     hash.to_string().substr(0, 10) << "."
                 );
                 
-                return false;
+                return std::make_pair(
+                    false, "found invalid transaction"
+                );
             }
             
             if (missing_inputs)
@@ -197,7 +237,7 @@ bool transaction_pool::accept(
                 *missing_inputs = true;
             }
             
-            return false;
+            return std::make_pair(false, "failed to fetch inputs");
         }
         
         /**
@@ -212,7 +252,7 @@ bool transaction_pool::accept(
                 "Transaction pool accept failed, nonstandard transaction input."
             );
             
-            return false;
+            return std::make_pair(false, "nonstandard transaction input");
         }
         
         /**
@@ -247,7 +287,7 @@ bool transaction_pool::accept(
                 hash.to_string() << ", " << fees << "<" <<  tx_min_fee
             );
 
-            return false;
+            return std::make_pair(false, "not enough fees");
         }
 
         /**
@@ -286,7 +326,9 @@ bool transaction_pool::accept(
                     "rejected by rate limiter."
                 );
             
-                return false;
+                return std::make_pair(
+                    false, "free transaction rejected by rate limiter"
+                );
             }
             
             log_debug(
@@ -312,7 +354,7 @@ bool transaction_pool::accept(
                 hash.to_string().substr(0, 10) << "."
             );
             
-            return false;
+            return std::make_pair(false, "connect inputs failed");
         }
     }
     
@@ -344,7 +386,7 @@ bool transaction_pool::accept(
         ", pool size = " << m_transactions.size() << "."
     );
 
-    return true;
+    return std::make_pair(true, "");
 }
         
 bool transaction_pool::remove(transaction & tx)

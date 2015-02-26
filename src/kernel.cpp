@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
- * Vanillacoin is free software: you can redistribute it and/or modify
+ * vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -39,7 +39,8 @@ std::map<std::uint32_t, std::uint32_t> kernel::get_stake_modifier_checkpoints()
     {
         {0, 234907403}, {8300, 3018973908}, {14800, 1009362736},
         {17200, 4136115215}, {22927, 484495706}, {25037, 900726625},
-        {39000, 609821848}, {42645, 2936275370}, {44709, 2109139941}
+        {39000, 609821848}, {42645, 2936275370}, {44709, 2109139941},
+        {50300, 1665296579}
     };
 }
 

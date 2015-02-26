@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
- * Vanillacoin is free software: you can redistribute it and/or modify
+ * vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -33,7 +33,8 @@ using namespace coin;
 /**
  * ppcoin
  */
-const std::string checkpoint_sync::g_master_public_key = "04b8d49de838594c2289037043e5330f12f4cb98f0a2f0cda90a2a957c3358c95480b"
+const std::string checkpoint_sync::g_master_public_key =
+    "04b8d49de838594c2289037043e5330f12f4cb98f0a2f0cda90a2a957c3358c95480b"
     "b6db13fd5a50368c1f24096495eb473be801e5c919b0668a2f7acf74ed291"
 ;
 

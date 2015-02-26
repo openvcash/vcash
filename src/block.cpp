@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
- * Vanillacoin is free software: you can redistribute it and/or modify
+ * vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -462,7 +462,18 @@ std::shared_ptr<block> block::create_new(
                         "Block, create new, transaction pool item is "
                         "missing input."
                     );
-
+#if (!defined _MSC_VER)
+#warning :TODO: https://github.com/bitcoin/bitcoin/pull/5267
+#endif
+#if 0
+                    /**
+                     * :JC: When issue 5267 is fixed uncomment this.
+                     */
+                    if (globals::instance().debug())
+                    {
+                        assert("transaction is missing input" == 0);
+                    }
+#endif
                     is_missing_inputs = true;
                     
                     if (ptr_orphan)
@@ -2743,21 +2754,7 @@ bool block::check_proof_of_work(const sha256 & hash, const std::uint32_t & bits)
      * Set the compact bits.
      */
     target.set_compact(bits);
-    
-    /**
-     * Remove this after fair solo-mining.
-     */
-#if 0
-    /**
-     * Check the range.
-     */
-    if (target < constants::proof_of_work_limit_ceiling)
-    {
-        throw std::runtime_error("number of bits above maximum work");
 
-        return false;
-    }
-#endif
     /**
      * Check the range.
      */

@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
- * Vanillacoin is free software: you can redistribute it and/or modify
+ * vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -168,6 +168,41 @@ bool key_store_crypto::add_key(const key & k)
     }
     
     return true;
+}
+
+bool key_store_crypto::have_key(const types::id_key_t & address) const
+{
+    std::lock_guard<std::recursive_mutex> l1(mutex_);
+    
+    if (is_crypted() == false)
+    {
+        return key_store_basic::have_key(address);
+    }
+    
+    return m_crypted_keys.count(address) > 0;
+}
+
+void key_store_crypto::get_keys(std::set<types::id_key_t> & addresses) const
+{
+    if (is_crypted() == false)
+    {
+        key_store_basic::get_keys(addresses);
+    }
+    else
+    {
+        addresses.clear();
+
+        std::lock_guard<std::recursive_mutex> l1(mutex_);
+        
+        auto it = m_crypted_keys.begin();
+       
+        while (it != m_crypted_keys.end())
+        {
+            addresses.insert(it->first);
+            
+            it++;
+        }
+    }
 }
 
 bool key_store_crypto::get_key(

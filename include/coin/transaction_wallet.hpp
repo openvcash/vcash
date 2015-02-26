@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
- * Vanillacoin is free software: you can redistribute it and/or modify
+ * vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -121,12 +121,14 @@ namespace coin {
              * Accepts a wallet transaction.
              * @param tx_db The db_tx.
              */
-            bool accept_wallet_transaction(db_tx & tx_db);
+            std::pair<bool, std::string> accept_wallet_transaction(
+                db_tx & tx_db
+            );
 
             /**
              * Accepts a wallet transaction.
              */
-            bool accept_wallet_transaction();
+            std::pair<bool, std::string> accept_wallet_transaction();
 
             /**
              * Marks certain transaction out's as spent.

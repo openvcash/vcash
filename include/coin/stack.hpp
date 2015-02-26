@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2013-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
- * Vanillacoin is free software: you can redistribute it and/or modify
+ * vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -89,6 +89,23 @@ namespace coin {
             void broadcast_alert(
                 const std::map<std::string, std::string> & pairs
             );
+        
+            /**
+             * Encrypts the wallet.
+             * @param passphrase The passphrase.
+             */
+            void wallet_encrypt(const std::string & passphrase);
+        
+            /**
+             * Locks the wallet.
+             */
+            void wallet_lock();
+            
+            /**
+             * Unlocks the wallet.
+             * @param passphrase The passphrase.
+             */
+            void wallet_unlock(const std::string & passphrase);
         
             /**
              * If true the wallet is crypted.
