@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of coinpp.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * coinpp is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -20,8 +20,11 @@
 
 #include <sstream>
 
+#include <boost/algorithm/string.hpp>
+
 #include <coin/http_transport.hpp>
 #include <coin/logger.hpp>
+#include <coin/network.hpp>
 #include <coin/protocol.hpp>
 #include <coin/stack_impl.hpp>
 #include <coin/rpc_server.hpp>
@@ -58,6 +61,47 @@ bool rpc_server::open(const std::uint16_t & port)
     boost::asio::ip::tcp::endpoint ipv4_endpoint(
         boost::asio::ip::address_v4::loopback(), port
     );
+    
+    try
+    {
+        auto args = stack_impl_.get_configuration().args();
+        
+        auto it = args.find("rpc-allow-ips");
+
+        if (it != args.end())
+        {
+            std::vector<std::string> parts;
+            
+            boost::split(parts, it->second, boost::is_any_of(","));
+    
+            for (auto & i : parts)
+            {
+                boost::asio::ip::address addr(
+                    boost::asio::ip::address::from_string(i.c_str())
+                );
+                
+                log_info(
+                    "RPC server got allow-ip = " << addr.to_string() << "."
+                );
+                
+                /**
+                 * Insert the address into the allowed list.
+                 */
+                network::instance().allowed_addresses_rpc().insert(i);
+            }
+            
+            ipv4_endpoint = boost::asio::ip::tcp::endpoint(
+                boost::asio::ip::address_v4::any(), port
+            );
+        }
+    }
+    catch (std::exception & e)
+    {
+        log_error(
+            "RPC server failed to parse rpc-allow-ips, what = " <<
+            e.what() << "."
+        );
+    }
     
     /**
      * Open the ipv4 socket.

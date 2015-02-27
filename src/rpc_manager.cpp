@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of coinpp.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * coinpp is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -18,6 +18,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <coin/network.hpp>
 #include <coin/rpc_connection.hpp>
 #include <coin/rpc_manager.hpp>
 #include <coin/rpc_server.hpp>
@@ -112,7 +113,7 @@ void rpc_manager::handle_accept(
     if (m_tcp_connections.size() >= max_connections)
     {
         log_error(
-            "RPC server is dropping connection from " <<
+            "RPC manager is dropping connection from " <<
             transport->socket().remote_endpoint() << ", limit reached."
         );
         
@@ -123,28 +124,43 @@ void rpc_manager::handle_accept(
     }
     else
     {
-        log_debug(
-            "RPC server accepted new tcp connection from " <<
-            transport->socket().remote_endpoint() << ", " <<
-            m_tcp_connections.size() << " connected peers."
-        );
+        if (
+            network::instance().is_address_rpc_allowed(
+            transport->socket().remote_endpoint().address().to_string())
+            )
+        {
+            log_debug(
+                "RPC manager accepted new tcp connection from " <<
+                transport->socket().remote_endpoint() << ", " <<
+                m_tcp_connections.size() << " connected peers."
+            );
 
-        /**
-         * Allocate the tcp_connection.
-         */
-        auto connection = std::make_shared<rpc_connection> (
-            io_service_, strand_, stack_impl_, transport
-        );
+            /**
+             * Allocate the tcp_connection.
+             */
+            auto connection = std::make_shared<rpc_connection> (
+                io_service_, strand_, stack_impl_, transport
+            );
 
-        /**
-         * Retain the connection.
-         */
-        m_tcp_connections[transport->socket().remote_endpoint()] = connection;
-        
-        /**
-         * Start the tcp_connection.
-         */
-        connection->start();
+            /**
+             * Retain the connection.
+             */
+            m_tcp_connections[
+                transport->socket().remote_endpoint()] = connection
+            ;
+            
+            /**
+             * Start the tcp_connection.
+             */
+            connection->start();
+        }
+        else
+        {
+            log_info(
+                "RPC manager is dropping non-whitelisted connection from " <<
+                transport->socket().remote_endpoint() << "."
+            );
+        }
     }
 }
 

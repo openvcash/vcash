@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of coinpp.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * coinpp is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -23,7 +23,9 @@
 
 #include <clocale>
 #include <ctime>
+#include <map>
 #include <mutex>
+#include <set>
 #include <string>
 
 #include <coin/logger.hpp>
@@ -36,6 +38,17 @@ namespace coin {
     class network
     {
         public:
+        
+            /**
+             * Constructor
+             */
+            network()
+            {
+                /**
+                 * Insert the "always" allowed RPC IP addresses.
+                 */
+                m_allowed_addresses_rpc.insert("127.0.0.1");
+            }
         
             /**
              * The singleton accessor.
@@ -81,6 +94,16 @@ namespace coin {
                 std::setlocale(LC_TIME, locale.c_str());
                 
                 return std::string(buf);
+            }
+        
+            /**
+             * The allowed addresses.
+             */
+            std::set<std::string> & allowed_addresses_rpc()
+            {
+                std::lock_guard<std::mutex> l1(mutex_);
+                
+                return m_allowed_addresses_rpc;
             }
         
             /**
@@ -136,7 +159,24 @@ namespace coin {
                 return false;
             }
         
+            /**
+             * If true the address is allowed.
+             * @param addr The address.
+             */
+            bool is_address_rpc_allowed(const std::string & addr)
+            {
+                return
+                    m_allowed_addresses_rpc.find(addr) !=
+                    m_allowed_addresses_rpc.end()
+                ;
+            }
+        
         private:
+        
+            /**
+             * The allowed addresses.
+             */
+            std::set<std::string> m_allowed_addresses_rpc;
         
             /**
              * The banned addresses.
