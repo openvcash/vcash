@@ -63,4 +63,6 @@ cd test
 bjam.exe toolset=msvc link=static runtime-link=static release
 ```
 
+I also have IDE project files for Visual Studio and Xcode(which also supports iOS) that I will be uploading soon.
+
 Thank you for your support.
