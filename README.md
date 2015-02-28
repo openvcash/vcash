@@ -9,6 +9,8 @@ boost 1.53.0
 db-4.8.30
 openssl
 
+Windows also requires miniupnpc but can be disabled by the use of USE_UPNP=0.
+
 ```
 Extract boost to ./deps
 
