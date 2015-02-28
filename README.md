@@ -4,10 +4,12 @@ vanillacoin
 A decentralized currency for the internet.
 
 Dependencies:
+
 boost 1.53.0
 db-4.8.30
 openssl
 
+```
 Extract boost to ./deps
 
 Run ./deps/boost/bootstrap.sh or ./deps/boost/bootstrap.bat
@@ -43,5 +45,6 @@ bjam.exe toolset=msvc link=static runtime-link=static release
 cd test
 
 bjam.exe toolset=msvc link=static runtime-link=static release
+```
 
 Thank you for your support.
