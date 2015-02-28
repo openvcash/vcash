@@ -32,7 +32,7 @@ For Windows:
 
 bjam.exe link=static runtime-link=static --with-system toolset=msvc release install
 
-Extract db and openssl to ./deps/db and ./deps/openssl on linux. On Mac OS X and Windows extract them to ./deps/platform/osx and ./deps/platform/windows respectively.
+Extract db and openssl to ./deps/db and ./deps/openssl on linux. On Mac OS X and Windows extract them to ./deps/platforms/osx and ./deps/platforms/windows respectively.
 
 Compile db and openssl.
 
