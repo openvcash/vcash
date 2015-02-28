@@ -22,7 +22,7 @@ cd ./deps/boost
 
 For Linux:
 
-./bjam toolset=gcc cxxflags=-std=gnu++0x --with-system  release
+./bjam toolset=gcc cxxflags=-std=gnu++0x --with-system release install
 
 For Mac OS X:
 
