@@ -16,11 +16,25 @@ Run ./deps/boost/bootstrap.sh or ./deps/boost/bootstrap.bat
 
 Copy bjam or bjam.exe if needed.
 
-./bjam or bjam.exe link=static --with-system toolset=clang cxxflags="-std=c++11 -stdlib=libc++" release
+cd ./deps/boost
+
+For Linux:
+
+./bjam toolset=gcc cxxflags=-std=gnu++0x --with-system  release
+
+For Mac OS X:
+
+./bjam link=static --with-system toolset=clang cxxflags="-std=c++11 -stdlib=libc++" release install
+
+For Windows:
+
+bjam.exe link=static runtime-link=static --with-system toolset=msvc release install
 
 Extract db and openssl to ./deps/db and ./deps/openssl on linux. On Mac OS X and Windows extract them to ./deps/platform/osx and ./deps/platform/windows respectively.
 
 Compile db and openssl.
+
+cd ./
 
 For Linux:
 
