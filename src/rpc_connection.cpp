@@ -1353,7 +1353,9 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getbalance(
                         all_generated_immature, all_generated_mature, all_fee
                     ;
                     
-                    all_generated_immature = all_generated_mature = all_fee = 0;
+                    all_generated_immature =
+                        all_generated_mature = all_fee = 0
+                    ;
 
                     std::string send_account;
                     
