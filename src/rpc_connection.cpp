@@ -1308,34 +1308,30 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getbalance(
             
             return ret;
         }
-        else if (request.params.size() > 1)
+        else if (request.params.size() > 0)
         {
             std::string account;
             
             auto minimum_depth_in_main_chain = 1;
         
-            auto it1 = request.params.find("account");
+            auto index = 0;
             
-            if (it1 != request.params.not_found())
+            for (auto & i : request.params)
             {
-                if (it1->second.get<std::string> ("").size() > 0)
+                if (index == 0)
                 {
-                    account = it1->second.get<std::string> ("");
+                    account = i.second.get<std::string> ("");
                 }
-            }
-            
-            auto it2 = request.params.find("minconf");
-            
-            if (it2 != request.params.not_found())
-            {
-                if (it2->second.get<std::string> ("").size() > 0)
+                else if (index == 1)
                 {
-                    minimum_depth_in_main_chain = std::stoi(
-                        it2->second.get<std::string> ("")
-                    );
+                    minimum_depth_in_main_chain =
+                        i.second.get<std::int32_t> ("")
+                    ;
                 }
+            
+                index++;
             }
-    
+
             if (account == "*")
             {
                 std::int64_t balance = 0;
