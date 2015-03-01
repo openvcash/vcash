@@ -63,6 +63,6 @@ cd test
 bjam.exe toolset=msvc link=static runtime-link=static release
 ```
 
-The source code in the ./database directory may be ignored as it is not yet finalized or integrated. I also have IDE project files for Visual Studio and Xcode(which also supports iOS) that I will be uploading soon.
+The source code in the ./database directory may be ignored as it is not yet integrated. I also have IDE project files for Visual Studio and Xcode(which also supports iOS) that I will be uploading soon.
 
 Thank you for your support.
