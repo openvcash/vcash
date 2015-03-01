@@ -1378,7 +1378,7 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getbalance(
                     
                     for (auto & j : s)
                     {
-                        balance += j.second;
+                        balance -= j.second;
                     }
                     
                     balance -= all_fee;
