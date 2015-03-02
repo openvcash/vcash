@@ -2873,6 +2873,13 @@ rpc_connection::json_rpc_response_t rpc_connection::json_gettransaction(
                         "fee", static_cast<double> (fee) / constants::coin
                     );
                 }
+                
+                auto pt = transaction_wallet_to_ptree(wtx);
+                
+                for (auto & i : pt)
+                {
+                    ret.result.push_back(std::make_pair(i.first, i.second));
+                }
 
                 auto pt_details =
                     transactions_to_ptree(
@@ -4613,9 +4620,9 @@ boost::property_tree::ptree rpc_connection::transactions_to_ptree(
                     {
                         pt_entry.push_back(std::make_pair(i.first, i.second));
                     }
-                    
-                    ret.push_back(std::make_pair("", pt_entry));
                 }
+                
+                ret.push_back(std::make_pair("", pt_entry));
             }
         }
     }
