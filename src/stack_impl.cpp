@@ -2529,34 +2529,49 @@ double stack_impl::difficulty(const std::shared_ptr<block_index> & index) const
     return 1.0;
 }
 
-std::uint64_t stack_impl::network_hash_per_second(std::int32_t lookup)
+std::uint64_t stack_impl::network_hash_per_second()
 {
     if (g_block_index_best)
     {
-        if (lookup <= 0)
+        enum { target_spacing_work_minimum = 30 };
+        
+        std::int64_t target_spacing_work = target_spacing_work_minimum;
+        
+        auto interval = 72;
+        
+        auto index = get_block_index_genesis();
+        
+        auto index_previous = get_block_index_genesis();
+        
+        while (index)
         {
-            lookup = g_block_index_best->height() % 2016 + 1;
+            if (index->is_proof_of_work())
+            {
+                std::int64_t actual_spacing_work =
+                    index->time() - index_previous->time()
+                ;
+                
+                target_spacing_work =
+                    ((interval - 1) * target_spacing_work +
+                    actual_spacing_work + actual_spacing_work) / (interval + 1)
+                ;
+                
+                target_spacing_work = std::max(
+                    target_spacing_work,
+                    static_cast<std::int64_t> (target_spacing_work_minimum)
+                );
+                
+                index_previous = index;
+            }
+            
+            index = index->block_index_next();
         }
         
-        if (lookup > g_block_index_best->height())
-        {
-            lookup = g_block_index_best->height();
-        }
+        double ghps = difficulty() * 4.294967296 / target_spacing_work;
         
-        auto index_previous = g_block_index_best;
-        
-        for (int i = 0; i < lookup; i++)
-        {
-            index_previous = index_previous->block_index_previous();
-        }
-        
-        double time_diff = g_block_index_best->time() - index_previous->time();
-        
-        double time_per_block = time_diff / lookup;
-
-        return (difficulty() * std::pow(2.0, 32)) / time_per_block;
+        return ghps * 1000000000.0f;
     }
-    
+
     return 0;
 }
 

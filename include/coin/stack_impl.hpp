@@ -283,7 +283,7 @@ namespace coin {
              * Calculates the average network hashes per second based on the
              * last N blocks.
              */
-            std::uint64_t network_hash_per_second(std::int32_t lookup);
+            std::uint64_t network_hash_per_second();
 
             /**
              * Called when an error occurs.

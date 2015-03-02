@@ -2306,7 +2306,7 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getmininginfo(
                 stack_impl_.get_mining_manager()->hashes_per_second()
             );
             ret.result.put(
-                "networkhashps", stack_impl_.network_hash_per_second(120)
+                "networkhashps", stack_impl_.network_hash_per_second()
             );
             ret.result.put("pooledtx", transaction_pool().instance().size());
             ret.result.put("testnet", constants::test_net);
@@ -2355,9 +2355,7 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getnetworkhashps(
     
     try
     {
-        ret.result.put(
-            "", stack_impl_.network_hash_per_second(120)
-        );
+        ret.result.put("", stack_impl_.network_hash_per_second());
     }
     catch (std::exception & e)
     {
