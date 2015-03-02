@@ -1303,7 +1303,7 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getbalance(
             ret.result.put(
                 "", static_cast<double> (
                 globals::instance().wallet_main()->get_balance()) /
-                static_cast<double> (constants::coin)
+                constants::coin
             );
             
             return ret;
@@ -1353,9 +1353,7 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getbalance(
                         all_generated_immature, all_generated_mature, all_fee
                     ;
                     
-                    all_generated_immature =
-                        all_generated_mature = all_fee = 0
-                    ;
+                    all_generated_immature = all_generated_mature = all_fee = 0;
 
                     std::string send_account;
                     
@@ -1388,8 +1386,7 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getbalance(
                 }
                 
                 ret.result.put(
-                    "", static_cast<double> (balance) /
-                    static_cast<double> (constants::coin)
+                    "", static_cast<double> (balance) / constants::coin
                 );
                 
                 return ret;
@@ -1401,8 +1398,7 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getbalance(
                 );
 
                 ret.result.put(
-                    "", static_cast<double> (balance) /
-                    static_cast<double> (constants::coin)
+                    "", static_cast<double> (balance) / constants::coin
                 );
                 
                 return ret;
@@ -2230,8 +2226,8 @@ boost::property_tree::ptree rpc_connection::json_getinfo()
         ret.put(
             "stake",
             static_cast<double> (
-            globals::instance().wallet_main()->get_stake() /
-            constants::coin)
+            globals::instance().wallet_main()->get_stake()) /
+            constants::coin
         );
         ret.put("blocks", globals::instance().best_block_height());
         ret.put(
@@ -2868,11 +2864,16 @@ rpc_connection::json_rpc_response_t rpc_connection::json_gettransaction(
                     (wtx.is_from_me() ? wtx.get_value_out() - debit : 0)
                 ;
 
-                ret.result.put("amount", (net - fee) / constants::coin);
+                ret.result.put(
+                    "amount", static_cast<double> (net - fee) /
+                    constants::coin
+                );
                 
                 if (wtx.is_from_me())
                 {
-                    ret.result.put("fee", fee / constants::coin);
+                    ret.result.put(
+                        "fee", static_cast<double> (fee) / constants::coin
+                    );
                 }
 
                 auto pt_details =
@@ -3211,7 +3212,7 @@ rpc_connection::json_rpc_response_t rpc_connection::json_listtransactions(
                 const auto & entry = *i.second.second;
 
                 bool all_accounts = account == "*";
-
+            
                 if (all_accounts || entry.account() == account)
                 {
                     ret.result.put(
@@ -3224,7 +3225,9 @@ rpc_connection::json_rpc_response_t rpc_connection::json_listtransactions(
                     );
                     ret.result.put("time", entry.time());
                     ret.result.put(
-                        "amount", entry.credit_debit() / constants::coin
+                        "amount",
+                        static_cast<double> (entry.credit_debit()) /
+                        constants::coin
                     );
                     ret.result.put(
                         "otheraccount", entry.other_account(),
@@ -4290,7 +4293,9 @@ boost::property_tree::ptree rpc_connection::transaction_to_ptree(
             
             boost::property_tree::ptree pt_out;
             
-            pt_out.put("value", tx_out.value() / constants::coin);
+            pt_out.put(
+                "value", static_cast<double> (tx_out.value()) / constants::coin
+            );
             pt_out.put("n", i);
             
             boost::property_tree::ptree pt_o;
@@ -4456,7 +4461,10 @@ boost::property_tree::ptree rpc_connection::transactions_to_ptree(
                 wtx.get_depth_in_main_chain() ? "immature" : "orphan",
                 rpc_json_parser::translator<std::string> ()
             );
-            pt_entry.put("amount", generated_immature / constants::coin);
+            pt_entry.put(
+                "amount", static_cast<double> (generated_immature) /
+                constants::coin
+            );
         }
         else
         {
@@ -4464,7 +4472,10 @@ boost::property_tree::ptree rpc_connection::transactions_to_ptree(
                 "category", "generate",
                 rpc_json_parser::translator<std::string> ()
             );
-            pt_entry.put("amount", generated_mature / constants::coin);
+            pt_entry.put(
+                "amount", static_cast<double> (generated_mature) /
+                constants::coin
+            );
         }
         
         if (include_transactions)
@@ -4503,8 +4514,12 @@ boost::property_tree::ptree rpc_connection::transactions_to_ptree(
             pt_entry.put(
                 "category", "send", rpc_json_parser::translator<std::string> ()
             );
-            pt_entry.put("amount", -s.second / constants::coin);
-            pt_entry.put("fee", -fee / constants::coin);
+            pt_entry.put(
+                "amount", static_cast<double> (-s.second) / constants::coin
+            );
+            pt_entry.put(
+                "fee", static_cast<double> (-fee) / constants::coin
+            );
             
             if (include_transactions)
             {
@@ -4548,7 +4563,7 @@ boost::property_tree::ptree rpc_connection::transactions_to_ptree(
                 boost::property_tree::ptree pt_entry;
                 
                 pt_entry.put(
-                    "account", account,
+                    "account", acct,
                     rpc_json_parser::translator<std::string> ()
                 );
                 pt_entry.put(
@@ -4588,7 +4603,9 @@ boost::property_tree::ptree rpc_connection::transactions_to_ptree(
                     );
                 }
                 
-                pt_entry.put("amount", r.second / constants::coin);
+                pt_entry.put(
+                    "amount", static_cast<double> (r.second) / constants::coin
+                );
             
                 if (include_transactions)
                 {
