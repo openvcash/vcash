@@ -126,7 +126,7 @@ local usage-requirements =
 	<toolset>darwin:<include>./deps/platforms/osx/openssl/include
 	<toolset>msvc:<include>./deps/platforms/windows/openssl/include
 
-	<toolset>gcc:<include>./deps/platforms/linux/db/include
+	<toolset>gcc:<include>./deps/db/include
 	<toolset>clang-darwin:<include>./deps/platforms/osx/db/include
 	<toolset>darwin:<include>./deps/platforms/osx/db/include
 	<toolset>msvc:<include>./deps/platforms/windows/db/build_windows
