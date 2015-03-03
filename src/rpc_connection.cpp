@@ -3196,8 +3196,10 @@ rpc_connection::json_rpc_response_t rpc_connection::json_listtransactions(
             )->ordered_tx_items(accounting_entries
         );
         
-        for (auto & i : ordered_items)
+        for (auto it = ordered_items.rbegin(); it != ordered_items.rend(); ++it)
         {
+            const auto & i = *it;
+            
             if (i.second.first)
             {
                 const auto & wtx = *i.second.first;
