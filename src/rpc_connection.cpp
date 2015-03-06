@@ -1003,6 +1003,7 @@ rpc_connection::json_rpc_response_t rpc_connection::json_walletlock(
 			"", "Error locking wallet. Please try again.",
 			rpc_json_parser::translator<std::string> ()
 		);
+        }
     }
     catch (std::exception & e)
     {
