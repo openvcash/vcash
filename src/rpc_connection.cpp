@@ -602,6 +602,14 @@ bool rpc_connection::handle_json_rpc_request(
     {
         response = json_sendtoaddress(request);
     }
+    else if (request.method == "walletpassphrase")
+    {
+        response = json_walletpassphrase(request);
+    }
+    else if (request.method == "walletlock")
+    {
+        response = json_walletlock(request);
+    }
     else if (request.method == "validateaddress")
     {
         response = json_validateaddress(request);
