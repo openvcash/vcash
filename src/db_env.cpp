@@ -28,6 +28,7 @@
 #endif // _MSC_VER
 
 #include <cassert>
+#include <sstream>
 
 #include <coin/db_env.hpp>
 #include <coin/globals.hpp>
@@ -165,6 +166,65 @@ bool db_env::verify(const std::string & file_name)
     auto result = db.verify(file_name.c_str(), 0, 0, 0);
 
     return result == 0;
+}
+
+bool db_env::salvage(
+    const std::string & file_name, const bool & aggressive,
+    std::vector< std::pair< std::vector<std::uint8_t>,
+    std::vector<std::uint8_t> > > & result
+    )
+{
+    std::lock_guard<std::recursive_mutex> l1(mutex_file_use_counts_);
+    
+    assert(m_file_use_counts.count(file_name) == 0);
+
+    std::lock_guard<std::recursive_mutex> l2(mutex_DbEnv_);
+    
+    std::uint32_t flags = DB_SALVAGE;
+    
+    if (aggressive)
+    {
+        flags |= DB_AGGRESSIVE;
+    }
+    
+    std::stringstream dump;
+
+    Db db(&m_DbEnv, 0);
+    
+    int ret = db.verify(file_name.c_str(), 0, &dump, flags);
+    
+    if (ret != 0)
+    {
+        log_error("Database environment salvage failed.");
+        
+        return false;
+    }
+
+    std::string line;
+    
+    while (dump.eof() == false && line != "HEADER=END")
+    {
+        getline(dump, line);
+    }
+    
+    std::string key, value;
+    
+    while (dump.eof() == false && key != "DATA=END")
+    {
+        getline(dump, key);
+
+        if (key != "DATA=END")
+        {
+            getline(dump, value);
+
+            result.push_back(
+                std::make_pair(utility::from_hex(key),
+                utility::from_hex(value))
+            );
+        }
+    }
+
+    return ret == 0;
 }
 
 void db_env::checkpoint_lsn(const std::string & file_name)

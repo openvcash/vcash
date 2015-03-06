@@ -35,6 +35,7 @@ namespace coin {
     class account;
     class block_locator;
     class data_buffer;
+    class db_env;
     class key_pool;
     class key_public;
     class key_wallet_master;
@@ -84,6 +85,25 @@ namespace coin {
              */
             error_t reorder_transactions(wallet & w);
         
+            /**
+             * Attempts to recover a wallet database file.
+             * @param env The db_env.
+             * @param file_name The file name.
+             * @param keys_only If true only the keys will attempted to be
+             * recovered.
+             */
+            static bool recover(
+                db_env & env, const std::string & file_name,
+                const bool & keys_only
+            );
+        
+            /**
+             * Attempts to recover a wallet database file.
+             * @param env The db_env.
+             * @param file_name The file name.
+             */
+            static bool recover(db_env & env, const std::string & file_name);
+    
             /**
              * Reads a key/value pair.
              * @param w The wallet.

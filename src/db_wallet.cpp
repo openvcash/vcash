@@ -23,6 +23,7 @@
 #include <coin/address.hpp>
 #include <coin/block_locator.hpp>
 #include <coin/data_buffer.hpp>
+#include <coin/db_env.hpp>
 #include <coin/db_wallet.hpp>
 #include <coin/key_wallet.hpp>
 #include <coin/key_wallet_master.hpp>
@@ -336,6 +337,20 @@ db_wallet::error_t db_wallet::reorder_transactions(wallet & w)
     }
 
     return error_load_ok;
+}
+
+bool db_wallet::recover(
+    db_env & env, const std::string & file_name, const bool & keys_only
+    )
+{
+    // :TODO:
+    
+    return false;
+}
+
+bool db_wallet::recover(db_env & env, const std::string & file_name)
+{
+    return recover(env, file_name, false);
 }
 
 bool db_wallet::read_key_value(

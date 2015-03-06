@@ -28,6 +28,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <vector>
 
 #include <coin/filesystem.hpp>
 
@@ -80,6 +81,18 @@ namespace coin {
              * @param file_name The file name.
              */
             bool verify(const std::string & file_name);
+    
+            /**
+             * Attempts to salvage data from a file.
+             * @param file_name The file name.
+             * @param aggressive If true the DB_AGGRESSIVE will be used.
+             * @param result The result.
+             */
+            bool salvage(
+                const std::string & file_name, const bool & aggressive,
+                std::vector< std::pair< std::vector<std::uint8_t>,
+                std::vector<std::uint8_t> > > & result
+            );
     
             /**
              * checkpoint_lsn

@@ -576,6 +576,28 @@ void stack_impl::start()
                      */
                     m_status_manager->insert(status);
                     
+                    auto args = m_configuration.args();
+                    
+                    /**
+                     * Check for erase-wallet-transactions.
+                     */
+                    auto it1 = args.find("erase-wallet-transactions");
+
+                    if (it1 != args.end())
+                    {
+                        log_info("Stack is erasing wallet transactions.");
+                        
+                        /**
+                         * Erase transactions.
+                         */
+                        globals::instance().wallet_main()->erase_transactions();
+                        
+                        /**
+                         * Flush the wallet.
+                         */
+                        globals::instance().wallet_main()->flush();
+                    }
+                    
                     /**
                      * Callback all transactions from the main wallet.
                      */
@@ -785,19 +807,34 @@ void stack_impl::start()
             
                     auto index_rescan = stack_impl::get_block_index_best();
 
-                    if (globals::instance().option_rescan())
+                    /**
+                     * Check for erase-wallet-transactions.
+                     */
+                    auto it2 = args.find("erase-wallet-transactions");
+
+                    if (it2 != args.end())
                     {
                         index_rescan = stack_impl::get_block_index_genesis();
                     }
                     else
                     {
-                        db_wallet wallet_db("wallet.dat");
-                        
-                        block_locator locator;
-                        
-                        if (wallet_db.read_bestblock(locator))
+                        if (globals::instance().option_rescan() == true)
                         {
-                            index_rescan = locator.get_block_index();
+
+                            index_rescan =
+                                stack_impl::get_block_index_genesis()
+                            ;
+                        }
+                        else
+                        {
+                            db_wallet wallet_db("wallet.dat");
+                            
+                            block_locator locator;
+                            
+                            if (wallet_db.read_bestblock(locator))
+                            {
+                                index_rescan = locator.get_block_index();
+                            }
                         }
                     }
                     

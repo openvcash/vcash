@@ -88,6 +88,11 @@ namespace coin {
 
             /**
              * Constructor
+             */
+            wallet();
+        
+            /**
+             * Constructor
              * @param impl The stack_impl.
              */
             wallet(stack_impl & impl);
@@ -307,6 +312,11 @@ namespace coin {
              */
             bool erase_from_wallet(const sha256 & val) const;
 
+            /**
+             * Erases all transactions.
+             */
+            void erase_transactions();
+        
             /**
              * Scans the wallet for transactions belonging to us.
              * @param index_start The block_index.
@@ -767,7 +777,7 @@ namespace coin {
             /**
              * The stack_impl.
              */
-            stack_impl & stack_impl_;
+            stack_impl * stack_impl_;
             
             /**
              * The mutex.

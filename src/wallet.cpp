@@ -47,12 +47,25 @@
 
 using namespace coin;
 
+wallet::wallet()
+    : m_wallet_version(feature_base)
+    , m_wallet_version_max(feature_base)
+    , m_order_position_next(0)
+    , m_master_key_max_id(0)
+    , stack_impl_(0)
+    , is_file_backed_(true)
+    , resend_transactions_timer_(globals::instance().io_service())
+    , time_last_resend_(0)
+{
+    // ...
+}
+
 wallet::wallet(stack_impl & impl)
     : m_wallet_version(feature_base)
     , m_wallet_version_max(feature_base)
     , m_order_position_next(0)
     , m_master_key_max_id(0)
-    , stack_impl_(impl)
+    , stack_impl_(&impl)
     , is_file_backed_(true)
     , resend_transactions_timer_(globals::instance().io_service())
     , time_last_resend_(0)
@@ -913,10 +926,13 @@ void wallet::on_transaction_updated(const sha256 & val)
             status["wallet.transaction.type"] = "mined";
         }
     
-        /**
-         * Callback on new or updated transaction.
-         */
-        stack_impl_.get_status_manager()->insert(status);
+        if (stack_impl_)
+        {
+            /**
+             * Callback on new or updated transaction.
+             */
+            stack_impl_->get_status_manager()->insert(status);
+        }
     }
 }
 
@@ -942,6 +958,18 @@ bool wallet::erase_from_wallet(const sha256 & val) const
     }
     
     return true;
+}
+
+void wallet::erase_transactions()
+{
+    std::lock_guard<std::recursive_mutex> l1(mutex_);
+    
+   for (auto & i : m_transactions)
+   {
+        db_wallet("wallet.dat").erase_tx(i.first);
+   }
+   
+   m_transactions.clear();
 }
 
 std::int32_t wallet::scan_for_transactions(
@@ -1362,10 +1390,13 @@ void wallet::update_spent(const transaction & tx) const
                     i.previous_out().to_string()
                 ;
                 
-                /**
-                 * Callback on new or updated transaction.
-                 */
-                stack_impl_.get_status_manager()->insert(status);
+                if (stack_impl_)
+                {
+                    /**
+                     * Callback on new or updated transaction.
+                     */
+                    stack_impl_->get_status_manager()->insert(status);
+                }
             }
         }
     }
@@ -1703,11 +1734,14 @@ bool wallet::add_to_wallet(const transaction_wallet & wtx_in)
             status["wallet.transaction.type"] = "mined";
         }
         
-        /**
-         * Callback on new or updated transaction.
-         */
-        stack_impl_.get_status_manager()->insert(status);
-
+        if (stack_impl_)
+        {
+            /**
+             * Callback on new or updated transaction.
+             */
+            stack_impl_->get_status_manager()->insert(status);
+        }
+        
         /**
          * Notify an external script when a wallet transaction comes in or is
          * updated.
@@ -2486,10 +2520,13 @@ std::pair<bool, std::string> wallet::commit_transaction(
             status["wallet.transaction.type"] = "mined";
         }
         
-        /**
-         * Callback
-         */
-        stack_impl_.get_status_manager()->insert(status);
+        if (stack_impl_)
+        {
+            /**
+             * Callback
+             */
+            stack_impl_->get_status_manager()->insert(status);
+        }
     }
     
     if (is_file_backed_)
@@ -2517,19 +2554,25 @@ std::pair<bool, std::string> wallet::commit_transaction(
          */
         
         log_error(
-            "Wallet, commit transaction failed, transaction is not valid," <<
-            " performing check."
+            "Wallet, commit transaction failed, transaction is not valid."
         );
 
         return std::make_pair(false, ret.second);
     }
     
-    /**
-     * Relay the wallet transaction.
-     */
-    wtx_new.relay_wallet_transaction(stack_impl_.get_tcp_connection_manager());
-
-    return std::make_pair(true, "");
+    if (stack_impl_)
+    {
+        /**
+         * Relay the wallet transaction.
+         */
+        wtx_new.relay_wallet_transaction(
+            stack_impl_->get_tcp_connection_manager()
+        );
+        
+        return std::make_pair(true, "");
+    }
+    
+    return std::make_pair(false, "null stack_impl");
 }
 
 bool wallet::create_coin_stake(
@@ -3621,78 +3664,81 @@ void wallet::resend_transactions_tick(const boost::system::error_code & ec)
     {
         std::lock_guard<std::recursive_mutex> l1(mutex_);
         
-        if (
-            utility::is_initial_block_download() == false &&
-            stack_impl_.get_tcp_connection_manager(
-            )->tcp_connections().size() > 0 &&
-            globals::instance().time_best_received() >= time_last_resend_
-            )
+        if (stack_impl_)
         {
-            /**
-             * Set the time of the last resend to now.
-             */
-            time_last_resend_ = std::time(0);
-            
-            db_tx tx_db("r");
-            
-            /**
-             * Sort by time.
-             */
-            std::multimap<std::uint32_t, transaction_wallet *> sorted;
-            
-            for (auto & item : m_transactions)
+            if (
+                utility::is_initial_block_download() == false &&
+                stack_impl_->get_tcp_connection_manager(
+                )->tcp_connections().size() > 0 &&
+                globals::instance().time_best_received() >= time_last_resend_
+                )
             {
-                auto & wtx = item.second;
+                /**
+                 * Set the time of the last resend to now.
+                 */
+                time_last_resend_ = std::time(0);
+                
+                db_tx tx_db("r");
                 
                 /**
-                 * Allow time for the transaction to have been put into a
-                 * block.
+                 * Sort by time.
                  */
-                if (
-                    globals::instance().time_best_received() -
-                    static_cast<std::int64_t> (wtx.time_received()) >
-                    constants::work_and_stake_target_spacing
-                    )
+                std::multimap<std::uint32_t, transaction_wallet *> sorted;
+                
+                for (auto & item : m_transactions)
                 {
-                    sorted.insert(
-                        std::make_pair(wtx.time_received(), &wtx)
-                    );
-                }
-            }
-            
-            for (auto & item : sorted)
-            {
-                auto & wtx = *item.second;
-
-                try
-                {
+                    auto & wtx = item.second;
+                    
                     /**
-                     * Check the transaction.
+                     * Allow time for the transaction to have been put into a
+                     * block.
                      */
-                    if (wtx.check())
+                    if (
+                        globals::instance().time_best_received() -
+                        static_cast<std::int64_t> (wtx.time_received()) >
+                        constants::work_and_stake_target_spacing
+                        )
+                    {
+                        sorted.insert(
+                            std::make_pair(wtx.time_received(), &wtx)
+                        );
+                    }
+                }
+                
+                for (auto & item : sorted)
+                {
+                    auto & wtx = *item.second;
+
+                    try
                     {
                         /**
-                         * Relay the transaction to all connected peers.
+                         * Check the transaction.
                          */
-                        wtx.relay_wallet_transaction(
-                            tx_db, stack_impl_.get_tcp_connection_manager()
-                        );
+                        if (wtx.check())
+                        {
+                            /**
+                             * Relay the transaction to all connected peers.
+                             */
+                            wtx.relay_wallet_transaction(
+                                tx_db, stack_impl_->get_tcp_connection_manager()
+                            );
+                        }
+                        else
+                        {
+                            log_error(
+                                "Wallet, resend transactions failed, check "
+                                "failed for transaction " <<
+                                wtx.get_hash().to_string() << "."
+                            );
+                        }
                     }
-                    else
+                    catch (std::exception & e)
                     {
-                        log_error(
-                            "Wallet, resend transactions failed, check "
-                            "failed for transaction " <<
-                            wtx.get_hash().to_string() << "."
+                        log_debug(
+                            "Wallet, resend transactions failed, what = " <<
+                            e.what() << "."
                         );
                     }
-                }
-                catch (std::exception & e)
-                {
-                    log_debug(
-                        "Wallet, resend transactions failed, what = " <<
-                        e.what() << "."
-                    );
                 }
             }
         }
