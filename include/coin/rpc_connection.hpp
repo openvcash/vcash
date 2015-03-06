@@ -340,7 +340,23 @@ namespace coin {
             json_rpc_response_t json_encryptwallet(
                 const json_rpc_request_t & request
             );
-        
+
+           /**
+	    * Temporarily unlocks wallet so user can send coins.
+	    * @param request The json_rpc_request_t.
+	    */
+            json_rpc_response_t json_walletpassphrase(
+                const json_rpc_request_t & request
+            );
+
+           /**
+            * Locks wallet (undoes walletpassphrase).
+            * @param request The json_rpc_request_t.
+            */
+            json_rpc_response_t json_walletlock(
+                const json_rpc_request_t & request
+            );
+
             /**
              * Encodes getaccount data into JSON format.
              * @param request The json_rpc_request_t.

@@ -518,6 +518,14 @@ bool rpc_connection::handle_json_rpc_request(
     {
         response = json_encryptwallet(request);
     }
+    else if (request.method == "walletpassphrase")
+    {
+        response = json_walletpassphrase(request);
+    }
+    else if (request.method == "walletlock")
+    {
+        response = json_walletlock(request);
+    }
     else if (request.method == "getaccount")
     {
         response = json_getaccount(request);
@@ -973,6 +981,87 @@ rpc_connection::json_rpc_response_t rpc_connection::json_encryptwallet(
     }
 
     return ret;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_walletlock(
+    const json_rpc_request_t & request
+    )
+{
+	json_rpc_response_t ret;
+    try
+    {
+    	if (globals::instance().wallet_main()->lock())
+	{
+		ret.result.put(
+			"", "Wallet locked.",
+			rpc_json_parser::translator<std::string> ()
+		);
+	}
+	else
+	{
+		ret.result.put(
+			"", "Error locking wallet. Please try again.",
+			rpc_json_parser::translator<std::string> ()
+		);
+    }
+    catch (std::exception & e)
+    {
+        auto pt_error = create_error_object(
+            error_code_misc_error, e.what()
+        );
+
+        /**
+         * error_code_internal_error
+         */
+        return json_rpc_response_t{
+            boost::property_tree::ptree(), pt_error, request.id
+        };
+    }
+	return ret;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_walletpassphrase(
+    const json_rpc_request_t & request
+    )
+{
+json_rpc_response_t ret;
+auto param_passphrase =
+                request.params.front().second.get<std::string> ("");
+    /**
+     * Set the id from the request.
+     */
+    ret.id = request.id;
+    try
+    {
+    	if (globals::instance().wallet_main()->unlock(param_passphrase))
+	{
+		ret.result.put(
+			"", "Wallet unlocked.",
+			rpc_json_parser::translator<std::string> ()
+		);
+	}
+	else
+	{
+		ret.result.put(
+			"", "Wrong passphrase.",
+                rpc_json_parser::translator<std::string> ()
+		);
+	}
+    }
+    catch (std::exception & e)
+    {
+        auto pt_error = create_error_object(
+            error_code_misc_error, e.what()
+        );
+        
+        /**
+         * error_code_internal_error
+         */
+        return json_rpc_response_t{
+            boost::property_tree::ptree(), pt_error, request.id
+        };
+    }
+	return ret;
 }
 
 rpc_connection::json_rpc_response_t rpc_connection::json_dumpprivkey(
