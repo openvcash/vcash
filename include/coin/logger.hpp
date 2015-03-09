@@ -31,10 +31,13 @@
 #endif // (defined _WIN32 || defined WIN32) || (defined _WIN64 || defined WIN64)
 
 #include <iostream>
+#include <fstream>
 #include <memory>
 #include <sstream>
 
 #include <mutex>
+
+#include <coin/filesystem.hpp>
 
 namespace coin {
 
@@ -92,7 +95,29 @@ namespace coin {
 
 			    if (use_file)
 			    {
-                    // ...
+                    if (ofstream_.is_open() == false)
+                    {
+                        std::string path =
+                            filesystem::data_path() + "debug.log"
+                        ;
+                        
+                        ofstream_.open(
+                            path, std::fstream::out | std::fstream::app
+                        );
+                    }
+                    
+                    if (ofstream_.is_open() == true)
+                    {
+                        /**
+                         * Limit size.
+                         */
+                        if (ofstream_.tellp() > 50 * 1000000)
+                        {
+                            ofstream_.clear();
+                        }
+                        
+                        ofstream_ << val.str() << std::endl;
+                    }
 			    }
 
 			    static bool use_cout = true;
@@ -139,7 +164,10 @@ namespace coin {
             
         protected:
         
-            // ...
+            /**
+             * The std::ofstream.
+             */
+            std::ofstream ofstream_;
     };
     
     #define log_xx(severity, strm) \
