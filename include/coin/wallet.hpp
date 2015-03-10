@@ -87,6 +87,11 @@ namespace coin {
             enum { configuration_interval_history = 86400 * 365 };
 
             /**
+             * The configuration (default) keypool size.
+             */
+            enum { configuration_keypool_size = 100 };
+        
+            /**
              * Constructor
              */
             wallet();

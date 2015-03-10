@@ -388,9 +388,16 @@ bool wallet::new_key_pool()
     {
         /**
          * Get the number of keys.
-         * -keypool
          */
-        auto target_size = std::max(100, 0);
+        auto target_size = 0;
+        
+        if (stack_impl_)
+        {
+            target_size =
+                std::max(
+                stack_impl_->get_configuration().wallet_keypool_size(), 0)
+            ;
+        }
         
         for (int i = 0; i < target_size; i++)
         {
@@ -432,10 +439,17 @@ bool wallet::top_up_key_pool()
 
     /**
      * Top up (off) the key pool.
-     * -keypool
      */
-    auto target_size = std::max(100, 0);
+    auto target_size = 0;
     
+    if (stack_impl_)
+    {
+        target_size =
+            std::max(
+            stack_impl_->get_configuration().wallet_keypool_size(), 0)
+        ;
+    }
+
     while (m_key_pool.size() < (target_size + 1))
     {
         std::int64_t end = 1;
@@ -456,7 +470,7 @@ bool wallet::top_up_key_pool()
     
         m_key_pool.insert(end);
         
-        log_debug(
+        log_info(
             "Wallet toping off key pool, added " << end <<
             ", size = " << m_key_pool.size() << "."
         );

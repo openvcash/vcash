@@ -39,6 +39,7 @@ configuration::configuration()
     : m_network_port_tcp(protocol::default_tcp_port)
     , m_network_tcp_inbound_maximum(network::tcp_inbound_maximum)
     , m_wallet_transaction_history_maximum(wallet::configuration_interval_history)
+    , m_wallet_keypool_size(wallet::configuration_keypool_size)
 {
     // ...
 }
@@ -110,12 +111,25 @@ bool configuration::load()
          */
         m_wallet_transaction_history_maximum = std::stoul(pt.get(
             "wallet.transaction.history.maximum",
-            std::to_string(wallet::configuration_interval_history))
+            std::to_string(m_wallet_transaction_history_maximum))
         );
         
         log_debug(
             "Configuration read wallet.transaction.history.maximum = " <<
             m_wallet_transaction_history_maximum << "."
+        );
+        
+        /**
+         * Get the wallet.keypool.size.
+         */
+        m_wallet_keypool_size = std::stol(pt.get(
+            "wallet.keypool.size",
+            std::to_string(m_wallet_keypool_size))
+        );
+        
+        log_debug(
+            "Configuration read wallet.keypool.size = " <<
+            m_wallet_keypool_size << "."
         );
     }
     catch (std::exception & e)
@@ -167,6 +181,13 @@ bool configuration::save()
         pt.put(
             "wallet.transaction.history.maximum",
             std::to_string(m_wallet_transaction_history_maximum)
+        );
+        
+        /**
+         * Put the wallet.keypool.size into property tree.
+         */
+        pt.put(
+            "wallet.keypool.size", std::to_string(m_wallet_keypool_size)
         );
         
         /**

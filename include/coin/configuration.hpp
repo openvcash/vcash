@@ -133,6 +133,14 @@ namespace coin {
                 return m_wallet_transaction_history_maximum;
             }
         
+            /**
+             * The wallet keypool size.
+             */
+            const std::int32_t & wallet_keypool_size() const
+            {
+                return m_wallet_keypool_size;
+            }
+        
         private:
         
             /** 
@@ -161,6 +169,11 @@ namespace coin {
              * The maximum wallet transaction history.
              */
             std::time_t m_wallet_transaction_history_maximum;
+        
+            /**
+             * The wallet keypool size.
+             */
+            std::int32_t m_wallet_keypool_size;
         
         protected:
         
