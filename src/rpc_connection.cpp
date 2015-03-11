@@ -719,6 +719,15 @@ bool rpc_connection::send_json_rpc_response(
          */
         if (transport)
         {
+            /**
+             * Set that the transport should close after it writes all of it's
+             * queued buffers.
+             */
+            transport->set_close_after_writes(true);
+            
+            /**
+             * Write the response.
+             */
             transport->write(http_response.data(), http_response.size());
         }
         
@@ -2682,7 +2691,10 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getrawtransaction(
                     
                     boost::property_tree::ptree pt_out;
                     
-                    pt_out.put("value", tx_out.value() / constants::coin);
+                    pt_out.put(
+                        "value",
+                        static_cast<double> (tx_out.value()) / constants::coin
+                    );
                     pt_out.put("n", i);
                     
                     boost::property_tree::ptree pt_o;
