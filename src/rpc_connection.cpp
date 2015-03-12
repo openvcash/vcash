@@ -1768,7 +1768,7 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getblockhash(
                 request.params.front().second.get<std::string> ("")
             );
             
-            if (height < globals::instance().best_block_height())
+            if (height > -1 && height < globals::instance().best_block_height())
             {
                 auto index = utility::find_block_index_by_height(height);
                 
