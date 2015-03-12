@@ -1089,7 +1089,16 @@ rpc_connection::json_rpc_response_t rpc_connection::json_dumpprivkey(
         }
         else
         {
-            // ...
+            auto pt_error = create_error_object(
+                error_code_invalid_params, "invalid parameter count"
+            );
+            
+            /**
+             * error_code_invalid_params
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
         }
     }
     catch (std::exception & e)

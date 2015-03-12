@@ -2046,11 +2046,6 @@ void stack_impl::rpc_send(const std::string & command_line)
      */
     boost::algorithm::trim(tmp);
     
-    /**
-     * Normalize
-     */
-    boost::to_lower(tmp);
-    
     std::vector<std::string> parts;
     
     /**
