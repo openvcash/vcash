@@ -2267,8 +2267,6 @@ void stack_impl::rpc_send(const std::string & command_line)
                                 {
                                     json << result.get<std::string> ("");
                                 }
-                                
-                                log_debug("got json = " << json.str());
 
                                 /**
                                  * Set the pairs value.
