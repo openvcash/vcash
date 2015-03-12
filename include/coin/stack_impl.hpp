@@ -148,6 +148,12 @@ namespace coin {
             bool wallet_is_locked(const std::uint32_t & wallet_id);
 
             /**
+             * Sends an RPC command line.
+             * @param command_line The command line.
+             */
+            void rpc_send(const std::string & command_line);
+            
+            /**
              * Performs an http get operation toward the url.
              * @param url The url.
              * @param f The function.
@@ -161,12 +167,14 @@ namespace coin {
             /**
              * Performs an http post operation toward the url.
              * @param url The url.
+             * @param port The port.
              * @param headers The headers.
              * @param body The body.
              * @param f The function.
              */
             void url_post(
                 const std::string & url,
+                const std::uint16_t & port,
                 const std::map<std::string, std::string> & headers,
                 const std::string & body,
                 const std::function<void (const std::map<std::string,

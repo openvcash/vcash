@@ -46,6 +46,7 @@
 #include <coin/nat_pmp_client.hpp>
 #include <coin/protocol.hpp>
 #include <coin/random.hpp>
+#include <coin/rpc_json_parser.hpp>
 #include <coin/rpc_manager.hpp>
 #include <coin/stack.hpp>
 #include <coin/stack_impl.hpp>
@@ -2036,6 +2037,284 @@ bool stack_impl::wallet_is_locked(const std::uint32_t & wallet_id)
     return false;
 }
 
+void stack_impl::rpc_send(const std::string & command_line)
+{
+    auto tmp = command_line;
+    
+    /**
+     * Trim whitespace.
+     */
+    boost::algorithm::trim(tmp);
+    
+    /**
+     * Normalize
+     */
+    boost::to_lower(tmp);
+    
+    std::vector<std::string> parts;
+    
+    /**
+     * Split the command line.
+     */
+    boost::split(parts, tmp, boost::is_any_of(" "));
+    
+    if (parts.size() > 0)
+    {
+        std::string command;
+        
+        std::vector<std::string> params;
+        
+        auto index = 0;
+        
+        for (auto & i : parts)
+        {
+            /**
+             * Get the command and params.
+             */
+            if (index++ == 0)
+            {
+                command = i;
+            }
+            else
+            {
+                params.push_back(i);
+            }
+        }
+        
+        if (command.size() > 0)
+        {
+            /**
+             * The url.
+             */
+            auto url = "http://localhost";
+
+            /**
+             * The headers.
+             */
+            std::map<std::string, std::string> headers;
+            
+            /**
+             * The body.
+             */
+            std::string body;
+            
+            /**
+             * A JSON-RPC request.
+             */
+            struct
+            {
+                std::string method;
+                boost::property_tree::ptree params;
+                std::string id;
+            } request;
+            
+            /**
+             * Set the method.
+             */
+            request.method = command;
+            
+            /**
+             * Set the id.
+             */
+            request.id = std::to_string(std::rand());
+
+            try
+            {
+                boost::property_tree::ptree pt;
+
+                /**
+                 * Put method into property tree.
+                 */
+                pt.put(
+                    "method", request.method,
+                    rpc_json_parser::translator<std::string> ()
+                );
+                
+                boost::property_tree::ptree pt_params;
+                
+                /** 
+                 * Put the params.
+                 */
+                if (params.size() > 0)
+                {
+                    for (auto & i : params)
+                    {
+                        boost::property_tree::ptree pt_param;
+                        
+                        pt_param.put(
+                            "", i, rpc_json_parser::translator<std::string> ()
+                        );
+                        
+                        pt_params.push_back(std::make_pair("", pt_param));
+                    }
+                
+                    pt.put_child("params", pt_params);
+                }
+                else
+                {
+                    boost::property_tree::ptree pt_params;
+                    
+                    pt_params.push_back(
+                        std::make_pair("", boost::property_tree::ptree())
+                    );
+                    
+                    pt.put_child("params", pt_params);
+                }
+                
+                /**
+                 * Put id into property tree.
+                 */
+                pt.put(
+                    "id", request.id,
+                    rpc_json_parser::translator<std::string> ()
+                );
+                
+                /**
+                 * The std::stringstream.
+                 */
+                std::stringstream ss;
+                
+                /**
+                 * Write property tree to json file.
+                 */
+                rpc_json_parser::write_json(ss, pt, false);
+                
+                /**
+                 * Set the body.
+                 */
+                body = ss.str();
+                
+                /**
+                 * Set the content-length.
+                 */
+                headers["content-length"] = body.size();
+                
+                /**
+                 * POST the request.
+                 */
+                url_post(url, protocol::default_rpc_port, headers, body,
+                    [this] (const std::map<std::string, std::string> & headers,
+                    const std::string & body)
+                {
+                    if (body.size() > 0)
+                    {
+                        /**
+                         * The JSON
+                         */
+                        std::stringstream json;
+
+                        std::stringstream ss;
+
+                        ss << body;
+
+                        boost::property_tree::ptree pt;
+                        
+                        std::map<std::string, std::string> result;
+                        
+                        try
+                        {
+                            read_json(ss, pt);
+
+                            /**
+                             * Allocate the pairs.
+                             */
+                            std::map<std::string, std::string> pairs;
+                            
+                            /**
+                             * Set the pairs type.
+                             */
+                            pairs["type"] = "rpc";
+                            
+                            try
+                            {
+                                auto & error = pt.get_child("error");
+                                
+                                (void)error;
+
+                                /**
+                                 * Set the pairs value.
+                                 */
+                                pairs["value"] =
+                                    error.get_child("code"
+                                    ).get<std::string> ("") + " : " +
+                                    error.get_child("message"
+                                    ).get<std::string> ("")
+                                ;
+
+                                /**
+                                 * Set the pairs error.code.
+                                 */
+                                pairs["error.code"] = "-1";
+                                
+                                /**
+                                 * Set the pairs error.message.
+                                 */
+                                pairs["error.message"] =
+                                    error.get_child("message"
+                                    ).get<std::string> ("")
+                                ;
+                                
+                            }
+                            catch (...)
+                            {
+                                auto & result = pt.get_child("result");
+                             
+                                try
+                                {
+                                    rpc_json_parser::write_json(json, result);
+                                }
+                                catch (...)
+                                {
+                                    json << result.get<std::string> ("");
+                                }
+                                
+                                log_debug("got json = " << json.str());
+
+                                /**
+                                 * Set the pairs value.
+                                 */
+                                pairs["value"] = json.str();
+
+                                /**
+                                 * Set the pairs error.code.
+                                 */
+                                pairs["error.code"] = "0";
+                                
+                                /**
+                                 * Set the pairs error.message.
+                                 */
+                                pairs["error.message"] = "success";
+                            }
+                            
+                            /**
+                             * Callback
+                             */
+                            if (m_status_manager)
+                            {
+                                m_status_manager->insert(pairs);
+                            }
+                        }
+                        catch (std::exception & e)
+                        {
+                            log_error(
+                                "Stack rpc send failed to parse JSON-RPC "
+                                "response, what = " << e.what() << "."
+                            );
+                        }
+                    }
+                });
+            }
+            catch (std::exception & e)
+            {
+                log_error(
+                    "Stack failed to create RPC request, what = " <<
+                    e.what() << "."
+                );
+            }
+        }
+    }
+}
+
 void stack_impl::url_get(
     const std::string & url,
     const std::function<void (const std::map<std::string, std::string> &,
@@ -2062,7 +2341,7 @@ void stack_impl::url_get(
 }
 
 void stack_impl::url_post(
-    const std::string & url,
+    const std::string & url, const std::uint16_t & port,
     const std::map<std::string, std::string> & headers,
     const std::string & body,
     const std::function<void (const std::map<std::string, std::string> &,
@@ -2089,7 +2368,7 @@ void stack_impl::url_post(
 		{
             f(t->headers(), t->response_body());
 		}
-	});
+	}, port);
 }
 
 bool stack_impl::process_block(

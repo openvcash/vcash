@@ -58,11 +58,13 @@ namespace coin {
         
             /**
              * Starts the transport.
-             * f The completion handler.
+             * @param f The completion handler.
+             * @param port The port.
              */
             void start(
                 const std::function<void (boost::system::error_code,
-                std::shared_ptr<http_transport>)> &
+                std::shared_ptr<http_transport>)> &,
+                const std::uint16_t & port = 0
             );
         
             /**

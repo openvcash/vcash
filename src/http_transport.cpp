@@ -70,7 +70,7 @@ http_transport::~http_transport()
 
 void http_transport::start(
     const std::function<void (boost::system::error_code,
-    std::shared_ptr<http_transport>)> & f
+    std::shared_ptr<http_transport>)> & f, const std::uint16_t & port
     )
 {
     auto self(shared_from_this());
@@ -164,7 +164,8 @@ void http_transport::start(
     {
         boost::asio::ip::tcp::resolver resolver(io_service_);
         boost::asio::ip::tcp::resolver::query query(
-            m_hostname, m_secure ? "443" : "80"
+            m_hostname,
+            (port == 0 ? (m_secure ? "443" : "80") : std::to_string(port))
         );
         do_connect(resolver.resolve(query));
     }
@@ -611,7 +612,7 @@ void http_transport::handle_body()
                 else
                 {
                     m_response_body << response_.get();
-                    
+
                     handle_body();
                 }
             }

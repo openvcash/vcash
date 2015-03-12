@@ -118,6 +118,12 @@ namespace coin {
              * @param wallet_id The wallet id.
              */
             bool wallet_is_locked(const std::uint32_t & wallet_id = 0);
+        
+            /**
+             * Sends an RPC command line.
+             * @param command_line The command line.
+             */
+            void rpc_send(const std::string & command_line);
             
             /**
              * Called when an error occurs.

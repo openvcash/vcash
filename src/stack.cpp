@@ -201,10 +201,13 @@ bool stack::wallet_is_locked(const std::uint32_t & wallet_id)
 void stack::on_error(const std::map<std::string, std::string> & pairs)
 {
     log_error("Stack got error, pairs = " << pairs.size() << ".");
-    
-    for (auto & i : pairs)
+}
+
+void stack::rpc_send(const std::string & command_line)
+{
+    if (stack_impl_)
     {
-        log_debug(i.first << ":" << i.second);
+        stack_impl_->rpc_send(command_line);
     }
 }
 
