@@ -98,21 +98,11 @@ std::int64_t reward::get_proof_of_work_vanilla(
     
     subsidy *= 1000000;
 
-    if (height <= 50000)
+    for (auto i = 50000; i <= height; i += 50000)
     {
-        for (auto i = 50000; i <= height; i += 50000)
-        {
-            subsidy -= subsidy / 6;
-        }
+        subsidy -= subsidy / 6;
     }
-    else
-    {
-        for (auto i = 40000; i <= height; i += 40000)
-        {
-            subsidy -= subsidy / 6;
-        }
-    }
-    
+
     /**
      * If the subsidy is less than one cent the miner gets one cent
      * indefinitely.
