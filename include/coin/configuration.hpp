@@ -141,6 +141,40 @@ namespace coin {
                 return m_wallet_keypool_size;
             }
         
+            /**
+             * Set wallet rescan.
+             * @param val The value.
+             */
+            void set_wallet_rescan(const bool & val)
+            {
+                m_wallet_rescan = val;
+            }
+        
+            /**
+             * Wallet rescan.
+             */
+            const bool & wallet_rescan() const
+            {
+                return m_wallet_rescan;
+            }
+        
+            /**
+             * Set mining Proof-of-Stake.
+             * @param val The value.
+             */
+            void set_mining_proof_of_stake(const bool & val)
+            {
+                m_mining_proof_of_stake = val;
+            }
+        
+            /**
+             * Enable Proof-of-Stake mining.
+             */
+            const bool & mining_proof_of_stake() const
+            {
+                return m_mining_proof_of_stake;
+            }
+        
         private:
         
             /** 
@@ -174,6 +208,16 @@ namespace coin {
              * The wallet keypool size.
              */
             std::int32_t m_wallet_keypool_size;
+        
+            /**
+             * The wallet rescan.
+             */
+            bool m_wallet_rescan;
+        
+            /**
+             * Enable Proof-of-Stake mining.
+             */
+            bool m_mining_proof_of_stake;
         
         protected:
         

@@ -40,6 +40,8 @@ configuration::configuration()
     , m_network_tcp_inbound_maximum(network::tcp_inbound_maximum)
     , m_wallet_transaction_history_maximum(wallet::configuration_interval_history)
     , m_wallet_keypool_size(wallet::configuration_keypool_size)
+    , m_wallet_rescan(false)
+    , m_mining_proof_of_stake(true)
 {
     // ...
 }
@@ -122,7 +124,7 @@ bool configuration::load()
         /**
          * Get the wallet.keypool.size.
          */
-        m_wallet_keypool_size = std::stol(pt.get(
+        m_wallet_keypool_size = std::stoi(pt.get(
             "wallet.keypool.size",
             std::to_string(m_wallet_keypool_size))
         );
@@ -130,6 +132,32 @@ bool configuration::load()
         log_debug(
             "Configuration read wallet.keypool.size = " <<
             m_wallet_keypool_size << "."
+        );
+        
+        /**
+         * Get the wallet.rescan.
+         */
+        m_wallet_rescan = std::stoi(pt.get(
+            "wallet.rescan",
+            std::to_string(m_wallet_rescan))
+        );
+        
+        log_debug(
+            "Configuration read wallet.rescan = " <<
+            m_wallet_rescan << "."
+        );
+        
+        /**
+         * Get the mining.proof-of-stake.
+         */
+        m_mining_proof_of_stake = std::stoi(pt.get(
+            "mining.proof-of-stake",
+            std::to_string(m_mining_proof_of_stake))
+        );
+        
+        log_debug(
+            "Configuration read mining.proof-of-stake = " <<
+            m_mining_proof_of_stake << "."
         );
     }
     catch (std::exception & e)
@@ -188,6 +216,20 @@ bool configuration::save()
          */
         pt.put(
             "wallet.keypool.size", std::to_string(m_wallet_keypool_size)
+        );
+        
+        /**
+         * Put the wallet.rescan into property tree.
+         */
+        pt.put(
+            "wallet.rescan", std::to_string(m_wallet_rescan)
+        );
+        
+        /**
+         * Put the mining.proof-of-stake into property tree.
+         */
+        pt.put(
+            "mining.proof-of-stake", std::to_string(m_mining_proof_of_stake)
         );
         
         /**
