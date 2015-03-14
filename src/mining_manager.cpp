@@ -451,18 +451,12 @@ void mining_manager::loop(const bool & is_proof_of_stake)
             )
         {
             std::uint32_t hashes_done = 0;
-#if (defined USE_WHIRLPOOL && USE_WHIRLPOOL)
+
             auto nonce_found =
                 mining::scan_hash_whirlpool(&blk->header(), max_nonce,
                 hashes_done, result.digest(), &res_header
             );
-#else
-            auto nonce_found = scanhash_scrypt(
-                &blk->header(), buf_scrypt,
-                max_nonce, hashes_done,
-                reinterpret_cast<std::uint32_t *> (result.digest()), &res_header
-            );
-#endif // USE_WHIRLPOOL
+
             /**
              * Check if we have found a solution.
              */
