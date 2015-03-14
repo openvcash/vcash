@@ -23,7 +23,6 @@
 
 #include <coin/block.hpp>
 #include <coin/globals.hpp>
-#include <coin/hash_scrypt.hpp>
 #include <coin/key_reserved.hpp>
 #include <coin/logger.hpp>
 #include <coin/mining.hpp>
