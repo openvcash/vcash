@@ -819,9 +819,22 @@ void stack_impl::start()
                     }
                     else
                     {
+                        /**
+                         * If the configuration is set to rescan the wallet
+                         * we set it to false again and set the globals option
+                         * to perform the rescan.
+                         */
+                        if (m_configuration.wallet_rescan() == true)
+                        {
+                            m_configuration.set_wallet_rescan(false);
+                            
+                            m_configuration.save();
+                            
+                            globals::instance().set_option_rescan(true);
+                        }
+
                         if (globals::instance().option_rescan() == true)
                         {
-
                             index_rescan =
                                 stack_impl::get_block_index_genesis()
                             ;
