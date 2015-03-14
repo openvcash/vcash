@@ -504,14 +504,27 @@ std::uint32_t utility::get_next_target_required(
     }
 
     /**
+     * These MUST always be top down.
+     */
+    
+    /**
+     * The block height at which version 0.2.3 retargeting begins.
+     */
+    enum { block_height_v023_retargeting = 74299 };
+    
+    /**
      * The block height at which version 0.2.0 retargeting begins.
      */
     enum { block_height_v020_retargeting = 50399 };
-
+    
     /**
-     * Check for version 0.2.0 retargeting.
+     * Check for version retargeting.
      */
-    if (height > block_height_v020_retargeting)
+    if (height > block_height_v023_retargeting)
+    {
+        return get_next_target_required_v023(index_last, is_pos);
+    }
+    else if (height > block_height_v020_retargeting)
     {
         return get_next_target_required_v020(index_last, is_pos);
     }
@@ -524,13 +537,6 @@ std::uint32_t utility::get_next_target_required(
      * DigiShield-like retarget.
      */
     std::int64_t blocks_to_go_back = 0;
-
-    if (globals::instance().debug())
-    {
-        log_none(
-            "Utility, get next target required, actual_timespan limiting."
-        );
-    }
     
     /**
      * We alter the block time so that coins will be generated at the same
@@ -657,10 +663,6 @@ std::uint32_t utility::get_next_target_required(
              */
             if (bn_new >= constants::proof_of_work_limit)
             {
-                log_debug(
-                    "Utility, next target required is raising the difficulty."
-                );
-                
                 /**
                  * Raise the difficulty to 0.00388934.
                  */
@@ -668,10 +670,6 @@ std::uint32_t utility::get_next_target_required(
             }
             else if (bn_new < constants::proof_of_work_limit_ceiling)
             {
-                log_debug(
-                    "Utility, next target required is lowering the difficulty."
-                );
-                
                 /**
                  * Lower the difficulty to 0.00388934.
                  */
@@ -747,11 +745,6 @@ std::uint32_t utility::get_next_target_required(
                     }
                     break;
                 }
-                
-                log_debug(
-                    "Utility, next target required is flipping the "
-                    "difficulty " << f << " times."
-                );
                 
                 /**
                  * Set the flipped difficulty.
@@ -849,6 +842,83 @@ std::uint32_t utility::get_next_target_required_v020(
     return ret.get_compact();
 }
 
+std::uint32_t utility::get_next_target_required_v023(
+    const std::shared_ptr<block_index> & index_last, const bool & is_pos
+    )
+{
+    big_number ret;
+    
+    /**
+     * Get the target limit.
+     */
+    big_number target_limit =
+        is_pos ? constants::proof_of_stake_limit :
+        constants::proof_of_work_limit
+    ;
+    
+    /**
+     * get the index of the previous index.
+     */
+    auto index_previous = get_last_block_index(index_last, is_pos);
+
+    assert(index_previous);
+    
+    /**
+     * Get the index of the previous index's index.
+     */
+    auto index_previous_previous =
+        get_last_block_index(index_previous->block_index_previous(), is_pos
+    );
+    
+    assert(index_previous_previous);
+
+    /**
+     * 20 minutes.
+     */
+    static const std::int64_t target_timespan = 20 * 60;
+    
+    /**
+     * Spacing
+     */
+    std::int64_t target_spacing = constants::work_and_stake_target_spacing;
+
+    /**
+     * Set the bits.
+     */
+    ret.set_compact(index_previous->bits());
+    
+    /**
+     * Calculate the actual spacing.
+     */
+    std::int64_t
+        actual_spacing = index_previous->time() -
+        index_previous_previous->time()
+    ;
+
+    if (actual_spacing < 0)
+    {
+        actual_spacing = constants::work_and_stake_target_spacing;
+    }
+    
+    /**
+     * Retarget
+     */
+    ret *=
+        (((target_timespan / target_spacing) - 1) *
+        target_spacing + actual_spacing + actual_spacing)
+    ;
+    ret /=
+        (((target_timespan / target_spacing) + 1) * target_spacing)
+    ;
+
+    if (ret > target_limit)
+    {
+        ret = target_limit;
+    }
+
+    return ret.get_compact();
+}
+
 bool utility::get_transaction(
     const sha256 & hash_tx, transaction & tx, sha256 & hash_block_out
     )
@@ -875,7 +945,6 @@ bool utility::get_transaction(
         {
             hash_block_out = blk.get_hash();
         }
-        
         return true;
     }
     

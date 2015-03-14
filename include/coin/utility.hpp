@@ -398,6 +398,16 @@ namespace coin {
             );
         
             /**
+             * Gets the next required target.
+             * @param index_last The last block index.
+             * @param is_pos If true it is proof-of-stake.
+             */
+            static std::uint32_t get_next_target_required_v023(
+                const std::shared_ptr<block_index> & index_last,
+                const bool & is_pos
+            );
+        
+            /**
              * Byte reversal.
              * @param val The std::uint32_t.
              */
