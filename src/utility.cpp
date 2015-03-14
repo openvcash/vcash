@@ -506,13 +506,13 @@ std::uint32_t utility::get_next_target_required(
     /**
      * These MUST always be top down.
      */
-
-    #error "This code MUST not be deployed until a consensus is reached."
-
+    
+    #error "This code MUST not be deployed until a consensus is reached between pools, exchanges and the developer."
+    
     /**
      * The block height at which version 0.2.3 retargeting begins.
      */
-    enum { block_height_v023_retargeting = 74299 };
+    enum { block_height_v023_retargeting = 74399 };
     
     /**
      * The block height at which version 0.2.0 retargeting begins.
