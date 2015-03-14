@@ -222,25 +222,35 @@ void mining_manager::start_proof_of_stake()
 {
     std::lock_guard<std::mutex> l1(mutex_);
     
-    if (
-        m_state_pos < state_pos_starting ||
-        m_state_pos == state_pos_stopped
-        )
+    if (stack_impl_.get_configuration().mining_proof_of_stake() == true)
     {
-        /**
-         * Set the state.
-         */
-        m_state_pos = state_pos_starting;
+        if (
+            m_state_pos < state_pos_starting ||
+            m_state_pos == state_pos_stopped
+            )
+        {
+            /**
+             * Set the state.
+             */
+            m_state_pos = state_pos_starting;
 
-    	timer_pos_.expires_from_now(std::chrono::seconds(60));
-    	timer_pos_.async_wait(std::bind(
-			&mining_manager::pos_tick, this, std::placeholders::_1)
-    	);
+            timer_pos_.expires_from_now(std::chrono::seconds(60));
+            timer_pos_.async_wait(std::bind(
+                &mining_manager::pos_tick, this, std::placeholders::_1)
+            );
 
-        /**
-         * Set the state.
-         */
-        m_state_pos = state_pos_started;
+            /**
+             * Set the state.
+             */
+            m_state_pos = state_pos_started;
+        }
+    }
+    else
+    {
+        log_info(
+            "Mining manager did not start Proof-of-Stake, disabled "
+            "in configuration."
+        );
     }
 }
 
@@ -441,12 +451,18 @@ void mining_manager::loop(const bool & is_proof_of_stake)
             )
         {
             std::uint32_t hashes_done = 0;
-
+#if (defined USE_WHIRLPOOL && USE_WHIRLPOOL)
             auto nonce_found =
                 mining::scan_hash_whirlpool(&blk->header(), max_nonce,
                 hashes_done, result.digest(), &res_header
             );
-
+#else
+            auto nonce_found = scanhash_scrypt(
+                &blk->header(), buf_scrypt,
+                max_nonce, hashes_done,
+                reinterpret_cast<std::uint32_t *> (result.digest()), &res_header
+            );
+#endif // USE_WHIRLPOOL
             /**
              * Check if we have found a solution.
              */
