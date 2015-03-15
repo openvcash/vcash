@@ -1777,19 +1777,7 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getblockhash(
                 request.params.front().second.get<std::string> ("")
             );
             
-            if (height > -1 && height < globals::instance().best_block_height())
-            {
-                auto index = utility::find_block_index_by_height(height);
-                
-                if (index)
-                {
-                    ret.result.put(
-                        "", index->get_block_hash().to_string(),
-                        rpc_json_parser::translator<std::string> ()
-                    );
-                }
-            }
-            else
+            if (height <= -1 || height > globals::instance().best_block_height())
             {
                 auto pt_error = create_error_object(
                     error_code_invalid_params, "invalid height"
@@ -1801,6 +1789,18 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getblockhash(
                 return json_rpc_response_t{
                     boost::property_tree::ptree(), pt_error, request.id
                 };
+            }
+            else
+            {
+                auto index = utility::find_block_index_by_height(height);
+                
+                if (index)
+                {
+                    ret.result.put(
+                        "", index->get_block_hash().to_string(),
+                        rpc_json_parser::translator<std::string> ()
+                    );
+                }
             }
         }
         else
