@@ -44,11 +44,11 @@ namespace protocol {
          * The version.
          */
         enum { version = 60027 };
-    
+
         /**
          * The minimum version.
          */
-        enum { minimum_version = 60026 };
+        enum { minimum_version = 60027 };
     
         /**
          * The default peer port.
