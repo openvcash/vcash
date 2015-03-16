@@ -108,11 +108,6 @@ bool filesystem::copy_file(const std::string & src, const std::string & dest)
       
         return false;
     }
-    
-    if (from_stat.st_size > buf.size())
-    {
-        buf.resize(from_stat.st_size);
-    }
 
     int oflag = O_CREAT | O_WRONLY | O_TRUNC;
 
