@@ -87,6 +87,85 @@ int filesystem::create_path(const std::string & path)
     return ERRNO;
 }
 
+bool filesystem::copy_file(const std::string & src, const std::string & dest)
+{
+    enum { buffer_length = 32768 };
+    
+    std::vector<char> buf(buffer_length);
+    
+    auto infile =- 1, outfile =- 1;
+
+    if ((infile = ::open(src.c_str(), O_RDONLY)) < 0)
+    {
+        return false;
+    }
+
+    struct stat from_stat;
+    
+    if (::stat(src.c_str(), &from_stat)!= 0)
+    { 
+        ::close(infile);
+      
+        return false;
+    }
+    
+    if (from_stat.st_size > buf.size())
+    {
+        buf.resize(from_stat.st_size);
+    }
+
+    int oflag = O_CREAT | O_WRONLY | O_TRUNC;
+
+    if ((outfile = ::open(dest.c_str(), oflag, from_stat.st_mode)) < 0)
+    {
+        int open_errno = errno;
+        
+        assert(infile >= 0);
+        
+        ::close(infile);
+        
+        errno = open_errno;
+        
+        return false;
+    }
+
+    ssize_t sz, read = 1, write;
+    
+    while (
+        read > 0 && (read = ::read(infile, &buf[0], buffer_length)) > 0
+        )
+    {
+        write = 0;
+        
+        do
+        {
+            if (
+                (sz = ::write(outfile, &buf[0] + write, read - write)) < 0
+                )
+            {
+                read = sz;
+
+                break;
+            }
+            
+            write += sz;
+            
+        } while (write < read);
+    }
+
+    if (::close(infile) < 0)
+    {
+        read = -1;
+    }
+    
+    if (::close(outfile) < 0)
+    {
+        read = -1;
+    }
+
+    return read >= 0;
+}
+
 std::string filesystem::data_path()
 {
     static const std::string bundle_id = constants::client_name;

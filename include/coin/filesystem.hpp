@@ -40,6 +40,15 @@ namespace coin {
              */
             static int create_path(const std::string & path);
         
+            /**
+             * Copies a file from source to destination.
+             * @param src The source.
+             * @param dest The destination.
+             */
+            static bool copy_file(
+                const std::string & src, const std::string & dest
+            );
+        
             /** 
              * The user data directory.
              */
