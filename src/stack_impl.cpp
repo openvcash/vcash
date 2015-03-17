@@ -2194,7 +2194,7 @@ void stack_impl::rpc_send(const std::string & command_line)
                 /**
                  * Write property tree to json file.
                  */
-                rpc_json_parser::write_json(ss, pt, false);
+                rpc_json_parser::write_json(ss, pt, true);
                 
                 /**
                  * Set the body.
@@ -2288,7 +2288,9 @@ void stack_impl::rpc_send(const std::string & command_line)
                                 /**
                                  * Set the pairs value.
                                  */
-                                pairs["value"] = json.str();
+                                pairs["value"] =
+                                    json.str() == "null" ? "" : json.str()
+                                ;
 
                                 /**
                                  * Set the pairs error.code.
