@@ -523,6 +523,15 @@ void stack_impl::start()
                              */
                             on_error(error);
                         }
+                        else
+                        {
+                            /**
+                             * Backup the new wallet.
+                             */
+                            db_wallet::backup(
+                                *globals::instance().wallet_main()
+                            );
+                        }
                     }
 
                     /**
@@ -576,7 +585,7 @@ void stack_impl::start()
                      * Callback
                      */
                     m_status_manager->insert(status);
-                    
+
                     auto args = m_configuration.args();
                     
                     /**
