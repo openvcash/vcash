@@ -96,11 +96,18 @@ bool filesystem::copy_file(const std::string & src, const std::string & dest)
         
         std::ofstream ofs(dest, std::ios::binary);
 
-        ofs << ifs.rdbuf();
+        if (ifs.is_open() && ofs.is_open())
+        {
+            ofs << ifs.rdbuf();
 
-        ifs.close();
+            ifs.close();
 
-        ofs.close();
+            ofs.close();
+        }
+        else
+        {
+            return false;
+        }
     }
     catch (...)
     {
