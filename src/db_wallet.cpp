@@ -344,12 +344,31 @@ bool db_wallet::backup(const wallet & w, const std::string & root_path)
     if (w.is_file_backed() == true)
     {
         /**
-         * Create the backup wallet file path.
+         * The path to the wallet file.
          */
-        std::string path =
-            root_path + "wallet." + std::to_string(std::time(0)) + ".dat"
-        ;
-
+        std::string path;
+        
+        /**
+         * If the root path contains a "." then they must be passing in the
+         * entire path (or at least the file name).
+         */
+        if (root_path.find(".") != std::string::npos)
+        {
+            /**
+             * Use the name that was passed in.
+             */
+            path = root_path;
+        }
+        else
+        {
+            /**
+             * Create a timestamped name.
+             */
+            path =
+                root_path + "wallet." + std::to_string(std::time(0)) + ".dat"
+            ;
+        }
+        
         /**
          * Lock the db_env mutex.
          */
