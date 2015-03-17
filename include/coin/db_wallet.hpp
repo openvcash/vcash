@@ -27,6 +27,7 @@
 
 #include <coin/accounting_entry.hpp>
 #include <coin/db.hpp>
+#include <coin/filesystem.hpp>
 #include <coin/key.hpp>
 #include <coin/sha256.hpp>
 
@@ -84,6 +85,16 @@ namespace coin {
              * @param w The wallet.
              */
             error_t reorder_transactions(wallet & w);
+        
+            /**
+             * Performs a wallet backup operation.
+             * @param w The wallet.
+             * @param root_path The root path.
+             */
+            static bool backup(
+                const wallet & w,
+                const std::string & root_path = filesystem::data_path()
+            );
         
             /**
              * Attempts to recover a wallet database file.

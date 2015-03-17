@@ -53,7 +53,7 @@ wallet::wallet()
     , m_order_position_next(0)
     , m_master_key_max_id(0)
     , stack_impl_(0)
-    , is_file_backed_(true)
+    , m_is_file_backed(true)
     , resend_transactions_timer_(globals::instance().io_service())
     , time_last_resend_(0)
 {
@@ -66,7 +66,7 @@ wallet::wallet(stack_impl & impl)
     , m_order_position_next(0)
     , m_master_key_max_id(0)
     , stack_impl_(&impl)
-    , is_file_backed_(true)
+    , m_is_file_backed(true)
     , resend_transactions_timer_(globals::instance().io_service())
     , time_last_resend_(0)
 {
@@ -260,7 +260,7 @@ bool wallet::add_key(const key & val)
         return false;
     }
     
-    if (is_file_backed_ == false)
+    if (m_is_file_backed == false)
     {
         return true;
     }
@@ -286,7 +286,7 @@ bool wallet::add_crypted_key(
         return false;
     }
     
-    if (is_file_backed_ == false)
+    if (m_is_file_backed == false)
     {
         return true;
     }
@@ -327,7 +327,7 @@ bool wallet::add_c_script(const script & script_redeem)
         return false;
     }
     
-    if (is_file_backed_ == false)
+    if (m_is_file_backed == false)
     {
         return true;
     }
@@ -537,7 +537,7 @@ void wallet::keep_key(const std::int64_t & index)
     /**
      * Remove from key pool.
      */
-    if (is_file_backed_)
+    if (m_is_file_backed)
     {
         db_wallet wallet_db("wallet.dat");
         
@@ -740,7 +740,7 @@ db_wallet::error_t wallet::load_wallet(bool & first_run)
 {
     db_wallet::error_t ret = db_wallet::error_load_ok;
 
-    if (is_file_backed_ == false)
+    if (m_is_file_backed == false)
     {
         return ret;
     }
@@ -1794,7 +1794,7 @@ bool wallet::set_address_book_name(
      * :TODO: addr, name, is_mine(*this, addr), is_new ? new : updated
      */
     
-    if (is_file_backed_ == false)
+    if (m_is_file_backed == false)
     {
         return false;
     }
@@ -1810,7 +1810,7 @@ bool wallet::set_key_public_default(
     
     if (write_to_disk)
     {
-        if (is_file_backed_)
+        if (m_is_file_backed)
         {
             if (db_wallet("wallet.dat").write_defaultkey(value) == false)
             {
@@ -1859,6 +1859,11 @@ const std::uint32_t & wallet::master_key_max_id() const
     return m_master_key_max_id;
 }
 
+const bool & wallet::is_file_backed() const
+{
+    return m_is_file_backed;
+}
+
 bool wallet::set_min_version(
     feature_t version, db_wallet * ptr_db_wallet,
     const bool & explicit_upgrade
@@ -1887,7 +1892,7 @@ bool wallet::set_min_version(
         m_wallet_version_max = version;
     }
     
-    if (is_file_backed_)
+    if (m_is_file_backed)
     {
         auto ptr =
             ptr_db_wallet ?
@@ -2374,7 +2379,7 @@ std::pair<bool, std::string> wallet::commit_transaction(
      * Allocate the db_wallet.
      */
     std::unique_ptr<db_wallet> unused(
-        is_file_backed_ ? new db_wallet("wallet.dat", "r") : 0
+        m_is_file_backed ? new db_wallet("wallet.dat", "r") : 0
     );
 
     /**
@@ -2543,7 +2548,7 @@ std::pair<bool, std::string> wallet::commit_transaction(
         }
     }
     
-    if (is_file_backed_)
+    if (m_is_file_backed)
     {
         /**
          * Deallocate
@@ -3311,6 +3316,7 @@ bool wallet::select_coins_min_conf(
             
             value_out += values[i].first;
         }
+        
         return true;
     }
 
@@ -3909,7 +3915,7 @@ bool wallet::do_encrypt(const std::string & passphrase)
 
         m_master_keys[++m_master_key_max_id] = master_key_wallet;
         
-        if (is_file_backed_)
+        if (m_is_file_backed)
         {
             m_db_wallet_encryption = std::make_shared<db_wallet> ("wallet.dat");
             
@@ -3928,7 +3934,7 @@ bool wallet::do_encrypt(const std::string & passphrase)
          */
         if (encrypt_keys(master_key) == false)
         {
-            if (is_file_backed_)
+            if (m_is_file_backed)
             {
                 m_db_wallet_encryption->txn_abort();
             }
@@ -3946,7 +3952,7 @@ bool wallet::do_encrypt(const std::string & passphrase)
          */
         set_min_version(feature_walletcrypt, m_db_wallet_encryption.get(), true);
 
-        if (is_file_backed_)
+        if (m_is_file_backed)
         {
             if (m_db_wallet_encryption->txn_commit() == false)
             {

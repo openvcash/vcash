@@ -339,6 +339,66 @@ db_wallet::error_t db_wallet::reorder_transactions(wallet & w)
     return error_load_ok;
 }
 
+bool db_wallet::backup(const wallet & w, const std::string & root_path)
+{
+    if (w.is_file_backed() == true)
+    {
+        /**
+         * Create the backup wallet file path.
+         */
+        std::string path =
+            root_path + "wallet." + std::to_string(std::time(0)) + ".dat"
+        ;
+
+        if (
+            stack_impl::get_db_env()->file_use_counts(
+            ).count("wallet.dat") == 0 ||
+            stack_impl::get_db_env()->file_use_counts(
+            )["wallet.dat"] == 0
+            )
+        {
+            /**
+             * Close the database.
+             */
+            stack_impl::get_db_env()->close_Db("wallet.dat");
+    
+            /**
+             * Checkpoint
+             */
+            stack_impl::get_db_env()->checkpoint_lsn("wallet.dat");
+            
+            /**
+             * Erase use counts.
+             */
+            stack_impl::get_db_env()->file_use_counts().erase("wallet.dat");
+
+            /**
+             * Attempt to copy the wallet file.
+             */
+            if (
+                filesystem::copy_file(filesystem::data_path() + "wallet.dat",
+                path) == true
+                )
+            {
+                log_info(
+                    "Database wallet backed up wallet to " << path << "."
+                );
+                
+                return true;
+            }
+        }
+        else
+        {
+            log_warn(
+                "Database wallet unable to perform backup, "
+                "database is in use, try again later."
+            );
+        }
+    }
+    
+    return false;
+}
+
 bool db_wallet::recover(
     db_env & env, const std::string & file_name, const bool & keys_only
     )

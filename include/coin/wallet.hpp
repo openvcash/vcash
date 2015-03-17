@@ -431,6 +431,11 @@ namespace coin {
             const std::uint32_t & master_key_max_id() const;
         
             /**
+             * If true the wallet is file backed.
+             */
+            const bool & is_file_backed() const;
+        
+            /**
              * Set the minimim allowed version.
              */
             bool set_min_version(
@@ -777,6 +782,11 @@ namespace coin {
              */
             std::uint32_t m_master_key_max_id;
     
+            /**
+             * If true the wallet is file backed.
+             */
+            bool m_is_file_backed;
+        
         protected:
         
             /**
@@ -788,11 +798,6 @@ namespace coin {
              * The mutex.
              */
             mutable std::recursive_mutex mutex_;
-        
-            /**
-             * If true the wallet is file backed.
-             */
-            bool is_file_backed_;
         
             /**
              * The resend transactions timer.
