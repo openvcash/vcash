@@ -526,6 +526,10 @@ bool rpc_connection::handle_json_rpc_request(
     {
         response = json_getaccountaddress(request);
     }
+    else if (request.method == "backupwallet")
+    {
+        response = json_backupwallet(request);
+    }
     else if (request.method == "getbalance")
     {
         response = json_getbalance(request);
@@ -849,6 +853,82 @@ bool rpc_connection::send_json_rpc_responses(
     return false;
 }
 
+rpc_connection::json_rpc_response_t rpc_connection::json_backupwallet(
+    const json_rpc_request_t & request
+    )
+{
+    json_rpc_response_t ret;
+
+    try
+    {
+        if (request.params.size() == 1)
+        {
+            auto path = request.params.front().second.get<std::string> ("");
+            
+            if (
+                db_wallet::backup(*globals::instance().wallet_main(),
+                path) == true
+                )
+            {
+                ret.result.put("", "null");
+            }
+            else
+            {
+                auto pt_error = create_error_object(
+                    error_code_wallet_error, "backup failed"
+                );
+                
+                /**
+                 * error_code_wallet_error
+                 */
+                return json_rpc_response_t{
+                    boost::property_tree::ptree(), pt_error, request.id
+                };
+            }
+        }
+        else
+        {
+            if (db_wallet::backup(*globals::instance().wallet_main()) == true)
+            {
+                ret.result.put("", "null");
+            }
+            else
+            {
+                auto pt_error = create_error_object(
+                    error_code_wallet_error, "backup failed"
+                );
+                
+                /**
+                 * error_code_wallet_error
+                 */
+                return json_rpc_response_t{
+                    boost::property_tree::ptree(), pt_error, request.id
+                };
+            }
+        }
+    }
+    catch (std::exception & e)
+    {
+        log_error(
+            "RPC Connection failed to create json_backupwallet, what = " <<
+            e.what() << "."
+        );
+        
+        auto pt_error = create_error_object(
+            error_code_internal_error, e.what()
+        );
+        
+        /**
+         * error_code_internal_error
+         */
+        return json_rpc_response_t{
+            boost::property_tree::ptree(), pt_error, request.id
+        };
+    }
+
+    return ret;
+}
+
 rpc_connection::json_rpc_response_t rpc_connection::json_checkwallet(
     const json_rpc_request_t & request
     )
@@ -893,7 +973,7 @@ rpc_connection::json_rpc_response_t rpc_connection::json_checkwallet(
     catch (std::exception & e)
     {
         log_error(
-            "RPC Connection failed to create json_repairwallet, what = " <<
+            "RPC Connection failed to create json_checkwallet, what = " <<
             e.what() << "."
         );
         

@@ -318,6 +318,14 @@ namespace coin {
             );
         
             /**
+             * Performs a backupwallet operation.
+             * @param request The json_rpc_request_t.
+             */
+            json_rpc_response_t json_backupwallet(
+                const json_rpc_request_t & request
+            );
+        
+            /**
              * Performs a checkwallet operation.
              * @param request The json_rpc_request_t.
              */
@@ -515,9 +523,9 @@ namespace coin {
             );
         
             /**
-	         * Unlocks the wallet.
-	         * @param request The json_rpc_request_t.
-	         */
+             * Unlocks the wallet.
+             * @param request The json_rpc_request_t.
+             */
             json_rpc_response_t json_walletpassphrase(
                 const json_rpc_request_t & request
             );
