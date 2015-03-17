@@ -121,6 +121,11 @@ namespace coin {
             std::map<std::string, Db *> & Dbs();
         
             /**
+             * The std::mutex.
+             */
+            std::recursive_mutex & mutex_DbEnv();
+        
+            /**
              * txn_begin
              * @param flags The flags.
              */
@@ -143,6 +148,11 @@ namespace coin {
              */
             std::map<std::string, Db *> m_Dbs;
     
+            /**
+             * The m_DbEnv std::recursive_mutex.
+             */
+            std::recursive_mutex m_mutex_DbEnv;
+        
         protected:
         
             /**
@@ -153,11 +163,6 @@ namespace coin {
                 state_opened,
                 state_closed,
             } state_;
-        
-            /**
-             * m_DbEnv std::recursive_mutex.
-             */
-            std::recursive_mutex mutex_DbEnv_;
         
             /**
              * m_file_use_counts std::recursive_mutex.

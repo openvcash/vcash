@@ -350,6 +350,13 @@ bool db_wallet::backup(const wallet & w, const std::string & root_path)
             root_path + "wallet." + std::to_string(std::time(0)) + ".dat"
         ;
 
+        /**
+         * Lock the db_env mutex.
+         */
+        std::lock_guard<std::recursive_mutex> l1(
+            stack_impl::get_db_env()->mutex_DbEnv()
+        );
+        
         if (
             stack_impl::get_db_env()->file_use_counts(
             ).count("wallet.dat") == 0 ||
