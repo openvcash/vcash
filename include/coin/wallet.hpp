@@ -388,6 +388,11 @@ namespace coin {
             bool add_to_wallet(const transaction_wallet & wtx_in);
         
             /**
+             * Marks all transactions as dirty.
+             */
+            void mark_dirty();
+        
+            /**
              * Sets the address book name.
              * @param addr The destination::tx_t.
              * @param name The name.

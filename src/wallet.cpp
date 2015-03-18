@@ -1767,6 +1767,16 @@ bool wallet::add_to_wallet(const transaction_wallet & wtx_in)
     return true;
 }
 
+void wallet::mark_dirty()
+{
+    std::lock_guard<std::recursive_mutex> l1(mutex_);
+    
+    for (auto & i : m_transactions)
+    {
+        i.second.mark_dirty();
+    }
+}
+
 bool wallet::set_address_book_name(
     const destination::tx_t & addr, const std::string & name
     ) const
