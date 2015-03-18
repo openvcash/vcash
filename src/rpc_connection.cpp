@@ -586,6 +586,10 @@ bool rpc_connection::handle_json_rpc_request(
     {
         response = json_gettransaction(request);
     }
+    else if (request.method == "importprivkey")
+    {
+        response = json_importprivkey(request);
+    }
     else if (request.method == "listtransactions")
     {
         response = json_listtransactions(request);
@@ -3115,6 +3119,150 @@ rpc_connection::json_rpc_response_t rpc_connection::json_gettransaction(
     return ret;
 }
 
+rpc_connection::json_rpc_response_t rpc_connection::json_importprivkey(
+    const json_rpc_request_t & request
+    )
+{
+    json_rpc_response_t ret;
+
+    try
+    {
+        /**
+         * The privaye key parameter.
+         */
+        std::string private_key;
+        
+        /**
+         * The label parameter.
+         */
+        std::string label;
+        
+        auto index = 0;
+        
+        for (auto & i : request.params)
+        {
+            if (index == 0)
+            {
+                private_key = i.second.get<std::string> ("");
+            }
+            else if (index == 1)
+            {
+                label = i.second.get<std::int32_t> ("");
+            }
+        
+            index++;
+        }
+        
+        if (globals::instance().wallet_unlocked_mint_only() == true)
+        {
+            auto pt_error = create_error_object(
+                error_code_wallet_unlock_needed, "wallet is locked"
+            );
+            
+            /**
+             * error_code_invalid_address_or_key
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
+        }
+        
+        /**
+         * Allocate the secret.
+         */
+        secret s1;
+
+        /**
+         * Set the private key.
+         */
+        if (s1.set_string(private_key) == true)
+        {
+            /**
+             * Create the key.
+             */
+            key k;
+            
+            bool is_compressed;
+            
+            auto s2 = s1.get_secret(is_compressed);
+            
+            k.set_secret(s2, is_compressed);
+            
+            auto addr = k.get_public_key().get_id();
+
+            /**
+             * Mark all transactions as dirty.
+             */
+            globals::instance().wallet_main()->mark_dirty();
+            
+            /**
+             * Set the address book name.
+             */
+            globals::instance().wallet_main()->set_address_book_name(
+                addr, label
+            );
+
+            if (globals::instance().wallet_main()->add_key(k) == false)
+            {
+                auto pt_error = create_error_object(
+                    error_code_wallet_error, "failed to add key to wallet"
+                );
+                
+                /**
+                 * error_code_wallet_error
+                 */
+                return json_rpc_response_t{
+                    boost::property_tree::ptree(), pt_error, request.id
+                };
+            }
+            else
+            {
+                globals::instance().wallet_main()->scan_for_transactions(
+                    stack_impl::get_block_index_genesis(), true
+                );
+                globals::instance().wallet_main(
+                    )->reaccept_wallet_transactions()
+                ;
+
+                ret.result.put("", "null");
+            }
+        }
+        else
+        {
+            auto pt_error = create_error_object(
+                error_code_invalid_address_or_key, "invalid private key"
+            );
+            
+            /**
+             * error_code_invalid_address_or_key
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
+        }
+    }
+    catch (std::exception & e)
+    {
+        log_error(
+            "RPC Connection failed to create json_importprivkey, what = " <<
+            e.what() << "."
+        );
+        
+        auto pt_error = create_error_object(
+            error_code_internal_error, e.what()
+        );
+        
+        /**
+         * error_code_internal_error
+         */
+        return json_rpc_response_t{
+            boost::property_tree::ptree(), pt_error, request.id
+        };
+    }
+
+    return ret;
+}
+
 rpc_connection::json_rpc_response_t rpc_connection::json_listsinceblock(
     const json_rpc_request_t & request
     )
@@ -3212,7 +3360,7 @@ rpc_connection::json_rpc_response_t rpc_connection::json_listsinceblock(
 
             lastblock = tmp ? tmp->get_block_hash() : 0;
         }
-log_debug("pt_transactions = " << pt_transactions.size());
+
         if (pt_transactions.size() > 0)
         {
             ret.result.put_child("transactions", pt_transactions);
