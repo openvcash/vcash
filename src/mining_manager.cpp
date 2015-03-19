@@ -820,6 +820,31 @@ void mining_manager::check_work(
         else
         {
             log_info("Mining manager processed block, accepted.");
+
+            if (blk->is_proof_of_stake() == true)
+            {
+                /**
+                 * The mismatch spent coins.
+                 */
+                std::int32_t mismatch_spent = 0;
+                
+                /**
+                 * The balance in question.
+                 */
+                std::int64_t balance_in_question = 0;
+
+                /**
+                 * The inputs have changed, fix them.
+                 */
+                globals::instance().wallet_main()->fix_spent_coins(
+                    mismatch_spent, balance_in_question, false
+                );
+                
+                log_debug(
+                    "Mining manager, mismatch_spent = " << mismatch_spent <<
+                    ", balance_in_question = " << balance_in_question << "."
+                );
+            }
         }
     }));
 }
