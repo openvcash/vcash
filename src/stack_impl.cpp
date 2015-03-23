@@ -534,6 +534,12 @@ void stack_impl::start()
                         }
                     }
 
+                    log_info(
+                        "Stack, wallet default address = " <<
+                        address(globals::instance().wallet_main(
+                        )->key_public_default().get_id()).to_string() << "."
+                    );
+                    
                     /**
                      * Register the main wallet.
                      */
