@@ -1017,8 +1017,8 @@ void tcp_transport::set_voip()
 {
 #if (defined __IPHONE_OS_VERSION_MAX_ALLOWED)
     CFStreamCreatePairWithSocket(
-        0, (CFSocketNativeHandle)m_socket->native(), &readStreamRef_,
-        &writeStreamRef_
+        0, (CFSocketNativeHandle)m_socket->lowest_layer().native(),
+        &readStreamRef_, &writeStreamRef_
     );
 
     if (
