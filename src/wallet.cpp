@@ -83,6 +83,44 @@ void wallet::start()
         std::bind(&wallet::resend_transactions_tick, this,
         std::placeholders::_1))
     );
+    
+    for (auto & i : m_address_book)
+    {
+        /**
+         * Allocate the info.
+         */
+        std::map<std::string, std::string> status;
+        
+        /**
+         * Set the type.
+         */
+        status["type"] = "wallet.address_book";
+
+        /**
+         * Set the value.
+         */
+        status["value"] = "new";
+        
+        /**
+         * Set the wallet.transaction.hash.
+         */
+        status["wallet.address_book.address"] =
+            address(i.first).to_string()
+        ;
+        
+        /**
+         * Set the wallet.transaction.hash.
+         */
+        status["wallet.address_book.name"] = i.second;
+        
+        if (stack_impl_)
+        {
+            /**
+             * Callback on new or updated transaction.
+             */
+            stack_impl_->get_status_manager()->insert(status);
+        }
+    }
 }
 
 void wallet::stop()
@@ -1801,8 +1839,42 @@ bool wallet::set_address_book_name(
     
     /**
      * Callback that the address book has changed.
-     * :TODO: addr, name, is_mine(*this, addr), is_new ? new : updated
      */
+    
+    /**
+     * Allocate the info.
+     */
+    std::map<std::string, std::string> status;
+    
+    /**
+     * Set the type.
+     */
+    status["type"] = "wallet.address_book";
+
+    /**
+     * Set the value.
+     */
+    status["value"] = "new";
+    
+    /**
+     * Set the wallet.transaction.hash.
+     */
+    status["wallet.address_book.address"] =
+        address(addr).to_string()
+    ;
+    
+    /**
+     * Set the wallet.transaction.hash.
+     */
+    status["wallet.address_book.name"] = name;
+    
+    if (stack_impl_)
+    {
+        /**
+         * Callback on new or updated transaction.
+         */
+        stack_impl_->get_status_manager()->insert(status);
+    }
     
     if (m_is_file_backed == false)
     {
