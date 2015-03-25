@@ -491,6 +491,22 @@ namespace coin {
             );
         
             /**
+             * Performs a listreceivedbyaddress operation.
+             * @param request The json_rpc_request_t.
+             */
+            json_rpc_response_t json_listreceivedbyaddress(
+                const json_rpc_request_t & request
+            );
+        
+            /**
+             * Performs a listreceivedbyaccount operation.
+             * @param request The json_rpc_request_t.
+             */
+            json_rpc_response_t json_listreceivedbyaccount(
+                const json_rpc_request_t & request
+            );
+        
+            /**
              * Performs a repairwallet operation.
              * @param request The json_rpc_request_t.
              */
@@ -576,6 +592,17 @@ namespace coin {
                 const transaction_wallet & wtx, const std::string & account,
                 const std::uint32_t & minimim_depth,
                 const bool & include_transactions
+            );
+
+            /**
+             * Encodes a list of received addresses/accounts.
+             * @param minimim_depth The minimum depth in the main chain.
+             * @param include_empty If true includes empty.
+             * @param by_accounts If true list is by accounts.
+             */
+            boost::property_tree::ptree received_to_ptree(
+                const std::int32_t & minimim_depth, const bool & include_empty,
+                const bool & by_accounts
             );
         
             /**

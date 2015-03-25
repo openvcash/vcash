@@ -594,6 +594,14 @@ bool rpc_connection::handle_json_rpc_request(
     {
         response = json_listtransactions(request);
     }
+    else if (request.method == "listreceivedbyaddress")
+    {
+        response = json_listreceivedbyaddress(request);
+    }
+    else if (request.method == "listreceivedbyaccount")
+    {
+        response = json_listreceivedbyaccount(request);
+    }
     else if (request.method == "repairwallet")
     {
         response = json_repairwallet(request);
@@ -3582,6 +3590,111 @@ rpc_connection::json_rpc_response_t rpc_connection::json_listtransactions(
     return ret;
 }
 
+rpc_connection::json_rpc_response_t rpc_connection::json_listreceivedbyaddress(
+    const json_rpc_request_t & request
+    )
+{
+    json_rpc_response_t ret;
+
+    try
+    {
+        std::int32_t minconf = 1;
+        
+        bool includeempty = false;
+
+        auto index = 0;
+        
+        for (auto & i : request.params)
+        {
+            if (index == 0)
+            {
+                minconf = i.second.get<std::int32_t> ("");
+            }
+            else if (index == 1)
+            {
+                includeempty = i.second.get<bool> ("");
+            }
+        
+            index++;
+        }
+        
+        ret.result = received_to_ptree(minconf, includeempty, false);
+    
+    }
+    catch (std::exception & e)
+    {
+        log_error(
+            "RPC Connection failed to create json_listreceivedbyaddress, "
+            "what = " << e.what() << "."
+        );
+        
+        auto pt_error = create_error_object(
+            error_code_internal_error, e.what()
+        );
+        
+        /**
+         * error_code_internal_error
+         */
+        return json_rpc_response_t{
+            boost::property_tree::ptree(), pt_error, request.id
+        };
+    }
+
+    return ret;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_listreceivedbyaccount(
+    const json_rpc_request_t & request
+    )
+{
+    json_rpc_response_t ret;
+
+    try
+    {
+        std::int32_t minconf = 1;
+        
+        bool includeempty = false;
+
+        auto index = 0;
+        
+        for (auto & i : request.params)
+        {
+            if (index == 0)
+            {
+                minconf = i.second.get<std::int32_t> ("");
+            }
+            else if (index == 1)
+            {
+                includeempty = i.second.get<bool> ("");
+            }
+        
+            index++;
+        }
+        
+        ret.result = received_to_ptree(minconf, includeempty, true);
+    }
+    catch (std::exception & e)
+    {
+        log_error(
+            "RPC Connection failed to create json_listreceivedbyaccount, "
+            "what = " << e.what() << "."
+        );
+        
+        auto pt_error = create_error_object(
+            error_code_internal_error, e.what()
+        );
+        
+        /**
+         * error_code_internal_error
+         */
+        return json_rpc_response_t{
+            boost::property_tree::ptree(), pt_error, request.id
+        };
+    }
+
+    return ret;
+}
+
 rpc_connection::json_rpc_response_t rpc_connection::json_repairwallet(
     const json_rpc_request_t & request
     )
@@ -5055,6 +5168,172 @@ boost::property_tree::ptree rpc_connection::transactions_to_ptree(
         }
     }
 
+    return ret;
+}
+
+boost::property_tree::ptree rpc_connection::received_to_ptree(
+    const std::int32_t & minimim_depth, const bool & include_empty,
+    const bool & by_accounts
+    )
+{
+    boost::property_tree::ptree ret;
+
+    /**
+     * A tally item.
+     */
+    typedef std::pair<std::int64_t, std::int32_t> tally_item_t;
+
+    /**
+     * The tally.
+     */
+    std::map<destination::tx_t, tally_item_t> tally;
+    
+    /**
+     * Get all of the transactions from the main wallet.
+     */
+    const auto & transactions =
+        globals::instance().wallet_main()->transactions()
+    ;
+    
+    for (auto & i : transactions)
+    {
+        const auto & wtx = i.second;
+
+        if (
+            wtx.is_coin_base() || wtx.is_coin_stake() ||
+            wtx.is_final() == false
+            )
+        {
+            continue;
+        }
+        
+        auto depth = wtx.get_depth_in_main_chain();
+        
+        if (depth < minimim_depth)
+        {
+            continue;
+        }
+        
+        for (auto & j : wtx.transactions_out())
+        {
+            destination::tx_t addr;
+            
+            if (
+                script::extract_destination(
+                j.script_public_key(), addr) == false ||
+                script::is_mine(*globals::instance().wallet_main(),
+                addr) == false
+                )
+            {
+                continue;
+            }
+            
+            auto & item = tally[addr];
+            
+            item.first += j.value();
+            
+            item.second = std::min(
+                std::numeric_limits<std::int32_t>::max(), depth
+            );
+        }
+    }
+
+    /**
+     * The account tally.
+     */
+    std::map<std::string, tally_item_t> account_tally;
+    
+    /**
+     * Get the address book from the main wallet.
+     */
+    const auto & address_book =
+        globals::instance().wallet_main()->address_book()
+    ;
+    
+    for (auto & i : address_book)
+    {
+        const auto & addr = i.first;
+        
+        const auto & acct = i.second;
+        
+        auto it = tally.find(addr);
+        
+        if (it == tally.end() && include_empty == false)
+        {
+            continue;
+        }
+        
+        std::int64_t amount = 0;
+        
+        auto conf = std::numeric_limits<std::int32_t>::max();
+        
+        if (it != tally.end())
+        {
+            amount = it->second.first;
+            
+            conf = it->second.second;
+        }
+
+        if (by_accounts)
+        {
+            auto & item = account_tally[acct];
+            
+            item.first += amount;
+            
+            item.second = std::min(
+                std::numeric_limits<std::int32_t>::max(), conf
+            );
+        }
+        else
+        {
+            boost::property_tree::ptree obj;
+            
+            obj.put(
+                "address", address(addr).to_string(),
+                rpc_json_parser::translator<std::string> ()
+            );
+            obj.put(
+                "account", acct,
+                rpc_json_parser::translator<std::string> ()
+            );
+            obj.put(
+                "amount", static_cast<double> (amount) / constants::coin
+            );
+            obj.put(
+                "confirmations",
+                (conf == std::numeric_limits<std::int32_t>::max() ? 0 : conf)
+            );
+            
+            ret.push_back(std::make_pair("", obj));
+        }
+    }
+
+    if (by_accounts)
+    {
+        for (auto & i : account_tally)
+        {
+            auto amount = i.second.first;
+            
+            auto conf = i.second.second;
+            
+            boost::property_tree::ptree obj;
+            
+            obj.put(
+                "account", i.first,
+                rpc_json_parser::translator<std::string> ()
+            );
+            obj.put(
+                "amount", static_cast<double> (amount) / constants::coin
+            );
+            obj.put(
+                "confirmations",
+                (conf == std::numeric_limits<std::int32_t>::max() ? 0 : conf)
+            );
+            
+            ret.push_back(std::make_pair("", obj));
+        }
+    }
+    
     return ret;
 }
 
