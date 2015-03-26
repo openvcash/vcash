@@ -18,6 +18,10 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#if (! defined _MSC_VER)
+#include <sys/file.h>
+#endif // _MSC_VER
+
 #include <fstream>
 #include <iostream>
 #include <random>
