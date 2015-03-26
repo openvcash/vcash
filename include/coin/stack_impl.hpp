@@ -442,6 +442,11 @@ namespace coin {
             );
         
             /**
+             * Trys to lock the lock file or exits.
+             */
+            void lock_file_or_exit();
+        
+            /**
              * The main loop.
              */
             void loop();

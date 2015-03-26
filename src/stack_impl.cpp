@@ -81,6 +81,11 @@ stack_impl::stack_impl(coin::stack & owner)
 void stack_impl::start()
 {
     /**
+     * Make sure only a single instance per directory is allowed.
+     */
+    lock_file_or_exit();
+
+    /**
      * Set the state to starting.
      */
     globals::instance().set_state(globals::state_starting);
@@ -3619,6 +3624,47 @@ void stack_impl::load_wallet(
     {
         f(first_run, ret);
     }
+}
+
+void stack_impl::lock_file_or_exit()
+{
+#if (! defined _MSC_VER)
+    static file f;
+    
+    if (
+        f.open((filesystem::data_path() + ".lock").c_str(), "a") == false
+        )
+    {
+        printf(
+            "Unable to open lock file %s\n",
+            (filesystem::data_path() + ".lock").c_str()
+        );
+
+        exit(0);
+    }
+    else
+    {
+        auto result = flock(fileno(f.get_FILE()), LOCK_EX | LOCK_NB);
+        
+        if (result == 0)
+        {
+            std::string pid = std::to_string(getpid());
+        
+            f.write(pid.data(), pid.size());
+            
+            f.fflush();
+        }
+        else
+        {
+            printf(
+                "Failed to obtain lock on file %s\n",
+                (filesystem::data_path() + ".lock").c_str()
+            );
+            
+            exit(0);
+        }
+    }
+#endif // _MSC_VER
 }
 
 void stack_impl::loop()
