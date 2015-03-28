@@ -61,12 +61,28 @@ namespace protocol {
         enum { default_rpc_port = 9195 };
     
         /**
-         * The operation node.
+         * The operation modes.
+         * 0x00|0|00000000
+         * 0x01|1|00000001
+         * 0x02|2|00000010
+         * 0x04|4|00000100
+         * 0x08|8|00001000
+         * 0x10|16|00010000
+         * 0x20|32|00100000
+         * 0x40|64|01000000
+         * 0x80|128|10000000
          */
         typedef enum operation_mode_s
         {
-            operation_mode_client,
-            operation_mode_peer,
+            operation_mode_client = 0x00,
+            operation_mode_peer = 0x01,
+            operation_mode_0x02 = 0x02,
+            operation_mode_0x04 = 0x04,
+            operation_mode_0x08 = 0x08,
+            operation_mode_0x10 = 0x10,
+            operation_mode_0x20 = 0x20,
+            operation_mode_0x40 = 0x40,
+            operation_mode_0x80 = 0x80,
         } operation_mode_t;
         
         /**
