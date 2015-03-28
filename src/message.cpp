@@ -27,6 +27,7 @@
 #include <coin/checkpoint_sync.hpp>
 #include <coin/constants.hpp>
 #include <coin/endian.hpp>
+#include <coin/globals.hpp>
 #include <coin/hash.hpp>
 #include <coin/inventory_vector.hpp>
 #include <coin/logger.hpp>
@@ -639,19 +640,51 @@ data_buffer message::create_version()
     m_protocol_version.version = protocol::version;
     
     /**
-     * Set the payload services.
+     * Set the services based on the operation mode.
      */
-    m_protocol_version.services = 1;
-    
+    if (
+        globals::instance().operation_mode() ==
+        protocol::operation_mode_peer
+        )
+    {
+        /**
+         * Set the payload services.
+         */
+        m_protocol_version.services = protocol::operation_mode_peer;
+    }
+    else
+    {
+        /**
+         * Set the payload services.
+         */
+        m_protocol_version.services = protocol::operation_mode_client;
+    }
+
     /**
      * Set the payload timestamp (non-adjusted).
      */
     m_protocol_version.timestamp = std::time(0);
     
     /**
-     * Set the payload addr_src services.
+     * Set the services based on the operation mode.
      */
-    m_protocol_version.addr_src.services = 1;
+    if (
+        globals::instance().operation_mode() ==
+        protocol::operation_mode_peer
+        )
+    {
+        /**
+         * Set the payload addr_src services.
+         */
+        m_protocol_version.addr_src.services = protocol::operation_mode_peer;
+    }
+    else
+    {
+        /**
+         * Set the payload addr_src services.
+         */
+        m_protocol_version.addr_src.services = protocol::operation_mode_client;
+    }
 
     /**
      * Set the payload addr_src address.
@@ -665,7 +698,7 @@ data_buffer message::create_version()
     /**
      * Set the payload addr_dst services.
      */
-    m_protocol_version.addr_dst.services = 1;
+    m_protocol_version.addr_dst.services = protocol::operation_mode_peer;
     
     /**
      * Set the payload addr_dst port.
