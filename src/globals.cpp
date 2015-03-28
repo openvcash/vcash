@@ -26,7 +26,11 @@ using namespace coin;
 globals::globals()
     : m_strand(m_io_service)
     , m_state(state_none)
+#if (defined __IPHONE_OS_VERSION_MAX_ALLOWED)
+    , m_operation_mode(protocol::operation_mode_client)
+#else
     , m_operation_mode(protocol::operation_mode_peer)
+#endif // __IPHONE_OS_VERSION_MAX_ALLOWED
     , m_debug(true)
     , m_is_client(false)
     , m_version_nonce(0)
