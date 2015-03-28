@@ -66,6 +66,9 @@ tcp_connection::tcp_connection(
     , timer_delayed_stop_(ios)
     , timer_getblocks_(ios)
     , timer_addr_rebroadcast_(ios)
+    , time_last_getblocks_received_(0)
+    , time_last_getblocks_sent_(0)
+    , need_to_send_getblocks_(false)
 {
     // ...
 }
@@ -110,7 +113,7 @@ void tcp_connection::start()
             /**
              * Start the getblocks timer.
              */
-            timer_getblocks_.expires_from_now(std::chrono::seconds(60));
+            timer_getblocks_.expires_from_now(std::chrono::seconds(8));
             timer_getblocks_.async_wait(globals::instance().strand().wrap(
                 std::bind(&tcp_connection::do_send_getblocks, self,
                 std::placeholders::_1))
@@ -194,7 +197,7 @@ void tcp_connection::start(const boost::asio::ip::tcp::endpoint & ep)
             /**
              * Start the getblocks timer.
              */
-            timer_getblocks_.expires_from_now(std::chrono::seconds(60));
+            timer_getblocks_.expires_from_now(std::chrono::seconds(8));
             timer_getblocks_.async_wait(globals::instance().strand().wrap(
                 std::bind(&tcp_connection::do_send_getblocks, self,
                 std::placeholders::_1))
@@ -322,51 +325,83 @@ void tcp_connection::send_getblocks_message(
     )
 {
     /**
-     * Do not send duplicate requests.
+     * Only send a getblocks message if the remote node is a peer.
      */
     if (
-        index_begin == last_getblocks_index_begin_ &&
-        hash_end == last_getblocks_hash_end_
+        (m_protocol_version_services & protocol::operation_mode_peer) == 1
         )
     {
-        return;
-    }
-    
-    last_getblocks_index_begin_ = index_begin;
-    last_getblocks_hash_end_ = hash_end;
-    
-    if (auto t = m_tcp_transport.lock())
-    {
         /**
-         * Allocate the message.
+         * Do not send duplicate requests.
          */
-        message msg("getblocks");
+        if (
+            index_begin == last_getblocks_index_begin_ &&
+            hash_end == last_getblocks_hash_end_
+            )
+        {
+            return;
+        }
         
         /**
-         * Set the hashes.
+         * Only allow one getblocks message every 8 seconds per connection.
          */
-        msg.protocol_getblocks().hashes = block_locator(index_begin).have();
-        
-        /**
-         * Set the stop hash.
-         */
-        msg.protocol_getblocks().hash_stop = hash_end;
-        
-        log_none("TCP connection is sending getblocks.");
-        
-        /**
-         * Encode the message.
-         */
-        msg.encode();
-        
-        /**
-         * Write the message.
-         */
-        t->write(msg.data(), msg.size());
-    }
-    else
-    {
-        stop();
+        if (std::time(0) - time_last_getblocks_sent_ >= 8)
+        {
+            /**
+             * Set the last time we sent a getblocks.
+             */
+            time_last_getblocks_sent_ = std::time(0);
+
+            /**
+             * Set that we need to send getblocks.
+             */
+            need_to_send_getblocks_ = true;
+            
+            last_getblocks_index_begin_ = index_begin;
+            last_getblocks_hash_end_ = hash_end;
+            
+            if (auto t = m_tcp_transport.lock())
+            {
+                /**
+                 * Allocate the message.
+                 */
+                message msg("getblocks");
+                
+                /**
+                 * Set the hashes.
+                 */
+                msg.protocol_getblocks().hashes =
+                    block_locator(index_begin).have()
+                ;
+                
+                /**
+                 * Set the stop hash.
+                 */
+                msg.protocol_getblocks().hash_stop = hash_end;
+                
+                log_none("TCP connection is sending getblocks.");
+                
+                /**
+                 * Encode the message.
+                 */
+                msg.encode();
+                
+                /**
+                 * Write the message.
+                 */
+                t->write(msg.data(), msg.size());
+            }
+            else
+            {
+                stop();
+            }
+        }
+        else
+        {
+            log_debug(
+                "TCP connection tried to send getblocks message too soon."
+            );
+        }
     }
 }
 
@@ -1410,36 +1445,47 @@ bool tcp_connection::handle_message(message & msg)
                     if (auto transport = m_tcp_transport.lock())
                     {
                         /**
-                         * If the source address in the version message matches
-                         * the address as seen by us inform the address_manager.
+                         * If the remote node is a peer add it to the address
+                         * manager.
                          */
                         if (
-                            protocol::network_address_t::from_endpoint(
-                            transport->socket().remote_endpoint()) ==
-                            msg.protocol_version().addr_src
+                            (m_protocol_version_services &
+                            protocol::operation_mode_peer) == 1
                             )
                         {
                             /**
-                             * Add to the address_manager.
+                             * If the source address in the version message
+                             * matches the address as seen by us inform the
+                             * address_manager.
                              */
-                            stack_impl_.get_address_manager()->add(
-                                msg.protocol_version().addr_src,
+                            if (
+                                protocol::network_address_t::from_endpoint(
+                                transport->socket().remote_endpoint()) ==
                                 msg.protocol_version().addr_src
-                            );
+                                )
+                            {
+                                /**
+                                 * Add to the address_manager.
+                                 */
+                                stack_impl_.get_address_manager()->add(
+                                    msg.protocol_version().addr_src,
+                                    msg.protocol_version().addr_src
+                                );
 
-                            /**
-                             * Mark as good.
-                             */
-                            stack_impl_.get_address_manager()->mark_good(
-                                msg.protocol_version().addr_src
-                            );
+                                /**
+                                 * Mark as good.
+                                 */
+                                stack_impl_.get_address_manager()->mark_good(
+                                    msg.protocol_version().addr_src
+                                );
+                            }
                         }
+                        
+                        /**
+                         * Send a version message.
+                         */
+                        send_version_message();
                     }
-            
-                    /**
-                     * Send a version message.
-                     */
-                    send_version_message();
                 }
                 else if (m_direction == direction_outgoing)
                 {
@@ -1474,9 +1520,19 @@ bool tcp_connection::handle_message(message & msg)
                     if (utility::is_initial_block_download() == false)
                     {
                         /**
-                         * Send an addr message to advertise our address only.
+                         * If we are a peer advertise our address.
                          */
-                        send_addr_message(true);
+                        if (
+                            globals::instance().operation_mode() ==
+                            protocol::operation_mode_peer
+                            )
+                        {
+                            /**
+                             * Send an addr message to advertise our address
+                             * only.
+                             */
+                            send_addr_message(true);
+                        }
                     }
                     
                     /**
@@ -1538,18 +1594,29 @@ bool tcp_connection::handle_message(message & msg)
             }
 
             /**
-             * Relay alerts.
+             * If we are a peer relay alerts and checkpoints.
              */
-            for (auto & i : stack_impl_.get_alert_manager()->alerts())
+            if (
+                globals::instance().operation_mode() ==
+                protocol::operation_mode_peer
+                )
             {
-                relay_alert(i.second);
-            }
+                /**
+                 * Relay alerts.
+                 */
+                for (auto & i : stack_impl_.get_alert_manager()->alerts())
+                {
+                    relay_alert(i.second);
+                }
 
-            /**
-             * Relay the sync-checkpoint (ppcoin).
-             */
-            relay_checkpoint(checkpoints::instance().get_checkpoint_message());
-            
+                /**
+                 * Relay the sync-checkpoint (ppcoin).
+                 */
+                relay_checkpoint(
+                    checkpoints::instance().get_checkpoint_message()
+                );
+            }
+        
             log_debug(
                 "Connection received version message, version = " <<
                 msg.protocol_version().version << ", start height = " <<
@@ -1876,252 +1943,315 @@ bool tcp_connection::handle_message(message & msg)
     }
     else if (msg.header().command == "getdata")
     {
-        if (msg.protocol_getdata().count > protocol::max_inv_size)
+        /**
+         * If we are a peer handle the getdata message.
+         */
+        if (
+            globals::instance().operation_mode() ==
+            protocol::operation_mode_peer
+            )
         {
-            log_debug(
-                "TCP connection received getdata, size = " <<
-                msg.protocol_getdata().count << "."
-            );
-            
-            /**
-             * Set the Denial-of-Service score for the connection.
-             */
-            set_dos_score(m_dos_score + 20);
-        }
-        else
-        {
-            if (msg.protocol_getdata().count != 1)
+            if (msg.protocol_getdata().count > protocol::max_inv_size)
             {
                 log_debug(
                     "TCP connection received getdata, size = " <<
                     msg.protocol_getdata().count << "."
                 );
-            }
-            
-            auto inventory = msg.protocol_getdata().inventory;
-            
-            for (auto & i : inventory)
-            {
-                if (msg.protocol_getdata().count == 1)
-                {
-                    log_debug(
-                        "TCP connection received getdata for " <<
-                        i.to_string() << "."
-                    );
-                }
-                
-                if (i.type() == inventory_vector::type_msg_block)
-                {
-                    /**
-                     * Find the block.
-                     */
-                    auto it = globals::instance().block_indexes().find(
-                        i.hash()
-                    );
-                    
-                    if (it != globals::instance().block_indexes().end())
-                    {
-                        /**
-                         * Allocate the block.
-                         */
-                        block blk;
-                        
-                        /**
-                         * Read the block from disk.
-                         */
-                        blk.read_from_disk(it->second);
-                        
-                        /**
-                         * Send the block message.
-                         */
-                        send_block_message(blk);
-
-                        /**
-                         * Trigger them to send a getblocks request for the
-                         * next batch of inventory.
-                         */
-                        if (i.hash() == m_hash_continue)
-                        {
-                            /**
-                             * Send latest proof-of-work block to allow the
-                             * download node to accept as orphan
-                             * (proof-of-stake block might be rejected by
-                             * stake connection check) (ppcoin).
-                             */
-                            std::vector<sha256> block_hashes;
-                            
-                            /**
-                             * Insert the (previous) best block index's hash.
-                             */
-                            block_hashes.push_back(
-                                utility::get_last_block_index(
-                                stack_impl::get_block_index_best(), false
-                                )->get_block_hash()
-                            );
-           
-                            /**
-                             * Send an inv message.
-                             */
-                            send_inv_message(
-                                inventory_vector::type_msg_block, block_hashes
-                            );
-                            
-                            /**
-                             * Set the hash continue to null.
-                             */
-                            m_hash_continue = 0;
-                        }
-                    }
-                }
-                else if (i.is_know_type())
-                {
-                    /**
-                     * Send stream from relay memory.
-                     */
-                    bool did_send = false;
-                    
-                    auto it = globals::instance().relay_invs().find(i);
-                    
-                    if (it != globals::instance().relay_invs().end())
-                    {
-                        /**
-                         * Send the relayed inv message.
-                         */
-                        send_relayed_inv_message(
-                            i, data_buffer(it->second.data(), it->second.size())
-                        );
-                        
-                        did_send = true;
-                    }
-                    
-                    if (
-                        did_send == false &&
-                        i.type() == inventory_vector::type_msg_tx
-                        )
-                    {
-                        if (transaction_pool::instance().exists(i.hash()))
-                        {
-                            auto tx = transaction_pool::instance().lookup(
-                                i.hash()
-                            );
-
-                            /**
-                             * Send the tx message.
-                             */
-                            send_tx_message(tx);
-                        }
-                    }
-                }
                 
                 /**
-                 * Inform the wallet manager.
+                 * Set the Denial-of-Service score for the connection.
                  */
-                wallet_manager::instance().on_inventory(i.hash());
+                set_dos_score(m_dos_score + 20);
             }
+            else
+            {
+                if (msg.protocol_getdata().count != 1)
+                {
+                    log_debug(
+                        "TCP connection received getdata, size = " <<
+                        msg.protocol_getdata().count << "."
+                    );
+                }
+                
+                auto inventory = msg.protocol_getdata().inventory;
+                
+                for (auto & i : inventory)
+                {
+                    if (msg.protocol_getdata().count == 1)
+                    {
+                        log_debug(
+                            "TCP connection received getdata for " <<
+                            i.to_string() << "."
+                        );
+                    }
+                    
+                    if (i.type() == inventory_vector::type_msg_block)
+                    {
+                        /**
+                         * Find the block.
+                         */
+                        auto it = globals::instance().block_indexes().find(
+                            i.hash()
+                        );
+                        
+                        if (it != globals::instance().block_indexes().end())
+                        {
+                            /**
+                             * Allocate the block.
+                             */
+                            block blk;
+                            
+                            /**
+                             * Read the block from disk.
+                             */
+                            blk.read_from_disk(it->second);
+                            
+                            /**
+                             * Send the block message.
+                             */
+                            send_block_message(blk);
+
+                            /**
+                             * Trigger them to send a getblocks request for the
+                             * next batch of inventory.
+                             */
+                            if (i.hash() == m_hash_continue)
+                            {
+                                /**
+                                 * Send latest proof-of-work block to allow the
+                                 * download node to accept as orphan
+                                 * (proof-of-stake block might be rejected by
+                                 * stake connection check) (ppcoin).
+                                 */
+                                std::vector<sha256> block_hashes;
+                                
+                                /**
+                                 * Insert the (previous) best block index's
+                                 * hash.
+                                 */
+                                block_hashes.push_back(
+                                    utility::get_last_block_index(
+                                    stack_impl::get_block_index_best(), false
+                                    )->get_block_hash()
+                                );
+               
+                                /**
+                                 * Send an inv message.
+                                 */
+                                send_inv_message(
+                                    inventory_vector::type_msg_block,
+                                    block_hashes
+                                );
+                                
+                                /**
+                                 * Set the hash continue to null.
+                                 */
+                                m_hash_continue = 0;
+                            }
+                        }
+                    }
+                    else if (i.is_know_type())
+                    {
+                        /**
+                         * Send stream from relay memory.
+                         */
+                        bool did_send = false;
+                        
+                        auto it = globals::instance().relay_invs().find(i);
+                        
+                        if (it != globals::instance().relay_invs().end())
+                        {
+                            /**
+                             * Send the relayed inv message.
+                             */
+                            send_relayed_inv_message(
+                                i, data_buffer(it->second.data(),
+                                it->second.size())
+                            );
+                            
+                            did_send = true;
+                        }
+                        
+                        if (
+                            did_send == false &&
+                            i.type() == inventory_vector::type_msg_tx
+                            )
+                        {
+                            if (transaction_pool::instance().exists(i.hash()))
+                            {
+                                auto tx = transaction_pool::instance().lookup(
+                                    i.hash()
+                                );
+
+                                /**
+                                 * Send the tx message.
+                                 */
+                                send_tx_message(tx);
+                            }
+                        }
+                    }
+                    
+                    /**
+                     * Inform the wallet manager.
+                     */
+                    wallet_manager::instance().on_inventory(i.hash());
+                }
+            }
+        }
+        else
+        {
+            log_info(
+                "TCP connection (operation mode client) is dropping "
+                "getdata message."
+            );
         }
     }
     else if (msg.header().command == "getblocks")
     {
-        /**
-         * Find the last block the sender has in the main chain.
-         */
-        auto index = block_locator(
-            msg.protocol_getblocks().hashes
-        ).get_block_index();
-        
-        /**
-         * Send the rest of the chain.
-         */
-        if (index)
+        if (std::time(0) - time_last_getblocks_received_ < 8)
         {
-            index = index->block_index_next();
+            log_debug(
+                "TCP connection remote peer is sending getblocks too fast (" <<
+                (std::time(0) - time_last_getblocks_received_) <<
+                "), rate limiting."
+            );
+            
+            /**
+             * Set the last time we got a getblocks.
+             */
+            time_last_getblocks_received_ = std::time(0);
         }
-        
-        /**
-         * We send a random number of blocks between 300 and 900.
-         */
-        auto limit = static_cast<std::int16_t> (
-            random::uint16_random_range(300, 900)
-        );
-        
-        log_debug(
-            "TCP connection getblocks " << (index ? index->height() : -1) <<
-            " to " <<
-            msg.protocol_getblocks().hash_stop.to_string().substr(0, 20) <<
-            " limit " << limit << "."
-        );
-        
-        /**
-         * The block hashes to send (we do not trickle like the reference
-         * implementation).
-         */
-        std::vector<sha256> block_hashes;
-        
-        for (; index; index = index->block_index_next())
+        else
         {
-            if (index->get_block_hash() == msg.protocol_getblocks().hash_stop)
+            /**
+             * Set the last time we got a getblocks.
+             */
+            time_last_getblocks_received_ = std::time(0);
+            
+            /**
+             * If we are a peer handle the getblocks message.
+             */
+            if (
+                globals::instance().operation_mode() ==
+                protocol::operation_mode_peer
+                )
             {
+                /**
+                 * Find the last block the sender has in the main chain.
+                 */
+                auto index = block_locator(
+                    msg.protocol_getblocks().hashes
+                ).get_block_index();
+                
+                /**
+                 * Send the rest of the chain.
+                 */
+                if (index)
+                {
+                    index = index->block_index_next();
+                }
+                
+                /**
+                 * We send a random number of blocks between 500 and 1500.
+                 */
+                auto limit = static_cast<std::int16_t> (
+                    random::uint16_random_range(500, 1500)
+                );
+                
                 log_debug(
-                    "TCP connection getblocks stopping at " <<
-                    index->height() << " " <<
-                    index->get_block_hash().to_string().substr(0, 20) << "."
+                    "TCP connection getblocks " <<
+                    (index ? index->height() : -1) << " to " <<
+                    msg.protocol_getblocks().hash_stop.to_string(
+                    ).substr(0, 20) << " limit " << limit << "."
                 );
                 
                 /**
-                 * Tell the downloading node about the latest block if it's
-                 * without risk of being rejected due to stake connection
-                 * check (ppcoin).
+                 * The block hashes to send (we do not trickle like the reference
+                 * implementation).
                  */
-                if (
-                    msg.protocol_getblocks().hash_stop !=
-                    globals::instance().hash_best_chain() && index->time() +
-                    constants::min_stake_age >
-                    stack_impl::get_block_index_best()->time()
-                    )
+                std::vector<sha256> block_hashes;
+                
+                for (; index; index = index->block_index_next())
                 {
+                    if (
+                        index->get_block_hash() == msg.protocol_getblocks().hash_stop
+                        )
+                    {
+                        log_debug(
+                            "TCP connection getblocks stopping at " <<
+                            index->height() << " " <<
+                            index->get_block_hash().to_string().substr(0, 20)
+                            << "."
+                        );
+                        
+                        /**
+                         * Tell the downloading node about the latest block if
+                         * it's without risk of being rejected due to stake
+                         * connection check (ppcoin).
+                         */
+                        if (
+                            msg.protocol_getblocks().hash_stop !=
+                            globals::instance().hash_best_chain() &&
+                            index->time() + constants::min_stake_age >
+                            stack_impl::get_block_index_best()->time()
+                            )
+                        {
+                            /**
+                             * Insert the block hash.
+                             */
+                            block_hashes.push_back(
+                                globals::instance().hash_best_chain()
+                            );
+                        }
+                        
+                        break;
+                    }
+                    
                     /**
                      * Insert the block hash.
                      */
-                    block_hashes.push_back(
-                        globals::instance().hash_best_chain()
+                    block_hashes.push_back(index->get_block_hash());
+                    
+                    if (--limit <= 0)
+                    {
+                        /**
+                         * When this block is requested, we'll send an inv
+                         * that'll make them getblocks the next batch of
+                         * inventory.
+                         */
+                        log_debug(
+                            "TCP connection getblocks stopping at limit " <<
+                            index->height() << " " <<
+                            index->get_block_hash().to_string().substr(
+                            0, 20) << "."
+                        );
+
+                        /**
+                         * Set the hash continue.
+                         */
+                        m_hash_continue = index->get_block_hash();
+                        
+                        break;
+                    }
+                }
+
+                if (block_hashes.size() > 0)
+                {
+                    /**
+                     * Send an inv message with the block hashes.
+                     */
+                    send_inv_message(
+                        inventory_vector::type_msg_block, block_hashes
                     );
                 }
-                
-                break;
             }
-            
-            /**
-             * Insert the block hash.
-             */
-            block_hashes.push_back(index->get_block_hash());
-            
-            if (--limit <= 0)
+            else
             {
-                /**
-                 * When this block is requested, we'll send an inv that'll
-                 * make them getblocks the next batch of inventory.
-                 */
-                log_debug(
-                    "TCP connection getblocks stopping at limit " <<
-                    index->height() << " " <<
-                    index->get_block_hash().to_string().substr(0, 20) << "."
+                log_info(
+                    "TCP connection (operation mode client) is dropping "
+                    "getblocks message."
                 );
-
-                /**
-                 * Set the hash continue.
-                 */
-                m_hash_continue = index->get_block_hash();
-                
-                break;
             }
-        }
-
-        if (block_hashes.size() > 0)
-        {
-            /**
-             * Send an inv message with the block hashes.
-             */
-            send_inv_message(inventory_vector::type_msg_block, block_hashes);
         }
     }
     else if (msg.header().command == "checkpoint")
@@ -2468,12 +2598,13 @@ void tcp_connection::do_send_getblocks(const boost::system::error_code & ec)
         assert(constants::work_and_stake_target_spacing > 60);
         
         /**
-         * If we have not received a block in a while then send a getblocks
-         * message.
+         * If we have not received a block in a while or we know we need to
+         * then send a getblocks message.
          */
         if (
             std::time(0) - time_last_block_received_ >=
-            (constants::work_and_stake_target_spacing * 2)
+            (constants::work_and_stake_target_spacing * 2) ||
+            need_to_send_getblocks_ == true
             )
         {
             /**
@@ -2489,7 +2620,7 @@ void tcp_connection::do_send_getblocks(const boost::system::error_code & ec)
         /**
          * Start the getblocks timer.
          */
-        timer_getblocks_.expires_from_now(std::chrono::seconds(60));
+        timer_getblocks_.expires_from_now(std::chrono::seconds(8));
         timer_getblocks_.async_wait(globals::instance().strand().wrap(
             std::bind(&tcp_connection::do_send_getblocks, self,
             std::placeholders::_1))

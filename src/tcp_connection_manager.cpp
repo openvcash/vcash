@@ -113,112 +113,126 @@ void tcp_connection_manager::handle_accept(
     std::lock_guard<std::recursive_mutex> l1(mutex_tcp_connections_);
     
     /**
-     * We only allow one incoming connection per unique IP address.
+     * Only peers accept incoming connections.
      */
-    bool is_duplicate = false;
-    
-    for (auto & i : m_tcp_connections)
+    if (globals::instance().operation_mode() == protocol::operation_mode_peer)
     {
-        try
+        /**
+         * We allow this many incoming connections per same IP address.
+         */
+        enum { maximum_per_same_ip = 8 };
+
+        auto connections = 0;
+        
+        for (auto & i : m_tcp_connections)
         {
-            if (
-                i.first.address() ==
-                transport->socket().remote_endpoint().address()
-                )
+            try
             {
-                is_duplicate = true;
-                
-                break;
+                if (auto t = i.second.lock())
+                {
+                    if (
+                        t->is_transport_valid() && i.first.address() ==
+                        transport->socket().remote_endpoint().address()
+                        )
+                    {
+                        if (++connections == maximum_per_same_ip)
+                        {
+                            break;
+                        }
+                    }
+                }
+            }
+            catch (...)
+            {
+                // ...
             }
         }
-        catch (...)
+        
+        if (connections > maximum_per_same_ip)
         {
-            // ...
+            log_error(
+                "TCP connection manager is dropping duplicate IP connection "
+                "from " << transport->socket().remote_endpoint() << "."
+            );
+            
+            /**
+             * Stop the transport.
+             */
+            transport->stop();
         }
-    }
-    
-    if (is_duplicate)
-    {
-        log_error(
-            "TCP connection manager is dropping duplicate IP connection "
-            "from " << transport->socket().remote_endpoint() << "."
-        );
-        
-        /**
-         * Stop the transport.
-         */
-        transport->stop();
-    }
-    else if (
-        network::instance().is_address_banned(
-        transport->socket().remote_endpoint().address().to_string())
-        )
-    {
-        log_info(
-            "TCP connection manager is dropping banned connection from " <<
-            transport->socket().remote_endpoint() << ", limit reached."
-        );
-        
-        /**
-         * Stop the transport.
-         */
-        transport->stop();
-    }
-    else if (
-        is_ip_banned(
-        transport->socket().remote_endpoint().address().to_string())
-        )
-    {
-        log_debug(
-            "TCP connection manager is dropping bad connection from " <<
-            transport->socket().remote_endpoint() << ", limit reached."
-        );
-        
-        /**
-         * Stop the transport.
-         */
-        transport->stop();
-    }
-    else if (
-        m_tcp_connections.size() >=
-        stack_impl_.get_configuration().network_tcp_inbound_maximum()
-        )
-    {
-        log_error(
-            "TCP connection manager is dropping connection from " <<
-            transport->socket().remote_endpoint() << ", limit reached."
-        );
-        
-        /**
-         * Stop the transport.
-         */
-        transport->stop();
-    }
-    else
-    {
-        log_debug(
-            "TCP connection manager accepted new tcp connection from " <<
-            transport->socket().remote_endpoint() << ", " <<
-            m_tcp_connections.size() << " connected peers."
-        );
+        else if (
+            network::instance().is_address_banned(
+            transport->socket().remote_endpoint().address().to_string())
+            )
+        {
+            log_info(
+                "TCP connection manager is dropping banned connection from " <<
+                transport->socket().remote_endpoint() << ", limit reached."
+            );
+            
+            /**
+             * Stop the transport.
+             */
+            transport->stop();
+        }
+        else if (
+            is_ip_banned(
+            transport->socket().remote_endpoint().address().to_string())
+            )
+        {
+            log_debug(
+                "TCP connection manager is dropping bad connection from " <<
+                transport->socket().remote_endpoint() << ", limit reached."
+            );
+            
+            /**
+             * Stop the transport.
+             */
+            transport->stop();
+        }
+        else if (
+            m_tcp_connections.size() >=
+            stack_impl_.get_configuration().network_tcp_inbound_maximum()
+            )
+        {
+            log_error(
+                "TCP connection manager is dropping connection from " <<
+                transport->socket().remote_endpoint() << ", limit reached."
+            );
+            
+            /**
+             * Stop the transport.
+             */
+            transport->stop();
+        }
+        else
+        {
+            log_debug(
+                "TCP connection manager accepted new tcp connection from " <<
+                transport->socket().remote_endpoint() << ", " <<
+                m_tcp_connections.size() << " connected peers."
+            );
 
-        /**
-         * Allocate the tcp_connection.
-         */
-        auto connection = std::make_shared<tcp_connection> (
-            io_service_, stack_impl_, tcp_connection::direction_incoming,
-            transport
-        );
+            /**
+             * Allocate the tcp_connection.
+             */
+            auto connection = std::make_shared<tcp_connection> (
+                io_service_, stack_impl_, tcp_connection::direction_incoming,
+                transport
+            );
 
-        /**
-         * Retain the connection.
-         */
-        m_tcp_connections[transport->socket().remote_endpoint()] = connection;
-        
-        /**
-         * Start the tcp_connection.
-         */
-        connection->start();
+            /**
+             * Retain the connection.
+             */
+            m_tcp_connections[transport->socket().remote_endpoint()] =
+                connection
+            ;
+            
+            /**
+             * Start the tcp_connection.
+             */
+            connection->start();
+        }
     }
 }
 
@@ -324,6 +338,8 @@ void tcp_connection_manager::tick(const boost::system::error_code & ec)
     {
         std::lock_guard<std::recursive_mutex> l1(mutex_tcp_connections_);
         
+        auto tcp_connections = 0;
+        
         auto it = m_tcp_connections.begin();
         
         while (it != m_tcp_connections.end())
@@ -332,6 +348,14 @@ void tcp_connection_manager::tick(const boost::system::error_code & ec)
             {
                 if (connection->is_transport_valid())
                 {
+                    if (auto t = connection->get_tcp_transport().lock())
+                    {
+                        if (t->state() == tcp_transport::state_connected)
+                        {
+                            ++tcp_connections;
+                        }
+                    }
+                    
                     ++it;
                 }
                 else
@@ -350,11 +374,10 @@ void tcp_connection_manager::tick(const boost::system::error_code & ec)
         /**
          * Maintain at least minimum_tcp_connections tcp connections.
          */
-        if (m_tcp_connections.size() < minimum_tcp_connections + 1)
+        if (tcp_connections < minimum_tcp_connections)
         {
             for (
-                auto i = 0; i <
-                minimum_tcp_connections - m_tcp_connections.size(); i++
+                auto i = 0; i < minimum_tcp_connections - tcp_connections; i++
                 )
             {
                 /**
@@ -369,7 +392,7 @@ void tcp_connection_manager::tick(const boost::system::error_code & ec)
                  * Only connect to one peer per group.
                  */
                 bool is_in_same_group = false;
-#if 1
+
                 for (auto & i : m_tcp_connections)
                 {
                     if (auto j = i.second.lock())
@@ -395,7 +418,7 @@ void tcp_connection_manager::tick(const boost::system::error_code & ec)
                         }
                     }
                 }
-#endif
+
                 if (
                     addr.is_valid() == false || addr.is_local() ||
                     is_in_same_group
@@ -411,7 +434,7 @@ void tcp_connection_manager::tick(const boost::system::error_code & ec)
                      */
                     if (time::instance().get_adjusted() - addr.last_try < 600)
                     {
-                        log_none(
+                        log_info(
                             "TCP connection manager attempted to "
                             "connect to " << addr.ipv4_mapped_address() <<
                             ":" << addr.port << " too soon, last try = " <<
@@ -429,13 +452,13 @@ void tcp_connection_manager::tick(const boost::system::error_code & ec)
                             addr.ipv4_mapped_address(), addr.port))
                             )
                         {
-                            log_none(
+                            log_info(
                                 "TCP connection manager is connecting to " <<
-                                addr.ipv4_mapped_address() << ":" << addr.port <<
-                                ", last seen = " <<
+                                addr.ipv4_mapped_address() << ":" <<
+                                addr.port << ", last seen = " <<
                                 (time::instance().get_adjusted() -
                                 addr.timestamp) / 60 << " mins, " <<
-                                m_tcp_connections.size() << " connected peers."
+                                tcp_connections << " connected peers."
                             );
                         }
                     }
@@ -444,7 +467,7 @@ void tcp_connection_manager::tick(const boost::system::error_code & ec)
             
             auto self(shared_from_this());
             
-            timer_.expires_from_now(std::chrono::seconds(8));
+            timer_.expires_from_now(std::chrono::seconds(2));
             timer_.async_wait(globals::instance().strand().wrap(
                 std::bind(&tcp_connection_manager::tick, self,
                 std::placeholders::_1))
@@ -470,11 +493,17 @@ void tcp_connection_manager::tick(const boost::system::error_code & ec)
          * Set the status message.
          */
         status["type"] = "network";
-        status["value"] =
-            m_tcp_connections.size() > 0 ? "Connected" : "Connecting"
-        ;
+        
+        /**
+         * Set the value.
+         */
+        status["value"] = tcp_connections > 0 ? "Connected" : "Connecting";
+        
+        /**
+         * Set the network.tcp.connections.
+         */
         status["network.tcp.connections"] = std::to_string(
-            m_tcp_connections.size()
+            tcp_connections
         );
         
         /**

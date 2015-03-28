@@ -523,6 +523,21 @@ namespace coin {
             boost::asio::basic_waitable_timer<
                 std::chrono::steady_clock
             > timer_addr_rebroadcast_;
+        
+            /**
+             * The last time a getblocks was received.
+             */
+            std::time_t time_last_getblocks_received_;
+        
+            /**
+             * The last time a getblocks was received.
+             */
+            std::time_t time_last_getblocks_sent_;
+        
+            /**
+             * If true we need to send a getblocks message.
+             */
+            bool need_to_send_getblocks_;
     };
     
 } // namespace coin
