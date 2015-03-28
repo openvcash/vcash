@@ -248,45 +248,51 @@ bool db_tx::load_block_index(stack_impl & impl)
              */
             if (blk.read_from_disk(i))
             {
-                /**
-                 * Allocate the status.
-                 */
-                std::map<std::string, std::string> status;
-
-                /**
-                 * Set the status type.
-                 */
-                status["type"] = "database";
-    
                 float percentage =
                     ((float)checked_blocks / (float)check_depth) * 100.0f
                 ;
                 
                 /**
-                 * Format the block verification progress percentage.
+                 * Only callback status every 100 blocks or 100%.
                  */
-                std::stringstream ss;
+                if ((i->height() % 100) == 0 || percentage == 100.0f)
+                {
+                    /**
+                     * Allocate the status.
+                     */
+                    std::map<std::string, std::string> status;
 
-                ss <<
-                    std::fixed << std::setprecision(2) << percentage
-                ;
-    
-                /**
-                 * Set the status value.
-                 */
-                status["value"] = "Verifying " + ss.str() + "%";
+                    /**
+                     * Set the status type.
+                     */
+                    status["type"] = "database";
 
-                /**
-                 * The block download percentage.
-                 */
-                status["blockchain.verify.percent"] =
-                    std::to_string(percentage)
-                ;
-    
-                /**
-                 * Callback
-                 */
-                impl.get_status_manager()->insert(status);
+                    /**
+                     * Format the block verification progress percentage.
+                     */
+                    std::stringstream ss;
+
+                    ss <<
+                        std::fixed << std::setprecision(2) << percentage
+                    ;
+        
+                    /**
+                     * Set the status value.
+                     */
+                    status["value"] = "Verifying " + ss.str() + "%";
+
+                    /**
+                     * The block download percentage.
+                     */
+                    status["blockchain.verify.percent"] =
+                        std::to_string(percentage)
+                    ;
+        
+                    /**
+                     * Callback
+                     */
+                    impl.get_status_manager()->insert(status);
+                }
                 
                 try
                 {
