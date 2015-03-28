@@ -57,7 +57,7 @@ void stack::start(const std::map<std::string, std::string> & args)
         );
 
         stack_impl_->get_configuration().bootstrap_nodes().push_back(
-            std::make_pair("72.47.234.147", 50982)
+            std::make_pair("72.47.234.147", 41134)
         );
 
         stack_impl_->get_configuration().bootstrap_nodes().push_back(
