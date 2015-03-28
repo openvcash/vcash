@@ -34,6 +34,7 @@
 #include <coin/inventory_vector.hpp>
 #include <coin/median_filter.hpp>
 #include <coin/point_out.hpp>
+#include <coin/protocol.hpp>
 #include <coin/sha256.hpp>
 
 /**
@@ -124,6 +125,17 @@ namespace coin {
             {
                 return m_debug;
             }
+        
+            /**
+             * Set's the operation mode.
+             * @param val The value.
+             */
+            void set_operation_mode(const protocol::operation_mode_t & val);
+        
+            /**
+             * The protocol::operation_mode_t.
+             */
+            protocol::operation_mode_t & operation_mode();
         
             /**
              * If true we are a client.
@@ -546,6 +558,11 @@ namespace coin {
              * If true we are in debug mode.
              */
             bool m_debug;
+        
+            /**
+             * The protocol::operation_mode_t.
+             */
+            protocol::operation_mode_t m_operation_mode;
         
             /**
              * If true we are a client.

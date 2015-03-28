@@ -26,6 +26,7 @@ using namespace coin;
 globals::globals()
     : m_strand(m_io_service)
     , m_state(state_none)
+    , m_operation_mode(protocol::operation_mode_peer)
     , m_debug(true)
     , m_is_client(false)
     , m_version_nonce(0)
@@ -48,6 +49,16 @@ globals::globals()
     auto p2sh = "/P2SH/";
 
     *m_coinbase_flags << std::vector<std::uint8_t>(p2sh, p2sh + strlen(p2sh));
+}
+
+void globals::set_operation_mode(const protocol::operation_mode_t & val)
+{
+    m_operation_mode = val;
+}
+
+protocol::operation_mode_t & globals::operation_mode()
+{
+    return m_operation_mode;
 }
 
 script & globals::coinbase_flags()
