@@ -61,6 +61,15 @@ namespace protocol {
         enum { default_rpc_port = 9195 };
     
         /**
+         * The operation node.
+         */
+        typedef enum operation_mode_s
+        {
+            operation_mode_client,
+            operation_mode_peer,
+        } operation_mode_t;
+        
+        /**
          * Ihe ipv4 mapped prefix.
          */
         static const std::array<uint8_t, 12> v4_mapped_prefix =
@@ -164,7 +173,7 @@ namespace protocol {
                 std::memset(&ret, 0, sizeof(ret));
                 
                 ret.timestamp = static_cast<std::uint32_t> (std::time(0));
-                ret.services = 1;
+                ret.services = operation_mode_peer;
                 ret.last_try = 0;
                 
                 if (ep.address().is_v4())
@@ -210,7 +219,7 @@ namespace protocol {
                 std::memset(&ret, 0, sizeof(ret));
                 
                 ret.timestamp = static_cast<std::uint32_t> (std::time(0));
-                ret.services = 1;
+                ret.services = operation_mode_peer;
                 ret.last_try = 0;
                 ret.address = address;
                 ret.port = 0;
@@ -705,8 +714,6 @@ namespace protocol {
         {
             std::shared_ptr<alert> a;
         } alert_t;
-    
-        /** */
 
         /**
          * The maximum inventory size.
