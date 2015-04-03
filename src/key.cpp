@@ -24,6 +24,7 @@
 #include <openssl/ecdsa.h>
 #include <openssl/obj_mac.h>
 
+#include <coin/android.hpp>
 #include <coin/key.hpp>
 #include <coin/key_public.hpp>
 #include <coin/logger.hpp>

@@ -26,6 +26,7 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 
+#include <coin/android.hpp>
 #include <coin/configuration.hpp>
 #include <coin/filesystem.hpp>
 #include <coin/logger.hpp>

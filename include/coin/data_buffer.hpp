@@ -33,6 +33,7 @@
 
 #include <boost/asio.hpp>
 
+#include <coin/android.hpp>
 #include <coin/endian.hpp>
 #include <coin/file.hpp>
 #include <coin/protocol.hpp>

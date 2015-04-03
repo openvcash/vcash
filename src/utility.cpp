@@ -57,6 +57,21 @@ utility::disk_info_t utility::disk_info(const std::string & path)
             avail.LowPart
         ;
     }
+#elif defined (__ANDROID__)
+    struct statfs vfs;
+
+    if (statfs(path.c_str(), &vfs) == 0)
+    {
+        ret.capacity =
+            static_cast<std::uintmax_t>(vfs.f_blocks) * vfs.f_frsize
+        ;
+        ret.free =
+            static_cast<std::uintmax_t>(vfs.f_bfree) * vfs.f_frsize
+        ;
+        ret.available =
+            static_cast<std::uintmax_t>(vfs.f_bavail) * vfs.f_frsize
+        ;
+    }
 #else
     struct statvfs vfs;
 
@@ -516,7 +531,7 @@ std::uint32_t utility::get_next_target_required(
      * The block height at which version 0.2.0 retargeting begins.
      */
     enum { block_height_v020_retargeting = 50399 };
-    
+
     /**
      * Check for version retargeting.
      */

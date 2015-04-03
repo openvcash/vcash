@@ -22,7 +22,9 @@
 #define COIN_UTILITY_HPP
 
 #if (defined _MSC_VER)
-                
+    // ...
+#elif (defined __ANDROID__)
+#include <sys/vfs.h>
 #else
 #include <sys/statvfs.h>
 #endif // _MSC_VER

@@ -21,6 +21,7 @@
 #if (defined _MSC_VER)
 #include <io.h>
 #else
+#include <stdio.h>
 #include <unistd.h>
 #endif // _MSC_VER
 
@@ -139,7 +140,7 @@ int file::fsync()
 #if (defined _MSC_VER)
     return ::_commit(_fileno(m_file));
 #else
-    return ::fsync(::fileno(m_file));
+    return ::fsync(fileno(m_file));
 #endif // _MSC_VER
 }
 
