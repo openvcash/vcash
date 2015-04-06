@@ -18,7 +18,7 @@ lib ssl : : <name>ssl <link>static
   <search>./../deps/openssl
   <search>./../deps/openssl/lib
   <search>./../deps/platforms/osx/openssl/lib
-  <search>./../deps/windows/osx/openssl/lib
+  <search>./../deps/platforms/windows/openssl/lib
   <search>/usr/local/ssl/lib
 ;
 
