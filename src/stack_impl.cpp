@@ -84,16 +84,6 @@ stack_impl::stack_impl(coin::stack & owner)
 
 void stack_impl::start()
 {
-    /**
-     * Make sure only a single instance per directory is allowed.
-     */
-    lock_file_or_exit();
-
-    /**
-     * Set the state to starting.
-     */
-    globals::instance().set_state(globals::state_starting);
-
     try
     {
         create_directories();
@@ -104,6 +94,16 @@ void stack_impl::start()
             "Stack failed to create directories, what = " << e.what() << "."
         );
     }
+    
+    /**
+     * Make sure only a single instance per directory is allowed.
+     */
+    lock_file_or_exit();
+
+    /**
+     * Set the state to starting.
+     */
+    globals::instance().set_state(globals::state_starting);
     
     /**
      * Load the configuration.
@@ -875,7 +875,7 @@ void stack_impl::start()
                             }
                         }
                     }
-                    
+
                     if (
                         stack_impl::get_block_index_best() !=
                         index_rescan && stack_impl::get_block_index_best() &&
@@ -885,7 +885,7 @@ void stack_impl::start()
                         )
                     {
                         log_debug("Stack, rescanning wallet for transactions.");
-                        
+
                         /**
                          * Allocate the status.
                          */
