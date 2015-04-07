@@ -130,7 +130,8 @@ std::string filesystem::data_path()
     ret += "Application Support/";
     ret += bundle_id + "/";
 #elif (defined __ANDROID__)
-    ret = home_path() + bundle_id + "/";
+    bundle_id = "net.vanillacoin.vanillacoin";
+    ret = "/data/data/" + m_android_package;
 #else
     ret = home_path();
     ret += "." + bundle_id + "/data/";
