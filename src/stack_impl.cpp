@@ -3632,7 +3632,8 @@ void stack_impl::load_wallet(
 
 void stack_impl::lock_file_or_exit()
 {
-#if (! defined _MSC_VER && ! defined __IPHONE_OS_VERSION_MAX_ALLOWED)
+#if (! defined _MSC_VER && ! defined __IPHONE_OS_VERSION_MAX_ALLOWED && \
+    ! defined __ANDROID__)
     static file f;
     
     if (
