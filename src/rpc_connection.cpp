@@ -2376,7 +2376,8 @@ boost::property_tree::ptree rpc_connection::json_getinfo()
         );
         ret.put("difficulty", stack_impl_.difficulty());
         ret.put(
-            "keypoolsize", globals::instance().wallet_main()->keys().size()
+            "keypoolsize",
+            globals::instance().wallet_main()->get_key_pool().size()
         );
         ret.put(
             "paytxfee",
