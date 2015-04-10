@@ -202,7 +202,7 @@ bool db_tx::load_block_index(stack_impl & impl)
          * Check 1.5 days woth of blocks for clients and 3 days worth of blocks
          * for peers.
          */
-#if (defined __ANDROID__ || defined __APPLE__)
+#if (defined __ANDROID__ || defined __IPHONE_OS_VERSION_MIN_REQUIRED)
         auto check_depth = 750;
 #else
         auto check_depth = 1500;
