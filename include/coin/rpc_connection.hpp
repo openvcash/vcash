@@ -467,6 +467,14 @@ namespace coin {
             );
         
             /**
+             * Encodes settxfee data into JSON format.
+             * @param request The json_rpc_request_t.
+             */
+            json_rpc_response_t json_settxfee(
+                const json_rpc_request_t & request
+            );
+        
+            /**
              * Encodes importprivkey data into JSON format.
              * @param request The json_rpc_request_t.
              */

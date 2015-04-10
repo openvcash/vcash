@@ -586,6 +586,10 @@ bool rpc_connection::handle_json_rpc_request(
     {
         response = json_gettransaction(request);
     }
+    else if (request.method == "settxfee")
+    {
+        response = json_settxfee(request);
+    }
     else if (request.method == "importprivkey")
     {
         response = json_importprivkey(request);
@@ -3121,6 +3125,30 @@ rpc_connection::json_rpc_response_t rpc_connection::json_gettransaction(
     {
         log_error(
             "RPC Connection failed to create json_gettransaction, what = " <<
+            e.what() << "."
+        );
+    }
+
+    return ret;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_settxfee(
+    const json_rpc_request_t & request
+    )
+{
+    json_rpc_response_t ret;
+
+    try
+    {
+        /**
+         * We don't support this feature so always return true.
+         */
+        ret.result.put("", true);
+    }
+    catch (std::exception & e)
+    {
+        log_error(
+            "RPC Connection failed to create json_settxfee, what = " <<
             e.what() << "."
         );
     }
