@@ -197,9 +197,16 @@ bool db_tx::load_block_index(stack_impl & impl)
          * -checklevel (1-6)
          */
         enum { check_level = 1 };
-
-        auto check_depth = 2500;
         
+        /**
+         * Check 1.5 days woth of blocks for clients and 3 days worth of blocks
+         * for peers.
+         */
+#if (defined __ANDROID__ || defined __APPLE__)
+        auto check_depth = 750;
+#else
+        auto check_depth = 1500;
+#endif
         if (check_depth == 0)
         {
             check_depth = 1000000000;
