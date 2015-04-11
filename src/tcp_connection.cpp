@@ -2152,12 +2152,35 @@ bool tcp_connection::handle_message(message & msg)
                 }
                 
                 /**
-                 * We send a random number of blocks between 500 and 1500.
+                 * We send a random number of blocks depending on remote
+                 * node operation mode defaulting to a 300 lower/upper
+                 * peer/client boundry.
                  */
-                auto limit = static_cast<std::int16_t> (
-                    random::uint16_random_range(500, 1500)
-                );
+                enum { default_blocks = 300 };
                 
+                /**
+                 * The limit on the number of blocks to send.
+                 */
+                std::int16_t limit = default_blocks;
+
+                if (
+                    (m_protocol_version_services &
+                    protocol::operation_mode_peer) == 1
+                    )
+                {
+                    limit = static_cast<std::int16_t> (
+                        random::uint16_random_range(
+                        default_blocks, default_blocks * 3)
+                    );
+                }
+                else
+                {
+                    limit = static_cast<std::int16_t> (
+                        random::uint16_random_range(
+                        default_blocks / 3, default_blocks)
+                    );
+                }
+
                 log_debug(
                     "TCP connection getblocks " <<
                     (index ? index->height() : -1) << " to " <<
@@ -2174,7 +2197,8 @@ bool tcp_connection::handle_message(message & msg)
                 for (; index; index = index->block_index_next())
                 {
                     if (
-                        index->get_block_hash() == msg.protocol_getblocks().hash_stop
+                        index->get_block_hash() ==
+                        msg.protocol_getblocks().hash_stop
                         )
                     {
                         log_debug(
