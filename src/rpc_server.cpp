@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
+ * This file is part of vanillacoin.
  *
- * coinpp is free software: you can redistribute it and/or modify
+ * vanillacoin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -72,22 +72,34 @@ bool rpc_server::open(const std::uint16_t & port)
         {
             std::vector<std::string> parts;
             
+            boost::trim(it->second);
+            
             boost::split(parts, it->second, boost::is_any_of(","));
     
             for (auto & i : parts)
             {
-                boost::asio::ip::address addr(
-                    boost::asio::ip::address::from_string(i.c_str())
-                );
-                
-                log_info(
-                    "RPC server got allow-ip = " << addr.to_string() << "."
-                );
-                
-                /**
-                 * Insert the address into the allowed list.
-                 */
-                network::instance().allowed_addresses_rpc().insert(i);
+                try
+                {
+                    boost::asio::ip::address addr(
+                        boost::asio::ip::address::from_string(i.c_str())
+                    );
+                    
+                    log_info(
+                        "RPC server got allow-ip = " << addr.to_string() << "."
+                    );
+                    
+                    /**
+                     * Insert the address into the allowed list.
+                     */
+                    network::instance().allowed_addresses_rpc().insert(i);
+                }
+                catch (std::exception & e)
+                {
+                    log_error(
+                        "RPC server failed to parse ip = " << i <<
+                        ", what = " << e.what() << "."
+                    );
+                }
             }
             
             ipv4_endpoint = boost::asio::ip::tcp::endpoint(
