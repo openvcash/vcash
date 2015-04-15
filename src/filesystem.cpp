@@ -119,7 +119,7 @@ bool filesystem::copy_file(const std::string & src, const std::string & dest)
 
 std::string filesystem::data_path()
 {
-    static const std::string bundle_id = constants::client_name;
+    static const auto bundle_id = constants::client_name;
     std::string ret;
 #if (defined _MSC_VER)
     ret += getenv("APPDATA");
@@ -130,8 +130,7 @@ std::string filesystem::data_path()
     ret += "Application Support/";
     ret += bundle_id + "/";
 #elif (defined __ANDROID__)
-    bundle_id = "net.vanillacoin.vanillacoin";
-    ret = "/data/data/" + bundle_id;
+    ret = home_path() + "data/";
 #else
     ret = home_path();
     ret += "." + bundle_id + "/data/";
@@ -143,8 +142,8 @@ std::string filesystem::home_path()
 {
     std::string ret;
 #if (defined __ANDROID__)
-    static const std::string android_package = constants::client_name;
-    ret = "/data/data/" + android_package;
+    std::string bundle_id = "net.vanillacoin.vanillacoin";
+    ret = "/data/data/" + bundle_id;
 #else
     if (std::getenv("HOME"))
     {

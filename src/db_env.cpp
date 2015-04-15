@@ -55,11 +55,15 @@ bool db_env::open(const std::string & data_path)
     {
         filesystem::create_path(data_path);
         
-        auto log_path = data_path + "/database";
+        auto log_path = data_path + "database";
+        
+        log_info("Database environment log path = " << log_path << ".");
         
         filesystem::create_path(log_path);
         
-        auto errfile_path = data_path + "/db.log";
+        auto errfile_path = data_path + "db.log";
+        
+        log_info("Database environment err path = " << errfile_path << ".");
         
         std::int32_t flags =
             DB_CREATE | DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL |
