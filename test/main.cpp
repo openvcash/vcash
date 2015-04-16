@@ -66,7 +66,7 @@ int main(int argc, const char * argv[])
                 
                 if (i != std::string::npos)
                 {
-                    value = arg.substr(i + 1, strlen(argv[i]));
+                    value = arg.substr(i + 1, arg.length());
                     
                     args[key] = value;
                 }
