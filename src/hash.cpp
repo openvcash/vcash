@@ -20,7 +20,6 @@
 
 #include <openssl/rand.h>
 
-#include <coin/endian.hpp>
 #include <coin/hash.hpp>
 #include <coin/ripemd160.hpp>
 
@@ -98,7 +97,6 @@ std::uint32_t hash::sha256d_checksum(
     
     return *reinterpret_cast<std::uint32_t *>(&digest[0]);
 }
-
 
 std::array<std::uint8_t, 20> hash::sha256_ripemd160(
     const std::uint8_t * buf, const std::size_t & len
