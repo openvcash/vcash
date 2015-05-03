@@ -557,14 +557,22 @@ void tcp_connection::send_getdata_message(
     std::lock_guard<std::recursive_mutex> l1(mutex_getdata_);
     
     /**
-     * Append the entries to the end.
+     * Only send a getdata message if the remote node is a peer.
      */
-    getdata_.insert(getdata_.end(), getdata.begin(), getdata.end());
-    
-    /**
-     * Send the getdata message.
-     */
-    send_getdata_message();
+    if (
+        (m_protocol_version_services & protocol::operation_mode_peer) == 1
+        )
+    {
+        /**
+         * Append the entries to the end.
+         */
+        getdata_.insert(getdata_.end(), getdata.begin(), getdata.end());
+        
+        /**
+         * Send the getdata message.
+         */
+        send_getdata_message();
+    }
 }
 
 void tcp_connection::send_checkpoint_message(checkpoint_sync & checkpoint)
@@ -1012,41 +1020,45 @@ void tcp_connection::send_getdata_message()
     {
         std::lock_guard<std::recursive_mutex> l1(mutex_getdata_);
         
-        if (getdata_.size() > 0)
+        /**
+         * Only send a getdata message if the remote node is a peer.
+         */
+        if (
+            (m_protocol_version_services & protocol::operation_mode_peer) == 1
+            )
         {
-            /**
-             * :FIXME: Keep track of sent inv's and retry after N if necessary?
-             */
-            
-            /**
-             * Allocate the message.
-             */
-            message msg("getdata");
-            
-            /**
-             * Set the getdata.
-             */
-            msg.protocol_getdata().inventory = getdata_;
-            
-            /**
-             * Clear the getdata.
-             */
-            getdata_.clear();
-            
-            log_none(
-                "TCP connection is sending getdata, count = " <<
-                msg.protocol_getdata().inventory.size() << "."
-            );
-            
-            /**
-             * Encode the message.
-             */
-            msg.encode();
-            
-            /**
-             * Write the message.
-             */
-            t->write(msg.data(), msg.size());
+            if (getdata_.size() > 0)
+            {
+                /**
+                 * Allocate the message.
+                 */
+                message msg("getdata");
+                
+                /**
+                 * Set the getdata.
+                 */
+                msg.protocol_getdata().inventory = getdata_;
+                
+                /**
+                 * Clear the getdata.
+                 */
+                getdata_.clear();
+                
+                log_none(
+                    "TCP connection is sending getdata, count = " <<
+                    msg.protocol_getdata().inventory.size() << "."
+                );
+                
+                /**
+                 * Encode the message.
+                 */
+                msg.encode();
+                
+                /**
+                 * Write the message.
+                 */
+                t->write(msg.data(), msg.size());
+            }
         }
     }
     else
