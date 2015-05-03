@@ -3300,9 +3300,61 @@ void stack_impl::create_directories()
     }
     else
     {
-        throw std::runtime_error(
-            "failed to create path " + filesystem::data_path()
-        );
+        throw std::runtime_error("failed to create path " + path);
+    }
+    
+    if (
+        globals::instance().operation_mode() == protocol::operation_mode_client
+        )
+    {
+        path = path + "blockchain/";
+        
+        result = filesystem::create_path(path);
+        
+        log_info("Stack creating path = " << path << ".");
+        
+        if (result == 0 || result == filesystem::error_already_exists)
+        {
+            log_none("Stack, path already exists.");
+        }
+        else
+        {
+            throw std::runtime_error("failed to create path " + path);
+        }
+        
+        path += "client/";
+    }
+    else
+    {
+        path = path + "blockchain/";
+        
+        log_info("Stack creating path = " << path << ".");
+        
+        result = filesystem::create_path(path);
+        
+        if (result == 0 || result == filesystem::error_already_exists)
+        {
+            log_none("Stack, path already exists.");
+        }
+        else
+        {
+            throw std::runtime_error("failed to create path " + path);
+        }
+            
+        path += "peer/";
+    }
+
+    log_info("Stack creating path = " << path << ".");
+
+    result = filesystem::create_path(path);
+    
+    if (result == 0 || result == filesystem::error_already_exists)
+    {
+        log_none("Stack, path already exists.");
+    }
+    else
+    {
+        throw std::runtime_error("failed to create path " + path);
     }
 }
 
