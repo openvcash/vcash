@@ -667,7 +667,7 @@ void mining_manager::pos_tick(const boost::system::error_code & ec)
                 
                 )
             {
-                log_debug(
+                log_info(
                     "Mining manager is waiting on the blockchain to download."
                 );
             }
@@ -698,7 +698,7 @@ void mining_manager::pos_tick(const boost::system::error_code & ec)
                         
                         blk->encode(buffer);
                         
-                        log_debug(
+                        log_info(
                             "Mining manager, mining (pos) with " <<
                             blk->transactions().size() <<
                             " transactions in block, bytes = " <<
@@ -742,12 +742,12 @@ void mining_manager::pos_tick(const boost::system::error_code & ec)
         }
     
         /**
-         * Peers use a 60 second stake search interval and clients use 600
+         * Peers use a 60 second stake search interval and clients use 200
          * seconds.
          */
         auto interval =
             globals::instance().operation_mode() ==
-            protocol::operation_mode_peer ? 60 : 600
+            protocol::operation_mode_peer ? 60 : 200
         ;
 
         timer_pos_.expires_from_now(std::chrono::seconds(interval));
