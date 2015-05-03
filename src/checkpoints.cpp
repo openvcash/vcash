@@ -65,6 +65,9 @@ checkpoints::checkpoints()
     m_checkpoints[73568] = sha256(
         "a9b99a0f9e04d0fdff3132d5e74fe8c7bc5b840e1c090644de704f774b53977f"
     );
+    m_checkpoints[113966] = sha256(
+        "1e62cbed032e20bd11fc8a9663739cc1ad1da441a4472a507e9663b34dffe86c"
+    );
     
     m_checkpoints_test_net[0] = block::get_hash_genesis_test_net();
 }
