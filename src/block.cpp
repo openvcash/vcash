@@ -36,6 +36,7 @@
 #include <coin/filesystem.hpp>
 #include <coin/globals.hpp>
 #include <coin/hash.hpp>
+#include <coin/hash_scrypt.hpp>
 #include <coin/kernel.hpp>
 #include <coin/key_reserved.hpp>
 #include <coin/key_store.hpp>
@@ -214,12 +215,21 @@ sha256 block::get_hash() const
     buffer.write_uint32(m_header.nonce);
 
     assert(buffer.size() == header_length);
-
+#if (defined USE_WHIRLPOOL && USE_WHIRLPOOL)
     auto digest = hash::whirlpoolx(
         reinterpret_cast<std::uint8_t *>(buffer.data()), buffer.size()
     );
     
     std::memcpy(ptr, &digest[0], digest.size());
+#else
+    auto buf = scrypt_buffer_alloc();
+    
+    hash_scrypt(
+        (const void *)buffer.data(), buffer.size(), ptr, buf
+    );
+    
+    free(buf);
+#endif // USE_WHIRLPOOL
 
     return ret;
 }
@@ -2654,10 +2664,24 @@ std::string block::get_file_path(const std::uint32_t & file_index)
 {
     std::stringstream ss;
     
-    ss << filesystem::data_path() << boost::format("blk%04u.dat") % file_index;
+    std::string block_path;
     
-    log_none("Block got file path = " << ss.str() << ".");
+    if (
+        globals::instance().operation_mode() == protocol::operation_mode_client
+        )
+    {
+        block_path = "blockchain/client/";
+    }
+    else
+    {
+        block_path = "blockchain/peer/";
+    }
     
+    ss <<
+        filesystem::data_path() << block_path <<
+        boost::format("blk%04u.dat") % file_index
+    ;
+
     return ss.str();
 }
 
@@ -2710,21 +2734,30 @@ std::shared_ptr<file> block::file_append(std::uint32_t & index)
             if (f->seek_end())
             {
                 /**
-                 * A 2 gigabyte file size limit.
+                 * The default maximum size is 128 megabytes.
                  */
-                enum { max_file_size = 0x02000000 };
+                std::size_t max_file_size = 128;
                 
                 /**
-                 * FAT32 file size is a maximum of 4GB, fseek and ftell are a
-                 * maximum 2GB, so we must stay under 2GB.
+                 * The client maximum is 16 megabytes.
                  */
-                if (ftell(f->get_FILE()) < (long)(0x7F000000 - max_file_size))
+                if (
+                    globals::instance().operation_mode() ==
+                    protocol::operation_mode_client
+                    )
+                {
+                    max_file_size = 16;
+                }
+                
+                max_file_size *= 1000000;
+
+                if (ftell(f->get_FILE()) <= max_file_size)
                 {
                     index = current_block_file;
                     
                     return f;
                 }
-                
+
                 f->close();
                 
                 current_block_file++;
