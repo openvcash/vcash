@@ -23,6 +23,7 @@
 
 #include <coin/block.hpp>
 #include <coin/globals.hpp>
+#include <coin/hash_scrypt.hpp>
 #include <coin/key_reserved.hpp>
 #include <coin/logger.hpp>
 #include <coin/mining.hpp>
@@ -30,6 +31,7 @@
 #include <coin/random.hpp>
 #include <coin/stack_impl.hpp>
 #include <coin/status_manager.hpp>
+#include <coin/tcp_connection.hpp>
 #include <coin/tcp_connection_manager.hpp>
 #include <coin/utility.hpp>
 #include <coin/wallet.hpp>
@@ -280,6 +282,8 @@ const double & mining_manager::hashes_per_second() const
 
 void mining_manager::loop(const bool & is_proof_of_stake)
 {
+    void * buf_scrypt = scrypt_buffer_alloc();
+    
     key_reserved reserve_key(*globals::instance().wallet_main());
     
     std::uint32_t extra_nonce = 0;
@@ -326,6 +330,8 @@ void mining_manager::loop(const bool & is_proof_of_stake)
         
         if (blk == 0)
         {
+            free(buf_scrypt);
+            
             return;
         }
         
@@ -446,12 +452,18 @@ void mining_manager::loop(const bool & is_proof_of_stake)
             )
         {
             std::uint32_t hashes_done = 0;
-
+#if (defined USE_WHIRLPOOL && USE_WHIRLPOOL)
             auto nonce_found =
                 mining::scan_hash_whirlpool(&blk->header(), max_nonce,
                 hashes_done, result.digest(), &res_header
             );
-
+#else
+            auto nonce_found = scanhash_scrypt(
+                &blk->header(), buf_scrypt,
+                max_nonce, hashes_done,
+                reinterpret_cast<std::uint32_t *> (result.digest()), &res_header
+            );
+#endif // USE_WHIRLPOOL
             /**
              * Check if we have found a solution.
              */
@@ -639,6 +651,8 @@ void mining_manager::loop(const bool & is_proof_of_stake)
     log_debug(
         "Mining manager thread " << std::this_thread::get_id() << " stopped."
     );
+    
+    free(buf_scrypt);
 }
 void mining_manager::pos_tick(const boost::system::error_code & ec)
 {
@@ -853,6 +867,29 @@ void mining_manager::check_work(
                     "Mining manager, mismatch_spent = " << mismatch_spent <<
                     ", balance_in_question = " << balance_in_question << "."
                 );
+            }
+            
+            /**
+             * If we are a client node broadcast the block to all connected
+             * peers, otherwise an INV was sent in process_block above.
+             */
+            if (
+                globals::instance().operation_mode() ==
+                protocol::operation_mode_client
+                )
+            {
+                auto connections =
+                    stack_impl_.get_tcp_connection_manager(
+                    )->tcp_connections()
+                ;
+                
+                for (auto & i : connections)
+                {
+                    if (auto connection = i.second.lock())
+                    {
+                        connection->send_block_message(*blk);
+                    }
+                }
             }
         }
     }));
