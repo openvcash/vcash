@@ -259,6 +259,29 @@ std::map< boost::asio::ip::tcp::endpoint, std::weak_ptr<tcp_connection> > &
     return m_tcp_connections;
 }
 
+bool tcp_connection_manager::is_connected()
+{
+    std::lock_guard<std::recursive_mutex> l1(mutex_tcp_connections_);
+    
+    auto tcp_connections = 0;
+    
+    for (auto & i : m_tcp_connections)
+    {
+        if (auto connection = i.second.lock())
+        {
+            if (auto t = connection->get_tcp_transport().lock())
+            {
+                if (t->state() == tcp_transport::state_connected)
+                {
+                    ++tcp_connections;
+                }
+            }
+        }
+    }
+    
+    return tcp_connections > 0;
+}
+
 bool tcp_connection_manager::connect(const boost::asio::ip::tcp::endpoint & ep)
 {
     std::lock_guard<std::recursive_mutex> l1(mutex_tcp_connections_);
