@@ -623,6 +623,42 @@ void tcp_connection::send_checkpoint_message(checkpoint_sync & checkpoint)
     }
 }
 
+void tcp_connection::send_block_message(const block & blk)
+{
+    if (auto t = m_tcp_transport.lock())
+    {
+        /**
+         * Allocate the message.
+         */
+        message msg("block");
+        
+        /**
+         * Set the block.
+         */
+        msg.protocol_block().blk = std::make_shared<block> (blk);
+        
+        log_none(
+            "TCP connection is sending block " <<
+            msg.protocol_block().blk->get_hash().to_string().substr(0, 20) <<
+            "."
+        );
+        
+        /**
+         * Encode the message.
+         */
+        msg.encode();
+        
+        /**
+         * Write the message.
+         */
+        t->write(msg.data(), msg.size());
+    }
+    else
+    {
+        stop();
+    }
+}
+
 void tcp_connection::set_hash_checkpoint_known(const sha256 & val)
 {
     m_hash_checkpoint_known = val;
@@ -1060,42 +1096,6 @@ void tcp_connection::send_getdata_message()
                 t->write(msg.data(), msg.size());
             }
         }
-    }
-    else
-    {
-        stop();
-    }
-}
-
-void tcp_connection::send_block_message(const block & blk)
-{
-    if (auto t = m_tcp_transport.lock())
-    {
-        /**
-         * Allocate the message.
-         */
-        message msg("block");
-        
-        /**
-         * Set the block.
-         */
-        msg.protocol_block().blk = std::make_shared<block> (blk);
-        
-        log_none(
-            "TCP connection is sending block " <<
-            msg.protocol_block().blk->get_hash().to_string().substr(0, 20) <<
-            "."
-        );
-        
-        /**
-         * Encode the message.
-         */
-        msg.encode();
-        
-        /**
-         * Write the message.
-         */
-        t->write(msg.data(), msg.size());
     }
     else
     {

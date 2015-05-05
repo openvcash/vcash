@@ -169,6 +169,12 @@ namespace coin {
             void send_checkpoint_message(checkpoint_sync & checkpoint);
         
             /**
+             * Sends a block message.
+             * @param blk The block.
+             */
+            void send_block_message(const block & blk);
+            
+            /**
              * The tcp_transport.
              */
             std::weak_ptr<tcp_transport> & get_tcp_transport();
@@ -287,12 +293,6 @@ namespace coin {
              * Sends a getdata message if there are any in the queue.
              */
             void send_getdata_message();
-        
-            /**
-             * Sends a block message.
-             * @param blk The block.
-             */
-            void send_block_message(const block & blk);
         
             /**
              * Sends a tx message.
