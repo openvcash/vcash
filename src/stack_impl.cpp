@@ -600,7 +600,7 @@ void stack_impl::start()
                      * Callback
                      */
                     m_status_manager->insert(status);
-
+   
                     auto args = m_configuration.args();
                     
                     /**
@@ -1657,6 +1657,16 @@ void stack_impl::send_coins(
             
             pairs["error.code"] = "-1";
             pairs["error.message"] = "wallet is locked";
+        }
+        
+        if (m_tcp_connection_manager->is_connected() == false)
+        {
+            log_error("Stack, send coins failed, not connected to network.");
+            
+            perform_send = false;
+            
+            pairs["error.code"] = "-1";
+            pairs["error.message"] = "not connected to network";
         }
         
         if (perform_send)
