@@ -36,6 +36,7 @@
 #include <coin/filesystem.hpp>
 #include <coin/globals.hpp>
 #include <coin/hash.hpp>
+#include <coin/hash_scrypt.hpp>
 #include <coin/kernel.hpp>
 #include <coin/key_reserved.hpp>
 #include <coin/key_store.hpp>
@@ -214,12 +215,21 @@ sha256 block::get_hash() const
     buffer.write_uint32(m_header.nonce);
 
     assert(buffer.size() == header_length);
-
+#if (defined USE_WHIRLPOOL && USE_WHIRLPOOL)
     auto digest = hash::whirlpoolx(
         reinterpret_cast<std::uint8_t *>(buffer.data()), buffer.size()
     );
     
     std::memcpy(ptr, &digest[0], digest.size());
+#else
+    auto buf = scrypt_buffer_alloc();
+    
+    hash_scrypt(
+        (const void *)buffer.data(), buffer.size(), ptr, buf
+    );
+    
+    free(buf);
+#endif // USE_WHIRLPOOL
 
     return ret;
 }
@@ -1581,6 +1591,36 @@ bool block::accept_block(
     
     log_debug("Block, accept block, height = " << height << ".");
     
+    /**
+     * Pause Proof-of-Work for mobile Proof-of-Stake testing and development
+     * of FPGA mining support.
+     */
+#define USE_TEMP_PAUSE_POW 1
+    
+#if (defined USE_TEMP_PAUSE_POW && USE_TEMP_PAUSE_POW)
+    /**
+     * The block height at which to pause Proof-of-Work.
+     */
+    enum { block_height_pause_pow = 117833 };
+    
+    /**
+     * The block height at which to resume Proof-of-Work.
+     */
+    enum { block_height_resume_pow = 137833 };
+    
+	if (
+        is_proof_of_work() &&
+        (height > block_height_pause_pow && height < block_height_resume_pow)
+        )
+    {
+        log_error(
+            "Block, accept block failed, PoW is paused until block # " <<
+            block_height_resume_pow << ", height = " <<  height << "."
+        );
+        
+        return false;
+    }
+#endif
 	if (is_proof_of_work() && height > constants::pow_cutoff_block)
     {
         log_error(
