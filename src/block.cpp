@@ -36,7 +36,6 @@
 #include <coin/filesystem.hpp>
 #include <coin/globals.hpp>
 #include <coin/hash.hpp>
-#include <coin/hash_scrypt.hpp>
 #include <coin/kernel.hpp>
 #include <coin/key_reserved.hpp>
 #include <coin/key_store.hpp>
@@ -215,21 +214,12 @@ sha256 block::get_hash() const
     buffer.write_uint32(m_header.nonce);
 
     assert(buffer.size() == header_length);
-#if (defined USE_WHIRLPOOL && USE_WHIRLPOOL)
+
     auto digest = hash::whirlpoolx(
         reinterpret_cast<std::uint8_t *>(buffer.data()), buffer.size()
     );
     
     std::memcpy(ptr, &digest[0], digest.size());
-#else
-    auto buf = scrypt_buffer_alloc();
-    
-    hash_scrypt(
-        (const void *)buffer.data(), buffer.size(), ptr, buf
-    );
-    
-    free(buf);
-#endif // USE_WHIRLPOOL
 
     return ret;
 }

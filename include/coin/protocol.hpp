@@ -43,7 +43,7 @@ namespace protocol {
         /**
          * The version.
          */
-        enum { version = 60030 };
+        enum { version = 60031 };
 
         /**
          * The minimum version.
