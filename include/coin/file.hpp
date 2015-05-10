@@ -22,6 +22,7 @@
 #define coin_file_hpp
 
 #include <cstdio>
+#include <string>
 
 namespace coin {
 
@@ -62,10 +63,18 @@ namespace coin {
             bool read(char * buf, const std::size_t & len);
 
             /**
-             *
+             * Writes len bytes of buf to the file.
+             * @param buf The buffer.
+             * @param len The length.
              */
             void write(const char * buf, const std::size_t & len);
     
+            /**
+             * Removes the file at path from disk.
+             * @param path The abslute path.
+             */
+            static bool remove(const std::string & path);
+
             /**
              * The size.
              */

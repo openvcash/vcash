@@ -20,6 +20,7 @@
 
 #if (defined _MSC_VER)
 #include <io.h>
+#include <windows.h>
 #else
 #include <stdio.h>
 #include <unistd.h>
@@ -94,6 +95,18 @@ void file::write(const char * buf, const std::size_t & len)
     {
         // ...
     }
+}
+
+
+bool file::remove(const std::string & path)
+{
+#if (defined _MSC_VER)
+    return ::DeleteFileW(
+        std::wstring(path.begin(), path.end()).c_str()
+    ) != 0;
+#else
+    return ::unlink(path.c_str())== 0;
+#endif
 }
 
 long file::size()
