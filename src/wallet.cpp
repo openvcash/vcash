@@ -78,7 +78,7 @@ void wallet::start()
     /**
      * Start the resend transactions timer.
      */
-    resend_transactions_timer_.expires_from_now(std::chrono::seconds(300));
+    resend_transactions_timer_.expires_from_now(std::chrono::seconds(120));
     resend_transactions_timer_.async_wait(globals::instance().strand().wrap(
         std::bind(&wallet::resend_transactions_tick, this,
         std::placeholders::_1))
@@ -3764,14 +3764,15 @@ void wallet::resend_transactions_tick(const boost::system::error_code & ec)
     }
     else
     {
+        log_debug("resend_transactions_tick");
+        
         std::lock_guard<std::recursive_mutex> l1(mutex_);
         
         if (stack_impl_)
         {
             if (
                 utility::is_initial_block_download() == false &&
-                stack_impl_->get_tcp_connection_manager(
-                )->tcp_connections().size() > 0 &&
+                stack_impl_->get_tcp_connection_manager()->is_connected() &&
                 globals::instance().time_best_received() >= time_last_resend_
                 )
             {
@@ -3818,6 +3819,11 @@ void wallet::resend_transactions_tick(const boost::system::error_code & ec)
                          */
                         if (wtx.check())
                         {
+                            log_info(
+                                "Wallet is resending transaction " <<
+                                wtx.get_hash().to_string() << "."
+                            );
+                            
                             /**
                              * Relay the transaction to all connected peers.
                              */
@@ -3849,7 +3855,7 @@ void wallet::resend_transactions_tick(const boost::system::error_code & ec)
          * Start the timer again after a random time interval.
          */
         resend_transactions_timer_.expires_from_now(
-            std::chrono::seconds(random::uint16_random_range(300, 1200))
+            std::chrono::seconds(random::uint16_random_range(120, 1200))
         );
         resend_transactions_timer_.async_wait(globals::instance().strand().wrap(
             std::bind(&wallet::resend_transactions_tick, this,
