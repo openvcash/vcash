@@ -94,7 +94,7 @@ void stack_impl::start()
             "Stack failed to create directories, what = " << e.what() << "."
         );
     }
-    
+
     /**
      * Make sure only a single instance per directory is allowed.
      */
@@ -105,6 +105,15 @@ void stack_impl::start()
      */
     globals::instance().set_state(globals::state_starting);
     
+    /**
+     * Set the state to starting.
+     */
+#if 0 // Do not enable.
+    /**
+     * Try to remove old client blocks.
+     */
+    remove_old_blocks_if_client();
+#endif
     /**
      * Load the configuration.
      */
@@ -600,7 +609,7 @@ void stack_impl::start()
                      * Callback
                      */
                     m_status_manager->insert(status);
-   
+
                     auto args = m_configuration.args();
                     
                     /**
@@ -3366,6 +3375,14 @@ void stack_impl::create_directories()
     {
         throw std::runtime_error("failed to create path " + path);
     }
+#if (defined __ANDROID__)
+    /** 
+     * Create the application data path on the sdcard.
+     */
+    filesystem::create_path(
+        "/sdcard/Android/data/net.vanillacoin.vanillacoin"
+    );
+#endif // __ANDROID__
 }
 
 void stack_impl::load_block_index(
@@ -3732,6 +3749,71 @@ void stack_impl::lock_file_or_exit()
         }
     }
 #endif // _MSC_VER
+}
+
+void stack_impl::remove_old_blocks_if_client()
+{
+    log_info("Stack is removing old blocks if client.");
+    
+    if (
+        globals::instance().operation_mode() == protocol::operation_mode_client
+        )
+    {
+        std::vector<std::uint32_t> indexes;
+
+        /** 
+         * Try to remove the last 5 blocks before the last 3.
+         */
+        for (auto i = 1; i < 9; i++)
+        {
+            auto f = block::file_open(i, 0, "r");
+            
+            if (f == 0)
+            {
+                // ...
+            }
+            else
+            {
+                indexes.push_back(i);
+            }
+        }
+        
+        /**
+         * Never remove the last - 2.
+         */
+        if (indexes.size() > 0)
+        {
+            indexes.pop_back();
+        }
+        
+        /**
+         * Never remove the last - 1.
+         */
+        if (indexes.size() > 0)
+        {
+            indexes.pop_back();
+        }
+
+        /**
+         * Never remove the last.
+         */
+        if (indexes.size() > 0)
+        {
+            indexes.pop_back();
+        }
+        
+        /**
+         * Remove the paths.
+         */
+        for (auto & i : indexes)
+        {
+            auto path = block::get_file_path(i);
+            
+            log_info("Stack is removing old file " << path << ".");
+            
+            file::remove(path);
+        }
+    }
 }
 
 void stack_impl::loop()

@@ -447,6 +447,11 @@ namespace coin {
             void lock_file_or_exit();
         
             /**
+             * Removes old blocks from disk if we are operating as a client.
+             */
+            void remove_old_blocks_if_client();
+        
+            /**
              * The main loop.
              */
             void loop();
