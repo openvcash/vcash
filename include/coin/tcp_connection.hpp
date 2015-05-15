@@ -459,9 +459,16 @@ namespace coin {
             > timer_ping_;
         
             /**
+             * The ping timeout timer.
+             */
+            boost::asio::basic_waitable_timer<
+                std::chrono::steady_clock
+            > timer_ping_timeout_;
+        
+            /**
              * The ping interval in seconds.
              */
-            enum { interval_ping = 60 * 30 };
+            enum { interval_ping = 120 };
         
             /**
              * If true we have sent an initial getblock's message.

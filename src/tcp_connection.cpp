@@ -61,6 +61,7 @@ tcp_connection::tcp_connection(
     , strand_(ios)
     , stack_impl_(owner)
     , timer_ping_(ios)
+    , timer_ping_timeout_(ios)
     , did_send_getblocks_(false)
     , time_last_block_received_(std::time(0))
     , timer_delayed_stop_(ios)
@@ -224,6 +225,7 @@ void tcp_connection::stop()
     
     read_queue_.clear();
     timer_ping_.cancel();
+    timer_ping_timeout_.cancel();
     timer_getblocks_.cancel();
     timer_addr_rebroadcast_.cancel();
     timer_delayed_stop_.cancel();
@@ -1834,6 +1836,11 @@ bool tcp_connection::handle_message(message & msg)
             "TCP connection got pong, nonce = " <<
             msg.protocol_pong().nonce << "."
         );
+        
+        /**
+         * Cancel the ping timeout timer.
+         */
+        timer_ping_timeout_.cancel();
     }
     else if (msg.header().command == "inv")
     {
@@ -2605,12 +2612,41 @@ void tcp_connection::do_ping(const boost::system::error_code & ec)
     }
     else
     {
+        auto self(shared_from_this());
+        
         /**
-         * Send a ping message every 30 minutes.
+         * Start the ping timeout timer.
+         */
+        timer_ping_timeout_.expires_from_now(
+            std::chrono::seconds(60)
+        );
+        timer_ping_timeout_.async_wait(
+            globals::instance().strand().wrap(
+                [this, self](boost::system::error_code ec)
+                {
+                    if (ec)
+                    {
+                        // ...
+                    }
+                    else
+                    {
+                        log_error(
+                            "TCP connection (ping) timed out, calling stop."
+                        );
+                    
+                        /**
+                         * The connection has timed out, call stop.
+                         */
+                        stop();
+                    }
+                }
+            )
+        );
+    
+        /**
+         * Send a ping message every interval_ping seconds.
          */
         send_ping_message();
-        
-        auto self(shared_from_this());
         
         timer_ping_.expires_from_now(std::chrono::seconds(interval_ping));
         timer_ping_.async_wait(globals::instance().strand().wrap(
@@ -2731,7 +2767,7 @@ void tcp_connection::do_rebroadcast_addr_messages(
                 }
                 else
                 {
-                    do_rebroadcast_addr_messages(8 * 60 * 60);
+                    do_rebroadcast_addr_messages(60 * 60);
                 }
             }
         })
