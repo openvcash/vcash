@@ -35,23 +35,6 @@ namespace database {
         public:
 
             /**
-             * The constant s.
-             * 8 = 273.06s = 4.55m
-             * 16 = 546.13s = 9.10m
-             * 24 = 819.0s = 13.65m
-             * 32 = 1092.26s = 18.20m
-             * 40 = 1365.33s = 22.75m
-             * 48 = 1638.40s = 27.30m
-             * 56 = 1911.46s = 31.85m
-             * 64 = 2184.53s = 36.40m
-             * 128 = 
-             * 256 = 
-             * Warning, lower numbers significantly increase overall network
-             * traffic.
-             */
-            enum { s = 512 };
-        
-            /**
              * If true udp packets will be obfuscated.
              */
             enum { udp_obfuscation_enabled = 1 };

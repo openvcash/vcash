@@ -43,7 +43,7 @@ namespace database {
             /**
              * The update interval.
              */
-            enum { update_interval = protocol::s };
+            enum { update_interval = 256 };
         
             /**
              * Constructor
@@ -169,14 +169,20 @@ namespace database {
              */
             static std::int32_t id_from_endpoint2(const boost::asio::ip::udp::endpoint &);
         
+            /**
+             * The minimum node count.
+             */
             enum { min_node_count = 1 };
         
-            enum { max_node_count = 8 };
+            /**
+             * The maximum node count.
+             */
+            enum { max_node_count = 64 };
 
             /**
              * The number of slots in the system.
              */
-            enum { length = 2048 };
+            enum { length = 64 };
         
             /**
              * Runs the test case.
