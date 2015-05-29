@@ -48,7 +48,7 @@ namespace protocol {
         /**
          * The minimum version.
          */
-        enum { minimum_version = 60028 };
+        enum { minimum_version = 60031 };
     
         /**
          * The default peer port.
