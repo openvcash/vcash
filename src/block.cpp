@@ -1619,19 +1619,22 @@ bool block::accept_block(
         return false;
     }
 
-    /**
-     * When Proof-of-Work is mixed with Proof-of-Stake we see ~22% increase in
-     * block generation as a result of variable timing. By only accepting even
-     * Proof-of-Work blocks "back to back" block generation will no longer
-     * occur from the same entity and the time variation will be removed. This
-     * has the side-effect that it halts an insta-mine attack attempt
-     * immediately.
-     */
-    if (is_proof_of_work() && (height % 2) == 1)
+    if (is_proof_of_work() && height >= block_height_resume_pow)
     {
-        log_debug("Block, accept block failed, height is not even.");
-        
-        return false;
+        /**
+         * When Proof-of-Work is mixed with Proof-of-Stake we see ~22% increase
+         * in block generation as a result of variable timing. By only
+         * accepting even Proof-of-Work blocks "back to back" block generation
+         * will no longer occur from the same entity and the time variation
+         * will be removed. This has the side-effect that it halts an
+         * insta-mine attack attempt immediately.
+         */
+        if (height % 2 == 1)
+        {
+            log_debug("Block, accept block failed, height is not even.");
+            
+            return false;
+        }
     }
     
 	if (is_proof_of_work() && height > constants::pow_cutoff_block)
