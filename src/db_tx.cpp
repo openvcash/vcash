@@ -865,8 +865,8 @@ bool db_tx::load_block_index_guts()
             catch (std::exception & e)
             {
                 log_error(
-                    "DB TX failed loading block index guts, what = " <<
-                    e.what() << "."
+                    "Database transaction failed loading block index guts, "
+                    "what = " << e.what() << "."
                 );
                 
                 return false;
