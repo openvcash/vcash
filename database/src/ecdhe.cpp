@@ -76,7 +76,7 @@ void EC_DHE_free(EC_DHE * ec_dhe)
     free(ec_dhe);
 }
 
-char * EC_DHE_getPublicKey(EC_DHE * ec_dhe, int * publicKeyLength)
+char * EC_DHE_getPublicKey(EC_DHE * ec_dhe, int * public_key_len)
 {
 	if (0 == (ec_dhe->ctx_params = EVP_PKEY_CTX_new_id(EVP_PKEY_EC, 0)))
     {
@@ -148,7 +148,7 @@ char * EC_DHE_getPublicKey(EC_DHE * ec_dhe, int * publicKeyLength)
     ec_dhe->publicKey = (char *)calloc(1, bptr->length);
     memcpy(ec_dhe->publicKey, bptr->data, bptr->length);
     
-    (*publicKeyLength) = bptr->length;
+    (*public_key_len) = bptr->length;
     
     BIO_free(bp);
     
@@ -157,7 +157,7 @@ char * EC_DHE_getPublicKey(EC_DHE * ec_dhe, int * publicKeyLength)
 
 unsigned char * EC_DHE_deriveSecretKey(
     EC_DHE * ec_dhe, const char *peerPublicKey, int peerPublicKeyLength,
-    int * sharedSecretLength
+    int * shared_secret_len
     )
 {
     BUF_MEM * bptr = BUF_MEM_new();
@@ -231,7 +231,7 @@ unsigned char * EC_DHE_deriveSecretKey(
         return 0;
     }
     
-    (*sharedSecretLength) = (int)secret_len;
+    (*shared_secret_len) = (int)secret_len;
 
 	return ec_dhe->sharedSecret;
 }
@@ -243,3 +243,75 @@ static void EC_DHE_handleErrors(const char * msg)
         printf("%s", msg);
     }
 }
+
+int EC_DHE_run_test()
+{
+    printf("ECDHE Key Generation\n");
+    
+    int NIDs[] =
+    {
+        NID_X9_62_c2pnb163v1, NID_X9_62_c2pnb163v2, NID_X9_62_c2pnb163v3,
+        NID_X9_62_c2pnb176v1,NID_X9_62_c2tnb191v1,  NID_X9_62_c2tnb191v2,
+        NID_X9_62_c2tnb191v3, NID_X9_62_c2pnb208w1, NID_X9_62_c2tnb239v1,
+        NID_X9_62_c2tnb239v2, NID_X9_62_c2tnb239v3, NID_X9_62_c2pnb272w1,
+        NID_X9_62_c2pnb304w1, NID_X9_62_c2tnb359v1, NID_X9_62_c2pnb368w1,
+        NID_X9_62_c2tnb431r1, NID_X9_62_prime256v1, NID_secp112r1,
+        NID_secp112r2,NID_secp128r1, NID_secp128r2, NID_secp160k1,
+        NID_secp160r1, NID_secp160r2, NID_secp192k1, NID_secp224k1,
+        NID_secp224r1, NID_secp256k1, NID_secp384r1, NID_secp521r1,
+        NID_sect113r1, NID_sect113r2, NID_sect131r1, NID_sect131r2,
+        NID_sect163k1, NID_sect163r1, NID_sect163r2 , NID_sect193r1,
+        NID_sect193r2, NID_sect233k1, NID_sect233r1, NID_sect239k1,
+        NID_sect283k1, NID_sect283r1, NID_sect409k1, NID_sect409r1,
+        NID_sect571k1, NID_sect571r1, NID_wap_wsg_idm_ecid_wtls1,
+        NID_wap_wsg_idm_ecid_wtls3, NID_wap_wsg_idm_ecid_wtls4,
+        NID_wap_wsg_idm_ecid_wtls5, NID_wap_wsg_idm_ecid_wtls7,
+        NID_wap_wsg_idm_ecid_wtls8, NID_wap_wsg_idm_ecid_wtls9,
+        NID_wap_wsg_idm_ecid_wtls10, NID_wap_wsg_idm_ecid_wtls11,
+        NID_wap_wsg_idm_ecid_wtls12
+    };
+
+    for (auto a = 0; a < sizeof(NIDs) / sizeof(int); a++)
+    {
+        printf("Trying Curve with ID: %d\n", NIDs[a]);
+        
+        int EC_Curve_ID = NIDs[a];
+        
+        EC_DHE * ec_dhe = EC_DHE_new(EC_Curve_ID);
+        
+        int public_key_len = 0;
+        
+        char * publicKey = EC_DHE_getPublicKey(ec_dhe, &public_key_len);
+        
+        printf("My Public Key:\n%s", publicKey);
+
+        EC_DHE * ec_dhePeer = EC_DHE_new(EC_Curve_ID);
+        
+        int peer_key_len = 0;
+        
+        char * peerKey = EC_DHE_getPublicKey(ec_dhePeer, &peer_key_len);
+        
+        printf("Peer Public Key:\n%s", peerKey);
+        
+        int shared_secret_len = 0;
+        
+        unsigned char * shared_secret = EC_DHE_deriveSecretKey(
+            ec_dhe, peerKey, peer_key_len, &shared_secret_len
+        );
+        
+        printf("Shared Secret:\n");
+        
+        for(auto i = 0; i < shared_secret_len; i++)
+        {
+            printf("%X", shared_secret[i]);
+        }
+        
+        printf("\n");
+
+        EC_DHE_free(ec_dhe);
+        EC_DHE_free(ec_dhePeer);
+    }
+    
+    return 0;
+}
+

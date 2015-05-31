@@ -80,6 +80,10 @@ unsigned char * EC_DHE_deriveSecretKey(
  */
 static void EC_DHE_handleErrors(const char * msg);
 
+/**
+ * Runs the test case.
+ */
+int EC_DHE_run_test();
 #ifdef __cplusplus
 }
 #endif
