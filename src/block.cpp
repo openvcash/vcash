@@ -1595,7 +1595,7 @@ bool block::accept_block(
      * Pause Proof-of-Work for mobile Proof-of-Stake testing and development
      * of FPGA mining support.
      */
-    
+    #error "Do not current code. Consensus variables are not finalised."
     /**
      * The block height at which to pause Proof-of-Work.
      */
