@@ -19,73 +19,101 @@
 #ifndef DATABASE_ECDHE_HPP
 #define DATABASE_ECDHE_HPP
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-#include <openssl/evp.h>
-#include <openssl/ec.h>
-#include <openssl/pem.h>
+#include <cstdint>
+#include <string>
+#include <vector>
 
-typedef struct EC_DHE_st
-{
-    int EC_NID;
-    
-    EVP_PKEY_CTX * ctx_params;
-    EVP_PKEY_CTX * ctx_keygen;
-    EVP_PKEY_CTX * ctx_derive;
-	EVP_PKEY * privkey;
-    EVP_PKEY * peerkey;
-    EVP_PKEY * params;
+#include <database/ecdhe.h>
 
-    char * publicKey;
-	unsigned char * sharedSecret;
-    
-} EC_DHE;
+namespace database {
 
-/**
- * EC_DHE_new
- * @param EC_Curve_NID
- */
-EC_DHE * EC_DHE_new(int EC_Curve_NID);
+    class ecdhe
+    {
+        public:
+        
+            /**
+             * Constructor
+             */
+            ecdhe()
+                : m_ecdhe(EC_DHE_new(NID_secp256k1))
+            {
+                // ...
+            }
+        
+            /**
+             * Destructor
+             */
+            ~ecdhe()
+            {
+                if (m_ecdhe)
+                {
+                    EC_DHE_free(m_ecdhe), m_ecdhe = 0;
+                }
+            }
+        
+            /**
+             * Returns the public key generating it needed.
+             */
+            const std::string & public_key()
+            {
+                if (m_public_key.size() == 0)
+                {
+                    auto len = 0;
+                    
+                    auto buf = EC_DHE_getPublicKey(m_ecdhe, &len);
+                    
+                    m_public_key = std::string(buf, len);
+                }
+                
+                return m_public_key;
+            }
+        
+            /**
+             * Derives a secret key from the remote peer's public key.
+             * @param peer_public_key The remote peer's public key.
+             */
+            std::vector<std::uint8_t> derive_secret_key(
+                const std::string & peer_public_key
+                )
+            {
+                std::vector<std::uint8_t> ret;
+                
+                auto len = 0;
+                
+                auto buf = EC_DHE_deriveSecretKey(
+                    m_ecdhe, peer_public_key.c_str(),
+                    peer_public_key.size(), &len
+                );
+                
+                ret.insert(ret.begin(), buf, buf + len);
+                
+                return ret;
+            }
 
-/**
- * EC_DHE_free
- * @param EC_DHE
- */
-void EC_DHE_free(EC_DHE * ecdhe);
-
-/**
- * EC_DHE_getPublicKey
- * @param ecdhe The EC_DHE.
- * @param publicKeyLength The public key length.
- */
-char * EC_DHE_getPublicKey(EC_DHE * ecdhe, int * publicKeyLength);
-
-/**
- * EC_DHE_deriveSecretKey
- * @param ecdhe The EC_DHE.
- * @param peerPublicKey The peer public key.
- * @param peerPublicKeyLength The peer public key length.
- * @param sharedSecretLength The shared secret length.
- * @note Always hash the return value to produce a key.
- */
-unsigned char * EC_DHE_deriveSecretKey(
-    EC_DHE * ecdhe, const char * peerPublicKey, int peerPublicKeyLength,
-    int * sharedSecretLength
-);
-
-/**
- * EC_DHE_handleErrors
- * @param msg The error message.
- */
-static void EC_DHE_handleErrors(const char * msg);
-
-/**
- * Runs the test case.
- */
-int EC_DHE_run_test();
-#ifdef __cplusplus
+            /**
+             * Gets the EC_DHE.
+             */
+            EC_DHE * get_EC_DHE()
+            {
+                return m_ecdhe;
+            }
+        
+        private:
+        
+            /**
+             * The EC_DHE.
+             */
+            EC_DHE * m_ecdhe;
+        
+            /**
+             * The public key.
+             */
+            std::string m_public_key;
+        
+        protected:
+        
+            // ...
+    };
 }
-#endif
 
 #endif // DATABASE_ECDHE_HPP
