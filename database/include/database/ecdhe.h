@@ -62,7 +62,7 @@ static void EC_DHE_handleErrors(const char * msg);
  * EC_DHE_new
  * @param EC_Curve_NID
  */
-EC_DHE * EC_DHE_new(int EC_Curve_NID)
+static EC_DHE * EC_DHE_new(int EC_Curve_NID)
 {
     EC_DHE * ec_dhe = (EC_DHE *)calloc(1, sizeof(*ec_dhe));
     
@@ -75,7 +75,7 @@ EC_DHE * EC_DHE_new(int EC_Curve_NID)
  * EC_DHE_free
  * @param ec_dhe The EC_DHE.
  */
-void EC_DHE_free(EC_DHE * ec_dhe)
+static void EC_DHE_free(EC_DHE * ec_dhe)
 {
     if (ec_dhe->ctx_params != 0)
     {
@@ -125,7 +125,7 @@ void EC_DHE_free(EC_DHE * ec_dhe)
  * @param ecdhe The EC_DHE.
  * @param public_key_len The public key length.
  */
-char * EC_DHE_getPublicKey(EC_DHE * ec_dhe, int * public_key_len)
+static char * EC_DHE_getPublicKey(EC_DHE * ec_dhe, int * public_key_len)
 {
 	if (0 == (ec_dhe->ctx_params = EVP_PKEY_CTX_new_id(EVP_PKEY_EC, 0)))
     {
@@ -183,7 +183,7 @@ char * EC_DHE_getPublicKey(EC_DHE * ec_dhe, int * public_key_len)
 
     BIO * bp = BIO_new(BIO_s_mem());
     
-    if (1 !=  PEM_write_bio_PUBKEY(bp, ec_dhe->privkey))
+    if (1 != PEM_write_bio_PUBKEY(bp, ec_dhe->privkey))
     {
         EC_DHE_handleErrors("Could not write public key to memory");
         
@@ -197,7 +197,7 @@ char * EC_DHE_getPublicKey(EC_DHE * ec_dhe, int * public_key_len)
     ec_dhe->public_key = (char *)calloc(1, bptr->length);
     memcpy(ec_dhe->public_key, bptr->data, bptr->length);
     
-    (*public_key_len) = bptr->length;
+    (*public_key_len) = (int)bptr->length;
     
     BIO_free(bp);
     
@@ -212,7 +212,7 @@ char * EC_DHE_getPublicKey(EC_DHE * ec_dhe, int * public_key_len)
  * @param shared_secretLength The shared secret length.
  * @note Always hash the return value to produce a key.
  */
-unsigned char * EC_DHE_deriveSecretKey(
+static unsigned char * EC_DHE_deriveSecretKey(
     EC_DHE * ec_dhe, const char * peer_public_key, int peer_public_key_len,
     int * shared_secret_len
     )
@@ -304,7 +304,7 @@ static void EC_DHE_handleErrors(const char * msg)
 /**
  * Runs the test case.
  */
-int EC_DHE_run_test()
+static int EC_DHE_run_test()
 {
     printf("ECDHE Key Generation\n");
     

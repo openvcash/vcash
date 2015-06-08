@@ -23,10 +23,17 @@
 #include <string>
 #include <vector>
 
+#ifdef __cplusplus
+extern "C" {
 #include <database/ecdhe.h>
+}
+#endif // __cplusplus
 
 namespace database {
 
+    /**
+     * Implements Elliptic Curve Diffie–Hellman Exchange.
+     */
     class ecdhe
     {
         public:
@@ -34,39 +41,17 @@ namespace database {
             /**
              * Constructor
              */
-            ecdhe()
-                : m_ecdhe(EC_DHE_new(NID_secp256k1))
-            {
-                // ...
-            }
+            ecdhe();
         
             /**
              * Destructor
              */
-            ~ecdhe()
-            {
-                if (m_ecdhe)
-                {
-                    EC_DHE_free(m_ecdhe), m_ecdhe = 0;
-                }
-            }
+            ~ecdhe();
         
             /**
-             * Returns the public key generating it needed.
+             * Returns the public key generating if needed.
              */
-            const std::string & public_key()
-            {
-                if (m_public_key.size() == 0)
-                {
-                    auto len = 0;
-                    
-                    auto buf = EC_DHE_getPublicKey(m_ecdhe, &len);
-                    
-                    m_public_key = std::string(buf, len);
-                }
-                
-                return m_public_key;
-            }
+            const std::string & public_key();
         
             /**
              * Derives a secret key from the remote peer's public key.
@@ -74,29 +59,17 @@ namespace database {
              */
             std::vector<std::uint8_t> derive_secret_key(
                 const std::string & peer_public_key
-                )
-            {
-                std::vector<std::uint8_t> ret;
-                
-                auto len = 0;
-                
-                auto buf = EC_DHE_deriveSecretKey(
-                    m_ecdhe, peer_public_key.c_str(),
-                    peer_public_key.size(), &len
-                );
-                
-                ret.insert(ret.begin(), buf, buf + len);
-                
-                return ret;
-            }
+            );
 
             /**
              * Gets the EC_DHE.
              */
-            EC_DHE * get_EC_DHE()
-            {
-                return m_ecdhe;
-            }
+            EC_DHE * get_EC_DHE();
+        
+            /**
+             * Runs test case.
+             */
+            static int run_test();
         
         private:
         
