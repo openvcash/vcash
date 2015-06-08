@@ -1595,7 +1595,7 @@ bool block::accept_block(
      * Pause Proof-of-Work for mobile Proof-of-Stake testing and development
      * of FPGA mining support.
      */
-    #error "Do not deploy current code. Consensus variables are not finalised."
+    
     /**
      * The block height at which to pause Proof-of-Work.
      */
@@ -1604,7 +1604,7 @@ bool block::accept_block(
     /**
      * The block height at which to resume Proof-of-Work.
      */
-    enum { block_height_resume_pow = 137833 };
+    enum { block_height_resume_pow = 136000 };
     
 	if (
         is_proof_of_work() &&
