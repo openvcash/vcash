@@ -1,9 +1,7 @@
 /*
- * Copyright (c) 2008-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2008-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
- *
- * coinpp is free software: you can redistribute it and/or modify
+ * This is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -591,9 +589,7 @@ void routing_table::handle_rpc_response(
     }
 }
 
-void routing_table::handle_rpc_timeout(
-    const boost::asio::ip::udp::endpoint & ep
-    )
+void routing_table::handle_rpc_timeout( const boost::asio::ip::udp::endpoint & ep)
 {
     std::lock_guard<std::recursive_mutex> l(mutex_);
     
@@ -616,7 +612,9 @@ void routing_table::handle_rpc_timeout(
     }
 }
 
-void routing_table::queue_ping(const boost::asio::ip::udp::endpoint & ep)
+void routing_table::queue_ping(
+    const boost::asio::ip::udp::endpoint & ep, const bool & force_queue
+    )
 {
     std::lock_guard<std::recursive_mutex> l(ping_queue_mutex_);
 
@@ -636,7 +634,7 @@ void routing_table::queue_ping(const boost::asio::ip::udp::endpoint & ep)
         }
     }
     
-    if (should_queue)
+    if (force_queue || should_queue)
     {
         bool was_empty = ping_queue_.empty();
         
@@ -878,7 +876,6 @@ void routing_table::statistics_tick(const boost::system::error_code & ec)
     {
 #if (! defined NDEBUG)
         std::uint32_t storage_nodes = 0;
-        std::uint32_t stats_tcp_inbound = 0;
         
         std::stringstream ss;
         
@@ -904,8 +901,6 @@ void routing_table::statistics_tick(const boost::system::error_code & ec)
                 
                 for (auto & i3 : i2->storage_nodes())
                 {
-                    stats_tcp_inbound += i3.stats_tcp_inbound;
-                    
                     auto last_update = std::chrono::duration_cast<
                         std::chrono::seconds
                     >(std::chrono::steady_clock::now() -
@@ -916,7 +911,6 @@ void routing_table::statistics_tick(const boost::system::error_code & ec)
                         last_update <<
                         " timeouts:" << (std::uint32_t)i3.timeouts() <<
                         " rtt:" << i3.rtt <<
-                        " stats_tcp_inbound:" << i3.stats_tcp_inbound <<
                         " stats_udp_bps_inbound:" << i3.stats_udp_bps_inbound <<
                         " stats_udp_bps_outbound:" << i3.stats_udp_bps_outbound <<
                     std::endl;
@@ -925,7 +919,6 @@ void routing_table::statistics_tick(const boost::system::error_code & ec)
         }
     
         ss << "\tStorage Nodes Total: " << storage_nodes << std::endl;
-        ss << "\tTCP Inbound Total: " << stats_tcp_inbound << std::endl;
         ss << "--- Routing Table ---" << std::endl;
         ss << "-------- End --------" << std::endl;
         
@@ -1152,7 +1145,7 @@ void routing_table::random_find_tick(const boost::system::error_code & ec)
             n->find(query, constants::snodes_per_keyword);
         
             /**
-             * Increment the numbner of iterations.
+             * Increment the number of iterations.
              */
             ++random_find_iterations_;
 
