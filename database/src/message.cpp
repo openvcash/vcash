@@ -1,9 +1,7 @@
 /*
- * Copyright (c) 2008-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2008-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
- *
- * coinpp is free software: you can redistribute it and/or modify
+ * This is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -264,34 +262,10 @@ bool message::decode()
                     m_endpoint_attributes.push_back(attr);
                 }
                 break;
-                case attribute_type_client_connection:
+                case attribute_type_public_key:
                 {
-                    log_none("Message got attribute_type_client_connection.");
+                    log_debug("Message got attribute_type_public_key.");
                     
-                    attribute_uint32 attr;
-                    
-                    attr.type = attribute_type;
-                    attr.length = attribute_length;
-                    attr.value = byte_buffer_.read_uint32();
-
-                    m_uint32_attributes.push_back(attr);
-                }
-                break;
-                case attribute_type_crypto_mode:
-                {
-                    log_none("Message got attribute_type_crypto_mode.");
-                    
-                    attribute_uint32 attr;
-                    
-                    attr.type = attribute_type;
-                    attr.length = attribute_length;
-                    attr.value = byte_buffer_.read_uint32();
-
-                    m_uint32_attributes.push_back(attr);
-                }
-                break;
-                case attribute_type_crypto_key:
-                {
                     attribute_string attr;
                     
                     attr.type = attribute_type;
@@ -322,22 +296,11 @@ bool message::decode()
                     m_string_attributes.push_back(attr);
                 }
                 break;
-                case attribute_type_stats_tcp_inbound:
-                {
-                    log_none("Message got attribute_type_stats_tcp_inbound.");
-                    
-                    attribute_uint32 attr;
-                    
-                    attr.type = attribute_type;
-                    attr.length = attribute_length;
-                    attr.value = byte_buffer_.read_uint32();
-
-                    m_uint32_attributes.push_back(attr);
-                }
-                break;
                 case attribute_type_stats_udp_bps_inbound:
                 {
-                    log_none("Message got attribute_type_stats_udp_bps_inbound.");
+                    log_none(
+                        "Message got attribute_type_stats_udp_bps_inbound."
+                    );
                     
                     attribute_uint32 attr;
                     
@@ -350,7 +313,9 @@ bool message::decode()
                 break;
                 case attribute_type_stats_udp_bps_outbound:
                 {
-                    log_none("Message got attribute_type_stats_udp_bps_outbound.");
+                    log_none(
+                        "Message got attribute_type_stats_udp_bps_outbound."
+                    );
                     
                     attribute_uint32 attr;
                     
@@ -359,23 +324,6 @@ bool message::decode()
                     attr.value = byte_buffer_.read_uint32();
 
                     m_uint32_attributes.push_back(attr);
-                }
-                break;
-                case attribute_type_proxy_payload:
-                {
-                    log_none("Message got attribute_type_proxy_payload.");
-                    
-                    attribute_string attr;
-                    
-                    attr.type = attribute_type;
-                    attr.length = attribute_length;
-                    attr.value.resize(attribute_length);
-                    
-                    byte_buffer_.read_bytes(
-                        const_cast<char *> (attr.value.data()), attribute_length
-                    );
-                    
-                    m_string_attributes.push_back(attr);
                 }
                 break;
                 case attribute_type_error:
@@ -439,13 +387,14 @@ bool message::encode(const database::byte_buffer & attributes)
      * Clear
      */
     byte_buffer_.clear();
-
+    
     /**
      * Set the header flags.
      * 01000001
      */
     m_header.flags =
-        m_header.flags | protocol::message_flag_0x01 | protocol::message_flag_0x40
+        m_header.flags | protocol::message_flag_0x01 |
+        protocol::message_flag_0x40
     ;
 
     /**
@@ -494,7 +443,9 @@ bool message::encode(const database::byte_buffer & attributes)
     return true;
 }
 
-void message::encode_string(database::byte_buffer & body, const std::string & val)
+void message::encode_string(
+    database::byte_buffer & body, const std::string & val
+    )
 {
     assert(0);
     

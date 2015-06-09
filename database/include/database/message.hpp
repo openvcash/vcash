@@ -1,9 +1,7 @@
 /*
- * Copyright (c) 2008-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2008-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
- *
- * coinpp is free software: you can redistribute it and/or modify
+ * This is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -45,12 +43,9 @@ namespace database {
                 attribute_type_none = 0,
                 attribute_type_slot = 8,
                 attribute_type_endpoint = 16,
-                attribute_type_client_connection = 17,
-                attribute_type_crypto_mode = 27,
-                attribute_type_crypto_key = 28,
+                attribute_type_public_key = 18,
                 attribute_type_storage_query = 32,
-                attribute_type_proxy_payload = 42,
-                attribute_type_stats_tcp_inbound = 128,
+                attribute_type_reserved_128 = 128,
                 attribute_type_stats_udp_bps_outbound = 132,
                 attribute_type_stats_udp_bps_inbound = 133,
                 attribute_type_stats_storage_entries = 134,
@@ -200,7 +195,7 @@ namespace database {
             );
             
             /**
-             * Decodes anboost::asio::ip::udp::endpoint.
+             * Decodes a boost::asio::ip::udp::endpoint.
              * @param body The database::byte_buffer.
              */
             boost::asio::ip::udp::endpoint decode_endpoint(
@@ -208,22 +203,24 @@ namespace database {
             );
         
             /**
-             *
+             * Encrypt
+             * @param key The key.
              */
             bool obfuscate(const std::string & key);
         
             /**
-             *
+             * Decrypt
+             * @param key The key.
              */
             bool unobfuscate(const std::string & key);
         
             /**
-             *
+             * The data.
              */
             const char * data() const;
             
             /**
-             *
+             * The size.
              */
             const std::size_t & size() const;
     
