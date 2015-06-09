@@ -619,6 +619,11 @@ void routing_table::queue_ping(
     std::lock_guard<std::recursive_mutex> l(ping_queue_mutex_);
 
     bool should_queue = false;
+
+    if (force_queue)
+    {
+        ping_queue_times_.erase(ep);
+    }
     
     auto it = ping_queue_times_.find(ep);
     
@@ -634,7 +639,7 @@ void routing_table::queue_ping(
         }
     }
     
-    if (force_queue || should_queue)
+    if (should_queue)
     {
         bool was_empty = ping_queue_.empty();
         

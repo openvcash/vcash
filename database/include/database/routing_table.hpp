@@ -271,7 +271,9 @@ namespace database {
             /**
              * Holds the time last pinged for the endpoints.
              */
-            std::map<boost::asio::ip::udp::endpoint, std::time_t> ping_queue_times_;
+            std::map<
+                boost::asio::ip::udp::endpoint, std::time_t
+            > ping_queue_times_;
         
             /**
              * The random find timer.
