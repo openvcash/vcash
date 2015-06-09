@@ -1,9 +1,7 @@
 /*
- * Copyright (c) 2008-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2008-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
- *
- * coinpp is free software: you can redistribute it and/or modify
+ * This is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -23,8 +21,6 @@
 
 #include <cstdint>
 
-#define DATABASE_PROTOCOL_CDN 0
-
 namespace database {
 
     /**
@@ -33,11 +29,12 @@ namespace database {
     class protocol
     {
         public:
-
+        
             /**
-             * If true udp packets will be obfuscated.
+             * If true UDP packets will be encrypted by use of ECDHE and
+             * HC-256 using a Whirlpool derived shared secret.
              */
-            enum { udp_obfuscation_enabled = 1 };
+            enum { udp_ecdhe_enabled = 1 };
         
             /**
              * The header.
@@ -60,10 +57,9 @@ namespace database {
                 message_code_ping = 8,
                 message_code_store = 9,
                 message_code_find = 10,
-                message_code_firewall = 11,
+                message_code_reserved_11 = 11,
                 message_code_probe = 12,
-                message_code_handshake = 13,
-                message_code_proxy = 20,
+                message_code_public_key = 13,
                 message_code_error = 0xfe,
             } message_code_t;
             
