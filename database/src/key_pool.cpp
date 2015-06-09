@@ -17,5 +17,114 @@
  */
 
 #include <database/key_pool.hpp>
+#include <database/logger.hpp>
 
 using namespace database;
+
+key_pool::key_pool(boost::asio::io_service & ios)
+    : io_service_(ios)
+    , strand_(ios)
+    , cleanup_timer_(ios)
+{
+    // ...
+}
+
+void key_pool::start()
+{
+    /*
+     * Start the cleanup timer.
+     */
+    cleanup_timer_.expires_from_now(std::chrono::seconds(3600));
+    cleanup_timer_.async_wait(
+        strand_.wrap(std::bind(&key_pool::cleanup_tick, this,
+        std::placeholders::_1))
+    );
+}
+
+void key_pool::stop()
+{
+    cleanup_timer_.cancel();
+    
+    std::lock_guard<std::mutex> l1(mutex_shared_secrets_);
+    
+    m_shared_secrets.clear();
+}
+
+std::string key_pool::find(const boost::asio::ip::udp::endpoint & ep)
+{
+    std::string ret;
+    
+    std::lock_guard<std::mutex> l1(mutex_shared_secrets_);
+    
+    auto it = m_shared_secrets.find(ep);
+    
+    if (it != m_shared_secrets.end())
+    {
+        ret = it->second.first;
+    }
+    
+    return ret;
+}
+
+void key_pool::insert(
+    const boost::asio::ip::udp::endpoint & ep, const std::string & shared_secret
+    )
+{
+    std::lock_guard<std::mutex> l1(mutex_shared_secrets_);
+
+    if (m_shared_secrets.size() < max_shared_secrets)
+    {
+        m_shared_secrets[ep] = std::make_pair(shared_secret, std::time(0));
+    }
+    else
+    {
+        log_error("Key pool failed to insert shared secret, limit exceeded.");
+    }
+}
+
+void key_pool::erase_expired_shared_secrets()
+{
+    log_info("Key pool is erasing expired shared secrets.");
+    
+    std::lock_guard<std::mutex> l1(mutex_shared_secrets_);
+    
+    auto it = m_shared_secrets.begin();
+    
+    while (it != m_shared_secrets.end())
+    {
+        if (
+            std::time(0) - it->second.second >= max_shared_secret_lifetime
+            )
+        {
+            it = m_shared_secrets.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+}
+
+void key_pool::cleanup_tick(const boost::system::error_code & ec)
+{
+    if (ec)
+    {
+        // ...
+    }
+    else
+    {
+        /**
+         * Erase expired shared secrets.
+         */
+        erase_expired_shared_secrets();
+        
+        /**
+         * Start the cleanup timer.
+         */
+        cleanup_timer_.expires_from_now(std::chrono::seconds(3600));
+        cleanup_timer_.async_wait(
+            strand_.wrap(std::bind(&key_pool::cleanup_tick, this,
+            std::placeholders::_1))
+        );
+    }
+}

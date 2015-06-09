@@ -1,9 +1,7 @@
 /*
- * Copyright (c) 2008-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2008-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
- *
- * coinpp is free software: you can redistribute it and/or modify
+ * This is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -35,11 +33,10 @@
 
 namespace database {
 
-    class firewall_manager;
+    class key_pool;
     class message;
     class node;
     class operation_queue;
-    class role_manager;
     class routing_table;
     class storage;
     class tcp_acceptor;
@@ -105,18 +102,6 @@ namespace database {
             std::uint16_t find(const std::string &, const std::size_t &);
         
             /**
-             * Performs a (tcp) proxy operation given endpoint and buffer.
-             * @param addr The address.
-             * @param port The port.
-             * @param buf The buffer.
-             * @param len The length.
-             */
-            std::uint16_t proxy(
-                const char * addr, const std::uint16_t & port,
-                const char * buf, const std::size_t & len
-            );
-        
-            /**
              * Returns all of the endpoints in the routing table.
              */
             std::list< std::pair<std::string, std::uint16_t> > endpoints();
@@ -157,17 +142,6 @@ namespace database {
             void send_message(
                 const boost::asio::ip::udp::endpoint &,
                 std::shared_ptr<message>
-            );
-        
-            /**
-             * Handles a message.
-             * @param ep The boost::asio::ip::tcp::endpoint.
-             * @param buf The buffer.
-             * @param len The length
-             */
-            void handle_message(
-                const boost::asio::ip::tcp::endpoint &, const char *,
-                const std::size_t &
             );
         
             /**
@@ -214,15 +188,6 @@ namespace database {
             );
         
         private:
-
-            /**
-             *
-             * @param ep The boost::asio::ip::tcp::endpoint.
-             * @param msg The message.
-             */
-            void handle_ack_message(
-                const boost::asio::ip::tcp::endpoint & ep, message & msg
-            );
         
             /**
              *
@@ -268,15 +233,6 @@ namespace database {
             void handle_find_message(
                 const boost::asio::ip::udp::endpoint & ep, message & msg
             );
-
-            /**
-             *
-             * @param ep The boost::asio::ip::udp::endpoint.
-             * @param msg The message.
-             */
-            void handle_firewall_message(
-                const boost::asio::ip::udp::endpoint & ep, message & msg
-            );
         
             /**
              *
@@ -307,6 +263,11 @@ namespace database {
             std::string m_id;
         
             /**
+             * The key_pool.
+             */
+            std::shared_ptr<key_pool> m_key_pool;
+            
+            /**
              * The public boost::asio::ip::udp::endpoint.
              */
             boost::asio::ip::udp::endpoint m_public_endpoint;
@@ -326,12 +287,8 @@ namespace database {
         
         protected:
         
-            friend class firewall_manager;
             friend class ping_operation;
-            friend class role_manager;
             friend class slot;
-            friend class tcp_acceptor;
-            friend class tcp_connector;
         
             /**
              * The node.
@@ -351,26 +308,8 @@ namespace database {
             /**
              * The public endpoint mutex.
              */
-#if 0 // C++14
-            std::shared_mutex public_endpoint_mutex_;
-#else
             std::recursive_mutex public_endpoint_mutex_;
-#endif
-            /**
-             * The firewall_manager.
-             */
-            std::shared_ptr<firewall_manager> firewall_manager_;
-        
-            /**
-             * The tcp_acceptor.
-             */
-            std::shared_ptr<tcp_acceptor> tcp_acceptor_;
-        
-            /**
-             * The tcp_connector.
-             */
-            std::shared_ptr<tcp_connector> tcp_connector_;
-        
+
             /**
              * The udp_multiplexor.
              */
@@ -390,11 +329,6 @@ namespace database {
              * The operation_queue.
              */
             std::shared_ptr<operation_queue> operation_queue_;
-        
-            /**
-             * The role_manager.
-             */
-            std::shared_ptr<role_manager> role_manager_;
         
             /**
              * The storage.

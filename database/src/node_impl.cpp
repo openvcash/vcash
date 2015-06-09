@@ -1,9 +1,7 @@
 /*
- * Copyright (c) 2008-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2008-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
- *
- * coinpp is free software: you can redistribute it and/or modify
+ * This is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -24,7 +22,7 @@
 #include <database/constants.hpp>
 #include <database/entry.hpp>
 #include <database/find_operation.hpp>
-#include <database/firewall_manager.hpp>
+#include <database/key_pool.hpp>
 #include <database/logger.hpp>
 #include <database/message.hpp>
 #include <database/network.hpp>
@@ -33,14 +31,10 @@
 #include <database/operation_queue.hpp>
 #include <database/ping_operation.hpp>
 #include <database/protocol.hpp>
-#include <database/role_manager.hpp>
 #include <database/routing_table.hpp>
 #include <database/slot.hpp>
 #include <database/storage.hpp>
 #include <database/store_operation.hpp>
-#include <database/tcp_acceptor.hpp>
-#include <database/tcp_connector.hpp>
-#include <database/tcp_transport.hpp>
 #include <database/udp_handler.hpp>
 #include <database/udp_multiplexor.hpp>
 #include <database/utility.hpp>
@@ -49,8 +43,6 @@
 #undef min
 #undef max
 #endif
-
-#define USE_TCP_CONNECTOR 0
 
 using namespace database;
 
@@ -75,23 +67,16 @@ void node_impl::start(const stack::configuration & config)
      * Generate the local id from the host name.
      */
     m_id = boost::asio::ip::host_name();
-    
+
     /**
-     * Allocate the firewall_manager.
+     * Allocate the key_pool.
      */
-    firewall_manager_.reset(
-        new firewall_manager(io_service_, shared_from_this())
-    );
+    m_key_pool.reset(new key_pool(io_service_));
 
     /**
      * Allocate the udp_multiplexor.
      */
     udp_multiplexor_.reset(new udp_multiplexor(io_service_));
-    
-    /**
-     * Allocate the tcp_acceptor.
-     */
-    tcp_acceptor_.reset(new tcp_acceptor(io_service_, shared_from_this()));
     
     /**
      * Allocate the udp_handler.
@@ -115,11 +100,6 @@ void node_impl::start(const stack::configuration & config)
     storage_.reset(new storage(io_service_));
 
     /**
-     * Allocate the role_manager.
-     */
-    role_manager_.reset(new role_manager(io_service_, shared_from_this()));
-
-    /**
      * Allocate the routing_table.
      */
     routing_table_.reset(new routing_table(io_service_, shared_from_this()));
@@ -130,12 +110,9 @@ void node_impl::start(const stack::configuration & config)
     operation_queue_.reset(new operation_queue(io_service_));
     
     /**
-     * Start the firewall_manager.
+     * Start the key_pool.
      */
-    if (firewall_manager_)
-    {
-        firewall_manager_->start();
-    }
+    m_key_pool->start();
     
     /**
      * Start the storage.
@@ -146,14 +123,6 @@ void node_impl::start(const stack::configuration & config)
      * Start the routing table.
      */
     routing_table_->start();
-
-    if (role_manager_)
-    {
-        /**
-         * Start the role_manager.
-         */
-        role_manager_->start();
-    }
     
     /**
      * Start the operation_queue.
@@ -161,21 +130,12 @@ void node_impl::start(const stack::configuration & config)
     operation_queue_->start();
     
     /**
-     * Make sure the tcp and udp ports are the same.
+     * Get the network port.
      */
-    std::uint16_t tcp_port = m_config.port(), udp_port = m_config.port();
+    std::uint16_t udp_port = m_config.port();
     
     if (m_config.port() == 0)
     {
-        /**
-         * Open the tcp_acceptor.
-         */
-        tcp_acceptor_->open(m_config.port());
-        
-        tcp_port = tcp_acceptor_->local_endpoint().port();
-        
-        udp_port = tcp_port;
-        
         /**
          * Open the udp_multiplexor.
          */
@@ -183,11 +143,6 @@ void node_impl::start(const stack::configuration & config)
     }
     else
     {
-        /**
-         * Open the tcp_acceptor.
-         */
-        tcp_acceptor_->open(m_config.port());
-        
         /**
          * Open the udp_multiplexor.
          */
@@ -199,17 +154,9 @@ void node_impl::start(const stack::configuration & config)
      */
     m_config.set_port(udp_port);
     
-    log_debug("tcp_port = " << tcp_port << ", udp_port = " << udp_port);
-    
-    assert(tcp_port == udp_port);
+    log_debug("Node local port = " << udp_port << ".");
 
-#if 0 // // C++14
-    std::unique_lock<std::shared_mutex> l(
-        public_endpoint_mutex_, std::defer_lock
-    );
-#else
     std::lock_guard<std::recursive_mutex> l(public_endpoint_mutex_);
-#endif
 
     /**
      * Set the public endpoint.
@@ -218,84 +165,25 @@ void node_impl::start(const stack::configuration & config)
         network::local_address(), udp_port
     );
     
-    log_debug("Node public endpoint = " << m_public_endpoint << ".");
-    
-#if (defined USE_TCP_CONNECTOR && USE_TCP_CONNECTOR)
-    /**
-     * Allocate the tcp_connector.
-     */
-    tcp_connector_.reset(new tcp_connector(io_service_, shared_from_this(),
-        [this](const boost::asio::ip::tcp::endpoint & ep)
-    {
-        log_debug("Node has connected to parent node " << ep << ".");
-        
-        /**
-         * If we've just connected and the routing table has no storage nodes
-         * perform a bootstrap. This could happen if a node starts up without
-         * an internet connection and later it becomes available.
-         */
-        if (routing_table_->storage_nodes().size() == 0)
-        {
-            for (auto & i : m_bootstrap_contacts)
-            {
-                ping(i);
-            }
-        }
-
-        node_.on_connected(ep);
-    }, 
-        [this](const boost::asio::ip::tcp::endpoint & ep)
-    {
-        log_debug("Node has disconnected from parent node " << ep << ".");
-        
-        node_.on_disconnected(ep);
-    },
-        [this](const boost::asio::ip::tcp::endpoint & ep, message & msg)
-    {
-        log_debug(
-            "Node got message from " << ep << ", code = " <<
-            msg.header_code() << "."
-        );
-        
-        switch (msg.header_code())
-        {
-            case protocol::message_code_ack:
-            case protocol::message_code_nack:
-            {
-                for (auto & i : msg.string_attributes())
-                {
-                    if (i.type == message::attribute_type_proxy_payload)
-                    {
-                        log_debug(
-                            "***** Node got attribute_type_proxy_payload, "
-                            "empty = " << i.value.empty() << "."
-                        );
-                        
-                        node_.on_proxy(msg.header_transaction_id(), ep, i.value);
-                    }
-                }
-            }
-            break;
-            default:
-            break;
-        }
-    }));
-    
-    /**
-     * Start the tcp_connector.
-     */
-    tcp_connector_->start();
-#endif // USE_TCP_CONNECTOR
+    log_debug("Node local endpoint = " << m_public_endpoint << ".");
 }
 
 void node_impl::stop()
 {
     /**
-     * Stop the firewall_manager.
+     * Close the udp_multiplexor.
      */
-    if (firewall_manager_)
+    if (udp_multiplexor_)
     {
-        firewall_manager_->stop();
+        udp_multiplexor_->close();
+    }
+    
+    /**
+     * Stop the key_pool.
+     */
+    if (m_key_pool)
+    {
+        m_key_pool->stop();
     }
     
     /**
@@ -315,43 +203,11 @@ void node_impl::stop()
     }
     
     /**
-     * Stop the role manager.
-     */
-    if (role_manager_)
-    {
-        role_manager_->stop();
-    }
-    
-    /**
      * Stop the storage.
      */
     if (storage_)
     {
         storage_->stop();
-    }
-    
-    /**
-     * Stop the tcp_connector.
-     */
-    if (tcp_connector_)
-    {
-        tcp_connector_->stop();
-    }
-    
-    /**
-     * Close the tcp_acceptor.
-     */
-    if (tcp_acceptor_)
-    {
-        tcp_acceptor_->close();
-    }
-    
-    /**
-     * Close the udp_multiplexor.
-     */
-    if (udp_multiplexor_)
-    {
-        udp_multiplexor_->close();
     }
     
     /**
@@ -517,56 +373,6 @@ std::uint16_t node_impl::find(
     return ret;
 }
 
-std::uint16_t node_impl::proxy(
-    const char * addr, const std::uint16_t & port, const char * buf,
-    const std::size_t & len
-    )
-{
-    std::uint16_t ret = 0;
-
-    /**
-     * Allocate the proxy message.
-     */
-    std::shared_ptr<message> msg(
-        new message(protocol::message_code_proxy)
-    );
-
-    message::attribute_endpoint attr1;
-    
-    attr1.type = message::attribute_type_endpoint;
-    attr1.length = 0;
-    attr1.value = boost::asio::ip::udp::endpoint(
-        boost::asio::ip::address::from_string(addr), port
-    );
-    
-    msg->endpoint_attributes().push_back(attr1);
-    
-    message::attribute_string attr2;
-    
-    attr2.type = message::attribute_type_proxy_payload;
-    attr2.length = len;
-    attr2.value = std::string(buf, len);
-    
-    msg->string_attributes().push_back(attr2);
-    
-    ret = msg->header_transaction_id();
-    
-    /**
-     * Encode the message.
-     */
-    msg->encode();
-
-    /**
-     * Send the message.
-     */
-    if (!tcp_connector_->send(msg->data(), msg->size()))
-    {
-        log_error("Proxy send failed, not connected.");
-    }
-
-    return ret;
-}
-
 std::list< std::pair<std::string, std::uint16_t> > node_impl::endpoints()
 {
     std::list< std::pair<std::string, std::uint16_t> > ret;
@@ -593,11 +399,8 @@ stack::configuration & node_impl::config()
 
 boost::asio::ip::udp::endpoint & node_impl::public_endpoint()
 {
-#if 0 // // C++14
-    std::shared_lock<std::shared_mutex> l(public_endpoint_mutex_, std::defer_lock);
-#else
     std::lock_guard<std::recursive_mutex> l(public_endpoint_mutex_);
-#endif
+
     return m_public_endpoint;
 }
 
@@ -629,54 +432,6 @@ void node_impl::send_message(
 }
 
 void node_impl::handle_message(
-    const boost::asio::ip::tcp::endpoint & ep, const char * buf,
-    const std::size_t & len
-    )
-{
-    /**
-     * Allocate the message.
-     */
-    message msg(buf, len);
-    
-    try
-    {
-        /**
-         * Decode the message.
-         */
-        if (msg.decode())
-        {
-            switch (msg.header_code())
-            {
-                case protocol::message_code_ack:
-                {
-                    handle_ack_message(ep, msg);
-                }
-                break;
-                default:
-                {
-                    log_none(
-                        "Node got invalid (tcp) header code = " <<
-                        msg.header_code() << "."
-                    );
-                }
-                break;
-            }
-        }
-        else
-        {
-            log_error("Node failed to decode (tcp) message from " << ep << ".");
-        }
-    }
-    catch (std::exception & e)
-    {
-        log_error(
-            "Node failed to decode (tcp) message from " << ep << ", what = " <<
-            e.what() << "."
-        );
-    }
-}
-
-void node_impl::handle_message(
     const boost::asio::ip::udp::endpoint & ep, const char * buf,
     const std::size_t & len
     )
@@ -698,14 +453,6 @@ void node_impl::handle_message(
          */
         if (msg.decode())
         {
-            /**
-             * Inform the tcp_connector.
-             */
-            if (tcp_connector_)
-            {
-                tcp_connector_->handle_message(ep, msg);
-            }
-    
             switch (msg.header_code())
             {
                 case protocol::message_code_ack:
@@ -731,11 +478,6 @@ void node_impl::handle_message(
                 case protocol::message_code_find:
                 {
                     handle_find_message(ep, msg);
-                }
-                break;
-                case protocol::message_code_firewall:
-                {
-                    handle_firewall_message(ep, msg);
                 }
                 break;
                 case protocol::message_code_probe:
@@ -804,20 +546,6 @@ void node_impl::on_app_udp_receive(
 }
 
 void node_impl::handle_ack_message(
-    const boost::asio::ip::tcp::endpoint & ep, message & msg
-    )
-{
-    if (firewall_manager_ && firewall_manager_->handle_message(ep, msg))
-    {
-        // ...
-    }
-    else
-    {
-        // ...
-    }
-}
-
-void node_impl::handle_ack_message(
     const boost::asio::ip::udp::endpoint & ep, message & msg
     )
 {
@@ -833,62 +561,55 @@ void node_impl::handle_ack_message(
         routing_table_->update(ep, msg.header_transaction_id());
     }
     
-    if (firewall_manager_ && firewall_manager_->handle_message(ep, msg))
-    {
-        // ...
-    }
-    else
-    {    
-        /**
-         * Find the operation.
-         */
-        const std::shared_ptr<operation> op = operation_queue_->find(
-            msg.header_transaction_id()
-        );
+    /**
+     * Find the operation.
+     */
+    const std::shared_ptr<operation> op = operation_queue_->find(
+        msg.header_transaction_id()
+    );
 
-        if (op)
+    if (op)
+    {
+        /**
+         * Inform the operation.
+         */
+        op->on_response(msg);
+
+        /**
+         * Results are piggy backed onto ack messages. Check if there is at
+         * least one result, tuples of query and lifetime.
+         */
+        if (msg.string_attributes().size() >= 1)
         {
             /**
-             * Inform the operation.
+             * Get the queries.
              */
-            op->on_response(msg);
+            std::vector<std::string> queries;
+                
+            for (auto & i : msg.string_attributes())
+            {
+                if (i.type == message::attribute_type_storage_query)
+                {
+                    queries.push_back(i.value);
+                }
+            }
 
             /**
-             * Results are piggy backed onto ack messages. Check if there is at
-             * least one result, tuples of query and lifetime.
+             * Callback on each query result.
              */
-            if (msg.string_attributes().size() >= 1)
+            for (std::size_t i = 0; i < queries.size(); i++)
             {
-                /**
-                 * Get the queries.
-                 */
-                std::vector<std::string> queries;
-                    
-                for (auto & i : msg.string_attributes())
-                {
-                    if (i.type == message::attribute_type_storage_query)
-                    {
-                        queries.push_back(i.value);
-                    }
-                }
+                log_none(
+                    "Node got query = " << queries[i] <<
+                    ", tid = " << msg.header_transaction_id() << "."
+                );
 
                 /**
-                 * Callback on each query result.
+                 * API Callback
                  */
-                for (std::size_t i = 0; i < queries.size(); i++)
-                {
-                    log_none(
-                        "Node got query = " << queries[i] <<
-                        ", tid = " << msg.header_transaction_id() << "."
-                    );
-
-                    /**
-                     * API Callback
-                     */
-                    node_.on_find(
-                        op ? op->transaction_id() : 0, queries[i]
-                    );
-                }
+                node_.on_find(
+                    op ? op->transaction_id() : 0, queries[i]
+                );
             }
         }
     }
@@ -902,7 +623,6 @@ void node_impl::handle_ack_message(
          * Look for statistics attributes.
          */
         if (
-            i.type == message::attribute_type_stats_tcp_inbound ||
             i.type == message::attribute_type_stats_udp_bps_inbound ||
             i.type == message::attribute_type_stats_udp_bps_outbound
             )
@@ -956,7 +676,7 @@ void node_impl::handle_ping_message(
     const boost::asio::ip::udp::endpoint & ep, message & msg
     )
 {
-    auto response = std::make_shared<message>(
+    auto response = std::make_shared<message> (
         protocol::message_code_ack, msg.header_transaction_id()
     );
     
@@ -1002,26 +722,8 @@ void node_impl::handle_ping_message(
              */
             auto piggyback = std::rand() % 2 == 1;
     
-            if (tcp_acceptor_ && piggyback)
+            if (piggyback)
             {
-                enum { listen_sockets = 2 };
-                
-                /**
-                 * Add the attribute_type_stats_tcp_inbound.
-                 */
-                if (tcp_acceptor_->tcp_transports().size() > listen_sockets)
-                {
-                    message::attribute_uint32 attr1;
-                    
-                    attr1.type = message::attribute_type_stats_tcp_inbound;
-                    attr1.length = sizeof(attr1.value);
-                    attr1.value =
-                        tcp_acceptor_->tcp_transports().size() - listen_sockets
-                    ;
-                    
-                    response->uint32_attributes().push_back(attr1);
-                }
-
                 /**
                  * Add the attribute_type_stats_udp_bps_inbound.
                  */
@@ -1072,7 +774,6 @@ void node_impl::handle_ping_message(
              * Look for statistics attributes.
              */
             if (
-                i.type == message::attribute_type_stats_tcp_inbound ||
                 i.type == message::attribute_type_stats_udp_bps_inbound ||
                 i.type == message::attribute_type_stats_udp_bps_outbound
                 )
@@ -1674,160 +1375,6 @@ void node_impl::handle_find_message(
     }
 }
 
-void node_impl::handle_firewall_message(
-    const boost::asio::ip::udp::endpoint & ep, message & msg
-    )
-{
-    log_debug("Node got firewall messsage from " << ep << ".");
-    
-    if (!msg.endpoint_attributes().empty())
-    {
-        /**
-         * Send the response back to the endpoint address as seen by us but use
-         * the provided port number.    
-         */
-        boost::asio::ip::udp::endpoint wirewall_ep(
-            ep.address(), msg.endpoint_attributes().front().value.port()
-        );
-        
-        /**
-         * Allocate the messsage.
-         */
-        std::shared_ptr<message> response(
-            new message(protocol::message_code_ack)
-        );
-        
-        /**
-         * Copy the transaction id.
-         */
-        response->set_header_transaction_id(msg.header_transaction_id());
-        
-        /**
-         * If we are operating in interface mode we must set the message
-         * header flag DONTROUTE so that other nodes do not add us to
-         * their routing table.
-         */
-        if (
-            m_config.operation_mode() ==
-            stack::configuration::operation_mode_interface
-            )
-        {
-            response->set_header_flags(
-                static_cast<protocol::message_flag_t> (
-                response->header_flags() | protocol::message_flag_dontroute)
-            );
-        }
-        
-        /**
-         * Encode the message.
-         */
-        if (response->encode())
-        {
-            log_debug(
-                "Node sending firewall (udp ack) message to " <<
-                wirewall_ep << "."
-            );
-            
-            /**
-             * Send this message directly to the firewall endpoint.
-             */
-            udp_multiplexor_->send_to(
-                wirewall_ep, response->data(), response->size()
-            );
-        }
-        else
-        {
-            log_error("Node message encoding failed.");
-        }
-        
-        /**
-         * Form a tcp connection to the firewall endpoint.
-         */
-        auto t = std::make_shared<tcp_transport>(io_service_);
-        
-        /**
-         * Set the write timeout.
-         */
-        t->set_write_timeout(5);
-        
-        /**
-         * Close the connection after the message is written.
-         */
-        t->set_close_after_writes(true);
-        
-        /**
-         * Connect to the firewall endpoint.
-         */
-        t->start(wirewall_ep.address().to_string(), wirewall_ep.port(), 
-            [this, msg, wirewall_ep](boost::system::error_code ec,
-            std::shared_ptr<tcp_transport> t)
-        {
-            if (ec)
-            {
-                log_error(
-                    "Firewall check tcp_transport connect failed, message = " <<
-                    ec.message() << "."
-                );
-            }
-            else
-            {
-                /**
-                 * Allocate the messsage.
-                 */
-                std::shared_ptr<message> response(
-                    new message(protocol::message_code_ack)
-                );
-                
-                /**
-                 * Copy the transaction id.
-                 */
-                response->set_header_transaction_id(msg.header_transaction_id());
-                
-                /**
-                 * If we are operating in interface mode we must set the message
-                 * header flag DONTROUTE so that other nodes do not add us to
-                 * their routing table.
-                 */
-                if (
-                    m_config.operation_mode() ==
-                    stack::configuration::operation_mode_interface
-                    )
-                {
-                    response->set_header_flags(
-                        static_cast<protocol::message_flag_t> (
-                        response->header_flags() |
-                        protocol::message_flag_dontroute)
-                    );
-                }
-                
-                /**
-                 * Encode the message.
-                 */
-                if (response->encode())
-                {
-                    log_debug(
-                        "Node sending firewall (tcp ack) message to " <<
-                        wirewall_ep << "."
-                    );
-                    
-                    /**
-                     * Send the response.
-                     */
-                    t->write(response->data(), response->size());
-                }
-                else
-                {
-                    log_error("Node message encoding failed.");
-                }
-            }
-        });
-    }
-    else
-    {
-        log_error("Node got firewall message without an endpoint attribute.");
-    }
-}
-
 void node_impl::handle_probe_message(
     const boost::asio::ip::udp::endpoint & ep, message & msg
     )
@@ -1848,14 +1395,7 @@ void node_impl::handle_probe_message(
     
     if (has_client_connection)
     {
-        std::uint32_t connections = 0;
-        
-        if (tcp_acceptor_)
-        {
-            connections = tcp_acceptor_->tcp_transports().size();
-        }
-    
-        if (connections < tcp_acceptor::max_tcp_connections)
+        if (false)
         {
             /**
              * Allocate the messsage.
@@ -1964,7 +1504,7 @@ void node_impl::handle_error_message(
         );
         
         if (message == "418 I'm a teapot")
-        {
+        {        
             if (msg.endpoint_attributes().size() > 0)
             {
                 auto ep = msg.endpoint_attributes().front();
@@ -1975,15 +1515,10 @@ void node_impl::handle_error_message(
                     network::address_is_any(ep.value.address()) == false
                     )
                 {
-#if 0 // C++14
-                    std::unique_lock<std::shared_mutex> l(
-                        public_endpoint_mutex_, std::defer_lock
-                    );
-#else
                     std::lock_guard<std::recursive_mutex> l(
                         public_endpoint_mutex_
                     );
-#endif
+
                     /**
                      * Set our public endpoint.
                      */
