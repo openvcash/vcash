@@ -32,7 +32,7 @@ namespace database {
         
             /**
              * If true UDP packets will be encrypted by use of ECDHE and
-             * HC-256 using a Whirlpool derived shared secret.
+             * HC256 using a Whirlpool derived shared secret.
              */
             enum { udp_ecdhe_enabled = 1 };
         
@@ -59,7 +59,8 @@ namespace database {
                 message_code_find = 10,
                 message_code_reserved_11 = 11,
                 message_code_probe = 12,
-                message_code_public_key = 13,
+                message_code_public_key_ping = 13,
+                message_code_public_key_pong = 14,
                 message_code_error = 0xfe,
             } message_code_t;
             
