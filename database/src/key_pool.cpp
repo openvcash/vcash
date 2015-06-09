@@ -84,9 +84,9 @@ void key_pool::insert(
 
 void key_pool::erase_expired_shared_secrets()
 {
-    log_info("Key pool is erasing expired shared secrets.");
-    
     std::lock_guard<std::mutex> l1(mutex_shared_secrets_);
+    
+    auto count = m_shared_secrets.size();
     
     auto it = m_shared_secrets.begin();
     
@@ -103,6 +103,10 @@ void key_pool::erase_expired_shared_secrets()
             ++it;
         }
     }
+    
+    count = count - m_shared_secrets.size();
+    
+    log_info("Key pool erased " << count << " expired shared secrets.");
 }
 
 void key_pool::cleanup_tick(const boost::system::error_code & ec)
