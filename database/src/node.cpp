@@ -1,22 +1,10 @@
-/*
- * Copyright (c) 2008-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
- *
- * This file is part of coinpp.
- *
- * coinpp is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License with
- * additional permissions to the one published by the Free Software
- * Foundation, either version 3 of the License, or (at your option)
- * any later version. For more information see LICENSE.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- */
+//
+//  node.cpp
+//  database
+//
+//  Created by John Connor on 7/30/12.
+//  Copyright (c) 2012 John Connor. All rights reserved.
+//
 
 #include <stdexcept>
 
@@ -53,7 +41,10 @@ void node::start(const stack::configuration & config)
 
 void node::stop()
 {
-    node_impl_->stop();
+    if (node_impl_)
+    {
+        node_impl_->stop();
+    }
 }
 
 void node::queue_ping(const boost::asio::ip::udp::endpoint & ep)
@@ -86,19 +77,6 @@ std::uint16_t node::find(
     return 0;
 }
 
-std::uint16_t node::proxy(
-    const char * addr, const std::uint16_t & port, const char * buf,
-    const std::size_t & len
-    )
-{
-    if (node_impl_)
-    {
-        return node_impl_->proxy(addr, port, buf, len);
-    }
-    
-    return 0;
-}
-
 std::list< std::pair<std::string, std::uint16_t> > node::endpoints()
 {
     if (node_impl_)
@@ -124,16 +102,6 @@ void node::on_find(
     )
 {
     stack_impl_.on_find(transaction_id, query_string);
-}
-
-void node::on_proxy(
-    const std::uint16_t & tid, const boost::asio::ip::tcp::endpoint & ep,
-    const std::string & value
-    )
-{
-    stack_impl_.on_proxy(
-        tid, ep.address().to_string().c_str(), ep.port(), value
-    );
 }
 
 void node::on_udp_receive(

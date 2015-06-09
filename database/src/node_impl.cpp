@@ -20,6 +20,7 @@
 
 #include <database/block.hpp>
 #include <database/constants.hpp>
+#include <database/ecdhe.hpp>
 #include <database/entry.hpp>
 #include <database/find_operation.hpp>
 #include <database/key_pool.hpp>
@@ -69,6 +70,11 @@ void node_impl::start(const stack::configuration & config)
     m_id = boost::asio::ip::host_name();
 
     /**
+     * Allocate the ecdhe.
+     */
+    m_ecdhe.reset(new ecdhe());
+    
+    /**
      * Allocate the key_pool.
      */
     m_key_pool.reset(new key_pool(io_service_));
@@ -108,6 +114,13 @@ void node_impl::start(const stack::configuration & config)
      * Allocate the operation_queue.
      */
     operation_queue_.reset(new operation_queue(io_service_));
+    
+    /**
+     * Generate an ecdhe public key.
+     */
+    auto public_key = m_ecdhe->public_key();
+    
+    log_info("Node generated public key:\n" << public_key);
     
     /**
      * Start the key_pool.
@@ -170,6 +183,8 @@ void node_impl::start(const stack::configuration & config)
 
 void node_impl::stop()
 {
+    log_debug("Node is stopping.");
+    
     /**
      * Close the udp_multiplexor.
      */
@@ -178,6 +193,13 @@ void node_impl::stop()
         udp_multiplexor_->close();
     }
     
+    /**
+     * Deallocate the ecdhe.
+     */
+    if (m_ecdhe)
+    {
+        m_ecdhe.reset();
+    }
     /**
      * Stop the key_pool.
      */
@@ -217,6 +239,8 @@ void node_impl::stop()
     {
         udp_handler_->stop();
     }
+    
+    log_debug("Node is stopped.");
 }
 
 std::uint16_t node_impl::ping(
@@ -419,6 +443,11 @@ std::list<boost::asio::ip::udp::endpoint> & node_impl::bootstrap_contacts()
 const std::string & node_impl::id() const
 {
     return m_id;
+}
+
+std::shared_ptr<ecdhe> & node_impl::get_ecdhe()
+{
+    return m_ecdhe;
 }
 
 void node_impl::send_message(

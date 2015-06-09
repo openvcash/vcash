@@ -1,22 +1,10 @@
-/*
- * Copyright (c) 2008-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
- *
- * This file is part of coinpp.
- *
- * coinpp is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License with
- * additional permissions to the one published by the Free Software
- * Foundation, either version 3 of the License, or (at your option)
- * any later version. For more information see LICENSE.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- */
+//
+//  block.cpp
+//  database
+//
+//  Created by John Connor on 6/19/13.
+//  Copyright (c) 2013 John Connor. All rights reserved.
+//
 
 #include <database/block.hpp>
 #include <database/logger.hpp>
@@ -139,7 +127,7 @@ void block::update(
     /**
      * The storage node doesn't yet exist in any slot in this block, add it.
      */
-    if (!did_update_slot)
+    if (did_update_slot == false)
     {
         /**
          * Get the slot id for the endpoint.
@@ -148,7 +136,7 @@ void block::update(
         
         if (slot_id > -1)
         {
-            log_none(
+            log_debug(
                 "Block " << m_index << " is inserting " << ep <<
                 " into slot #" << slot_id << "."
             );
