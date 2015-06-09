@@ -1,9 +1,7 @@
 /*
- * Copyright (c) 2008-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2008-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
- *
- * coinpp is free software: you can redistribute it and/or modify
+ * This is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -63,6 +61,11 @@ std::shared_ptr<message> find_operation::next_message(
      */
     std::int16_t block_index = slot_id / 8;
     
+    /**
+     * The found slot id that most closely matches the endpoint's slot id.
+     */
+    std::int16_t slot_id_found = 0;
+    
     auto found_block = false;
     
     for (auto it = m_slot_ids.begin(); it != m_slot_ids.end(); ++it)
@@ -71,39 +74,32 @@ std::shared_ptr<message> find_operation::next_message(
         {
             found_block = true;
             
+            slot_id_found = *it;
+            
             break;
         }
     }
     
-#if 0
-    /**
-     * Allocate the message.
-     */
-    std::shared_ptr<message> ret(new message(protocol::message_code_find));
-    
-    message::attribute_string attr1;
-    
-    attr1.type = message::attribute_type_storage_query;
-    attr1.length = m_query.str().size();
-    attr1.value = m_query.str();
-    
-    ret->string_attributes().push_back(attr1);
-#else
     /**
      * Allocate the message.
      */
     std::shared_ptr<message> ret(new message(protocol::message_code_find));
 
-#if 1 // block level accuracy
+    /**
+     * 0 for slot level accuracy, 1 for block level accuracy.
+     */
+#if 1
     if (found_block)
 #else
     bool found_slot = false;
-
+    
     for (auto it = m_slot_ids.begin(); it != m_slot_ids.end(); ++it)
     {
         if (*it== slot_id)
         {
             found_slot = true;
+            
+            slot_id_found = *it;
             
             break;
         }
@@ -113,7 +109,7 @@ std::shared_ptr<message> find_operation::next_message(
 #endif
     {
         log_debug(
-            "Using slot# " << slot_id << ", for slot# " << *m_slot_ids.begin()
+            "Using slot# " << slot_id << ", for slot# " << slot_id_found
         );
         
         message::attribute_string attr1;
@@ -158,7 +154,7 @@ std::shared_ptr<message> find_operation::next_message(
             }
         }
     }
-#endif
+
     return ret;
 }
 
