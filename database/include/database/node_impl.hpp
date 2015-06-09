@@ -33,6 +33,7 @@
 
 namespace database {
 
+    class ecdhe;
     class key_pool;
     class message;
     class node;
@@ -134,6 +135,11 @@ namespace database {
              */
             const std::string & id() const;
 
+            /**
+             * The ecdhe.
+             */
+            std::shared_ptr<ecdhe> & get_ecdhe();
+        
             /**
              * Sends the given message to the boost::asio::ip::udp::endpoint.
              * @param ep The boost::asio::ip::udp::endpoint.
@@ -263,10 +269,15 @@ namespace database {
             std::string m_id;
         
             /**
+             * The ecdhe.
+             */
+            std::shared_ptr<ecdhe> m_ecdhe;
+        
+            /**
              * The key_pool.
              */
             std::shared_ptr<key_pool> m_key_pool;
-            
+        
             /**
              * The public boost::asio::ip::udp::endpoint.
              */
