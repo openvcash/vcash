@@ -1,9 +1,7 @@
 /*
- * Copyright (c) 2008-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2008-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
- *
- * coinpp is free software: you can redistribute it and/or modify
+ * This is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -18,14 +16,12 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef database_crypto_hpp
-#define database_crypto_hpp
+#ifndef DATABASE_CRYPTO_HPP
+#define DATABASE_CRYPTO_HPP
 
 #include <cstdint>
 #include <sstream>
 #include <string>
-
-#include <boost/uuid/sha1.hpp>
 
 namespace database {
 
@@ -88,35 +84,8 @@ namespace database {
          * The header length.
          */
         enum { dtls_header_length = 13 };
-        
-        /**
-         * Generates an obfuscation key from a seed.
-         * @param seed The seed.
-         */
-        static std::string generate_obfuscation_key(const std::string & seed)
-        {
-            boost::uuids::detail::sha1 ctx;
-
-            ctx.process_bytes(
-                const_cast<char *> (seed.data()), seed.size()
-            );
-            
-            std::uint32_t digest[5];
-
-            ctx.get_digest(digest);
-
-            std::stringstream ss;
-            
-            ss <<
-                std::hex << digest[0] << std::hex << digest[1] <<
-                std::hex << digest[2] << std::hex << digest[3] <<
-                std::hex << digest[4]
-            ;
-
-            return ss.str().substr(0, 32);
-        }
     };
     
 } // namespace database
 
-#endif // database_crypto_hpp
+#endif // DATABASE_CRYPTO_HPP
