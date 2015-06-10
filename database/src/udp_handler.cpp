@@ -1,9 +1,7 @@
 /*
- * Copyright (c) 2008-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2008-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
- *
- * coinpp is free software: you can redistribute it and/or modify
+ * This is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -20,10 +18,9 @@
 
 #include <iterator>
 
-#include <boost/uuid/sha1.hpp>
-
 #include <database/crypto.hpp>
-#include <database/crypto_handler.hpp>
+#include <database/ecdhe.hpp>
+#include <database/key_pool.hpp>
 #include <database/logger.hpp>
 #include <database/message.hpp>
 #include <database/node_impl.hpp>
@@ -31,6 +28,7 @@
 #include <database/stack.hpp>
 #include <database/udp_handler.hpp>
 #include <database/udp_multiplexor.hpp>
+#include <database/whirlpool.hpp>
 
 using namespace database;
 
@@ -39,28 +37,13 @@ udp_handler::udp_handler(
     std::shared_ptr<udp_multiplexor> & multiplexor   
     )
     : handler(ios, impl, multiplexor)
-    , crypto_handler_(new crypto_handler(ios, impl, multiplexor))
 {
-    /**
-     * Set the crypto_handler data handler.
-     */
-    crypto_handler_->set_on_data(
-        std::bind(&udp_handler::on_data, this,
-        std::placeholders::_1, std::placeholders::_2, std::placeholders::_3)
-    );
-    
-    /**
-     * Start the crypto_handler.
-     */
-    crypto_handler_->start();
+    // ...
 }
 
 void udp_handler::stop()
 {
-    /**
-     * Stop the crypto_handler.
-     */
-    crypto_handler_->stop();
+    // ...
 }
 
 void udp_handler::send_to(
@@ -76,81 +59,84 @@ bool udp_handler::on_async_receive_from(
     const std::size_t & len
     )
 {
-    if (crypto_handler_->on_async_receive_from(ep, buf, len))
+    if (auto n = node_impl_.lock())
     {
-        // ...
-    }
-    else if (static_cast<std::uint8_t> (buf[0]) & protocol::message_flag_0x40)
-    {
-        if (
-            static_cast<std::uint8_t> (buf[0]) &
-            protocol::message_flag_obfuscated
-            )
+        if (static_cast<std::uint8_t> (buf[0]) & protocol::message_flag_0x40)
         {
-            message msg(buf, len);
-            
-            auto key = crypto::generate_obfuscation_key(
-                ep.address().to_string()
-            );
-
-            if (msg.unobfuscate(key))
+            if (
+                static_cast<std::uint8_t> (buf[0]) &
+                protocol::message_flag_encrypted
+                )
             {
-                on_data(ep, msg.data(), msg.size());
+                /**
+                 * Allocate the message.
+                 */
+                message msg(buf, len);
+                
+                /**
+                 * Get the shared secret.
+                 */
+                auto shared_secret = n->get_key_pool()->find(ep);
+
+                if (shared_secret.size() > 0 && msg.decrypt(shared_secret))
+                {
+                    on_data(ep, msg.data(), msg.size());
+                }
+                else
+                {
+                    protocol::header_t hdr;
+                    
+                    std::memcpy(&hdr, buf, sizeof(hdr));
+       
+                    hdr.transaction_id = ntohs(hdr.transaction_id);
+                
+                    log_debug(
+                        "UDP handler, message " << hdr.transaction_id  <<
+                        " decryption failed."
+                    );
+                    
+                    /**
+                     * Allocate the protocol::message_code_public_key_ping.
+                     */
+                    std::shared_ptr<message> request(
+                        new message(protocol::message_code_public_key_ping)
+                    );
+                    
+                    /**
+                     * Add our public key as a message::attribute_string of
+                     * type message::attribute_type_public_key.
+                     */
+                    message::attribute_string attr3;
+                    
+                    attr3.type = message::attribute_type_public_key;
+                    attr3.length = n->get_ecdhe()->public_key().size();
+                    attr3.value = n->get_ecdhe()->public_key();
+                    
+                    request->string_attributes().push_back(attr3);
+                    
+                    /**
+                     * Send the request.
+                     */
+                    send_message(ep, request);
+
+                    return false;
+                }
             }
             else
             {
-                protocol::header_t hdr;
-                
-                std::memcpy(&hdr, buf, sizeof(hdr));
-   
-                hdr.transaction_id = ntohs(hdr.transaction_id);
-            
-                log_debug(
-                    "UDP handler, message " << hdr.transaction_id  <<
-                    " Unobfuscation failed."
-                );
-                
-                std::shared_ptr<message> response(
-                    new message(protocol::message_code_error,
-                    hdr.transaction_id)
-                );
-                
-                std::string error = "418 I'm a teapot";
-                
-                message::attribute_string attr1;
-                
-                attr1.type = message::attribute_type_error;
-                attr1.length = error.size();
-                attr1.value = error;
-                
-                response->string_attributes().push_back(attr1);
-                
-                message::attribute_endpoint attr2;
-                
-                attr2.type = message::attribute_type_endpoint;
-                attr2.length = 0;
-                attr2.value = ep;
-                
-                response->endpoint_attributes().push_back(attr2);
-                
-                send_message(ep, response);
-                
-                return false;
+                on_data(ep, buf, len);
             }
         }
         else
-        {
-            on_data(ep, buf, len);
-        }
-    }
-    else
-    {
-        if (std::shared_ptr<node_impl> n = node_impl_.lock())
         {
             n->on_app_udp_receive(
                 ep.address().to_string().c_str(), ep.port(), buf, len
             );
         }
+    }
+    else
+    {
+        return false;
     }
     
     return true;
@@ -201,38 +187,139 @@ void udp_handler::send_message(
                 );
             }
 
-            if (protocol::udp_obfuscation_enabled)
+            /**
+             * If encryption is enabled public key messages are left as
+             * plain text.
+             */
+            auto encrypt =
+                protocol::udp_ecdhe_enabled &&
+                msg->header_code() != protocol::message_code_public_key_ping &&
+                msg->header_code() != protocol::message_code_public_key_pong
+            ;
+            
+            if (encrypt)
             {
                 msg->set_header_flags(
                     static_cast<protocol::message_flag_t> (
-                    msg->header_flags() | protocol::message_flag_obfuscated)
+                    msg->header_flags() | protocol::message_flag_encrypted)
                 );
             }
             
             if (msg->encode())
             {
-                if (protocol::udp_obfuscation_enabled)
+                if (encrypt)
                 {
                     if (auto n = node_impl_.lock())
                     {
-                        auto key = crypto::generate_obfuscation_key(
-                            n->public_endpoint().address().to_string()
-                        );
+                        /**
+                         * Get the shared secret.
+                         */
+                        auto shared_secret = n->get_key_pool()->find(ep);
                         
-                        if (msg->obfuscate(key))
+                        /**
+                         * If we do not have a shared secret then send a
+                         * protocol::message_code_public_key_ping message, the
+                         * remote node will respond with a
+                         * protocol::message_code_public_key_pong in which we
+                         * will respond with a protocol::message_code_ping.
+                         */
+                        if (
+                            shared_secret.size() > 0 &&
+                            msg->encrypt(shared_secret)
+                            )
                         {
-                            // ...
+                            /**
+                             * Send the message.
+                             */
+                            send_to(ep, msg->data(), msg->size());
                         }
                         else
                         {
-                            log_error(
-                                "UDP handler, message Obfuscation failed."
+                            /**
+                             * Allocate the
+                             * protocol::message_code_public_key_ping.
+                             */
+                            std::shared_ptr<message> request(
+                                new message(
+                                protocol::message_code_public_key_ping)
                             );
+                            
+                            /**
+                             * If we are operating in interface mode we must
+                             * set the message header flag DONTROUTE so that
+                             * other nodes do not add us to their routing table.
+                             */
+                            if (
+                                n->config().operation_mode() ==
+                                stack::configuration::operation_mode_interface
+                                )
+                            {
+                                request->set_header_flags(
+                                    static_cast<protocol::message_flag_t> (
+                                    request->header_flags() |
+                                    protocol::message_flag_dontroute)
+                                );
+                            }
+            
+                            /**
+                             * Add our public key as a
+                             * message::attribute_string of type
+                             * message::attribute_type_public_key.
+                             */
+                            message::attribute_string attr1;
+                            
+                            attr1.type = message::attribute_type_public_key;
+                            attr1.length = n->get_ecdhe()->public_key().size();
+                            attr1.value = n->get_ecdhe()->public_key();
+                            
+                            request->string_attributes().push_back(attr1);
+                            
+                            /**
+                             * Compress the attributes if needed.
+                             */
+                            if (
+                                request->string_attributes().size() > 0 ||
+                                request->endpoint_attributes().size() > 1 ||
+                                request->uint32_attributes().size() > 1
+                                )
+                            {
+                                /**
+                                 * Set the compressed flag.
+                                 */
+                                request->set_header_flags(
+                                    static_cast<protocol::message_flag_t> (
+                                    request->header_flags() |
+                                    protocol::message_flag_compressed)
+                                );
+                            }
+            
+                            /**
+                             * Encode the request.
+                             */
+                            if (request->encode())
+                            {
+                                /**
+                                 * Send the request.
+                                 */
+                                send_to(ep, request->data(), request->size());
+                            }
+                            else
+                            {
+                                log_error(
+                                    "UDP handler failed to encode message "
+                                    "(protocol::message_code_public_key_ping)."
+                                );
+                            }
                         }
                     }
                 }
-
-                send_to(ep, msg->data(), msg->size());
+                else
+                {
+                    /**
+                     * Send the message.
+                     */
+                    send_to(ep, msg->data(), msg->size());
+                }
             }
             else
             {
@@ -242,7 +329,8 @@ void udp_handler::send_message(
         catch (std::exception & e)
         {
             log_error(
-                "UDP handler message encoding failed, what = " << e.what() << "."
+                "UDP handler message encoding failed, what = " <<
+                e.what() << "."
             );
         }
     }

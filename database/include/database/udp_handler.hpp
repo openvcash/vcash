@@ -1,9 +1,7 @@
 /*
- * Copyright (c) 2008-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2008-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
- *
- * coinpp is free software: you can redistribute it and/or modify
+ * This is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -32,7 +30,6 @@
 
 namespace database {
 
-    class crypto_handler;
     class message;
     class node_impl;
     class udp_multiplexor;
@@ -123,11 +120,6 @@ namespace database {
              * The sent transaction ids mutex.
              */
             std::recursive_mutex sent_transaction_ids_mutex_;
-        
-            /**
-             * The crypto_handler.
-             */
-            std::shared_ptr<crypto_handler> crypto_handler_;
     };
     
 } // namespace database
