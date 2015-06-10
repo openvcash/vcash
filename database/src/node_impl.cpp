@@ -39,6 +39,7 @@
 #include <database/udp_handler.hpp>
 #include <database/udp_multiplexor.hpp>
 #include <database/utility.hpp>
+#include <database/whirlpool.hpp>
 
 #if (defined _MSC_VER)
 #undef min
@@ -120,7 +121,7 @@ void node_impl::start(const stack::configuration & config)
      */
     auto public_key = m_ecdhe->public_key();
     
-    log_info("Node generated public key:\n" << public_key);
+    log_info("Node generated public key:\r\n" << public_key);
     
     /**
      * Start the key_pool.
@@ -265,11 +266,13 @@ std::uint16_t node_impl::ping(
     return ret;
 }
 
-void node_impl::queue_ping(const boost::asio::ip::udp::endpoint & ep)
+void node_impl::queue_ping(
+    const boost::asio::ip::udp::endpoint & ep, const bool & force_queue
+    )
 {
     if (routing_table_)
     {
-        routing_table_->queue_ping(ep);
+        routing_table_->queue_ping(ep, force_queue);
     }
 }
 
@@ -306,8 +309,8 @@ std::uint16_t node_impl::store(const std::string & query_string)
             if (snodes.empty())
             {
                 log_error(
-                    "Node attempted store operation but no endpoints were found, "
-                    "query_string = " << query_string << "."
+                    "Node attempted store operation but no endpoints were "
+                    "found, query_string = " << query_string << "."
                 );
             }
             else
@@ -361,14 +364,14 @@ std::uint16_t node_impl::find(
              * We didn't find any storage nodes in the slot or block, use
              * whatever we have.
              */
-            if (snodes.empty())
+            if (snodes.size() == 0)
             {
                 snodes = routing_table_->storage_nodes(
                     constants::snodes_per_keyword
                 );
             }
 
-            if (snodes.empty())
+            if (snodes.size() == 0)
             {
                 log_error(
                     "Node attempted find operation but no endpoints were found, "
@@ -450,6 +453,11 @@ std::shared_ptr<ecdhe> & node_impl::get_ecdhe()
     return m_ecdhe;
 }
 
+std::shared_ptr<key_pool> & node_impl::get_key_pool()
+{
+    return m_key_pool;
+}
+
 void node_impl::send_message(
     const boost::asio::ip::udp::endpoint & ep, std::shared_ptr<message> msg
     )
@@ -512,6 +520,16 @@ void node_impl::handle_message(
                 case protocol::message_code_probe:
                 {
                     handle_probe_message(ep, msg);
+                }
+                break;
+                case protocol::message_code_public_key_ping:
+                {
+                    handle_public_key_ping_message(ep, msg);
+                }
+                break;
+                case protocol::message_code_public_key_pong:
+                {
+                    handle_public_key_pong_message(ep, msg);
                 }
                 break;
                 case protocol::message_code_error:
@@ -971,8 +989,11 @@ void node_impl::handle_store_message(
             }
             else
             {
-                // :TODO: remove this one day. clients now send slot requests
-                // with their store messages.
+                /**
+                 * :TODO: Remove this one day. Clients now send slot requests
+                 * with their store messages.
+                 */
+                
                 /**
                  * Get some storage nodes that belong to the responsible slot.
                  */
@@ -981,7 +1002,8 @@ void node_impl::handle_store_message(
                 );
                 
                 /**
-                 * Piggy back some storage nodes that are responsible for the query.
+                 * Piggy back some storage nodes that are responsible for
+                 * the query.
                  */
                 if (i1.size() > 0)
                 {
@@ -1089,7 +1111,8 @@ void node_impl::handle_find_message(
     if (slots.size() > 0)
     {
         std::shared_ptr<message> response(
-            new message(protocol::message_code_nack, msg.header_transaction_id())
+            new message(protocol::message_code_nack,
+            msg.header_transaction_id())
         );
         
         for (auto & i : slots)
@@ -1410,37 +1433,108 @@ void node_impl::handle_probe_message(
 {
     log_debug("Node got probe messsage from " << ep << ".");
 
-    bool has_client_connection = false;
+    /**
+     * Allocate the messsage.
+     */
+    std::shared_ptr<message> response(
+        new message(protocol::message_code_ack,
+        msg.header_transaction_id())
+    );
     
-    for (auto & i : msg.uint32_attributes())
+    /**
+     * Send the response.
+     */
+    send_message(ep, response);
+}
+
+void node_impl::handle_public_key_ping_message(
+    const boost::asio::ip::udp::endpoint & ep, message & msg
+    )
+{
+    /**
+     * protocol::message_code_public_key_ping messages do not update the
+     * routing table.
+     */
+    
+    if (msg.string_attributes().size() > 0)
     {
-        if (i.type == message::attribute_type_client_connection)
+        /**
+         * Look for an message::attribute_type_public_key.
+         */
+        std::string public_key;
+        
+        for (auto & i : msg.string_attributes())
         {
-            has_client_connection = true;
-            
-            break;
+            if (i.type == message::attribute_type_public_key)
+            {
+                public_key = i.value;
+                
+                break;
+            }
         }
-    }
     
-    if (has_client_connection)
-    {
-        if (false)
+        log_debug(
+            "Node got public key ping messsage from " << ep <<
+            ", public_key = " << public_key << "."
+        );
+
+        /**
+         * Check that the public key is not empty.
+         */
+        if (public_key.size() > 0)
         {
             /**
-             * Allocate the messsage.
+             * Derive the shared secret bytes from the remote public key.
+             */
+            auto bytes = m_ecdhe->derive_secret_key(public_key);
+
+            /**
+             * Hash the shared secret bytes.
+             */
+            whirlpool w(&bytes[0], bytes.size());
+            
+            /**
+             * Set the hash to the first 32 bytes of the hexidecimal
+             * representation of the digest.
+             */
+            auto shared_secret = w.to_string().substr(
+                0, whirlpool::digest_length / 2
+            );
+            
+            log_debug(
+                "Node calculated shared secret " << shared_secret <<
+                " for " << ep << "."
+            );
+        
+            /**
+             * Insert the shared secret into the key_pool.
+             */
+            m_key_pool->insert(ep, shared_secret);
+            
+            /**
+             * Send a protocol::message_code_public_key_pong to advertise
+             * out public key to the remote node.
+             */
+            
+            /**
+             * Allocate the protocol::message_code_public_key_pong.
              */
             std::shared_ptr<message> response(
-                new message(protocol::message_code_ack,
+                new message(protocol::message_code_public_key_pong,
                 msg.header_transaction_id())
             );
             
-            message::attribute_uint32 attr;
+            /**
+             * Add our public key as a message::attribute_string of
+             * type message::attribute_type_public_key.
+             */
+            message::attribute_string attr1;
             
-            attr.type = message::attribute_type_client_connection;
-            attr.length = sizeof(attr.value);
-            attr.value = 0;
-        
-            response->uint32_attributes().push_back(attr);
+            attr1.type = message::attribute_type_public_key;
+            attr1.length = m_ecdhe->public_key().size();
+            attr1.value = m_ecdhe->public_key();
+            
+            response->string_attributes().push_back(attr1);
             
             /**
              * Send the response.
@@ -1449,61 +1543,93 @@ void node_impl::handle_probe_message(
         }
         else
         {
-            /**
-             * Allocate the messsage.
-             */
-            std::shared_ptr<message> response(
-                new message(protocol::message_code_nack,
-                msg.header_transaction_id())
-            );
-            
-            /**
-             * Get some storage nodes that belong to a random slot.
-             */
-            auto i1 = routing_table_->slots_for_id(
-                std::rand() % (slot::length - 1)
-            );
-            
-            /**
-             * Piggy back some storage nodes that are responsible for the query.
-             */
-            if (i1.size() > 0)
-            {
-                for (auto & i2 : i1)
-                {
-                    for (auto & i3 : i2->storage_nodes())
-                    {
-                        message::attribute_endpoint attr;
-                        
-                        attr.type = message::attribute_type_endpoint;
-                        attr.length = 0;
-                        attr.value = i3.endpoint;
-                        
-                        response->endpoint_attributes().push_back(attr);
-                    }
-                }
-            }
-            
-            /**
-             * Send the response.
-             */
-            send_message(ep, response);
+            log_error("Node got empty public key in ping.");
         }
     }
     else
     {
+        log_debug("Node got public key ping from " << ep << ".");
+    }
+}
+
+void node_impl::handle_public_key_pong_message(
+    const boost::asio::ip::udp::endpoint & ep, message & msg
+    )
+{
+    /**
+     * protocol::message_code_public_key_pong messages do not update the
+     * routing table.
+     */
+    
+    if (msg.string_attributes().size() > 0)
+    {
         /**
-         * Allocate the messsage.
+         * Look for an message::attribute_type_public_key.
          */
-        std::shared_ptr<message> response(
-            new message(protocol::message_code_ack,
-            msg.header_transaction_id())
+        std::string public_key;
+        
+        for (auto & i : msg.string_attributes())
+        {
+            if (i.type == message::attribute_type_public_key)
+            {
+                public_key = i.value;
+                
+                break;
+            }
+        }
+    
+        log_debug(
+            "Node got public key pong messsage from " << ep <<
+            ", public_key = " << public_key << "."
         );
         
         /**
-         * Send the response.
+         * Check that the public key is not empty.
          */
-        send_message(ep, response);
+        if (public_key.size() > 0)
+        {
+            /**
+             * Derive the shared secret bytes from the remote public key.
+             */
+            auto bytes = m_ecdhe->derive_secret_key(public_key);
+
+            /**
+             * Hash the shared secret bytes.
+             */
+            whirlpool w(&bytes[0], bytes.size());
+            
+            /**
+             * Set the hash to the first 32 bytes of the hexidecimal
+             * representation of the digest.
+             */
+            auto shared_secret = w.to_string().substr(
+                0, whirlpool::digest_length / 2
+            );
+            
+            log_debug(
+                "Node calculated shared secret " << shared_secret <<
+                " for " << ep << "."
+            );
+        
+            /**
+             * Insert the shared secret into the key_pool.
+             */
+            m_key_pool->insert(ep, shared_secret);
+
+            /**
+             * Force a ping to be queued since we may have just tried before
+             * the handshake.
+             */
+            queue_ping(ep, true);
+        }
+        else
+        {
+            log_error("Node got empty public key in pong.");
+        }
+    }
+    else
+    {
+        log_debug("Node got public key pong from " << ep << ".");
     }
 }
 
@@ -1525,45 +1651,25 @@ void node_impl::handle_error_message(
     
     if (msg.string_attributes().size() > 0)
     {
-        auto message = msg.string_attributes().front().value;
+        /**
+         * Look for an message::attribute_type_error.
+         */
+        std::string error_message;
+        
+        for (auto & i : msg.string_attributes())
+        {
+            if (i.type == message::attribute_type_error)
+            {
+                error_message = i.value;
+                
+                break;
+            }
+        }
     
         log_debug(
             "Node got error messsage from " << ep << ", message = " <<
-            message << "."
+            error_message << "."
         );
-        
-        if (message == "418 I'm a teapot")
-        {        
-            if (msg.endpoint_attributes().size() > 0)
-            {
-                auto ep = msg.endpoint_attributes().front();
-
-                if (
-                    network::address_is_private(ep.value.address()) == false &&
-                    network::address_is_loopback(ep.value.address()) == false &&
-                    network::address_is_any(ep.value.address()) == false
-                    )
-                {
-                    std::lock_guard<std::recursive_mutex> l(
-                        public_endpoint_mutex_
-                    );
-
-                    /**
-                     * Set our public endpoint.
-                     */
-                    m_public_endpoint = ep.value;
-                    
-                    log_debug(
-                        "Node discovered public endpoint = " <<
-                        m_public_endpoint << "."
-                    );
-                }
-            }
-        }
-        else
-        {
-            // ...
-        }
     }
     else
     {

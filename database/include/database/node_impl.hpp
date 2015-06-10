@@ -40,8 +40,6 @@ namespace database {
     class operation_queue;
     class routing_table;
     class storage;
-    class tcp_acceptor;
-    class tcp_connector;
     class udp_handler;
     class udp_multiplexor;
     
@@ -83,10 +81,11 @@ namespace database {
             /**
              * Queues a ping operation in the routing table.
              * @param ep The boost::asio::ip::udp::endpoint.
-             * @param snodes The storage_node's.
+             * @param force_queue If true the ping will be forcefully queued.
              */
             void queue_ping(
-                const boost::asio::ip::udp::endpoint &
+                const boost::asio::ip::udp::endpoint &,
+                const bool & force_queue = false
             );
         
             /**
@@ -139,6 +138,11 @@ namespace database {
              * The ecdhe.
              */
             std::shared_ptr<ecdhe> & get_ecdhe();
+        
+            /**
+             * The key_pool.
+             */
+            std::shared_ptr<key_pool> & get_key_pool();
         
             /**
              * Sends the given message to the boost::asio::ip::udp::endpoint.
@@ -246,6 +250,24 @@ namespace database {
              * @param msg The message.
              */
             void handle_probe_message(
+                const boost::asio::ip::udp::endpoint & ep, message & msg
+            );
+        
+            /**
+             *
+             * @param ep The boost::asio::ip::udp::endpoint.
+             * @param msg The message.
+             */
+            void handle_public_key_ping_message(
+                const boost::asio::ip::udp::endpoint & ep, message & msg
+            );
+        
+            /**
+             *
+             * @param ep The boost::asio::ip::udp::endpoint.
+             * @param msg The message.
+             */
+            void handle_public_key_pong_message(
                 const boost::asio::ip::udp::endpoint & ep, message & msg
             );
         
