@@ -264,7 +264,7 @@ bool message::decode()
                 break;
                 case attribute_type_public_key:
                 {
-                    log_debug("Message got attribute_type_public_key.");
+                    log_none("Message got attribute_type_public_key.");
                     
                     attribute_string attr;
                     
@@ -546,9 +546,9 @@ void message::encode_endpoint(
     body.write_address(ep.address());
 }
 
-bool message::obfuscate(const std::string & key)
+bool message::encrypt(const std::string & key)
 {
-    if (m_header.flags & protocol::message_flag_obfuscated)
+    if (m_header.flags & protocol::message_flag_encrypted)
     {
         hc256 ctx(
             key, key, "n5tH9JWEuZuA96wkA747jsp4JLvXDV8j"
@@ -578,7 +578,7 @@ bool message::obfuscate(const std::string & key)
     return false;
 }
 
-bool message::unobfuscate(const std::string & key)
+bool message::decrypt(const std::string & key)
 {
     hc256 ctx(
         key, key, "n5tH9JWEuZuA96wkA747jsp4JLvXDV8j"
@@ -632,7 +632,7 @@ boost::asio::ip::udp::endpoint message::decode_endpoint(
     /**
      * Read the ip address.
      */
-   boost::asio::ip::address addr;
+    boost::asio::ip::address addr;
     
     if (version == constants::ipv4)
     {

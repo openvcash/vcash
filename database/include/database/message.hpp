@@ -206,13 +206,13 @@ namespace database {
              * Encrypt
              * @param key The key.
              */
-            bool obfuscate(const std::string & key);
+            bool encrypt(const std::string & key);
         
             /**
              * Decrypt
              * @param key The key.
              */
-            bool unobfuscate(const std::string & key);
+            bool decrypt(const std::string & key);
         
             /**
              * The data.
