@@ -12,6 +12,7 @@ LOCAL_CPPFLAGS := \
 	-w \
 	-fexceptions \
 	-frtti \
+	-O3 \
 	-D__ANDROID__ \
 	-D__arm_ \
 	-D__GLIBC__ \
@@ -53,7 +54,6 @@ LOCAL_SRC_FILES := \
 	../src/filesystem.cpp \
 	../src/gateway.cpp \
 	../src/globals.cpp \
-	../src/hash_scrypt.cpp \
 	../src/hash.cpp \
 	../src/http_transport.cpp \
 	../src/inventory_vector.cpp \
