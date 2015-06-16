@@ -35,6 +35,7 @@ if $(BOOST_ROOT)
 
 SOURCES =
 	block
+    broadcast_operation
 	compression
     ecdhe
 	entry

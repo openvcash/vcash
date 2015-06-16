@@ -26,6 +26,7 @@ LOCAL_C_INCLUDES := \
 
 LOCAL_SRC_FILES := \
 	../src/block.cpp \
+	../src/broadcast_operation.cpp \
 	../src/compression.cpp \
     ../src/ecdhe.cpp \
 	../src/entry.cpp \
