@@ -61,6 +61,7 @@ namespace database {
                 message_code_probe = 12,
                 message_code_public_key_ping = 13,
                 message_code_public_key_pong = 14,
+                message_code_broadcast = 22,
                 message_code_error = 0xfe,
             } message_code_t;
             
