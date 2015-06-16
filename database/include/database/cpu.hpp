@@ -1,9 +1,7 @@
 /*
- * Copyright (c) 2008-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2008-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
- *
- * coinpp is free software: you can redistribute it and/or modify
+ * This is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -18,8 +16,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef database_cpu_hpp
-#define database_cpu_hpp
+#ifndef DATABASE_CPU_HPP
+#define DATABASE_CPU_HPP
 
 #if (defined _MSC_VER)
 #include <boost/asio.hpp>
@@ -36,10 +34,16 @@
 
 namespace database {
 
+    /**
+     * Implements CPU utility functions.
+     */
     class cpu
     {
         public:
         
+            /**
+             * The frequency.
+             */
             static std::size_t frequency()
             {
                 std::size_t ret = -1;
@@ -128,4 +132,4 @@ namespace database {
     
 } // namespace database
 
-#endif // database_cpu_hpp
+#endif // DATABASE_CPU_HPP

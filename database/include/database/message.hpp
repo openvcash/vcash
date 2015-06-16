@@ -228,7 +228,7 @@ namespace database {
              * Runs test case.
              */
             static int run_test();
-            
+        
         private:
         
             /**

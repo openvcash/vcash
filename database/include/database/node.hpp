@@ -1,9 +1,7 @@
 /*
- * Copyright (c) 2008-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2008-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
- *
- * coinpp is free software: you can redistribute it and/or modify
+ * This is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -17,7 +15,7 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-
+ 
 #ifndef DATABASE_NODE_HPP
 #define DATABASE_NODE_HPP
 
@@ -79,18 +77,6 @@ namespace database {
             std::uint16_t find(const std::string &, const std::size_t &);
         
             /**
-             * Performs a (tcp) proxy operation given endpoint and buffer.
-             * @param addr The address.
-             * @param port The port.
-             * @param buf The buffer.
-             * @param len The length.
-             */
-            std::uint16_t proxy(
-                const char * addr, const std::uint16_t & port,
-                const char * buf, const std::size_t & len
-            );
-        
-            /**
              * Returns all of the endpoints in the routing table.
              */
             std::list< std::pair<std::string, std::uint16_t> > endpoints();
@@ -115,18 +101,6 @@ namespace database {
             void on_find(
                 const std::uint16_t & transaction_id,
                 const std::string & query_string
-            );
-        
-            /**
-             * Called when a proxy (response) is received.
-             * @param tid The transaction identifier.
-             * @param ep The boost::asio::ip::tcp::endpoint.
-             * @param value The value.
-             */
-            void on_proxy(
-                const std::uint16_t & tid,
-                const boost::asio::ip::tcp::endpoint & ep,
-                const std::string & value
             );
         
             /**

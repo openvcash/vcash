@@ -81,7 +81,7 @@ namespace database {
                 message_flag_0x02 = 0x02,
                 message_flag_dontroute = 0x04,
                 message_flag_compressed = 0x08,
-                message_flag_obfuscated = 0x10,
+                message_flag_encrypted = 0x10,
                 message_flag_0x20 = 0x20,
                 message_flag_0x40 = 0x40,
                 message_flag_0x80 = 0x80,

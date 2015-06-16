@@ -1,9 +1,7 @@
 /*
- * Copyright (c) 2008-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2008-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
- *
- * coinpp is free software: you can redistribute it and/or modify
+ * This is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -18,8 +16,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef database_slot_hpp
-#define database_slot_hpp
+#ifndef DATABASE_SLOT_HPP
+#define DATABASE_SLOT_HPP
 
 #include <chrono>
 #include <cstdint>
@@ -42,6 +40,8 @@ namespace database {
         
             /**
              * The update interval.
+             * Warning, lower numbers significantly increase overall network
+             * traffic.
              */
             enum { update_interval = 256 };
         
@@ -158,16 +158,22 @@ namespace database {
             static std::int32_t id(const std::string &);
         
             /**
-             * Generates an id associated with the input boost::asio::ip::udp::endpoint.
+             * Generates an id associated with the input
+             * boost::asio::ip::udp::endpoint.
              * @param ep The boost::asio::ip::udp::endpoint.
              */
-            static std::int32_t id_from_endpoint(const boost::asio::ip::udp::endpoint &);
+            static std::int32_t id_from_endpoint(
+                const boost::asio::ip::udp::endpoint &
+            );
         
             /**
-             * Generates an id associated with the input boost::asio::ip::udp::endpoint.
+             * Generates an id associated with the input
+             * boost::asio::ip::udp::endpoint.
              * @param ep The boost::asio::ip::udp::endpoint.
              */
-            static std::int32_t id_from_endpoint2(const boost::asio::ip::udp::endpoint &);
+            static std::int32_t id_from_endpoint2(
+                const boost::asio::ip::udp::endpoint &
+            );
         
             /**
              * The minimum node count.
@@ -222,7 +228,9 @@ namespace database {
             /**
              * The storage nodes.
              */
-            std::map<boost::asio::ip::udp::endpoint, storage_node> m_storage_nodes;
+            std::map<
+                boost::asio::ip::udp::endpoint, storage_node
+            > m_storage_nodes;
         
         protected:
         
@@ -281,4 +289,4 @@ namespace database {
     
 } // namespace database
 
-#endif
+#endif // DATABASE_SLOT_HPP
