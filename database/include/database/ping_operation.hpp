@@ -49,8 +49,8 @@ namespace database {
              */
             explicit ping_operation(
                 boost::asio::io_service &, const std::uint16_t & transaction_id,
-                std::shared_ptr<operation_queue> &,
-                std::shared_ptr<node_impl>, const boost::asio::ip::udp::endpoint &,
+                std::shared_ptr<operation_queue> &, std::shared_ptr<node_impl>,
+                const boost::asio::ip::udp::endpoint &,
                 const std::vector<storage_node> &
             );
             

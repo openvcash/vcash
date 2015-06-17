@@ -118,6 +118,13 @@ namespace database {
             const std::set<std::uint16_t> & message_tids() const;
         
             /**
+             * The storage nodes.
+             */
+            const
+                std::set<boost::asio::ip::udp::endpoint> & storage_nodes() const
+            ;
+        
+            /**
              * Called when a response is received.
              * @param msg The message.
              * @param done If true the operation must not continue processing

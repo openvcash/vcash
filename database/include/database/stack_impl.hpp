@@ -90,21 +90,15 @@ namespace database {
             std::uint16_t find(const std::string &, const std::size_t &);
         
             /**
+             * Performs a broadcast operation.
+             * @param buffer The buffer.
+             */
+            std::uint16_t broadcast(const std::vector<std::uint8_t> &);
+            
+            /**
              * Returns all of the endpoints in the routing table.
              */
             std::list< std::pair<std::string, std::uint16_t> > endpoints();
-        
-            /**
-             * Called when connected to the network.
-             * @param ep The boost::asio::ip::tcp::endpoint.
-             */
-            void on_connected(const boost::asio::ip::tcp::endpoint & ep);
-        
-            /**
-             * Called when disconnected from the network.
-             * @param ep The boost::asio::ip::tcp::endpoint.
-             */
-            void on_disconnected(const boost::asio::ip::tcp::endpoint & ep);
         
             /**
              * Called when a search result is received.

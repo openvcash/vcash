@@ -45,6 +45,7 @@ namespace database {
                 attribute_type_endpoint = 16,
                 attribute_type_public_key = 18,
                 attribute_type_storage_query = 32,
+                attribute_type_broadcast_buffer = 36,
                 attribute_type_reserved_128 = 128,
                 attribute_type_stats_udp_bps_outbound = 132,
                 attribute_type_stats_udp_bps_inbound = 133,
@@ -63,6 +64,11 @@ namespace database {
                     std::uint16_t length;
                     T value;
             };
+        
+            /**
+             * Implements a binary attribute.
+             */
+            typedef attribute< std::vector<std::uint8_t> > attribute_binary;
         
             /**
              * Implements a string attribute.
@@ -136,6 +142,11 @@ namespace database {
              * The sourceboost::asio::ip::udp::endpoint.
              */
             const boost::asio::ip::udp::endpoint & source_endpoint() const;
+        
+            /**
+             * The binary attributes.
+             */
+            std::vector<attribute_binary> & binary_attributes();
         
             /**
              * The string attributes.
@@ -240,6 +251,11 @@ namespace database {
              * The sourceboost::asio::ip::udp::endpoint.
              */
             boost::asio::ip::udp::endpoint m_source_endpoint;
+        
+            /**
+             * The binary attributes.
+             */
+            std::vector<attribute_binary> m_binary_attributes;
         
             /**
              * The string attributes.

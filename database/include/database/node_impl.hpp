@@ -102,6 +102,12 @@ namespace database {
             std::uint16_t find(const std::string &, const std::size_t &);
         
             /**
+             * Performs a broadcast operation.
+             * @param buffer The buffer.
+             */
+            std::uint16_t broadcast(const std::vector<std::uint8_t> &);
+            
+            /**
              * Returns all of the endpoints in the routing table.
              */
             std::list< std::pair<std::string, std::uint16_t> > endpoints();
@@ -268,6 +274,15 @@ namespace database {
              * @param msg The message.
              */
             void handle_public_key_pong_message(
+                const boost::asio::ip::udp::endpoint & ep, message & msg
+            );
+        
+            /**
+             *
+             * @param ep The boost::asio::ip::udp::endpoint.
+             * @param msg The message.
+             */
+            void handle_broadcast_message(
                 const boost::asio::ip::udp::endpoint & ep, message & msg
             );
         
