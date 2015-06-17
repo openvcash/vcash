@@ -108,6 +108,13 @@ namespace database {
             );
         
             /**
+             * Returns a random storage node from each slot.
+             */
+            std::set<boost::asio::ip::udp::endpoint>
+                random_storage_node_from_each_slot()
+            ;
+        
+            /**
              * Returns all slot id's that are responsible for the given query.
              * @param query_string The query string.
              */
