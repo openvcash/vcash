@@ -1,9 +1,8 @@
+
 /*
- * Copyright (c) 2008-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2008-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
- *
- * coinpp is free software: you can redistribute it and/or modify
+ * This is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -17,7 +16,7 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-
+ 
 #include <set>
 #include <thread>
 
@@ -52,7 +51,7 @@ void stack_impl::start(const stack::configuration & config)
     m_node->start(config);
     
     /**
-     * Optimal operation requires only is a single thread.
+     * Calculate the number of threads.
      */
     std::size_t threads = 1;
     
@@ -195,16 +194,13 @@ std::uint16_t stack_impl::find(
     return 0;
 }
 
-std::uint16_t stack_impl::proxy(
-    const char * addr, const std::uint16_t & port, const char * buf,
-    const std::size_t & len
-    )
+std::uint16_t stack_impl::broadcast(const std::vector<std::uint8_t> & buffer)
 {
     std::lock_guard<std::recursive_mutex> l(mutex_);
     
     if (m_node.get())
     {
-        return m_node->proxy(addr, port, buf, len);
+        return m_node->broadcast(buffer);
     }
     
     return 0;
@@ -220,20 +216,6 @@ std::list< std::pair<std::string, std::uint16_t> > stack_impl::endpoints()
     return std::list< std::pair<std::string, std::uint16_t> > ();
 }
 
-void stack_impl::on_connected(const boost::asio::ip::tcp::endpoint & ep)
-{
-    std::lock_guard<std::recursive_mutex> l(mutex_);
-    
-    stack_.on_connected(ep.address().to_string().c_str(), ep.port());
-}
-
-void stack_impl::on_disconnected(const boost::asio::ip::tcp::endpoint & ep)
-{
-    std::lock_guard<std::recursive_mutex> l(mutex_);
-    
-    stack_.on_disconnected(ep.address().to_string().c_str(), ep.port());
-}
-
 void stack_impl::on_find(
     const std::uint16_t & transaction_id, const std::string & query_string
     )
@@ -241,16 +223,6 @@ void stack_impl::on_find(
     std::lock_guard<std::recursive_mutex> l(mutex_);
     
     stack_.on_find(transaction_id, query_string);
-}
-
-void stack_impl::on_proxy(
-    const std::uint16_t & tid, const char * addr, const std::uint16_t & port,
-    const std::string & value
-    )
-{
-    std::lock_guard<std::recursive_mutex> l(mutex_);
-    
-    stack_.on_proxy(tid, addr, port, value);
 }
 
 void stack_impl::on_udp_receive(

@@ -19,6 +19,7 @@
 #include <random>
 
 #include <database/block.hpp>
+#include <database/broadcast_operation.hpp>
 #include <database/constants.hpp>
 #include <database/ecdhe.hpp>
 #include <database/entry.hpp>
@@ -400,6 +401,44 @@ std::uint16_t node_impl::find(
     return ret;
 }
 
+std::uint16_t node_impl::broadcast(const std::vector<std::uint8_t> & buffer)
+{
+    std::uint16_t ret = operation::next_transaction_id();
+
+    io_service_.post(strand_.wrap(std::bind([this, ret, buffer]
+    {
+        /**
+         * Get a random storage node from each slot in the system.
+         */
+        auto snodes = routing_table_->random_storage_node_from_each_slot();
+
+        if (snodes.size() == 0)
+        {
+            log_error(
+                "Node attempted broadcast operation but no endpoints were "
+                "found."
+            );
+        }
+        else
+        {
+            /**
+             * Allocate the broadcast_operation.
+             */
+            std::shared_ptr<broadcast_operation> op(
+                new broadcast_operation(io_service_, ret, operation_queue_,
+                shared_from_this(), snodes, buffer)
+            );
+            
+            /**
+             * Insert the broadcast_operation into the operation_queue.
+             */
+            operation_queue_->insert(op);
+        }
+    })));
+    
+    return ret;
+}
+
 std::list< std::pair<std::string, std::uint16_t> > node_impl::endpoints()
 {
     std::list< std::pair<std::string, std::uint16_t> > ret;
@@ -530,6 +569,11 @@ void node_impl::handle_message(
                 case protocol::message_code_public_key_pong:
                 {
                     handle_public_key_pong_message(ep, msg);
+                }
+                break;
+                case protocol::message_code_broadcast:
+                {
+                    handle_broadcast_message(ep, msg);
                 }
                 break;
                 case protocol::message_code_error:
@@ -1456,6 +1500,32 @@ void node_impl::handle_public_key_ping_message(
      * routing table.
      */
     
+    if (msg.endpoint_attributes().size() > 0)
+    {
+        auto ep = msg.endpoint_attributes().front();
+
+        if (
+            network::address_is_private(ep.value.address()) == false &&
+            network::address_is_loopback(ep.value.address()) == false &&
+            network::address_is_any(ep.value.address()) == false
+            )
+        {
+            std::lock_guard<std::recursive_mutex> l(
+                public_endpoint_mutex_
+            );
+
+            /**
+             * Set our public endpoint.
+             */
+            m_public_endpoint = ep.value;
+            
+            log_info(
+                "Node discovered public endpoint = " << m_public_endpoint <<
+                "."
+            );
+        }
+    }
+    
     if (msg.string_attributes().size() > 0)
     {
         /**
@@ -1630,6 +1700,95 @@ void node_impl::handle_public_key_pong_message(
     else
     {
         log_debug("Node got public key pong from " << ep << ".");
+    }
+}
+
+void node_impl::handle_broadcast_message(
+    const boost::asio::ip::udp::endpoint & ep, message & msg
+    )
+{
+    /**
+     * :TODO: If hops is greater >= 1 then drop the message or if two
+     * broadcast messages arrive from a single endpoint less than N seconds
+     * apart drop the second message. Apply ban score to obvious abusers.
+     */
+
+    if (msg.header_flags() & protocol::message_flag_dontroute)
+    {
+        // ...
+    }
+    else
+    {
+        /**
+         * Update the routing table.
+         */
+        routing_table_->update(ep, msg.header_transaction_id());
+    }
+    
+    if (msg.binary_attributes().size() > 0)
+    {
+        auto attr = msg.binary_attributes().front();
+        
+        /**
+         * Do not allow broadcast messages with buffer's larger than 2048 bytes.
+         */
+        if (attr.value.size() <= 2048)
+        {
+            /**
+             * Callback
+             */
+            #warning :TODO: Pass buffer to application level.
+            
+            /**
+             * If we are operating in interface mode we process the broadcast
+             * message but do not forward it.
+             */
+            if (
+                m_config.operation_mode() ==
+                stack::configuration::operation_mode_interface
+                )
+            {
+                // ...
+            }
+            else
+            {
+                #warning :TODO: Forward the message to all storage nodes in my slot.
+            }
+            
+            /**
+             * Allocate the messsage.
+             */
+            std::shared_ptr<message> response(
+                new message(protocol::message_code_ack,
+                msg.header_transaction_id())
+            );
+            
+            /**
+             * Send the response.
+             */
+            send_message(ep, response);
+        }
+        else
+        {
+            /**
+             * Silently drop the message.
+             */
+        }
+    }
+    else
+    {
+        /**
+         * Allocate the messsage.
+         */
+        std::shared_ptr<message> response(
+            new message(protocol::message_code_nack,
+            msg.header_transaction_id())
+        );
+        
+        /**
+         * Send the response.
+         */
+        send_message(ep, response);
     }
 }
 

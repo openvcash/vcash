@@ -98,6 +98,11 @@ const boost::asio::ip::udp::endpoint & message::source_endpoint() const
     return m_source_endpoint;
 }
 
+std::vector<message::attribute_binary> & message::binary_attributes()
+{
+    return m_binary_attributes;
+}
+
 std::vector<message::attribute_string> & message::string_attributes()
 {
     return m_string_attributes;
@@ -120,7 +125,25 @@ bool message::encode()
     /**
      * Encode the attributes.
      */
-     
+    
+    for (auto & i : m_binary_attributes)
+    {
+        attributes.write_uint16(i.type);
+        attributes.write_uint16(i.length);
+        attributes.write_bytes(
+            reinterpret_cast<const char *> (&i.value[0]), i.value.size()
+        );
+
+        std::uint16_t padding = i.length % 4 == 0 ?
+            0 : 4 - (i.length % 4)
+        ;
+        
+        for (auto i = 0; i < padding; i++)
+        {
+            attributes.write_uint8(0);
+        }
+    }
+    
     for (auto & i : m_string_attributes)
     {
         attributes.write_uint16(i.type);
@@ -260,6 +283,25 @@ bool message::decode()
                     log_none(attr.value);
                     
                     m_endpoint_attributes.push_back(attr);
+                }
+                break;
+                break;
+                case attribute_type_broadcast_buffer:
+                {
+                    log_none("Message got attribute_type_broadcast_buffer.");
+                    
+                    attribute_binary attr;
+                    
+                    attr.type = attribute_type;
+                    attr.length = attribute_length;
+                    attr.value.resize(attribute_length);
+                    
+                    byte_buffer_.read_bytes(
+                        reinterpret_cast<char *> (&attr.value[0]),
+                        attribute_length
+                    );
+                    
+                    m_binary_attributes.push_back(attr);
                 }
                 break;
                 case attribute_type_public_key:

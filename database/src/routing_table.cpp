@@ -423,6 +423,38 @@ std::set<boost::asio::ip::udp::endpoint> routing_table::storage_nodes_for_query(
     return ret;
 }
 
+std::set<boost::asio::ip::udp::endpoint>
+    routing_table::random_storage_node_from_each_slot()
+{
+    std::set<boost::asio::ip::udp::endpoint> ret;
+    
+    for (auto & i : m_blocks)
+    {
+        for (auto & j : i->slots())
+        {
+            if (j->storage_nodes().size() > 0)
+            {
+                /**
+                 * Take a random storage node from this slot.
+                 */
+                ret.insert(
+                    j->storage_nodes()[std::rand() %
+                    (j->storage_nodes().size() - 1)].endpoint
+                );
+
+                break;
+            }
+        }
+    }
+    
+    if (ret.size() > slot::length)
+    {
+        assert("invalid number of storage nodes");
+    }
+    
+    return ret;
+}
+
 std::set<std::uint16_t> routing_table::slot_ids_for_query(
     const std::string & query_string
     )
@@ -620,6 +652,9 @@ void routing_table::queue_ping(
 
     bool should_queue = false;
 
+    /**
+     * To force queue simply erase the ping queue time for the endpoint.
+     */
     if (force_queue)
     {
         ping_queue_times_.erase(ep);

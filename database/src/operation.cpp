@@ -1,9 +1,7 @@
 /*
- * Copyright (c) 2008-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2008-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
- *
- * coinpp is free software: you can redistribute it and/or modify
+ * This is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -165,6 +163,12 @@ const std::set<std::uint16_t> & operation::message_tids() const
     return m_message_tids;
 }
 
+const std::set<boost::asio::ip::udp::endpoint> &
+    operation::storage_nodes() const
+{
+    return m_storage_nodes;
+}
+
 void operation::run(const boost::system::error_code & ec)
 {
     if (ec)
@@ -179,8 +183,8 @@ void operation::run(const boost::system::error_code & ec)
             std::lock_guard<std::recursive_mutex> l2(rpcs_mutex_);
 
             /**
-             * Continue to probe contacts while there are unprobed and the number of
-             * inflight contacts is less than alpha.
+             * Continue to probe contacts while there are unprobed and the
+             * number of inflight contacts is less than alpha.
              */
             while (!unprobed_.empty() && m_rpcs.size() < 3)
             {

@@ -103,16 +103,28 @@ bool udp_handler::on_async_receive_from(
                     );
                     
                     /**
+                     * Add their public endpoint as a
+                     * message::attribute_type_endpoint.
+                     */
+                    message::attribute_endpoint attr1;
+                    
+                    attr1.type = message::attribute_type_endpoint;
+                    attr1.length = 0;
+                    attr1.value = ep;
+                    
+                    request->endpoint_attributes().push_back(attr1);
+                    
+                    /**
                      * Add our public key as a message::attribute_string of
                      * type message::attribute_type_public_key.
                      */
-                    message::attribute_string attr3;
+                    message::attribute_string attr2;
                     
-                    attr3.type = message::attribute_type_public_key;
-                    attr3.length = n->get_ecdhe()->public_key().size();
-                    attr3.value = n->get_ecdhe()->public_key();
+                    attr2.type = message::attribute_type_public_key;
+                    attr2.length = n->get_ecdhe()->public_key().size();
+                    attr2.value = n->get_ecdhe()->public_key();
                     
-                    request->string_attributes().push_back(attr3);
+                    request->string_attributes().push_back(attr2);
                     
                     /**
                      * Send the request.
@@ -228,6 +240,26 @@ void udp_handler::send_message(
                             msg->encrypt(shared_secret)
                             )
                         {
+#if 1 // Test to see what size certain packets are.
+                            if (
+                                msg->header_code() == protocol::message_code_ack
+                                )
+                            {
+                                log_debug(
+                                    "UDP ACK: " << ep << ", BYTES: " <<
+                                    msg->size()
+                                );
+                            }
+                            else if (
+                                msg->header_code() == protocol::message_code_ping
+                                )
+                            {
+                                log_debug(
+                                    "UDP PING:" << ep << ", BYTES: " <<
+                                    msg->size()
+                                );
+                            }
+#endif
                             /**
                              * Send the message.
                              */
@@ -260,19 +292,31 @@ void udp_handler::send_message(
                                     protocol::message_flag_dontroute)
                                 );
                             }
+                            
+                            /**
+                             * Add their public endpoint as a
+                             * message::attribute_type_endpoint.
+                             */
+                            message::attribute_endpoint attr1;
+                            
+                            attr1.type = message::attribute_type_endpoint;
+                            attr1.length = 0;
+                            attr1.value = ep;
+                            
+                            request->endpoint_attributes().push_back(attr1);
             
                             /**
                              * Add our public key as a
                              * message::attribute_string of type
                              * message::attribute_type_public_key.
                              */
-                            message::attribute_string attr1;
+                            message::attribute_string attr2;
                             
-                            attr1.type = message::attribute_type_public_key;
-                            attr1.length = n->get_ecdhe()->public_key().size();
-                            attr1.value = n->get_ecdhe()->public_key();
+                            attr2.type = message::attribute_type_public_key;
+                            attr2.length = n->get_ecdhe()->public_key().size();
+                            attr2.value = n->get_ecdhe()->public_key();
                             
-                            request->string_attributes().push_back(attr1);
+                            request->string_attributes().push_back(attr2);
                             
                             /**
                              * Compress the attributes if needed.

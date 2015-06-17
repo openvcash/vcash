@@ -1,9 +1,7 @@
 /*
- * Copyright (c) 2008-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2008-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
- *
- * coinpp is free software: you can redistribute it and/or modify
+ * This is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -101,7 +99,7 @@ std::map<std::string, std::string> & query::pairs_public()
     return m_pairs_public;
 }
 
-const char HEX2DEC[256] = 
+const char g_hex_2_dec[256] =
 {
     /*       0  1  2  3   4  5  6  7   8  9  A  B   C  D  E  F */
     /* 0 */ -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
@@ -125,89 +123,90 @@ const char HEX2DEC[256] =
     /* F */ -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1
 };
     
-std::string query::uri_decode(const std::string & src)
+std::string query::uri_decode(const std::string & sSrc)
 {
-    const std::uint8_t * ptr_src = (const std::uint8_t *)src.c_str();
-	const int SRC_LEN = src.length();
-    const std::uint8_t * SRC_END = ptr_src + SRC_LEN;
-    const std::uint8_t * SRC_LAST_DEC = SRC_END - 2;
-
-    std::unique_ptr<char> ptr_start(new char[SRC_LEN]);
+    // Note from RFC1630:  "Sequences which start with a percent sign
+    // but are not followed by two hexadecimal characters (0-9, A-F) are reserved
+    // for future extension"
     
-    char * pEnd = ptr_start.get();
+    const std::uint8_t * pSrc = (const std::uint8_t *)sSrc.c_str();
+	const int SRC_LEN = sSrc.length();
+    const std::uint8_t * SRC_END = pSrc + SRC_LEN;
+    const std::uint8_t * SRC_LAST_DEC = SRC_END - 2;   // last decodable '%' 
 
-    while (ptr_src < SRC_LAST_DEC)
+    std::unique_ptr<char> pStart(new char[SRC_LEN]);
+    
+    char * pEnd = pStart.get();
+
+    while (pSrc < SRC_LAST_DEC)
 	{
-		if (*ptr_src == '%')
+		if (*pSrc == '%')
         {
             char dec1, dec2;
-            if (-1 != (dec1 = HEX2DEC[*(ptr_src + 1)])
-                && -1 != (dec2 = HEX2DEC[*(ptr_src + 2)]))
+            if (-1 != (dec1 = g_hex_2_dec[*(pSrc + 1)])
+                && -1 != (dec2 = g_hex_2_dec[*(pSrc + 2)]))
             {
                 *pEnd++ = (dec1 << 4) + dec2;
-                ptr_src += 3;
+                pSrc += 3;
                 continue;
             }
         }
 
-        *pEnd++ = *ptr_src++;
+        *pEnd++ = *pSrc++;
 	}
 
     // the last 2- chars
-    while (ptr_src < SRC_END)
+    while (pSrc < SRC_END)
     {
-        *pEnd++ = *ptr_src++;
+        *pEnd++ = *pSrc++;
     }
 
-	return std::string(ptr_start.get(), pEnd);
+	return std::string(pStart.get(), pEnd);
 }
 
-const char SAFE[256] =
+const char g_safe[256] =
 {
-    /*      0 1 2 3  4 5 6 7  8 9 A B  C D E F */
+    /* 0 1 2 3  4 5 6 7  8 9 A B  C D E F */
     /* 0 */ 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
     /* 1 */ 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
     /* 2 */ 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
     /* 3 */ 1,1,1,1, 1,1,1,1, 1,1,0,0, 0,0,0,0,
-    
     /* 4 */ 0,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1,
     /* 5 */ 1,1,1,1, 1,1,1,1, 1,1,1,0, 0,0,0,0,
     /* 6 */ 0,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1,
     /* 7 */ 1,1,1,1, 1,1,1,1, 1,1,1,0, 0,0,0,0,
-    
     /* 8 */ 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
     /* 9 */ 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
     /* A */ 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
     /* B */ 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
-    
     /* C */ 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
     /* D */ 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
     /* E */ 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
     /* F */ 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0
 };
 
-std::string query::uri_encode(const std::string & src)
+std::string query::uri_encode(const std::string & val)
 {
-    const char DEC2HEX[16 + 1] = "0123456789ABCDEF";
-    const std::uint8_t * ptr_src = (const std::uint8_t *)src.c_str();
-    const int SRC_LEN = src.length();
-    std::unique_ptr<char> ptr_start(new char[SRC_LEN * 3]);
-    char * pEnd = ptr_start.get();
-    const std::uint8_t * const SRC_END = ptr_src + SRC_LEN;
+    const char dec_2_hex[16 + 1] = "0123456789ABCDEF";
+    const std::uint8_t * ptr_src = (const std::uint8_t *)val.c_str();
+    const int len_src = val.length();
+    std::unique_ptr<char> ptr_start(new char[len_src * 3]);
+    char * ptr_end = ptr_start.get();
+    const std::uint8_t * const ptr_src_end = ptr_src + len_src;
 
-    for (; ptr_src < SRC_END; ++ptr_src)
+    for (; ptr_src < ptr_src_end; ++ptr_src)
 	{
-		if (SAFE[*ptr_src])
+		if (g_safe[*ptr_src])
         {
-            *pEnd++ = *ptr_src;
+            *ptr_end++ = *ptr_src;
         }
         else
         {
-            *pEnd++ = '%';
-            *pEnd++ = DEC2HEX[*ptr_src >> 4];
-            *pEnd++ = DEC2HEX[*ptr_src & 0x0F];
+            *ptr_end++ = '%';
+            *ptr_end++ = dec_2_hex[*ptr_src >> 4];
+            *ptr_end++ = dec_2_hex[*ptr_src & 0x0F];
         }
 	}
 
-    return std::string((char *)ptr_start.get(), (char *)pEnd);
+    return std::string((char *)ptr_start.get(), (char *)ptr_end);
 }

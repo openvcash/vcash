@@ -88,7 +88,8 @@ std::shared_ptr<message> find_operation::next_message(
     /**
      * 0 for slot level accuracy, 1 for block level accuracy.
      */
-#if 1
+#define FIND_USE_BLOCK_LEVEL_ACCURACY 1
+#if (defined FIND_USE_BLOCK_LEVEL_ACCURACY && FIND_USE_BLOCK_LEVEL_ACCURACY)
     if (found_block)
 #else
     bool found_slot = false;
