@@ -268,91 +268,105 @@ void udp_handler::send_message(
                         else
                         {
                             /**
-                             * Allocate the
-                             * protocol::message_code_public_key_ping.
+                             * Send the ECDHE.
                              */
-                            std::shared_ptr<message> request(
-                                new message(
-                                protocol::message_code_public_key_ping)
-                            );
-                            
-                            /**
-                             * If we are operating in interface mode we must
-                             * set the message header flag DONTROUTE so that
-                             * other nodes do not add us to their routing table.
-                             */
-                            if (
-                                n->config().operation_mode() ==
-                                stack::configuration::operation_mode_interface
-                                )
-                            {
-                                request->set_header_flags(
-                                    static_cast<protocol::message_flag_t> (
-                                    request->header_flags() |
-                                    protocol::message_flag_dontroute)
-                                );
-                            }
-                            
-                            /**
-                             * Add their public endpoint as a
-                             * message::attribute_type_endpoint.
-                             */
-                            message::attribute_endpoint attr1;
-                            
-                            attr1.type = message::attribute_type_endpoint;
-                            attr1.length = 0;
-                            attr1.value = ep;
-                            
-                            request->endpoint_attributes().push_back(attr1);
-            
-                            /**
-                             * Add our public key as a
-                             * message::attribute_string of type
-                             * message::attribute_type_public_key.
-                             */
-                            message::attribute_string attr2;
-                            
-                            attr2.type = message::attribute_type_public_key;
-                            attr2.length = n->get_ecdhe()->public_key().size();
-                            attr2.value = n->get_ecdhe()->public_key();
-                            
-                            request->string_attributes().push_back(attr2);
-                            
-                            /**
-                             * Compress the attributes if needed.
-                             */
-                            if (
-                                request->string_attributes().size() > 0 ||
-                                request->endpoint_attributes().size() > 1 ||
-                                request->uint32_attributes().size() > 1
-                                )
+                            if (n->get_ecdhe())
                             {
                                 /**
-                                 * Set the compressed flag.
+                                 * Allocate the
+                                 * protocol::message_code_public_key_ping.
                                  */
-                                request->set_header_flags(
-                                    static_cast<protocol::message_flag_t> (
-                                    request->header_flags() |
-                                    protocol::message_flag_compressed)
+                                std::shared_ptr<message> request(
+                                    new message(
+                                    protocol::message_code_public_key_ping)
                                 );
-                            }
-            
-                            /**
-                             * Encode the request.
-                             */
-                            if (request->encode())
-                            {
+                                
                                 /**
-                                 * Send the request.
+                                 * If we are operating in interface mode we
+                                 * must set the message header flag DONTROUTE
+                                 * so that other nodes do not add us to their
+                                 * routing table.
                                  */
-                                send_to(ep, request->data(), request->size());
-                            }
-                            else
-                            {
-                                log_error(
-                                    "UDP handler failed to encode message "
-                                    "(protocol::message_code_public_key_ping)."
-                                );
+                                if (
+                                    n->config().operation_mode() ==
+                                    stack::configuration::operation_mode_interface
+                                    )
+                                {
+                                    request->set_header_flags(
+                                        static_cast<protocol::message_flag_t> (
+                                        request->header_flags() |
+                                        protocol::message_flag_dontroute)
+                                    );
+                                }
+                            
+                                /**
+                                 * Add their public endpoint as a
+                                 * message::attribute_type_endpoint.
+                                 */
+                                message::attribute_endpoint attr1;
+                                
+                                attr1.type = message::attribute_type_endpoint;
+                                attr1.length = 0;
+                                attr1.value = ep;
+                                
+                                request->endpoint_attributes().push_back(attr1);
+                
+                                /**
+                                 * Add our public key as a
+                                 * message::attribute_string of type
+                                 * message::attribute_type_public_key.
+                                 */
+                                message::attribute_string attr2;
+                                
+                                attr2.type =
+                                    message::attribute_type_public_key
+                                ;
+                                attr2.length =
+                                    n->get_ecdhe()->public_key().size()
+                                ;
+                                attr2.value = n->get_ecdhe()->public_key();
+                                
+                                request->string_attributes().push_back(attr2);
+                                
+                                /**
+                                 * Compress the attributes if needed.
+                                 */
+                                if (
+                                    request->string_attributes().size() > 0 ||
+                                    request->endpoint_attributes().size() > 1 ||
+                                    request->uint32_attributes().size() > 1
+                                    )
+                                {
+                                    /**
+                                     * Set the compressed flag.
+                                     */
+                                    request->set_header_flags(
+                                        static_cast<protocol::message_flag_t> (
+                                        request->header_flags() |
+                                        protocol::message_flag_compressed)
+                                    );
+                                }
+                
+                                /**
+                                 * Encode the request.
+                                 */
+                                if (request->encode())
+                                {
+                                    /**
+                                     * Send the request.
+                                     */
+                                    send_to(
+                                        ep, request->data(), request->size()
+                                    );
+                                }
+                                else
+                                {
+                                    log_error(
+                                        "UDP handler failed to encode message "
+                                        "(protocol::"
+                                        "message_code_public_key_ping)."
+                                    );
+                                }
                             }
                         }
                     }

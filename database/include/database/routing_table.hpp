@@ -121,6 +121,12 @@ namespace database {
             std::set<std::uint16_t> slot_ids_for_query(const std::string &);
         
             /**
+             * Returns the responsible slot for the given slot id.
+             * @param slot_id The slot id.
+             */
+            std::shared_ptr<slot> slot_for_id(const std::uint16_t & slot_id);
+        
+            /**
              * Returns the responsible slots for the given slot id.
              * @param slot_id The slot id.
              */

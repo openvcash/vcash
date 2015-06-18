@@ -53,6 +53,7 @@ node_impl::node_impl(boost::asio::io_service & ios, node & owner)
     : node_(owner)
     , io_service_(ios)
     , strand_(ios)
+    , timer_maintenance_(ios)
 {
     // ...
 }
@@ -181,6 +182,15 @@ void node_impl::start(const stack::configuration & config)
     );
     
     log_debug("Node local endpoint = " << m_public_endpoint << ".");
+    
+    /**
+     * Start the maintenance timer.
+     */
+    timer_maintenance_.expires_from_now(std::chrono::seconds(8));
+    timer_maintenance_.async_wait(
+        strand_.wrap(std::bind(&node_impl::maintenance_tick, shared_from_this(),
+        std::placeholders::_1))
+    );
 }
 
 void node_impl::stop()
@@ -241,6 +251,11 @@ void node_impl::stop()
     {
         udp_handler_->stop();
     }
+    
+    /**
+     * Stop the maintenance timer.
+     */
+    timer_maintenance_.cancel();
     
     log_debug("Node is stopped.");
 }
@@ -1503,12 +1518,12 @@ void node_impl::handle_public_key_ping_message(
     if (msg.endpoint_attributes().size() > 0)
     {
         auto ep = msg.endpoint_attributes().front();
-
-        if (
-            network::address_is_private(ep.value.address()) == false &&
-            network::address_is_loopback(ep.value.address()) == false &&
-            network::address_is_any(ep.value.address()) == false
-            )
+// :TODO: Re-enable after testing.
+//        if (
+//            network::address_is_private(ep.value.address()) == false &&
+//            network::address_is_loopback(ep.value.address()) == false &&
+//            network::address_is_any(ep.value.address()) == false
+//            )
         {
             std::lock_guard<std::recursive_mutex> l(
                 public_endpoint_mutex_
@@ -1708,87 +1723,187 @@ void node_impl::handle_broadcast_message(
     )
 {
     /**
-     * :TODO: If hops is greater >= 1 then drop the message or if two
-     * broadcast messages arrive from a single endpoint less than N seconds
-     * apart drop the second message. Apply ban score to obvious abusers.
+     * If we are operating in interface mode we ignore all broadcast messages.
      */
-
-    if (msg.header_flags() & protocol::message_flag_dontroute)
+    if (
+        m_config.operation_mode() ==
+        stack::configuration::operation_mode_interface
+        )
     {
         // ...
     }
     else
     {
-        /**
-         * Update the routing table.
-         */
-        routing_table_->update(ep, msg.header_transaction_id());
-    }
-    
-    if (msg.binary_attributes().size() > 0)
-    {
-        auto attr = msg.binary_attributes().front();
-        
-        /**
-         * Do not allow broadcast messages with buffer's larger than 2048 bytes.
-         */
-        if (attr.value.size() <= 2048)
+        if (msg.header_flags() & protocol::message_flag_dontroute)
         {
-            /**
-             * Callback
-             */
-            #warning :TODO: Pass buffer to application level.
-            
-            /**
-             * If we are operating in interface mode we process the broadcast
-             * message but do not forward it.
-             */
-            if (
-                m_config.operation_mode() ==
-                stack::configuration::operation_mode_interface
-                )
-            {
-                // ...
-            }
-            else
-            {
-                #warning :TODO: Forward the message to all storage nodes in my slot.
-            }
-            
-            /**
-             * Allocate the messsage.
-             */
-            std::shared_ptr<message> response(
-                new message(protocol::message_code_ack,
-                msg.header_transaction_id())
-            );
-            
-            /**
-             * Send the response.
-             */
-            send_message(ep, response);
+            // ...
         }
         else
         {
             /**
-             * Silently drop the message.
+             * Update the routing table.
              */
+            routing_table_->update(ep, msg.header_transaction_id());
         }
-    }
-    else
-    {
+    
         /**
-         * Allocate the messsage.
+         * If duplicate detected or if two broadcast messages arrive from
+         * a single endpoint less than N seconds apart drop the second message.
          */
-        std::shared_ptr<message> response(
-            new message(protocol::message_code_nack,
-            msg.header_transaction_id())
+        std::lock_guard<std::recursive_mutex> l1(
+            last_broadcast_messages_mutex_
         );
         
         /**
-         * Send the response.
+         * Check if we need to drop the message.
          */
-        send_message(ep, response);
+        auto drop_message = false;
+        
+        auto it = last_broadcast_messages_.find(ep);
+        
+        if (it != last_broadcast_messages_.end())
+        {
+            /**
+             * First, check for a replay, then check that the message is not
+             * arriving too fast.
+             */
+            if (msg.header_transaction_id() == it->second.first)
+            {
+                drop_message = true;
+                
+                log_debug("Node is dropping broadcast message, duplicate.");
+            }
+            else if (std::time(0) - it->second.second < 2)
+            {
+                drop_message = true;
+                
+                log_debug("Node is dropping broadcast message, too soon.");
+            }
+        }
+        
+        if (drop_message)
+        {
+            // ...
+        }
+        else
+        {
+            log_debug("Node is processing broadcast message.");
+            
+            /**
+             * Set the last transaction id and time.
+             */
+            last_broadcast_messages_[ep] = std::make_pair(
+                msg.header_transaction_id(), std::time(0)
+            );
+    
+            if (msg.binary_attributes().size() > 0)
+            {
+                auto attr = msg.binary_attributes().front();
+                
+                /**
+                 * Do not allow broadcast messages with buffer's larger than
+                 * 2048 bytes.
+                 */
+                enum { max_broadcast_buffer_length = 2048 };
+                
+                if (attr.value.size() <= max_broadcast_buffer_length)
+                {
+                    /**
+                     * Callback
+                     */
+                    #warning :TODO: Pass buffer to application level.
+
+                    /**
+                     * Allocate the messsage.
+                     */
+                    std::shared_ptr<message> response(
+                        new message(protocol::message_code_ack,
+                        msg.header_transaction_id())
+                    );
+                    
+                    /**
+                     * Send the response.
+                     */
+                    send_message(ep, response);
+
+                    /**
+                     * Forward the message to all storage nodes in my slot.
+                     */
+                    io_service_.post(strand_.wrap(std::bind([this, msg, attr]
+                    {
+                        /**
+                         * Get our slot id.
+                         */
+                        auto slot_id = slot::id_from_endpoint(
+                            m_public_endpoint
+                        );
+                    
+                        /**
+                         * Get the slot.
+                         */
+                        auto slot = routing_table_->slot_for_id(slot_id);
+
+                        /**
+                         * Limit the number of storage nodes.
+                         */
+                        auto limit = 8;
+                        
+                        /**
+                         * Get the storage nodes.
+                         */
+                        auto snodes = slot->storage_node_endpoints(limit);
+
+                        if (snodes.size() == 0)
+                        {
+                            log_error(
+                                "Node attempted broadcast (forward) operation "
+                                "but no endpoints were found."
+                            );
+                        }
+                        else
+                        {
+                            /**
+                             * Allocate the broadcast_operation reusing the
+                             * transaction id from the originating message.
+                             */
+                            std::shared_ptr<broadcast_operation> op(
+                                new broadcast_operation(io_service_,
+                                msg.header_transaction_id(),
+                                operation_queue_, shared_from_this(),
+                                snodes, attr.value)
+                            );
+                            
+                            /**
+                             * Insert the broadcast_operation into the
+                             * operation_queue.
+                             */
+                            operation_queue_->insert(op);
+                        }
+                    })));
+                }
+                else
+                {
+                    /**
+                     * Silently drop the message.
+                     */
+                }
+            }
+            else
+            {
+                /**
+                 * Allocate the messsage.
+                 */
+                std::shared_ptr<message> response(
+                    new message(protocol::message_code_nack,
+                    msg.header_transaction_id())
+                );
+                
+                /**
+                 * Send the response.
+                 */
+                send_message(ep, response);
+            }
+        }
     }
 }
 
@@ -1833,5 +1948,51 @@ void node_impl::handle_error_message(
     else
     {
         log_debug("Node got error messsage from " << ep << ".");
+    }
+}
+
+void node_impl::maintenance_tick(const boost::system::error_code & ec)
+{
+    if (ec)
+    {
+        // ...
+    }
+    else
+    {
+        std::lock_guard<std::recursive_mutex> l1(
+            last_broadcast_messages_mutex_
+        );
+        
+        log_debug("**** BC MSG's = " << last_broadcast_messages_.size());
+        
+        /**
+         * Cleanup the last broadcast messages.
+         */
+        auto it = last_broadcast_messages_.begin();
+        
+        while (it != last_broadcast_messages_.end())
+        {
+            /**
+             * Remove after 8 seconds to allow enough time for duplicate
+             * messages to be dropped.
+             */
+            if (std::time(0) - it->second.second >= 8)
+            {
+                it = last_broadcast_messages_.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+
+        /**
+         * Start the maintenance timer.
+         */
+        timer_maintenance_.expires_from_now(std::chrono::seconds(8));
+        timer_maintenance_.async_wait(
+            strand_.wrap(std::bind(&node_impl::maintenance_tick,
+            shared_from_this(), std::placeholders::_1))
+        );
     }
 }

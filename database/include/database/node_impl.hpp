@@ -21,6 +21,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <set>
@@ -339,6 +340,12 @@ namespace database {
             friend class slot;
         
             /**
+             * The maintenance timer handler.
+             * @param ec The boost::system::error_code.
+             */
+            void maintenance_tick(const boost::system::error_code & ec);
+        
+            /**
              * The node.
              */
             node & node_;
@@ -382,6 +389,26 @@ namespace database {
              * The storage.
              */
             std::shared_ptr<storage> storage_;
+        
+            /**
+             * The last broadcast messages.
+             */
+            std::map<
+                boost::asio::ip::udp::endpoint,
+                std::pair<std::uint16_t, std::time_t>
+            > last_broadcast_messages_;
+        
+            /**
+             * The last broadcast messages mutex.
+             */
+            std::recursive_mutex last_broadcast_messages_mutex_;
+        
+            /**
+             * The maintenance timer.
+             */
+            boost::asio::basic_waitable_timer<std::chrono::steady_clock>
+                timer_maintenance_
+            ;
     };
     
 } // namespace database

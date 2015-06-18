@@ -134,6 +134,14 @@ namespace database {
             std::vector<storage_node> storage_nodes();
         
             /**
+             * Returns all storage nodes by boost::asio::ip::udp::endpoint.
+             * @param limit Limits the number of storage nodes returned.
+             */
+            std::set<boost::asio::ip::udp::endpoint> storage_node_endpoints(
+                const std::uint32_t & limit = 0
+            );
+        
+            /**
              * Called when a response occurs.
              * @param operation_id The operation identifier.
              * @param transaction_id The transaction identifier.

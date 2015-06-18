@@ -1,9 +1,7 @@
 /*
- * Copyright (c) 2008-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2008-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
- *
- * coinpp is free software: you can redistribute it and/or modify
+ * This is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -165,11 +163,7 @@ bool slot::update_statistics(
     {
         storage_node & snode = found_it->second;
         
-        if (attr.type == message::attribute_type_stats_tcp_inbound)
-        {
-            snode.stats_tcp_inbound = attr.value;
-        }
-        else if (attr.type == message::attribute_type_stats_udp_bps_inbound)
+        if (attr.type == message::attribute_type_stats_udp_bps_inbound)
         {
             snode.stats_udp_bps_inbound = attr.value;
         }
@@ -270,6 +264,31 @@ std::vector<storage_node> slot::storage_nodes()
     for (auto & i : m_storage_nodes)
     {
         ret.push_back(i.second);
+    }
+    
+    return ret;
+}
+
+
+std::set<boost::asio::ip::udp::endpoint> slot::storage_node_endpoints(
+    const std::uint32_t & limit
+    )
+{
+    std::set<boost::asio::ip::udp::endpoint> ret;
+    
+    auto index = 0;
+    
+    for (auto & i : m_storage_nodes)
+    {
+        ret.insert(i.second.endpoint);
+        
+        if (limit > 0)
+        {
+            if (++index >= limit)
+            {
+                break;
+            }
+        }
     }
     
     return ret;
@@ -619,6 +638,160 @@ int rand_int(int upper_bound)
 
 int slot::run_test()
 {
+    boost::asio::io_service ios2;
+    
+    std::shared_ptr<node_impl> impl2;
+    
+    auto slot_id2 = slot(ios2, impl2, "43255@foo.org").id();
+
+    std::cerr << "slatR43d@foo.org = " << slot_id2 << std::endl;
+
+    slot_id2 = slot(ios2, impl2, "john@foo.org").id();
+
+    std::cerr << "john@foo.org = " << slot_id2 << std::endl;
+    
+    slot_id2 = slot(ios2, impl2, "test@foo.org").id();
+
+    std::cerr << "test@foo.org = " << slot_id2 << std::endl;
+    
+  //  return 0;
+    
+    std::set<std::int16_t> slot_id_nonces;
+    
+    auto index = 0;
+    
+    for (;;)
+    {
+        std::uint16_t random_port = rand_int(65535 - 49152 + 1) + 49152;
+        
+        std::int16_t slot_id = id_from_endpoint2(
+            boost::asio::ip::udp::endpoint(
+            boost::asio::ip::address::from_string("68.64.245.5"), random_port)
+        );
+#if 1
+        printf(
+            "index = %d, port = %d, slot_id = %d, total = %d\n", index,
+            random_port, slot_id, slot_id_nonces.size()
+        );
+#endif
+        if (slot_id_nonces.find(slot_id) == slot_id_nonces.end())
+        {
+            slot_id_nonces.insert(slot_id);
+        }
+
+        if (slot_id_nonces.size() >= length)
+        {
+            printf("Slot distribution took %d rounds.\n", index);
+            break;
+        }
+        
+        index++;
+    }
+    
+    return 0;
+    
+//    std::set<std::int16_t> slot_id_nonces;
+//    
+//    auto index = 0;
+//    
+//    std::stringstream ss;
+//    
+//    for (;;)
+//    {
+//        std::string random_str = std::to_string(std::rand()).substr(0, 5);
+//        
+//        std::int16_t slot_id = id(random_str);
+//#if 1
+//        printf(
+//            "index = %d, random_str = %s, slot_id = %d, total = %d\n", index,
+//            random_str.c_str(), slot_id, slot_id_nonces.size()
+//        );
+//#endif
+//        if (slot_id_nonces.find(slot_id) == slot_id_nonces.end())
+//        {
+//            ss << "\"" << random_str << "\""  << ", ";
+//        
+//            slot_id_nonces.insert(slot_id);
+//        }
+//
+//        if (slot_id_nonces.size() >= length)
+//        {
+//            printf("Slot distribution took %d rounds.\n", index);
+//            break;
+//        }
+//        
+//        index++;
+//    }
+//    
+//    std::cout << ss.str() << std::endl;
+    
+    /**
+     * The index should always be much less than 20,000.
+     */
+    assert(index < 20000);
+
+    boost::asio::io_service ios;
+    
+    std::shared_ptr<node_impl> impl;
+    
+    std::uint32_t slot_id;
+    
+    enum { test_length = 2048 };
+    
+    if (length - 1 == 2047)
+    {
+        /**
+         * Test case.
+         * oj.one:292 - 
+         * oj.two:1100 - 
+         * oj.med.linux:344 - 
+         * oj.med.perm:344 - 
+         * agtest1:509 - 
+         */
+         
+        slot_id = slot(ios, impl, "oj.one").id();
+     
+        assert(slot_id == 292);
+        
+        std::cerr << "slot_id = " << slot_id << ", test passed" << std::endl;
+        
+        slot_id = slot(ios, impl, "oj.two").id();
+     
+        assert(slot_id == 1100);
+        
+        std::cerr << "slot_id = " << slot_id << ", test passed" << std::endl;
+        
+        slot_id = slot(ios, impl, "agtest1").id();
+        
+        assert(slot_id == 509);
+        
+        std::cerr << "slot_id = " << slot_id << ", test passed" << std::endl;
+        
+        slot_id = slot(ios, impl, "oj.med.perm").id();
+        
+        assert(slot_id == 344);
+        
+        std::cerr << "slot_id = " << slot_id << ", test passed" << std::endl;
+
+        slot_id = slot(ios, impl, "12345").id();
+        
+        assert(slot_id == 1402);
+        
+        std::cerr << "slot_id = " << slot_id << ", test passed" << std::endl;
+
+        /**
+         * Check partial match.
+         */
+        slot_id = slot(ios, impl, "johnathan").id();
+        
+        assert(slot_id == 1781);
+        assert(slot_id == slot(ios, impl, "johna").id());
+    }
+    else
+    {
+    
+    }
+
     std::cerr << "Test (slot) Completed." << std::endl;
     
     return 0;

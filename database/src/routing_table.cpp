@@ -432,17 +432,18 @@ std::set<boost::asio::ip::udp::endpoint>
     {
         for (auto & j : i->slots())
         {
-            if (j->storage_nodes().size() > 0)
+            auto snodes = j->storage_nodes();
+            
+            if (snodes.size() > 0)
             {
+                auto index = snodes.size() == 1 ? 0 :
+                    std::rand() % (snodes.size() - 1)
+                ;
+
                 /**
                  * Take a random storage node from this slot.
                  */
-                ret.insert(
-                    j->storage_nodes()[std::rand() %
-                    (j->storage_nodes().size() - 1)].endpoint
-                );
-
-                break;
+                ret.insert(snodes[index].endpoint);
             }
         }
     }
@@ -499,6 +500,38 @@ std::set<std::uint16_t> routing_table::slot_ids_for_query(
          * Calculate the slot id and save it.
          */
         ret.insert(slot::id(i.second));
+    }
+    
+    return ret;
+}
+
+std::shared_ptr<slot> routing_table::slot_for_id(const std::uint16_t & slot_id)
+{
+    std::lock_guard<std::recursive_mutex> l(mutex_);
+    
+    std::shared_ptr<slot> ret;
+    
+    /**
+     * Determine the block the slot resides.
+     */
+    std::uint16_t block_index = slot_id / 8;
+    
+    /**
+     * Get all slots in the block.
+     */
+    auto slots = m_blocks[block_index]->slots();
+    
+    /**
+     * Find the slot matching the slot id.
+     */
+    for (auto & i : slots)
+    {
+        if (i->id() == slot_id)
+        {
+            ret = i;
+            
+            break;
+        }
     }
     
     return ret;
