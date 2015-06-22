@@ -76,40 +76,49 @@ std::int64_t reward::get_proof_of_work_vanilla(
 {
     std::int64_t subsidy = 0;
     
-    /**
-     * The maximum coin supply is 30717658.00 over 13 years
-     * Year 1: 15733333.00
-     * Year 2: 23409756.00
-     * Year 3: 27154646.00
-     * Year 4: 28981324.00
-     * Year 5: 29872224.00
-     */
-    subsidy = (1111.0 * (std::pow((height + 1.0), 2.0)));
-    
-    if (subsidy > 128)
-    {
-        subsidy = 128;
-    }
-    
-    if (subsidy < 1)
+    if (height >= 136400 && height <= 137400)
     {
         subsidy = 1;
     }
-    
-    subsidy *= 1000000;
-
-    for (auto i = 50000; i <= height; i += 50000)
+    else
     {
-        subsidy -= subsidy / 6;
-    }
+        subsidy = 0;
+        
+        /**
+         * The maximum coin supply is 30717658.00 over 13 years
+         * Year 1: 15733333.00
+         * Year 2: 23409756.00
+         * Year 3: 27154646.00
+         * Year 4: 28981324.00
+         * Year 5: 29872224.00
+         */
+        subsidy = (1111.0 * (std::pow((height + 1.0), 2.0)));
+        
+        if (subsidy > 128)
+        {
+            subsidy = 128;
+        }
+        
+        if (subsidy < 1)
+        {
+            subsidy = 1;
+        }
+        
+        subsidy *= 1000000;
 
-    /**
-     * If the subsidy is less than one cent the miner gets one cent
-     * indefinitely.
-     */
-    if ((subsidy / 1000000.0f) <= 0.01f)
-    {
-        return 0.01f;
+        for (auto i = 50000; i <= height; i += 50000)
+        {
+            subsidy -= subsidy / 6;
+        }
+
+        /**
+         * If the subsidy is less than one cent the miner gets one cent
+         * indefinitely.
+         */
+        if ((subsidy / 1000000.0f) <= 0.01f)
+        {
+            return 0.01f;
+        }
     }
     
     /**
