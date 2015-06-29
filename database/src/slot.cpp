@@ -641,21 +641,7 @@ int slot::run_test()
     boost::asio::io_service ios2;
     
     std::shared_ptr<node_impl> impl2;
-    
-    auto slot_id2 = slot(ios2, impl2, "43255@foo.org").id();
 
-    std::cerr << "slatR43d@foo.org = " << slot_id2 << std::endl;
-
-    slot_id2 = slot(ios2, impl2, "john@foo.org").id();
-
-    std::cerr << "john@foo.org = " << slot_id2 << std::endl;
-    
-    slot_id2 = slot(ios2, impl2, "test@foo.org").id();
-
-    std::cerr << "test@foo.org = " << slot_id2 << std::endl;
-    
-  //  return 0;
-    
     std::set<std::int16_t> slot_id_nonces;
     
     auto index = 0;
@@ -666,14 +652,14 @@ int slot::run_test()
         
         std::int16_t slot_id = id_from_endpoint2(
             boost::asio::ip::udp::endpoint(
-            boost::asio::ip::address::from_string("68.64.245.5"), random_port)
+            boost::asio::ip::address::from_string("192.168.245.5"), random_port)
         );
-#if 1
+        
         printf(
-            "index = %d, port = %d, slot_id = %d, total = %d\n", index,
+            "index = %d, port = %d, slot_id = %d, total = %zu\n", index,
             random_port, slot_id, slot_id_nonces.size()
         );
-#endif
+
         if (slot_id_nonces.find(slot_id) == slot_id_nonces.end())
         {
             slot_id_nonces.insert(slot_id);
@@ -682,48 +668,48 @@ int slot::run_test()
         if (slot_id_nonces.size() >= length)
         {
             printf("Slot distribution took %d rounds.\n", index);
+            
+            break;
+        }
+        
+        index++;
+    }
+
+    slot_id_nonces.clear();
+    
+    index = 0;
+    
+    std::stringstream ss;
+    
+    for (;;)
+    {
+        std::string random_str = std::to_string(std::rand()).substr(0, 5);
+        
+        std::int16_t slot_id = id(random_str);
+
+        printf(
+            "index = %d, random_str = %s, slot_id = %d, total = %zu\n", index,
+            random_str.c_str(), slot_id, slot_id_nonces.size()
+        );
+
+        if (slot_id_nonces.find(slot_id) == slot_id_nonces.end())
+        {
+            ss << "\"" << random_str << "\""  << ", ";
+        
+            slot_id_nonces.insert(slot_id);
+        }
+
+        if (slot_id_nonces.size() >= length)
+        {
+            printf("Slot distribution took %d rounds.\n", index);
+            
             break;
         }
         
         index++;
     }
     
-    return 0;
-    
-//    std::set<std::int16_t> slot_id_nonces;
-//    
-//    auto index = 0;
-//    
-//    std::stringstream ss;
-//    
-//    for (;;)
-//    {
-//        std::string random_str = std::to_string(std::rand()).substr(0, 5);
-//        
-//        std::int16_t slot_id = id(random_str);
-//#if 1
-//        printf(
-//            "index = %d, random_str = %s, slot_id = %d, total = %d\n", index,
-//            random_str.c_str(), slot_id, slot_id_nonces.size()
-//        );
-//#endif
-//        if (slot_id_nonces.find(slot_id) == slot_id_nonces.end())
-//        {
-//            ss << "\"" << random_str << "\""  << ", ";
-//        
-//            slot_id_nonces.insert(slot_id);
-//        }
-//
-//        if (slot_id_nonces.size() >= length)
-//        {
-//            printf("Slot distribution took %d rounds.\n", index);
-//            break;
-//        }
-//        
-//        index++;
-//    }
-//    
-//    std::cout << ss.str() << std::endl;
+    std::cout << ss.str() << std::endl;
     
     /**
      * The index should always be much less than 20,000.
@@ -736,61 +722,13 @@ int slot::run_test()
     
     std::uint32_t slot_id;
     
-    enum { test_length = 2048 };
+    /**
+     * Check partial match.
+     */
+    slot_id = slot(ios, impl, "johnathan").id();
     
-    if (length - 1 == 2047)
-    {
-        /**
-         * Test case.
-         * oj.one:292 - 
-         * oj.two:1100 - 
-         * oj.med.linux:344 - 
-         * oj.med.perm:344 - 
-         * agtest1:509 - 
-         */
-         
-        slot_id = slot(ios, impl, "oj.one").id();
-     
-        assert(slot_id == 292);
-        
-        std::cerr << "slot_id = " << slot_id << ", test passed" << std::endl;
-        
-        slot_id = slot(ios, impl, "oj.two").id();
-     
-        assert(slot_id == 1100);
-        
-        std::cerr << "slot_id = " << slot_id << ", test passed" << std::endl;
-        
-        slot_id = slot(ios, impl, "agtest1").id();
-        
-        assert(slot_id == 509);
-        
-        std::cerr << "slot_id = " << slot_id << ", test passed" << std::endl;
-        
-        slot_id = slot(ios, impl, "oj.med.perm").id();
-        
-        assert(slot_id == 344);
-        
-        std::cerr << "slot_id = " << slot_id << ", test passed" << std::endl;
-
-        slot_id = slot(ios, impl, "12345").id();
-        
-        assert(slot_id == 1402);
-        
-        std::cerr << "slot_id = " << slot_id << ", test passed" << std::endl;
-
-        /**
-         * Check partial match.
-         */
-        slot_id = slot(ios, impl, "johnathan").id();
-        
-        assert(slot_id == 1781);
-        assert(slot_id == slot(ios, impl, "johna").id());
-    }
-    else
-    {
-    
-    }
+    assert(slot_id == 53);
+    assert(slot_id == slot(ios, impl, "johna").id());
 
     std::cerr << "Test (slot) Completed." << std::endl;
     
