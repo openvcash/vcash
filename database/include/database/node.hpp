@@ -110,6 +110,18 @@ namespace database {
             );
         
             /**
+             * Called when a broadcast message is received.
+             * @param addr The address.
+             * @param port The port.
+             * @param buf The buffer.
+             * @param len The length.
+             */
+            void on_broadcast(
+                const char * addr, const std::uint16_t & port,
+                const char * buf, const std::size_t & len
+            );
+        
+            /**
              * Sets the bootstrap contacts.
              * @param val The value.
              */
