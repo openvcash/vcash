@@ -39,6 +39,7 @@ using namespace coin;
 configuration::configuration()
     : m_network_port_tcp(protocol::default_tcp_port)
     , m_network_tcp_inbound_maximum(network::tcp_inbound_maximum)
+    , m_network_udp_enable(false)
     , m_wallet_transaction_history_maximum(wallet::configuration_interval_history)
     , m_wallet_keypool_size(wallet::configuration_keypool_size)
     , m_wallet_rescan(false)
@@ -108,6 +109,18 @@ bool configuration::load()
         {
             m_network_tcp_inbound_maximum = network::tcp_inbound_minimum;
         }
+        
+        /**
+         * Get the network.udp.enable.
+         */
+        m_network_udp_enable = std::stoul(pt.get(
+            "network.udp.enable", std::to_string(false))
+        );
+        
+        log_debug(
+            "Configuration read network.udp.enable = " <<
+            m_network_udp_enable << "."
+        );
         
         /**
          * Get the wallet.transaction.history.maximum.
@@ -204,6 +217,13 @@ bool configuration::save()
             std::to_string(m_network_tcp_inbound_maximum)
         );
         
+        /**
+         * Put the network.udp.enable into property tree.
+         */
+        pt.put(
+            "network.udp.enable", std::to_string(m_network_udp_enable)
+        );
+
         /**
          * Put the wallet.transaction.history.maximum into property tree.
          */
@@ -306,3 +326,14 @@ const std::size_t & configuration::network_tcp_inbound_maximum() const
 {
     return m_network_tcp_inbound_maximum;
 }
+
+void configuration::set_network_udp_enable(const bool & val)
+{
+    m_network_udp_enable = val;
+}
+
+const bool & configuration::network_udp_enable() const
+{
+    return m_network_udp_enable;
+}
+
