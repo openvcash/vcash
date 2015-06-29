@@ -144,3 +144,12 @@ void stack::on_udp_receive(
 {
     printf("%s is not overloaded.\n", __FUNCTION__);
 }
+
+void stack::on_broadcast(
+    const char * addr, const std::uint16_t & port,const char * buf,
+    const std::size_t & len
+    )
+{
+    printf("%s is not overloaded.\n", __FUNCTION__);
+}
+

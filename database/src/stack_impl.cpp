@@ -235,6 +235,16 @@ void stack_impl::on_udp_receive(
     stack_.on_udp_receive(addr, port, buf, len);
 }
 
+void stack_impl::on_broadcast(
+    const char * addr, const std::uint16_t & port,
+    const char * buf, const std::size_t & len
+    )
+{
+    std::lock_guard<std::recursive_mutex> l(mutex_);
+    
+    stack_.on_broadcast(addr, port, buf, len);
+}
+
 void stack_impl::handle_udp_resolve(
     const boost::system::error_code & ec,
     boost::asio::ip::udp::resolver::iterator it

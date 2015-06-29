@@ -122,6 +122,14 @@ void node::on_udp_receive(
     stack_impl_.on_udp_receive(addr, port, buf, len);
 }
 
+void node::on_broadcast(
+    const char * addr, const std::uint16_t & port,
+    const char * buf, const std::size_t & len
+    )
+{
+    stack_impl_.on_broadcast(addr, port, buf, len);
+}
+
 void node::set_bootstrap_contacts(
     const std::list<boost::asio::ip::udp::endpoint> & val
     )

@@ -123,7 +123,7 @@ void node_impl::start(const stack::configuration & config)
      */
     auto public_key = m_ecdhe->public_key();
     
-    log_info("Node generated public key:\r\n" << public_key);
+    log_none("Node generated public key:\r\n" << public_key);
     
     /**
      * Start the key_pool.
@@ -1558,7 +1558,7 @@ void node_impl::handle_public_key_ping_message(
             }
         }
     
-        log_debug(
+        log_none(
             "Node got public key ping messsage from " << ep <<
             ", public_key = " << public_key << "."
         );
@@ -1663,7 +1663,7 @@ void node_impl::handle_public_key_pong_message(
             }
         }
     
-        log_debug(
+        log_none(
             "Node got public key pong messsage from " << ep <<
             ", public_key = " << public_key << "."
         );
@@ -1809,9 +1809,63 @@ void node_impl::handle_broadcast_message(
                 if (attr.value.size() <= max_broadcast_buffer_length)
                 {
                     /**
-                     * Callback
+                     * We do check for duplicate transaction id's in messages
+                     * but they are removed after a short time. Here we keep
+                     * more transaction id's longer to prevent multiple
+                     * application level callbacks.
                      */
-                    #warning :TODO: Pass buffer to application level.
+                    static std::mutex g_mutex_recent_broadcast_message_tids_;
+                    
+                    std::lock_guard<std::mutex> l1(
+                        g_mutex_recent_broadcast_message_tids_
+                    );
+                    
+                    static std::deque<std::int16_t>
+                        g_recent_broadcast_message_tids_
+                    ;
+                    
+                    /**
+                     * Keep the last 8 transaction id's regardless of whom
+                     * sent it.
+                     */
+                    if (g_recent_broadcast_message_tids_.size() >= 8)
+                    {
+                        g_recent_broadcast_message_tids_.pop_front();
+                    }
+                    
+                    bool do_callback = false;
+                    
+                    if (
+                        std::find(g_recent_broadcast_message_tids_.begin(),
+                        g_recent_broadcast_message_tids_.end(),
+                        msg.header_transaction_id()) ==
+                        g_recent_broadcast_message_tids_.end()
+                        )
+                    {
+                        g_recent_broadcast_message_tids_.push_back(
+                            msg.header_transaction_id()
+                        );
+                        
+                        do_callback = true;
+                    }
+                    
+
+                    
+                    /**
+                     * Only callback if we have not recently for this
+                     * transaction id.
+                     */
+                    if (do_callback)
+                    {
+                        /**
+                         * Callback
+                         */
+                        node_.on_broadcast(
+                            ep.address().to_string().c_str(), ep.port(),
+                            reinterpret_cast<const char *> (&attr.value[0]),
+                            attr.value.size()
+                        );
+                    }
 
                     /**
                      * Allocate the messsage.
