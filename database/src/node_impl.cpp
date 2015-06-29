@@ -1848,9 +1848,7 @@ void node_impl::handle_broadcast_message(
                         
                         do_callback = true;
                     }
-                    
 
-                    
                     /**
                      * Only callback if we have not recently for this
                      * transaction id.

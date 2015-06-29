@@ -134,7 +134,10 @@ void node::set_bootstrap_contacts(
     const std::list<boost::asio::ip::udp::endpoint> & val
     )
 {
-    node_impl_->set_bootstrap_contacts(val);
+    if (node_impl_)
+    {
+        node_impl_->set_bootstrap_contacts(val);
+    }
 }
 
 std::list<boost::asio::ip::udp::endpoint> & node::bootstrap_contacts()
