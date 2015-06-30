@@ -19,6 +19,7 @@
 #ifndef DATABASE_RANDOM_HPP
 #define DATABASE_RANDOM_HPP
 
+#include <random>
 #include <string>
 
 namespace database {
@@ -47,6 +48,23 @@ namespace database {
                 std::generate_n(ret.begin(), length, randchar);
                 
                 return ret;
+            }
+        
+            /**
+             * Generates a random std::uint16_t in the given range.
+             * @param low The low range.
+             * @param high The high range.
+             */
+            static std::uint16_t uint16_random_range(
+                const std::uint16_t & low, const std::uint16_t & high
+                )
+            {
+                static std::random_device rd;
+                static std::mt19937_64 gen(rd());
+
+                std::uniform_int_distribution<> dist(low, high);
+                
+                return dist(gen);
             }
         
         private:
