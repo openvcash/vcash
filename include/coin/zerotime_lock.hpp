@@ -23,10 +23,12 @@
 #define COIN_ZEROTIME_LOCK_HPP
 
 #include <cstdint>
+#include <ctime>
+#include <vector>
 
 #include <coin/data_buffer.hpp>
 #include <coin/sha256.hpp>
-#include <coin/transaction_in.hpp>
+#include <coin/transaction.hpp>
 
 namespace coin {
 
@@ -70,12 +72,7 @@ namespace coin {
             void set_null();
         
         private:
-        
-            /**
-             * The transaction_in.
-             */
-            transaction_in m_transaction_in;
-            
+
             /**
              * The transaction hash.
              */
@@ -85,6 +82,11 @@ namespace coin {
              *  The expiration.
              */
             std::time_t m_expiration;
+        
+            /**
+             * The signature.
+             */
+            std::vector<std::uint8_t> m_signature;
         
         protected:
         

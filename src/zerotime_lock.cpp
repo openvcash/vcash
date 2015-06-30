@@ -18,12 +18,13 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <coin/time.hpp>
 #include <coin/zerotime_lock.hpp>
 
 using namespace coin;
 
 zerotime_lock::zerotime_lock()
-    : m_expiration(std::time(0) + 20 * 60)
+    : m_expiration(time::instance().get_adjusted() + 20 * 60)
 {
     set_null();
 }
@@ -36,11 +37,6 @@ void zerotime_lock::encode()
 void zerotime_lock::encode(data_buffer & buffer)
 {
     /**
-     * Encode the transaction_in.
-     */
-    m_transaction_in.encode(buffer);
-    
-    /**
      * Encode the transaction hash.
      */
     buffer.write_bytes(
@@ -52,6 +48,18 @@ void zerotime_lock::encode(data_buffer & buffer)
      * Encode the expiration.
      */
     buffer.write_uint64(m_expiration);
+    
+    /** 
+     * Encode the signature length.
+     */
+    buffer.write_var_int(m_signature.size());
+    
+    /** 
+     * Encode the signature.
+     */
+    buffer.write_bytes(
+        reinterpret_cast<char *>(&m_signature[0]), m_signature.size()
+    );
 }
 
 bool zerotime_lock::decode()
@@ -61,11 +69,6 @@ bool zerotime_lock::decode()
 
 bool zerotime_lock::decode(data_buffer & buffer)
 {
-    /**
-     * Decode the transaction_in.
-     */
-    m_transaction_in.decode(buffer);
-    
     /**
      * Decode the transaction hash.
      */
@@ -78,12 +81,29 @@ bool zerotime_lock::decode(data_buffer & buffer)
      */
     m_expiration = buffer.read_uint64();
     
+    /**
+     * Decode the signature length.
+     */
+    auto len = buffer.read_var_int();
+    
+    /**
+     * Decode the signature.
+     */
+    if (len > 0)
+    {
+        m_signature.resize(len);
+
+        buffer.read_bytes(
+            reinterpret_cast<char *>(&m_signature[0]), m_signature.size()
+        );
+    }
+    
     return true;
 }
 
 void zerotime_lock::set_null()
 {
-    m_transaction_in.clear();
     m_hash_tx.clear();
-    m_expiration = std::time(0) + 20 * 60;
+    m_expiration = time::instance().get_adjusted() + 20 * 60;
+    m_signature.clear();
 }
