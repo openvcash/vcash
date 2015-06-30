@@ -360,13 +360,18 @@ bool slot::handle_timeout(const boost::asio::ip::udp::endpoint & ep)
                 static_cast<std::uint16_t> (it->second.timeouts()) << " times."
             );
             
-            if (it->second.timeouts() > 1)
+            auto elapsed = std::chrono::duration_cast<
+                std::chrono::seconds
+            >(std::chrono::steady_clock::now() -
+            it->second.last_update).count();
+            
+            /**
+             * A node is considered to have failed if at least 2 timeouts have
+             * occured and 200 seconds has elapsed since the node has last been
+             * seen.
+             */
+            if (it->second.timeouts() > 1 && elapsed > 200)
             {
-                auto elapsed = std::chrono::duration_cast<
-                    std::chrono::seconds
-                >(std::chrono::steady_clock::now() -
-                it->second.last_update).count();
-        
                 log_debug(
                     "Slot " << m_id << " storage node " <<
                     it->second.endpoint << " has failed after " <<
