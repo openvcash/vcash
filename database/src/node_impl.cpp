@@ -33,6 +33,7 @@
 #include <database/operation_queue.hpp>
 #include <database/ping_operation.hpp>
 #include <database/protocol.hpp>
+#include <database/random.hpp>
 #include <database/routing_table.hpp>
 #include <database/slot.hpp>
 #include <database/storage.hpp>
@@ -1764,6 +1765,13 @@ void node_impl::handle_broadcast_message(
         if (it != last_broadcast_messages_.end())
         {
             /**
+             * Generate a random minimum packet interval for what is considered
+             * "too soon" for a broadcast message arrival from a single
+             * endpoint.
+             */
+            auto min_packet_interval = random::uint16_random_range(1, 3);
+            
+            /**
              * First, check for a replay, then check that the message is not
              * arriving too fast.
              */
@@ -1773,7 +1781,9 @@ void node_impl::handle_broadcast_message(
                 
                 log_debug("Node is dropping broadcast message, duplicate.");
             }
-            else if (std::time(0) - it->second.second < 2)
+            else if (
+                std::time(0) - it->second.second < min_packet_interval
+                )
             {
                 drop_message = true;
                 
@@ -1879,7 +1889,8 @@ void node_impl::handle_broadcast_message(
                     send_message(ep, response);
 
                     /**
-                     * Forward the message to all storage nodes in my slot.
+                     * Forward the message to (some) of the storage nodes in
+                     * my slot.
                      */
                     io_service_.post(strand_.wrap(std::bind([this, msg, attr]
                     {
@@ -1898,7 +1909,7 @@ void node_impl::handle_broadcast_message(
                         /**
                          * Limit the number of storage nodes.
                          */
-                        auto limit = 8;
+                        auto limit = random::uint16_random_range(1, 3);
                         
                         /**
                          * Get the storage nodes.
@@ -1914,22 +1925,28 @@ void node_impl::handle_broadcast_message(
                         }
                         else
                         {
-                            /**
-                             * Allocate the broadcast_operation reusing the
-                             * transaction id from the originating message.
-                             */
-                            std::shared_ptr<broadcast_operation> op(
-                                new broadcast_operation(io_service_,
-                                msg.header_transaction_id(),
-                                operation_queue_, shared_from_this(),
-                                snodes, attr.value)
-                            );
-                            
-                            /**
-                             * Insert the broadcast_operation into the
-                             * operation_queue.
-                             */
-                            operation_queue_->insert(op);
+                            if (
+                                operation_queue_->find(
+                                msg.header_transaction_id()) == 0
+                                )
+                            {
+                                /**
+                                 * Allocate the broadcast_operation reusing the
+                                 * transaction id from the originating message.
+                                 */
+                                std::shared_ptr<broadcast_operation> op(
+                                    new broadcast_operation(io_service_,
+                                    msg.header_transaction_id(),
+                                    operation_queue_, shared_from_this(),
+                                    snodes, attr.value)
+                                );
+                                
+                                /**
+                                 * Insert the broadcast_operation into the
+                                 * operation_queue.
+                                 */
+                                operation_queue_->insert(op);
+                            }
                         }
                     })));
                 }
