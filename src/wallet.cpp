@@ -78,7 +78,7 @@ void wallet::start()
     /**
      * Start the resend transactions timer.
      */
-    resend_transactions_timer_.expires_from_now(std::chrono::seconds(120));
+    resend_transactions_timer_.expires_from_now(std::chrono::seconds(300));
     resend_transactions_timer_.async_wait(globals::instance().strand().wrap(
         std::bind(&wallet::resend_transactions_tick, this,
         std::placeholders::_1))
@@ -3855,7 +3855,8 @@ void wallet::resend_transactions_tick(const boost::system::error_code & ec)
          * Start the timer again after a random time interval.
          */
         resend_transactions_timer_.expires_from_now(
-            std::chrono::seconds(random::uint16_random_range(120, 1200))
+            std::chrono::seconds(random::uint16_random_range(
+            1 * 60 * 60, 8 * 60 * 60))
         );
         resend_transactions_timer_.async_wait(globals::instance().strand().wrap(
             std::bind(&wallet::resend_transactions_tick, this,
