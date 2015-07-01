@@ -1209,16 +1209,41 @@ void routing_table::random_find_tick(const boost::system::error_code & ec)
                     query.append("&", strlen("&"));
                 }
             }
-            
-            log_none(
-                "random_find_index_ = " << random_find_index_ <<
-                ", query = " << query
-            );
 
+            /**
+             * If we are a store node store the query.
+             */
+            if (
+                n->config().operation_mode() ==
+                stack::configuration::operation_mode_storage
+                )
+            {
+                log_debug(
+                    "random_find_index_ = " << random_find_index_ <<
+                    ", query = " << (query + "&_l=8")
+                );
+                
+                /**
+                 * Perform a store.
+                 */
+                n->store(query + "&_l=8");
+            }
+            else
+            {
+                log_debug(
+                    "random_find_index_ = " << random_find_index_ <<
+                    ", query = " << query
+                );
+            }
+
+            /**
+             * Perform a find.
+             */
             n->find(query, constants::snodes_per_keyword);
         
             /**
-             * Increment the number of iterations.
+             * Increment the number of iterations (used to accelerate
+             * initial bootstrap, only resets if it wraps).
              */
             ++random_find_iterations_;
 
@@ -1237,14 +1262,14 @@ void routing_table::random_find_tick(const boost::system::error_code & ec)
             {
                 timeout =
                     random_find_iterations_ <
-                    (slot::length / block::slot_length) ? 60 : 300
+                    (slot::length / block::slot_length) ? 60 : 600
                 ;
             }
             else
             {
                 timeout =
                     random_find_iterations_ <
-                    (slot::length / block::slot_length) ? 8 : 60
+                    (slot::length / block::slot_length) ? 8 : 200
                 ;
             }
             
