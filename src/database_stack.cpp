@@ -21,8 +21,23 @@
 #include <vector>
 
 #include <coin/database_stack.hpp>
+#include <coin/logger.hpp>
+#include <coin/stack_impl.hpp>
+#include <coin/status_manager.hpp>
 
 using namespace coin;
+
+database_stack::database_stack(
+    boost::asio::io_service & ios, boost::asio::strand & s,
+    stack_impl & owner
+    )
+    : io_service_(ios)
+    , strand_(s)
+    , stack_impl_(owner)
+    , timer_(ios)
+{
+    // ...
+}
 
 void database_stack::start(const std::uint16_t & port, const bool & is_client)
 {
@@ -40,7 +55,7 @@ void database_stack::start(const std::uint16_t & port, const bool & is_client)
     contacts.push_back(std::make_pair("127.0.0.1", 40004));
     contacts.push_back(std::make_pair("162.219.176.251", 40004));
     contacts.push_back(std::make_pair("94.23.231.51", 56280));
-    contacts.push_back(std::make_pair("p01.vanillacoin.net", 56280));
+    contacts.push_back(std::make_pair("pool01.vanillacoin.net", 56280));
     
     /**
      * Set the port.
@@ -65,10 +80,26 @@ void database_stack::start(const std::uint16_t & port, const bool & is_client)
      */
     database::stack::join(contacts);
 #endif // USE_DATABASE_STACK
+
+    auto self(shared_from_this());
+    
+    /**
+     * Start the timer.
+     */
+    timer_.expires_from_now(std::chrono::seconds(8));
+    timer_.async_wait(strand_.wrap(
+        std::bind(&database_stack::tick, self,
+        std::placeholders::_1))
+    );
 }
 
 void database_stack::stop()
 {
+    /**
+     * Cancel the timer.
+     */
+    timer_.cancel();
+
 #if (defined USE_DATABASE_STACK && USE_DATABASE_STACK)
     database::stack::stop();
 #endif // USE_DATABASE_STACK
@@ -79,7 +110,7 @@ void database_stack::on_find(
     const std::string & query
     )
 {
-
+    // ...
 }
 
 void database_stack::on_udp_receive(
@@ -97,3 +128,65 @@ void database_stack::on_broadcast(
 {
     // ...
 }
+
+void database_stack::tick(const boost::system::error_code & ec)
+{
+    if (ec)
+    {
+        // ...
+    }
+    else
+    {
+        auto self(shared_from_this());
+        
+        /**
+         * Get the number of udp endpoints in the routing table.
+         */
+#if (defined USE_DATABASE_STACK && USE_DATABASE_STACK)
+        auto udp_connections = endpoints().size();
+#else
+        auto udp_connections = 0;
+#endif // USE_DATABASE_STACK
+        
+        log_info(
+            "Database stack has " << udp_connections << " UDP connections."
+        );
+        
+        /**
+         * Allocate the status.
+         */
+        std::map<std::string, std::string> status;
+        
+        /**
+         * Set the status message.
+         */
+        status["type"] = "network";
+        
+        /**
+         * Set the value.
+         */
+        status["value"] = udp_connections > 0 ? "Connected" : "Connecting";
+        
+        /**
+         * Set the network.udp.connections.
+         */
+        status["network.udp.connections"] = std::to_string(
+            udp_connections
+        );
+        
+        /**
+         * Callback status.
+         */
+        stack_impl_.get_status_manager()->insert(status);
+
+        /**
+         * Start the timer.
+         */
+        timer_.expires_from_now(std::chrono::seconds(60));
+        timer_.async_wait(strand_.wrap(
+            std::bind(&database_stack::tick, self,
+            std::placeholders::_1))
+        );
+    }
+}
+

@@ -18,7 +18,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #ifndef COIN_DATABASE_STACK_HPP
 #define COIN_DATABASE_STACK_HPP
 
@@ -27,22 +26,40 @@
 #include <cstdint>
 #include <string>
 
+#include <boost/asio.hpp>
+
 #if (defined USE_DATABASE_STACK && USE_DATABASE_STACK)
 #include <database/stack.hpp>
 #endif // USE_DATABASE_STACK
 
 namespace coin {
 
+    class stack_impl;
+    
     /**
      * Implements a database::stack subclass.
      */
 #if (defined USE_DATABASE_STACK && USE_DATABASE_STACK)
-    class database_stack : public database::stack
+    class database_stack
+        : public database::stack
+        , public std::enable_shared_from_this<database_stack>
 #else
     class database_stack
+        : public std::enable_shared_from_this<database_stack>
 #endif // USE_DATABASE_STACK
     {
         public:
+        
+            /**
+             * Constructor
+             * @param ios The boost::asio::io_service.
+             * @param s The boost::asio::strand.
+             * @param owner The stack_impl.
+             */
+            explicit database_stack(
+                boost::asio::io_service & ios, boost::asio::strand & s,
+                stack_impl & owner
+            );
         
             /**
              * Starts the stack.
@@ -92,9 +109,35 @@ namespace coin {
                 const char * buf, const std::size_t & len
             );
         
+            /**
+             * The timer handler.
+             * @param ec The boost::system::error_code.
+             */
+            void tick(const boost::system::error_code & ec);
+        
         protected:
         
-            // ...
+            /**
+             * The boost::asio::io_service.
+             */
+            boost::asio::io_service & io_service_;
+        
+            /**
+             * The boost::asio::strand.
+             */
+            boost::asio::strand & strand_;
+        
+            /**
+             * The stack_impl.
+             */
+            stack_impl & stack_impl_;
+        
+            /**
+             * The timer.
+             */
+            boost::asio::basic_waitable_timer<
+                std::chrono::steady_clock
+            > timer_;
     };
     
 } // namespace coin

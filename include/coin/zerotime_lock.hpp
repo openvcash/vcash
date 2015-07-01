@@ -28,7 +28,6 @@
 
 #include <coin/data_buffer.hpp>
 #include <coin/sha256.hpp>
-#include <coin/transaction.hpp>
 
 namespace coin {
 

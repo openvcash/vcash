@@ -44,6 +44,7 @@ namespace coin {
     class alert_manager;
     class block;
     class block_index;
+    class database_stack;
     class db_env;
     class mining_manager;
     class nat_pmp_client;
@@ -351,6 +352,11 @@ namespace coin {
              * The alert_manager.
              */
             std::shared_ptr<alert_manager> m_alert_manager;
+        
+            /**
+             * The database_stack.
+             */
+            std::shared_ptr<database_stack> m_database_stack;
         
             /**
              * The mining_manager.

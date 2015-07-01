@@ -38,6 +38,7 @@
 #include <coin/block.hpp>
 #include <coin/block_index.hpp>
 #include <coin/checkpoint_sync.hpp>
+#include <coin/database_stack.hpp>
 #include <coin/db_env.hpp>
 #include <coin/db_tx.hpp>
 #include <coin/filesystem.hpp>
@@ -1275,6 +1276,34 @@ void stack_impl::start()
             m_tcp_connection_manager->start();
             
             /**
+             * Allocate the database_stack.
+             */
+            m_database_stack.reset(new database_stack(
+                globals::instance().io_service(),
+                globals::instance().strand(), *this)
+            );
+            
+            /**
+             * Set network.udp.enable to true.
+             */
+            m_configuration.set_network_udp_enable(true);
+            
+            /**
+             * Save the configuration file.
+             */
+            m_configuration.save();
+            
+            /**
+             * Start the UDP layer if configured.
+             */
+            if (m_configuration.network_udp_enable() == true)
+            {
+                m_database_stack->start(
+                    tcp_port, globals::instance().is_client()
+                );
+            }
+            
+            /**
              * Set the status type.
              */
             status["type"] = "network";
@@ -1374,9 +1403,19 @@ void stack_impl::start()
                 m_nat_pmp_client->add_mapping(nat_pmp::protocol_tcp, tcp_port);
             
                 /**
+                 * Add a mapping for our UDP port.
+                 */
+                m_nat_pmp_client->add_mapping(nat_pmp::protocol_udp, tcp_port);
+                
+                /**
                  * Add a mapping for out TCP port.
                  */
                 m_upnp_client->add_mapping(upnp_client::protocol_tcp, tcp_port);
+                
+                /**
+                 * Add a mapping for out UDP port.
+                 */
+                m_upnp_client->add_mapping(upnp_client::protocol_udp, tcp_port);
                 
                 /**
                  * Download centrally hosted bootstrap peers.
@@ -1405,6 +1444,14 @@ void stack_impl::stop()
     if (m_configuration.save() == false)
     {
         log_error("Stack failed to save configuration to disk.");
+    }
+    
+    /**
+     * Stop the UDP layer if configured.
+     */
+    if (m_configuration.network_udp_enable() == true)
+    {
+        m_database_stack->stop();
     }
     
     /**
@@ -1551,6 +1598,11 @@ void stack_impl::stop()
      * Reset
      */
     m_alert_manager.reset();
+    
+    /**
+     * Reset.
+     */
+    m_database_stack.reset();
     
     /**
      * Reset
@@ -3546,7 +3598,7 @@ void stack_impl::load_block_index(
                     (constants::test_net ? block::get_hash_genesis_test_net() :
                     block::get_hash_genesis())
                 );
-
+                
                 /**
                  * Start new block file.
                  */
