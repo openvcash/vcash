@@ -52,6 +52,7 @@ SOURCES =
 	checkpoints
     configuration
 	crypter
+    database_stack
 	db
 	db_env
 	db_tx

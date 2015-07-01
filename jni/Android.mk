@@ -46,6 +46,7 @@ LOCAL_SRC_FILES := \
 	../src/checkpoints.cpp \
 	../src/configuration.cpp \
 	../src/crypter.cpp \
+    ../src/database_stack.cpp \
 	../src/db_env.cpp \
 	../src/db_tx.cpp \
 	../src/db_wallet.cpp \
