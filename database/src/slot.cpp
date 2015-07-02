@@ -1,9 +1,7 @@
 /*
- * Copyright (c) 2008-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2008-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
- *
- * coinpp is free software: you can redistribute it and/or modify
+ * This is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -165,11 +163,7 @@ bool slot::update_statistics(
     {
         storage_node & snode = found_it->second;
         
-        if (attr.type == message::attribute_type_stats_tcp_inbound)
-        {
-            snode.stats_tcp_inbound = attr.value;
-        }
-        else if (attr.type == message::attribute_type_stats_udp_bps_inbound)
+        if (attr.type == message::attribute_type_stats_udp_bps_inbound)
         {
             snode.stats_udp_bps_inbound = attr.value;
         }
@@ -275,6 +269,31 @@ std::vector<storage_node> slot::storage_nodes()
     return ret;
 }
 
+
+std::set<boost::asio::ip::udp::endpoint> slot::storage_node_endpoints(
+    const std::uint32_t & limit
+    )
+{
+    std::set<boost::asio::ip::udp::endpoint> ret;
+    
+    auto index = 0;
+    
+    for (auto & i : m_storage_nodes)
+    {
+        ret.insert(i.second.endpoint);
+        
+        if (limit > 0)
+        {
+            if (++index >= limit)
+            {
+                break;
+            }
+        }
+    }
+    
+    return ret;
+}
+
 bool slot::handle_response(
     const std::uint16_t & operation_id,
     const std::uint16_t & transaction_id,
@@ -341,13 +360,18 @@ bool slot::handle_timeout(const boost::asio::ip::udp::endpoint & ep)
                 static_cast<std::uint16_t> (it->second.timeouts()) << " times."
             );
             
-            if (it->second.timeouts() > 1)
+            auto elapsed = std::chrono::duration_cast<
+                std::chrono::seconds
+            >(std::chrono::steady_clock::now() -
+            it->second.last_update).count();
+            
+            /**
+             * A node is considered to have failed if at least 2 timeouts have
+             * occured and 200 seconds has elapsed since the node has last been
+             * seen.
+             */
+            if (it->second.timeouts() > 1 && elapsed > 200)
             {
-                auto elapsed = std::chrono::duration_cast<
-                    std::chrono::seconds
-                >(std::chrono::steady_clock::now() -
-                it->second.last_update).count();
-        
                 log_debug(
                     "Slot " << m_id << " storage node " <<
                     it->second.endpoint << " has failed after " <<
@@ -619,6 +643,98 @@ int rand_int(int upper_bound)
 
 int slot::run_test()
 {
+    boost::asio::io_service ios2;
+    
+    std::shared_ptr<node_impl> impl2;
+
+    std::set<std::int16_t> slot_id_nonces;
+    
+    auto index = 0;
+    
+    for (;;)
+    {
+        std::uint16_t random_port = rand_int(65535 - 49152 + 1) + 49152;
+        
+        std::int16_t slot_id = id_from_endpoint2(
+            boost::asio::ip::udp::endpoint(
+            boost::asio::ip::address::from_string("192.168.245.5"), random_port)
+        );
+        
+        printf(
+            "index = %d, port = %d, slot_id = %d, total = %zu\n", index,
+            random_port, slot_id, slot_id_nonces.size()
+        );
+
+        if (slot_id_nonces.find(slot_id) == slot_id_nonces.end())
+        {
+            slot_id_nonces.insert(slot_id);
+        }
+
+        if (slot_id_nonces.size() >= length)
+        {
+            printf("Slot distribution took %d rounds.\n", index);
+            
+            break;
+        }
+        
+        index++;
+    }
+
+    slot_id_nonces.clear();
+    
+    index = 0;
+    
+    std::stringstream ss;
+    
+    for (;;)
+    {
+        std::string random_str = std::to_string(std::rand()).substr(0, 5);
+        
+        std::int16_t slot_id = id(random_str);
+
+        printf(
+            "index = %d, random_str = %s, slot_id = %d, total = %zu\n", index,
+            random_str.c_str(), slot_id, slot_id_nonces.size()
+        );
+
+        if (slot_id_nonces.find(slot_id) == slot_id_nonces.end())
+        {
+            ss << "\"" << random_str << "\""  << ", ";
+        
+            slot_id_nonces.insert(slot_id);
+        }
+
+        if (slot_id_nonces.size() >= length)
+        {
+            printf("Slot distribution took %d rounds.\n", index);
+            
+            break;
+        }
+        
+        index++;
+    }
+    
+    std::cout << ss.str() << std::endl;
+    
+    /**
+     * The index should always be much less than 20,000.
+     */
+    assert(index < 20000);
+
+    boost::asio::io_service ios;
+    
+    std::shared_ptr<node_impl> impl;
+    
+    std::uint32_t slot_id;
+    
+    /**
+     * Check partial match.
+     */
+    slot_id = slot(ios, impl, "johnathan").id();
+    
+    assert(slot_id == 53);
+    assert(slot_id == slot(ios, impl, "johna").id());
+
     std::cerr << "Test (slot) Completed." << std::endl;
     
     return 0;

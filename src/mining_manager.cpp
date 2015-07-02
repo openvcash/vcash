@@ -30,6 +30,7 @@
 #include <coin/random.hpp>
 #include <coin/stack_impl.hpp>
 #include <coin/status_manager.hpp>
+#include <coin/tcp_connection.hpp>
 #include <coin/tcp_connection_manager.hpp>
 #include <coin/utility.hpp>
 #include <coin/wallet.hpp>
@@ -295,7 +296,7 @@ void mining_manager::loop(const bool & is_proof_of_stake)
         while (
             (utility::is_initial_block_download() ||
             stack_impl_.get_tcp_connection_manager(
-            )->tcp_connections().size() == 0) &&
+            )->is_connected() == false) &&
             globals::instance().state() == globals::state_started
             
             )
@@ -661,13 +662,12 @@ void mining_manager::pos_tick(const boost::system::error_code & ec)
 
             if (
                 (utility::is_initial_block_download() ||
-                stack_impl_.get_tcp_connection_manager(
-                )->tcp_connections().size() == 0) &&
-                globals::instance().state() == globals::state_started
+                stack_impl_.get_tcp_connection_manager()->is_connected() ==
+                false) && globals::instance().state() == globals::state_started
                 
                 )
             {
-                log_debug(
+                log_info(
                     "Mining manager is waiting on the blockchain to download."
                 );
             }
@@ -698,7 +698,7 @@ void mining_manager::pos_tick(const boost::system::error_code & ec)
                         
                         blk->encode(buffer);
                         
-                        log_debug(
+                        log_info(
                             "Mining manager, mining (pos) with " <<
                             blk->transactions().size() <<
                             " transactions in block, bytes = " <<
@@ -742,14 +742,14 @@ void mining_manager::pos_tick(const boost::system::error_code & ec)
         }
     
         /**
-         * Peers use a 60 second stake search interval and clients use 600
+         * Peers use a 60 second stake search interval and clients use 64
          * seconds.
          */
         auto interval =
             globals::instance().operation_mode() ==
-            protocol::operation_mode_peer ? 60 : 600
+            protocol::operation_mode_peer ? 60 : 64
         ;
-
+        
         timer_pos_.expires_from_now(std::chrono::seconds(interval));
     	timer_pos_.async_wait(std::bind(
 			&mining_manager::pos_tick, this, std::placeholders::_1)
@@ -853,6 +853,29 @@ void mining_manager::check_work(
                     "Mining manager, mismatch_spent = " << mismatch_spent <<
                     ", balance_in_question = " << balance_in_question << "."
                 );
+            }
+            
+            /**
+             * If we are a client node broadcast the block to all connected
+             * peers, otherwise an INV was sent in process_block above.
+             */
+            if (
+                globals::instance().operation_mode() ==
+                protocol::operation_mode_client
+                )
+            {
+                auto connections =
+                    stack_impl_.get_tcp_connection_manager(
+                    )->tcp_connections()
+                ;
+                
+                for (auto & i : connections)
+                {
+                    if (auto connection = i.second.lock())
+                    {
+                        connection->send_block_message(*blk);
+                    }
+                }
             }
         }
     }));

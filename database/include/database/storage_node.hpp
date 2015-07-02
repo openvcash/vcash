@@ -1,9 +1,7 @@
 /*
- * Copyright (c) 2008-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2008-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
- *
- * coinpp is free software: you can redistribute it and/or modify
+ * This is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -17,9 +15,9 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-
-#ifndef database_storage_node_hpp
-#define database_storage_node_hpp
+ 
+#ifndef DATABASE_STORAGE_NODE_HPP
+#define DATABASE_STORAGE_NODE_HPP
 
 #include <cstdint>
 #include <chrono>
@@ -30,6 +28,9 @@
 
 namespace database {
 
+    /**
+     * Implements a storage node.
+     */
     class storage_node
     {
         public:
@@ -40,7 +41,6 @@ namespace database {
                 , pinged(false)
                 , uptime(std::time(0))
                 , rtt(0)
-                , stats_tcp_inbound(0)
                 , stats_udp_bps_inbound(0)
                 , stats_udp_bps_outbound(0)
             {
@@ -68,7 +68,6 @@ namespace database {
                 std::uint16_t, std::chrono::steady_clock::time_point
             > transaction_ids;
         
-            std::uint32_t stats_tcp_inbound;
             std::uint32_t stats_udp_bps_inbound;
             std::uint32_t stats_udp_bps_outbound;
         
@@ -107,4 +106,4 @@ namespace database {
     
 } // namespace database
 
-#endif // database_storage_node_hpp
+#endif // DATABASE_STORAGE_NODE_HPP

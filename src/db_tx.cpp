@@ -40,7 +40,11 @@
 using namespace coin;
 
 db_tx::db_tx(const std::string & file_mode)
-    : db("blkindex.dat", file_mode)
+    : db(
+        globals::instance().operation_mode() ==
+        protocol::operation_mode_client ?
+        "block-index-client.dat" : "block-index-peer.dat", file_mode
+        )
 {
     // ...
 }
@@ -838,14 +842,14 @@ bool db_tx::load_block_index_guts()
                         block::get_hash_genesis())
                         )
                     {
-                        log_info("DB TX got genesis block.");
+                        log_info("Database transaction got genesis block.");
                     
                         stack_impl::get_block_index_genesis() = index_new;
                     }
                     
                     if (index_new->is_proof_of_stake())
                     {
-                        log_none("DB TX got proof of stake.");
+                        log_none("Database transaction got proof of stake.");
                         
                         stack_impl::get_seen_stake().insert(
                             std::make_pair(index_new->m_previous_out_stake,
@@ -861,8 +865,8 @@ bool db_tx::load_block_index_guts()
             catch (std::exception & e)
             {
                 log_error(
-                    "DB TX failed loading block index guts, what = " <<
-                    e.what() << "."
+                    "Database transaction failed loading block index guts, "
+                    "what = " << e.what() << "."
                 );
                 
                 return false;

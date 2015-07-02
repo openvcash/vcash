@@ -1,10 +1,8 @@
 
 /*
- * Copyright (c) 2008-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2008-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
- *
- * coinpp is free software: you can redistribute it and/or modify
+ * This is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -18,14 +16,11 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-
+ 
 #include <stdexcept>
 
 #include <database/stack.hpp>
 #include <database/stack_impl.hpp>
-
-#include <database/tcp_acceptor.hpp>
-#include <database/tcp_transport.hpp>
 
 using namespace database;
 
@@ -115,14 +110,11 @@ std::uint16_t stack::find(
     return 0;
 }
 
-std::uint16_t stack::proxy(
-    const char * addr, const std::uint16_t & port, const char * buf,
-    const std::size_t & len
-    )
+std::uint16_t stack::broadcast(const std::vector<std::uint8_t> & buffer)
 {
     if (stack_impl_)
     {
-        return stack_impl_->proxy(addr, port, buf, len);
+        return stack_impl_->broadcast(buffer);
     }
     
     return 0;
@@ -138,26 +130,8 @@ std::list< std::pair<std::string, std::uint16_t> > stack::endpoints()
     return std::list< std::pair<std::string, std::uint16_t> > ();
 }
 
-void stack::on_connected(const char * addr, const std::uint16_t & port)
-{
-    printf("%s is not overloaded.\n", __FUNCTION__);
-}
-
-void stack::on_disconnected(const char * addr, const std::uint16_t & port)
-{
-    printf("%s is not overloaded.\n", __FUNCTION__);
-}
-
 void stack::on_find(
     const std::uint16_t & transaction_id, const std::string & query
-    )
-{
-    printf("%s is not overloaded.\n", __FUNCTION__);
-}
-
-void stack::on_proxy(
-    const std::uint16_t & tid, const char * addr, const std::uint16_t & port,
-    const std::string & value
     )
 {
     printf("%s is not overloaded.\n", __FUNCTION__);
@@ -170,3 +144,12 @@ void stack::on_udp_receive(
 {
     printf("%s is not overloaded.\n", __FUNCTION__);
 }
+
+void stack::on_broadcast(
+    const char * addr, const std::uint16_t & port,const char * buf,
+    const std::size_t & len
+    )
+{
+    printf("%s is not overloaded.\n", __FUNCTION__);
+}
+

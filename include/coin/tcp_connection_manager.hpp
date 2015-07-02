@@ -84,6 +84,11 @@ namespace coin {
                 boost::asio::ip::tcp::endpoint, std::weak_ptr<tcp_connection>
             > & tcp_connections();
         
+            /**
+             * If true we are connected to the network.
+             */
+            bool is_connected();
+        
         private:
         
             /**

@@ -1,9 +1,7 @@
 /*
- * Copyright (c) 2008-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2008-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
- *
- * coinpp is free software: you can redistribute it and/or modify
+ * This is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -23,6 +21,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <set>
@@ -35,15 +34,13 @@
 
 namespace database {
 
-    class firewall_manager;
+    class ecdhe;
+    class key_pool;
     class message;
     class node;
     class operation_queue;
-    class role_manager;
     class routing_table;
     class storage;
-    class tcp_acceptor;
-    class tcp_connector;
     class udp_handler;
     class udp_multiplexor;
     
@@ -85,10 +82,11 @@ namespace database {
             /**
              * Queues a ping operation in the routing table.
              * @param ep The boost::asio::ip::udp::endpoint.
-             * @param snodes The storage_node's.
+             * @param force_queue If true the ping will be forcefully queued.
              */
             void queue_ping(
-                const boost::asio::ip::udp::endpoint &
+                const boost::asio::ip::udp::endpoint &,
+                const bool & force_queue = false
             );
         
             /**
@@ -105,17 +103,11 @@ namespace database {
             std::uint16_t find(const std::string &, const std::size_t &);
         
             /**
-             * Performs a (tcp) proxy operation given endpoint and buffer.
-             * @param addr The address.
-             * @param port The port.
-             * @param buf The buffer.
-             * @param len The length.
+             * Performs a broadcast operation.
+             * @param buffer The buffer.
              */
-            std::uint16_t proxy(
-                const char * addr, const std::uint16_t & port,
-                const char * buf, const std::size_t & len
-            );
-        
+            std::uint16_t broadcast(const std::vector<std::uint8_t> &);
+            
             /**
              * Returns all of the endpoints in the routing table.
              */
@@ -150,6 +142,16 @@ namespace database {
             const std::string & id() const;
 
             /**
+             * The ecdhe.
+             */
+            std::shared_ptr<ecdhe> & get_ecdhe();
+        
+            /**
+             * The key_pool.
+             */
+            std::shared_ptr<key_pool> & get_key_pool();
+        
+            /**
              * Sends the given message to the boost::asio::ip::udp::endpoint.
              * @param ep The boost::asio::ip::udp::endpoint.
              * @param msg The message.
@@ -157,17 +159,6 @@ namespace database {
             void send_message(
                 const boost::asio::ip::udp::endpoint &,
                 std::shared_ptr<message>
-            );
-        
-            /**
-             * Handles a message.
-             * @param ep The boost::asio::ip::tcp::endpoint.
-             * @param buf The buffer.
-             * @param len The length
-             */
-            void handle_message(
-                const boost::asio::ip::tcp::endpoint &, const char *,
-                const std::size_t &
             );
         
             /**
@@ -214,15 +205,6 @@ namespace database {
             );
         
         private:
-
-            /**
-             *
-             * @param ep The boost::asio::ip::tcp::endpoint.
-             * @param msg The message.
-             */
-            void handle_ack_message(
-                const boost::asio::ip::tcp::endpoint & ep, message & msg
-            );
         
             /**
              *
@@ -268,13 +250,13 @@ namespace database {
             void handle_find_message(
                 const boost::asio::ip::udp::endpoint & ep, message & msg
             );
-
+        
             /**
              *
              * @param ep The boost::asio::ip::udp::endpoint.
              * @param msg The message.
              */
-            void handle_firewall_message(
+            void handle_probe_message(
                 const boost::asio::ip::udp::endpoint & ep, message & msg
             );
         
@@ -283,7 +265,25 @@ namespace database {
              * @param ep The boost::asio::ip::udp::endpoint.
              * @param msg The message.
              */
-            void handle_probe_message(
+            void handle_public_key_ping_message(
+                const boost::asio::ip::udp::endpoint & ep, message & msg
+            );
+        
+            /**
+             *
+             * @param ep The boost::asio::ip::udp::endpoint.
+             * @param msg The message.
+             */
+            void handle_public_key_pong_message(
+                const boost::asio::ip::udp::endpoint & ep, message & msg
+            );
+        
+            /**
+             *
+             * @param ep The boost::asio::ip::udp::endpoint.
+             * @param msg The message.
+             */
+            void handle_broadcast_message(
                 const boost::asio::ip::udp::endpoint & ep, message & msg
             );
         
@@ -307,6 +307,16 @@ namespace database {
             std::string m_id;
         
             /**
+             * The ecdhe.
+             */
+            std::shared_ptr<ecdhe> m_ecdhe;
+        
+            /**
+             * The key_pool.
+             */
+            std::shared_ptr<key_pool> m_key_pool;
+        
+            /**
              * The public boost::asio::ip::udp::endpoint.
              */
             boost::asio::ip::udp::endpoint m_public_endpoint;
@@ -326,12 +336,14 @@ namespace database {
         
         protected:
         
-            friend class firewall_manager;
             friend class ping_operation;
-            friend class role_manager;
             friend class slot;
-            friend class tcp_acceptor;
-            friend class tcp_connector;
+        
+            /**
+             * The maintenance timer handler.
+             * @param ec The boost::system::error_code.
+             */
+            void maintenance_tick(const boost::system::error_code & ec);
         
             /**
              * The node.
@@ -351,26 +363,8 @@ namespace database {
             /**
              * The public endpoint mutex.
              */
-#if 0 // C++14
-            std::shared_mutex public_endpoint_mutex_;
-#else
             std::recursive_mutex public_endpoint_mutex_;
-#endif
-            /**
-             * The firewall_manager.
-             */
-            std::shared_ptr<firewall_manager> firewall_manager_;
-        
-            /**
-             * The tcp_acceptor.
-             */
-            std::shared_ptr<tcp_acceptor> tcp_acceptor_;
-        
-            /**
-             * The tcp_connector.
-             */
-            std::shared_ptr<tcp_connector> tcp_connector_;
-        
+
             /**
              * The udp_multiplexor.
              */
@@ -392,14 +386,29 @@ namespace database {
             std::shared_ptr<operation_queue> operation_queue_;
         
             /**
-             * The role_manager.
-             */
-            std::shared_ptr<role_manager> role_manager_;
-        
-            /**
              * The storage.
              */
             std::shared_ptr<storage> storage_;
+        
+            /**
+             * The last broadcast messages.
+             */
+            std::map<
+                boost::asio::ip::udp::endpoint,
+                std::pair<std::uint16_t, std::time_t>
+            > last_broadcast_messages_;
+        
+            /**
+             * The last broadcast messages mutex.
+             */
+            std::recursive_mutex last_broadcast_messages_mutex_;
+        
+            /**
+             * The maintenance timer.
+             */
+            boost::asio::basic_waitable_timer<std::chrono::steady_clock>
+                timer_maintenance_
+            ;
     };
     
 } // namespace database

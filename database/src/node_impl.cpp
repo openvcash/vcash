@@ -1,9 +1,7 @@
 /*
- * Copyright (c) 2008-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2008-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
- *
- * coinpp is free software: you can redistribute it and/or modify
+ * This is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -21,10 +19,12 @@
 #include <random>
 
 #include <database/block.hpp>
+#include <database/broadcast_operation.hpp>
 #include <database/constants.hpp>
+#include <database/ecdhe.hpp>
 #include <database/entry.hpp>
 #include <database/find_operation.hpp>
-#include <database/firewall_manager.hpp>
+#include <database/key_pool.hpp>
 #include <database/logger.hpp>
 #include <database/message.hpp>
 #include <database/network.hpp>
@@ -33,24 +33,20 @@
 #include <database/operation_queue.hpp>
 #include <database/ping_operation.hpp>
 #include <database/protocol.hpp>
-#include <database/role_manager.hpp>
+#include <database/random.hpp>
 #include <database/routing_table.hpp>
 #include <database/slot.hpp>
 #include <database/storage.hpp>
 #include <database/store_operation.hpp>
-#include <database/tcp_acceptor.hpp>
-#include <database/tcp_connector.hpp>
-#include <database/tcp_transport.hpp>
 #include <database/udp_handler.hpp>
 #include <database/udp_multiplexor.hpp>
 #include <database/utility.hpp>
+#include <database/whirlpool.hpp>
 
 #if (defined _MSC_VER)
 #undef min
 #undef max
 #endif
-
-#define USE_TCP_CONNECTOR 0
 
 using namespace database;
 
@@ -58,6 +54,7 @@ node_impl::node_impl(boost::asio::io_service & ios, node & owner)
     : node_(owner)
     , io_service_(ios)
     , strand_(ios)
+    , timer_maintenance_(ios)
 {
     // ...
 }
@@ -75,23 +72,21 @@ void node_impl::start(const stack::configuration & config)
      * Generate the local id from the host name.
      */
     m_id = boost::asio::ip::host_name();
+
+    /**
+     * Allocate the ecdhe.
+     */
+    m_ecdhe.reset(new ecdhe());
     
     /**
-     * Allocate the firewall_manager.
+     * Allocate the key_pool.
      */
-    firewall_manager_.reset(
-        new firewall_manager(io_service_, shared_from_this())
-    );
+    m_key_pool.reset(new key_pool(io_service_));
 
     /**
      * Allocate the udp_multiplexor.
      */
     udp_multiplexor_.reset(new udp_multiplexor(io_service_));
-    
-    /**
-     * Allocate the tcp_acceptor.
-     */
-    tcp_acceptor_.reset(new tcp_acceptor(io_service_, shared_from_this()));
     
     /**
      * Allocate the udp_handler.
@@ -115,11 +110,6 @@ void node_impl::start(const stack::configuration & config)
     storage_.reset(new storage(io_service_));
 
     /**
-     * Allocate the role_manager.
-     */
-    role_manager_.reset(new role_manager(io_service_, shared_from_this()));
-
-    /**
      * Allocate the routing_table.
      */
     routing_table_.reset(new routing_table(io_service_, shared_from_this()));
@@ -130,12 +120,16 @@ void node_impl::start(const stack::configuration & config)
     operation_queue_.reset(new operation_queue(io_service_));
     
     /**
-     * Start the firewall_manager.
+     * Generate an ecdhe public key.
      */
-    if (firewall_manager_)
-    {
-        firewall_manager_->start();
-    }
+    auto public_key = m_ecdhe->public_key();
+    
+    log_none("Node generated public key:\r\n" << public_key);
+    
+    /**
+     * Start the key_pool.
+     */
+    m_key_pool->start();
     
     /**
      * Start the storage.
@@ -146,14 +140,6 @@ void node_impl::start(const stack::configuration & config)
      * Start the routing table.
      */
     routing_table_->start();
-
-    if (role_manager_)
-    {
-        /**
-         * Start the role_manager.
-         */
-        role_manager_->start();
-    }
     
     /**
      * Start the operation_queue.
@@ -161,21 +147,12 @@ void node_impl::start(const stack::configuration & config)
     operation_queue_->start();
     
     /**
-     * Make sure the tcp and udp ports are the same.
+     * Get the network port.
      */
-    std::uint16_t tcp_port = m_config.port(), udp_port = m_config.port();
+    std::uint16_t udp_port = m_config.port();
     
     if (m_config.port() == 0)
     {
-        /**
-         * Open the tcp_acceptor.
-         */
-        tcp_acceptor_->open(m_config.port());
-        
-        tcp_port = tcp_acceptor_->local_endpoint().port();
-        
-        udp_port = tcp_port;
-        
         /**
          * Open the udp_multiplexor.
          */
@@ -183,11 +160,6 @@ void node_impl::start(const stack::configuration & config)
     }
     else
     {
-        /**
-         * Open the tcp_acceptor.
-         */
-        tcp_acceptor_->open(m_config.port());
-        
         /**
          * Open the udp_multiplexor.
          */
@@ -199,17 +171,9 @@ void node_impl::start(const stack::configuration & config)
      */
     m_config.set_port(udp_port);
     
-    log_debug("tcp_port = " << tcp_port << ", udp_port = " << udp_port);
-    
-    assert(tcp_port == udp_port);
+    log_debug("Node local port = " << udp_port << ".");
 
-#if 0 // // C++14
-    std::unique_lock<std::shared_mutex> l(
-        public_endpoint_mutex_, std::defer_lock
-    );
-#else
     std::lock_guard<std::recursive_mutex> l(public_endpoint_mutex_);
-#endif
 
     /**
      * Set the public endpoint.
@@ -218,84 +182,43 @@ void node_impl::start(const stack::configuration & config)
         network::local_address(), udp_port
     );
     
-    log_debug("Node public endpoint = " << m_public_endpoint << ".");
-    
-#if (defined USE_TCP_CONNECTOR && USE_TCP_CONNECTOR)
-    /**
-     * Allocate the tcp_connector.
-     */
-    tcp_connector_.reset(new tcp_connector(io_service_, shared_from_this(),
-        [this](const boost::asio::ip::tcp::endpoint & ep)
-    {
-        log_debug("Node has connected to parent node " << ep << ".");
-        
-        /**
-         * If we've just connected and the routing table has no storage nodes
-         * perform a bootstrap. This could happen if a node starts up without
-         * an internet connection and later it becomes available.
-         */
-        if (routing_table_->storage_nodes().size() == 0)
-        {
-            for (auto & i : m_bootstrap_contacts)
-            {
-                ping(i);
-            }
-        }
-
-        node_.on_connected(ep);
-    }, 
-        [this](const boost::asio::ip::tcp::endpoint & ep)
-    {
-        log_debug("Node has disconnected from parent node " << ep << ".");
-        
-        node_.on_disconnected(ep);
-    },
-        [this](const boost::asio::ip::tcp::endpoint & ep, message & msg)
-    {
-        log_debug(
-            "Node got message from " << ep << ", code = " <<
-            msg.header_code() << "."
-        );
-        
-        switch (msg.header_code())
-        {
-            case protocol::message_code_ack:
-            case protocol::message_code_nack:
-            {
-                for (auto & i : msg.string_attributes())
-                {
-                    if (i.type == message::attribute_type_proxy_payload)
-                    {
-                        log_debug(
-                            "***** Node got attribute_type_proxy_payload, "
-                            "empty = " << i.value.empty() << "."
-                        );
-                        
-                        node_.on_proxy(msg.header_transaction_id(), ep, i.value);
-                    }
-                }
-            }
-            break;
-            default:
-            break;
-        }
-    }));
+    log_debug("Node local endpoint = " << m_public_endpoint << ".");
     
     /**
-     * Start the tcp_connector.
+     * Start the maintenance timer.
      */
-    tcp_connector_->start();
-#endif // USE_TCP_CONNECTOR
+    timer_maintenance_.expires_from_now(std::chrono::seconds(8));
+    timer_maintenance_.async_wait(
+        strand_.wrap(std::bind(&node_impl::maintenance_tick, shared_from_this(),
+        std::placeholders::_1))
+    );
 }
 
 void node_impl::stop()
 {
+    log_debug("Node is stopping.");
+    
     /**
-     * Stop the firewall_manager.
+     * Close the udp_multiplexor.
      */
-    if (firewall_manager_)
+    if (udp_multiplexor_)
     {
-        firewall_manager_->stop();
+        udp_multiplexor_->close();
+    }
+    
+    /**
+     * Deallocate the ecdhe.
+     */
+    if (m_ecdhe)
+    {
+        m_ecdhe.reset();
+    }
+    /**
+     * Stop the key_pool.
+     */
+    if (m_key_pool)
+    {
+        m_key_pool->stop();
     }
     
     /**
@@ -315,43 +238,11 @@ void node_impl::stop()
     }
     
     /**
-     * Stop the role manager.
-     */
-    if (role_manager_)
-    {
-        role_manager_->stop();
-    }
-    
-    /**
      * Stop the storage.
      */
     if (storage_)
     {
         storage_->stop();
-    }
-    
-    /**
-     * Stop the tcp_connector.
-     */
-    if (tcp_connector_)
-    {
-        tcp_connector_->stop();
-    }
-    
-    /**
-     * Close the tcp_acceptor.
-     */
-    if (tcp_acceptor_)
-    {
-        tcp_acceptor_->close();
-    }
-    
-    /**
-     * Close the udp_multiplexor.
-     */
-    if (udp_multiplexor_)
-    {
-        udp_multiplexor_->close();
     }
     
     /**
@@ -361,6 +252,13 @@ void node_impl::stop()
     {
         udp_handler_->stop();
     }
+    
+    /**
+     * Stop the maintenance timer.
+     */
+    timer_maintenance_.cancel();
+    
+    log_debug("Node is stopped.");
 }
 
 std::uint16_t node_impl::ping(
@@ -385,11 +283,13 @@ std::uint16_t node_impl::ping(
     return ret;
 }
 
-void node_impl::queue_ping(const boost::asio::ip::udp::endpoint & ep)
+void node_impl::queue_ping(
+    const boost::asio::ip::udp::endpoint & ep, const bool & force_queue
+    )
 {
     if (routing_table_)
     {
-        routing_table_->queue_ping(ep);
+        routing_table_->queue_ping(ep, force_queue);
     }
 }
 
@@ -426,8 +326,8 @@ std::uint16_t node_impl::store(const std::string & query_string)
             if (snodes.empty())
             {
                 log_error(
-                    "Node attempted store operation but no endpoints were found, "
-                    "query_string = " << query_string << "."
+                    "Node attempted store operation but no endpoints were "
+                    "found, query_string = " << query_string << "."
                 );
             }
             else
@@ -481,14 +381,14 @@ std::uint16_t node_impl::find(
              * We didn't find any storage nodes in the slot or block, use
              * whatever we have.
              */
-            if (snodes.empty())
+            if (snodes.size() == 0)
             {
                 snodes = routing_table_->storage_nodes(
                     constants::snodes_per_keyword
                 );
             }
 
-            if (snodes.empty())
+            if (snodes.size() == 0)
             {
                 log_error(
                     "Node attempted find operation but no endpoints were found, "
@@ -517,53 +417,41 @@ std::uint16_t node_impl::find(
     return ret;
 }
 
-std::uint16_t node_impl::proxy(
-    const char * addr, const std::uint16_t & port, const char * buf,
-    const std::size_t & len
-    )
+std::uint16_t node_impl::broadcast(const std::vector<std::uint8_t> & buffer)
 {
-    std::uint16_t ret = 0;
+    std::uint16_t ret = operation::next_transaction_id();
 
-    /**
-     * Allocate the proxy message.
-     */
-    std::shared_ptr<message> msg(
-        new message(protocol::message_code_proxy)
-    );
-
-    message::attribute_endpoint attr1;
-    
-    attr1.type = message::attribute_type_endpoint;
-    attr1.length = 0;
-    attr1.value = boost::asio::ip::udp::endpoint(
-        boost::asio::ip::address::from_string(addr), port
-    );
-    
-    msg->endpoint_attributes().push_back(attr1);
-    
-    message::attribute_string attr2;
-    
-    attr2.type = message::attribute_type_proxy_payload;
-    attr2.length = len;
-    attr2.value = std::string(buf, len);
-    
-    msg->string_attributes().push_back(attr2);
-    
-    ret = msg->header_transaction_id();
-    
-    /**
-     * Encode the message.
-     */
-    msg->encode();
-
-    /**
-     * Send the message.
-     */
-    if (!tcp_connector_->send(msg->data(), msg->size()))
+    io_service_.post(strand_.wrap(std::bind([this, ret, buffer]
     {
-        log_error("Proxy send failed, not connected.");
-    }
+        /**
+         * Get a random storage node from each slot in the system.
+         */
+        auto snodes = routing_table_->random_storage_node_from_each_slot();
 
+        if (snodes.size() == 0)
+        {
+            log_error(
+                "Node attempted broadcast operation but no endpoints were "
+                "found."
+            );
+        }
+        else
+        {
+            /**
+             * Allocate the broadcast_operation.
+             */
+            std::shared_ptr<broadcast_operation> op(
+                new broadcast_operation(io_service_, ret, operation_queue_,
+                shared_from_this(), snodes, buffer)
+            );
+            
+            /**
+             * Insert the broadcast_operation into the operation_queue.
+             */
+            operation_queue_->insert(op);
+        }
+    })));
+    
     return ret;
 }
 
@@ -593,11 +481,8 @@ stack::configuration & node_impl::config()
 
 boost::asio::ip::udp::endpoint & node_impl::public_endpoint()
 {
-#if 0 // // C++14
-    std::shared_lock<std::shared_mutex> l(public_endpoint_mutex_, std::defer_lock);
-#else
     std::lock_guard<std::recursive_mutex> l(public_endpoint_mutex_);
-#endif
+
     return m_public_endpoint;
 }
 
@@ -618,6 +503,16 @@ const std::string & node_impl::id() const
     return m_id;
 }
 
+std::shared_ptr<ecdhe> & node_impl::get_ecdhe()
+{
+    return m_ecdhe;
+}
+
+std::shared_ptr<key_pool> & node_impl::get_key_pool()
+{
+    return m_key_pool;
+}
+
 void node_impl::send_message(
     const boost::asio::ip::udp::endpoint & ep, std::shared_ptr<message> msg
     )
@@ -625,54 +520,6 @@ void node_impl::send_message(
     if (udp_handler_)
     {
         udp_handler_->send_message(ep, msg);
-    }
-}
-
-void node_impl::handle_message(
-    const boost::asio::ip::tcp::endpoint & ep, const char * buf,
-    const std::size_t & len
-    )
-{
-    /**
-     * Allocate the message.
-     */
-    message msg(buf, len);
-    
-    try
-    {
-        /**
-         * Decode the message.
-         */
-        if (msg.decode())
-        {
-            switch (msg.header_code())
-            {
-                case protocol::message_code_ack:
-                {
-                    handle_ack_message(ep, msg);
-                }
-                break;
-                default:
-                {
-                    log_none(
-                        "Node got invalid (tcp) header code = " <<
-                        msg.header_code() << "."
-                    );
-                }
-                break;
-            }
-        }
-        else
-        {
-            log_error("Node failed to decode (tcp) message from " << ep << ".");
-        }
-    }
-    catch (std::exception & e)
-    {
-        log_error(
-            "Node failed to decode (tcp) message from " << ep << ", what = " <<
-            e.what() << "."
-        );
     }
 }
 
@@ -698,14 +545,6 @@ void node_impl::handle_message(
          */
         if (msg.decode())
         {
-            /**
-             * Inform the tcp_connector.
-             */
-            if (tcp_connector_)
-            {
-                tcp_connector_->handle_message(ep, msg);
-            }
-    
             switch (msg.header_code())
             {
                 case protocol::message_code_ack:
@@ -733,14 +572,24 @@ void node_impl::handle_message(
                     handle_find_message(ep, msg);
                 }
                 break;
-                case protocol::message_code_firewall:
-                {
-                    handle_firewall_message(ep, msg);
-                }
-                break;
                 case protocol::message_code_probe:
                 {
                     handle_probe_message(ep, msg);
+                }
+                break;
+                case protocol::message_code_public_key_ping:
+                {
+                    handle_public_key_ping_message(ep, msg);
+                }
+                break;
+                case protocol::message_code_public_key_pong:
+                {
+                    handle_public_key_pong_message(ep, msg);
+                }
+                break;
+                case protocol::message_code_broadcast:
+                {
+                    handle_broadcast_message(ep, msg);
                 }
                 break;
                 case protocol::message_code_error:
@@ -804,20 +653,6 @@ void node_impl::on_app_udp_receive(
 }
 
 void node_impl::handle_ack_message(
-    const boost::asio::ip::tcp::endpoint & ep, message & msg
-    )
-{
-    if (firewall_manager_ && firewall_manager_->handle_message(ep, msg))
-    {
-        // ...
-    }
-    else
-    {
-        // ...
-    }
-}
-
-void node_impl::handle_ack_message(
     const boost::asio::ip::udp::endpoint & ep, message & msg
     )
 {
@@ -833,62 +668,55 @@ void node_impl::handle_ack_message(
         routing_table_->update(ep, msg.header_transaction_id());
     }
     
-    if (firewall_manager_ && firewall_manager_->handle_message(ep, msg))
-    {
-        // ...
-    }
-    else
-    {    
-        /**
-         * Find the operation.
-         */
-        const std::shared_ptr<operation> op = operation_queue_->find(
-            msg.header_transaction_id()
-        );
+    /**
+     * Find the operation.
+     */
+    const std::shared_ptr<operation> op = operation_queue_->find(
+        msg.header_transaction_id()
+    );
 
-        if (op)
+    if (op)
+    {
+        /**
+         * Inform the operation.
+         */
+        op->on_response(msg);
+
+        /**
+         * Results are piggy backed onto ack messages. Check if there is at
+         * least one result, tuples of query and lifetime.
+         */
+        if (msg.string_attributes().size() >= 1)
         {
             /**
-             * Inform the operation.
+             * Get the queries.
              */
-            op->on_response(msg);
+            std::vector<std::string> queries;
+                
+            for (auto & i : msg.string_attributes())
+            {
+                if (i.type == message::attribute_type_storage_query)
+                {
+                    queries.push_back(i.value);
+                }
+            }
 
             /**
-             * Results are piggy backed onto ack messages. Check if there is at
-             * least one result, tuples of query and lifetime.
+             * Callback on each query result.
              */
-            if (msg.string_attributes().size() >= 1)
+            for (std::size_t i = 0; i < queries.size(); i++)
             {
-                /**
-                 * Get the queries.
-                 */
-                std::vector<std::string> queries;
-                    
-                for (auto & i : msg.string_attributes())
-                {
-                    if (i.type == message::attribute_type_storage_query)
-                    {
-                        queries.push_back(i.value);
-                    }
-                }
+                log_none(
+                    "Node got query = " << queries[i] <<
+                    ", tid = " << msg.header_transaction_id() << "."
+                );
 
                 /**
-                 * Callback on each query result.
+                 * API Callback
                  */
-                for (std::size_t i = 0; i < queries.size(); i++)
-                {
-                    log_none(
-                        "Node got query = " << queries[i] <<
-                        ", tid = " << msg.header_transaction_id() << "."
-                    );
-
-                    /**
-                     * API Callback
-                     */
-                    node_.on_find(
-                        op ? op->transaction_id() : 0, queries[i]
-                    );
-                }
+                node_.on_find(
+                    op ? op->transaction_id() : 0, queries[i]
+                );
             }
         }
     }
@@ -902,7 +730,6 @@ void node_impl::handle_ack_message(
          * Look for statistics attributes.
          */
         if (
-            i.type == message::attribute_type_stats_tcp_inbound ||
             i.type == message::attribute_type_stats_udp_bps_inbound ||
             i.type == message::attribute_type_stats_udp_bps_outbound
             )
@@ -956,7 +783,7 @@ void node_impl::handle_ping_message(
     const boost::asio::ip::udp::endpoint & ep, message & msg
     )
 {
-    auto response = std::make_shared<message>(
+    auto response = std::make_shared<message> (
         protocol::message_code_ack, msg.header_transaction_id()
     );
     
@@ -1002,26 +829,8 @@ void node_impl::handle_ping_message(
              */
             auto piggyback = std::rand() % 2 == 1;
     
-            if (tcp_acceptor_ && piggyback)
+            if (piggyback)
             {
-                enum { listen_sockets = 2 };
-                
-                /**
-                 * Add the attribute_type_stats_tcp_inbound.
-                 */
-                if (tcp_acceptor_->tcp_transports().size() > listen_sockets)
-                {
-                    message::attribute_uint32 attr1;
-                    
-                    attr1.type = message::attribute_type_stats_tcp_inbound;
-                    attr1.length = sizeof(attr1.value);
-                    attr1.value =
-                        tcp_acceptor_->tcp_transports().size() - listen_sockets
-                    ;
-                    
-                    response->uint32_attributes().push_back(attr1);
-                }
-
                 /**
                  * Add the attribute_type_stats_udp_bps_inbound.
                  */
@@ -1072,7 +881,6 @@ void node_impl::handle_ping_message(
              * Look for statistics attributes.
              */
             if (
-                i.type == message::attribute_type_stats_tcp_inbound ||
                 i.type == message::attribute_type_stats_udp_bps_inbound ||
                 i.type == message::attribute_type_stats_udp_bps_outbound
                 )
@@ -1241,8 +1049,11 @@ void node_impl::handle_store_message(
             }
             else
             {
-                // :TODO: remove this one day. clients now send slot requests
-                // with their store messages.
+                /**
+                 * :TODO: Remove this one day. Clients now send slot requests
+                 * with their store messages.
+                 */
+                
                 /**
                  * Get some storage nodes that belong to the responsible slot.
                  */
@@ -1251,7 +1062,8 @@ void node_impl::handle_store_message(
                 );
                 
                 /**
-                 * Piggy back some storage nodes that are responsible for the query.
+                 * Piggy back some storage nodes that are responsible for
+                 * the query.
                  */
                 if (i1.size() > 0)
                 {
@@ -1359,7 +1171,8 @@ void node_impl::handle_find_message(
     if (slots.size() > 0)
     {
         std::shared_ptr<message> response(
-            new message(protocol::message_code_nack, msg.header_transaction_id())
+            new message(protocol::message_code_nack,
+            msg.header_transaction_id())
         );
         
         for (auto & i : slots)
@@ -1674,100 +1487,475 @@ void node_impl::handle_find_message(
     }
 }
 
-void node_impl::handle_firewall_message(
+void node_impl::handle_probe_message(
     const boost::asio::ip::udp::endpoint & ep, message & msg
     )
 {
-    log_debug("Node got firewall messsage from " << ep << ".");
+    log_debug("Node got probe messsage from " << ep << ".");
+
+    /**
+     * Allocate the messsage.
+     */
+    std::shared_ptr<message> response(
+        new message(protocol::message_code_ack,
+        msg.header_transaction_id())
+    );
     
-    if (!msg.endpoint_attributes().empty())
+    /**
+     * Send the response.
+     */
+    send_message(ep, response);
+}
+
+void node_impl::handle_public_key_ping_message(
+    const boost::asio::ip::udp::endpoint & ep, message & msg
+    )
+{
+    /**
+     * protocol::message_code_public_key_ping messages do not update the
+     * routing table.
+     */
+    
+    if (msg.endpoint_attributes().size() > 0)
     {
-        /**
-         * Send the response back to the endpoint address as seen by us but use
-         * the provided port number.    
-         */
-        boost::asio::ip::udp::endpoint wirewall_ep(
-            ep.address(), msg.endpoint_attributes().front().value.port()
-        );
-        
-        /**
-         * Allocate the messsage.
-         */
-        std::shared_ptr<message> response(
-            new message(protocol::message_code_ack)
-        );
-        
-        /**
-         * Copy the transaction id.
-         */
-        response->set_header_transaction_id(msg.header_transaction_id());
-        
-        /**
-         * If we are operating in interface mode we must set the message
-         * header flag DONTROUTE so that other nodes do not add us to
-         * their routing table.
-         */
-        if (
-            m_config.operation_mode() ==
-            stack::configuration::operation_mode_interface
-            )
+        auto ep = msg.endpoint_attributes().front();
+// :TODO: Re-enable after testing.
+//        if (
+//            network::address_is_private(ep.value.address()) == false &&
+//            network::address_is_loopback(ep.value.address()) == false &&
+//            network::address_is_any(ep.value.address()) == false
+//            )
         {
-            response->set_header_flags(
-                static_cast<protocol::message_flag_t> (
-                response->header_flags() | protocol::message_flag_dontroute)
+            std::lock_guard<std::recursive_mutex> l(
+                public_endpoint_mutex_
+            );
+
+            /**
+             * Set our public endpoint.
+             */
+            m_public_endpoint = ep.value;
+            
+            log_info(
+                "Node discovered public endpoint = " << m_public_endpoint <<
+                "."
             );
         }
-        
+    }
+    
+    if (msg.string_attributes().size() > 0)
+    {
         /**
-         * Encode the message.
+         * Look for an message::attribute_type_public_key.
          */
-        if (response->encode())
+        std::string public_key;
+        
+        for (auto & i : msg.string_attributes())
         {
+            if (i.type == message::attribute_type_public_key)
+            {
+                public_key = i.value;
+                
+                break;
+            }
+        }
+    
+        log_none(
+            "Node got public key ping messsage from " << ep <<
+            ", public_key = " << public_key << "."
+        );
+
+        /**
+         * Check that the public key is not empty.
+         */
+        if (public_key.size() > 0)
+        {
+            /**
+             * Derive the shared secret bytes from the remote public key.
+             */
+            auto bytes = m_ecdhe->derive_secret_key(public_key);
+
+            /**
+             * Hash the shared secret bytes.
+             */
+            whirlpool w(&bytes[0], bytes.size());
+            
+            /**
+             * Set the hash to the first 32 bytes of the hexidecimal
+             * representation of the digest.
+             */
+            auto shared_secret = w.to_string().substr(
+                0, whirlpool::digest_length / 2
+            );
+            
             log_debug(
-                "Node sending firewall (udp ack) message to " <<
-                wirewall_ep << "."
+                "Node calculated shared secret " << shared_secret <<
+                " for " << ep << "."
+            );
+        
+            /**
+             * Insert the shared secret into the key_pool.
+             */
+            m_key_pool->insert(ep, shared_secret);
+            
+            /**
+             * Send a protocol::message_code_public_key_pong to advertise
+             * out public key to the remote node.
+             */
+            
+            /**
+             * Allocate the protocol::message_code_public_key_pong.
+             */
+            std::shared_ptr<message> response(
+                new message(protocol::message_code_public_key_pong,
+                msg.header_transaction_id())
             );
             
             /**
-             * Send this message directly to the firewall endpoint.
+             * Add our public key as a message::attribute_string of
+             * type message::attribute_type_public_key.
              */
-            udp_multiplexor_->send_to(
-                wirewall_ep, response->data(), response->size()
-            );
+            message::attribute_string attr1;
+            
+            attr1.type = message::attribute_type_public_key;
+            attr1.length = m_ecdhe->public_key().size();
+            attr1.value = m_ecdhe->public_key();
+            
+            response->string_attributes().push_back(attr1);
+            
+            /**
+             * Send the response.
+             */
+            send_message(ep, response);
         }
         else
         {
-            log_error("Node message encoding failed.");
+            log_error("Node got empty public key in ping.");
+        }
+    }
+    else
+    {
+        log_debug("Node got public key ping from " << ep << ".");
+    }
+}
+
+void node_impl::handle_public_key_pong_message(
+    const boost::asio::ip::udp::endpoint & ep, message & msg
+    )
+{
+    /**
+     * protocol::message_code_public_key_pong messages do not update the
+     * routing table.
+     */
+    
+    if (msg.string_attributes().size() > 0)
+    {
+        /**
+         * Look for an message::attribute_type_public_key.
+         */
+        std::string public_key;
+        
+        for (auto & i : msg.string_attributes())
+        {
+            if (i.type == message::attribute_type_public_key)
+            {
+                public_key = i.value;
+                
+                break;
+            }
+        }
+    
+        log_none(
+            "Node got public key pong messsage from " << ep <<
+            ", public_key = " << public_key << "."
+        );
+        
+        /**
+         * Check that the public key is not empty.
+         */
+        if (public_key.size() > 0)
+        {
+            /**
+             * Derive the shared secret bytes from the remote public key.
+             */
+            auto bytes = m_ecdhe->derive_secret_key(public_key);
+
+            /**
+             * Hash the shared secret bytes.
+             */
+            whirlpool w(&bytes[0], bytes.size());
+            
+            /**
+             * Set the hash to the first 32 bytes of the hexidecimal
+             * representation of the digest.
+             */
+            auto shared_secret = w.to_string().substr(
+                0, whirlpool::digest_length / 2
+            );
+            
+            log_debug(
+                "Node calculated shared secret " << shared_secret <<
+                " for " << ep << "."
+            );
+        
+            /**
+             * Insert the shared secret into the key_pool.
+             */
+            m_key_pool->insert(ep, shared_secret);
+
+            /**
+             * Force a ping to be queued since we may have just tried before
+             * the handshake.
+             */
+            queue_ping(ep, true);
+        }
+        else
+        {
+            log_error("Node got empty public key in pong.");
+        }
+    }
+    else
+    {
+        log_debug("Node got public key pong from " << ep << ".");
+    }
+}
+
+void node_impl::handle_broadcast_message(
+    const boost::asio::ip::udp::endpoint & ep, message & msg
+    )
+{
+    /**
+     * If we are operating in interface mode we ignore all broadcast messages.
+     */
+    if (
+        m_config.operation_mode() ==
+        stack::configuration::operation_mode_interface
+        )
+    {
+        // ...
+    }
+    else
+    {
+        if (msg.header_flags() & protocol::message_flag_dontroute)
+        {
+            // ...
+        }
+        else
+        {
+            /**
+             * Update the routing table.
+             */
+            routing_table_->update(ep, msg.header_transaction_id());
+        }
+    
+        /**
+         * If duplicate detected or if two broadcast messages arrive from
+         * a single endpoint less than N seconds apart drop the second message.
+         */
+        std::lock_guard<std::recursive_mutex> l1(
+            last_broadcast_messages_mutex_
+        );
+        
+        /**
+         * Check if we need to drop the message.
+         */
+        auto drop_message = false;
+        
+        auto it = last_broadcast_messages_.find(ep);
+        
+        if (it != last_broadcast_messages_.end())
+        {
+            /**
+             * Generate a random minimum packet interval for what is considered
+             * "too soon" for a broadcast message arrival from a single
+             * endpoint.
+             */
+            auto min_packet_interval = random::uint16_random_range(1, 3);
+            
+            /**
+             * First, check for a replay, then check that the message is not
+             * arriving too fast.
+             */
+            if (msg.header_transaction_id() == it->second.first)
+            {
+                drop_message = true;
+                
+                log_debug("Node is dropping broadcast message, duplicate.");
+            }
+            else if (
+                std::time(0) - it->second.second < min_packet_interval
+                )
+            {
+                drop_message = true;
+                
+                log_debug("Node is dropping broadcast message, too soon.");
+            }
         }
         
-        /**
-         * Form a tcp connection to the firewall endpoint.
-         */
-        auto t = std::make_shared<tcp_transport>(io_service_);
-        
-        /**
-         * Set the write timeout.
-         */
-        t->set_write_timeout(5);
-        
-        /**
-         * Close the connection after the message is written.
-         */
-        t->set_close_after_writes(true);
-        
-        /**
-         * Connect to the firewall endpoint.
-         */
-        t->start(wirewall_ep.address().to_string(), wirewall_ep.port(), 
-            [this, msg, wirewall_ep](boost::system::error_code ec,
-            std::shared_ptr<tcp_transport> t)
+        if (drop_message)
         {
-            if (ec)
+            // ...
+        }
+        else
+        {
+            log_debug("Node is processing broadcast message.");
+            
+            /**
+             * Set the last transaction id and time.
+             */
+            last_broadcast_messages_[ep] = std::make_pair(
+                msg.header_transaction_id(), std::time(0)
+            );
+    
+            if (msg.binary_attributes().size() > 0)
             {
-                log_error(
-                    "Firewall check tcp_transport connect failed, message = " <<
-                    ec.message() << "."
-                );
+                auto attr = msg.binary_attributes().front();
+                
+                /**
+                 * Do not allow broadcast messages with buffer's larger than
+                 * 2048 bytes.
+                 */
+                enum { max_broadcast_buffer_length = 2048 };
+                
+                if (attr.value.size() <= max_broadcast_buffer_length)
+                {
+                    /**
+                     * We do check for duplicate transaction id's in messages
+                     * but they are removed after a short time. Here we keep
+                     * more transaction id's longer to prevent multiple
+                     * application level callbacks.
+                     */
+                    static std::mutex g_mutex_recent_broadcast_message_tids_;
+                    
+                    std::lock_guard<std::mutex> l1(
+                        g_mutex_recent_broadcast_message_tids_
+                    );
+                    
+                    static std::deque<std::int16_t>
+                        g_recent_broadcast_message_tids_
+                    ;
+                    
+                    /**
+                     * Keep the last 8 transaction id's regardless of whom
+                     * sent it.
+                     */
+                    if (g_recent_broadcast_message_tids_.size() >= 8)
+                    {
+                        g_recent_broadcast_message_tids_.pop_front();
+                    }
+                    
+                    bool do_callback = false;
+                    
+                    if (
+                        std::find(g_recent_broadcast_message_tids_.begin(),
+                        g_recent_broadcast_message_tids_.end(),
+                        msg.header_transaction_id()) ==
+                        g_recent_broadcast_message_tids_.end()
+                        )
+                    {
+                        g_recent_broadcast_message_tids_.push_back(
+                            msg.header_transaction_id()
+                        );
+                        
+                        do_callback = true;
+                    }
+
+                    /**
+                     * Only callback if we have not recently for this
+                     * transaction id.
+                     */
+                    if (do_callback)
+                    {
+                        /**
+                         * Callback
+                         */
+                        node_.on_broadcast(
+                            ep.address().to_string().c_str(), ep.port(),
+                            reinterpret_cast<const char *> (&attr.value[0]),
+                            attr.value.size()
+                        );
+                    }
+
+                    /**
+                     * Allocate the messsage.
+                     */
+                    std::shared_ptr<message> response(
+                        new message(protocol::message_code_ack,
+                        msg.header_transaction_id())
+                    );
+                    
+                    /**
+                     * Send the response.
+                     */
+                    send_message(ep, response);
+
+                    /**
+                     * Forward the message to (some) of the storage nodes in
+                     * my slot.
+                     */
+                    io_service_.post(strand_.wrap(std::bind([this, msg, attr]
+                    {
+                        /**
+                         * Get our slot id.
+                         */
+                        auto slot_id = slot::id_from_endpoint(
+                            m_public_endpoint
+                        );
+                    
+                        /**
+                         * Get the slot.
+                         */
+                        auto slot = routing_table_->slot_for_id(slot_id);
+
+                        /**
+                         * Limit the number of storage nodes.
+                         */
+                        auto limit = random::uint16_random_range(1, 3);
+                        
+                        /**
+                         * Get the storage nodes.
+                         */
+                        auto snodes = slot->storage_node_endpoints(limit);
+
+                        if (snodes.size() == 0)
+                        {
+                            log_error(
+                                "Node attempted broadcast (forward) operation "
+                                "but no endpoints were found."
+                            );
+                        }
+                        else
+                        {
+                            if (
+                                operation_queue_->find(
+                                msg.header_transaction_id()) == 0
+                                )
+                            {
+                                /**
+                                 * Allocate the broadcast_operation reusing the
+                                 * transaction id from the originating message.
+                                 */
+                                std::shared_ptr<broadcast_operation> op(
+                                    new broadcast_operation(io_service_,
+                                    msg.header_transaction_id(),
+                                    operation_queue_, shared_from_this(),
+                                    snodes, attr.value)
+                                );
+                                
+                                /**
+                                 * Insert the broadcast_operation into the
+                                 * operation_queue.
+                                 */
+                                operation_queue_->insert(op);
+                            }
+                        }
+                    })));
+                }
+                else
+                {
+                    /**
+                     * Silently drop the message.
+                     */
+                }
             }
             else
             {
@@ -1775,166 +1963,16 @@ void node_impl::handle_firewall_message(
                  * Allocate the messsage.
                  */
                 std::shared_ptr<message> response(
-                    new message(protocol::message_code_ack)
+                    new message(protocol::message_code_nack,
+                    msg.header_transaction_id())
                 );
                 
                 /**
-                 * Copy the transaction id.
+                 * Send the response.
                  */
-                response->set_header_transaction_id(msg.header_transaction_id());
-                
-                /**
-                 * If we are operating in interface mode we must set the message
-                 * header flag DONTROUTE so that other nodes do not add us to
-                 * their routing table.
-                 */
-                if (
-                    m_config.operation_mode() ==
-                    stack::configuration::operation_mode_interface
-                    )
-                {
-                    response->set_header_flags(
-                        static_cast<protocol::message_flag_t> (
-                        response->header_flags() |
-                        protocol::message_flag_dontroute)
-                    );
-                }
-                
-                /**
-                 * Encode the message.
-                 */
-                if (response->encode())
-                {
-                    log_debug(
-                        "Node sending firewall (tcp ack) message to " <<
-                        wirewall_ep << "."
-                    );
-                    
-                    /**
-                     * Send the response.
-                     */
-                    t->write(response->data(), response->size());
-                }
-                else
-                {
-                    log_error("Node message encoding failed.");
-                }
+                send_message(ep, response);
             }
-        });
-    }
-    else
-    {
-        log_error("Node got firewall message without an endpoint attribute.");
-    }
-}
-
-void node_impl::handle_probe_message(
-    const boost::asio::ip::udp::endpoint & ep, message & msg
-    )
-{
-    log_debug("Node got probe messsage from " << ep << ".");
-
-    bool has_client_connection = false;
-    
-    for (auto & i : msg.uint32_attributes())
-    {
-        if (i.type == message::attribute_type_client_connection)
-        {
-            has_client_connection = true;
-            
-            break;
         }
-    }
-    
-    if (has_client_connection)
-    {
-        std::uint32_t connections = 0;
-        
-        if (tcp_acceptor_)
-        {
-            connections = tcp_acceptor_->tcp_transports().size();
-        }
-    
-        if (connections < tcp_acceptor::max_tcp_connections)
-        {
-            /**
-             * Allocate the messsage.
-             */
-            std::shared_ptr<message> response(
-                new message(protocol::message_code_ack,
-                msg.header_transaction_id())
-            );
-            
-            message::attribute_uint32 attr;
-            
-            attr.type = message::attribute_type_client_connection;
-            attr.length = sizeof(attr.value);
-            attr.value = 0;
-        
-            response->uint32_attributes().push_back(attr);
-            
-            /**
-             * Send the response.
-             */
-            send_message(ep, response);
-        }
-        else
-        {
-            /**
-             * Allocate the messsage.
-             */
-            std::shared_ptr<message> response(
-                new message(protocol::message_code_nack,
-                msg.header_transaction_id())
-            );
-            
-            /**
-             * Get some storage nodes that belong to a random slot.
-             */
-            auto i1 = routing_table_->slots_for_id(
-                std::rand() % (slot::length - 1)
-            );
-            
-            /**
-             * Piggy back some storage nodes that are responsible for the query.
-             */
-            if (i1.size() > 0)
-            {
-                for (auto & i2 : i1)
-                {
-                    for (auto & i3 : i2->storage_nodes())
-                    {
-                        message::attribute_endpoint attr;
-                        
-                        attr.type = message::attribute_type_endpoint;
-                        attr.length = 0;
-                        attr.value = i3.endpoint;
-                        
-                        response->endpoint_attributes().push_back(attr);
-                    }
-                }
-            }
-            
-            /**
-             * Send the response.
-             */
-            send_message(ep, response);
-        }
-    }
-    else
-    {
-        /**
-         * Allocate the messsage.
-         */
-        std::shared_ptr<message> response(
-            new message(protocol::message_code_ack,
-            msg.header_transaction_id())
-        );
-        
-        /**
-         * Send the response.
-         */
-        send_message(ep, response);
     }
 }
 
@@ -1956,53 +1994,74 @@ void node_impl::handle_error_message(
     
     if (msg.string_attributes().size() > 0)
     {
-        auto message = msg.string_attributes().front().value;
+        /**
+         * Look for an message::attribute_type_error.
+         */
+        std::string error_message;
+        
+        for (auto & i : msg.string_attributes())
+        {
+            if (i.type == message::attribute_type_error)
+            {
+                error_message = i.value;
+                
+                break;
+            }
+        }
     
         log_debug(
             "Node got error messsage from " << ep << ", message = " <<
-            message << "."
+            error_message << "."
         );
-        
-        if (message == "418 I'm a teapot")
-        {
-            if (msg.endpoint_attributes().size() > 0)
-            {
-                auto ep = msg.endpoint_attributes().front();
-
-                if (
-                    network::address_is_private(ep.value.address()) == false &&
-                    network::address_is_loopback(ep.value.address()) == false &&
-                    network::address_is_any(ep.value.address()) == false
-                    )
-                {
-#if 0 // C++14
-                    std::unique_lock<std::shared_mutex> l(
-                        public_endpoint_mutex_, std::defer_lock
-                    );
-#else
-                    std::lock_guard<std::recursive_mutex> l(
-                        public_endpoint_mutex_
-                    );
-#endif
-                    /**
-                     * Set our public endpoint.
-                     */
-                    m_public_endpoint = ep.value;
-                    
-                    log_debug(
-                        "Node discovered public endpoint = " <<
-                        m_public_endpoint << "."
-                    );
-                }
-            }
-        }
-        else
-        {
-            // ...
-        }
     }
     else
     {
         log_debug("Node got error messsage from " << ep << ".");
+    }
+}
+
+void node_impl::maintenance_tick(const boost::system::error_code & ec)
+{
+    if (ec)
+    {
+        // ...
+    }
+    else
+    {
+        std::lock_guard<std::recursive_mutex> l1(
+            last_broadcast_messages_mutex_
+        );
+        
+        log_debug("**** BC MSG's = " << last_broadcast_messages_.size());
+        
+        /**
+         * Cleanup the last broadcast messages.
+         */
+        auto it = last_broadcast_messages_.begin();
+        
+        while (it != last_broadcast_messages_.end())
+        {
+            /**
+             * Remove after 8 seconds to allow enough time for duplicate
+             * messages to be dropped.
+             */
+            if (std::time(0) - it->second.second >= 8)
+            {
+                it = last_broadcast_messages_.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+
+        /**
+         * Start the maintenance timer.
+         */
+        timer_maintenance_.expires_from_now(std::chrono::seconds(8));
+        timer_maintenance_.async_wait(
+            strand_.wrap(std::bind(&node_impl::maintenance_tick,
+            shared_from_this(), std::placeholders::_1))
+        );
     }
 }

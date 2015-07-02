@@ -12,6 +12,7 @@ LOCAL_CPPFLAGS := \
 	-w \
 	-fexceptions \
 	-frtti \
+	-O3 \
 	-D__ANDROID__ \
 	-D__arm_ \
 	-D__GLIBC__ \
@@ -45,6 +46,7 @@ LOCAL_SRC_FILES := \
 	../src/checkpoints.cpp \
 	../src/configuration.cpp \
 	../src/crypter.cpp \
+    ../src/database_stack.cpp \
 	../src/db_env.cpp \
 	../src/db_tx.cpp \
 	../src/db_wallet.cpp \
@@ -53,7 +55,6 @@ LOCAL_SRC_FILES := \
 	../src/filesystem.cpp \
 	../src/gateway.cpp \
 	../src/globals.cpp \
-	../src/hash_scrypt.cpp \
 	../src/hash.cpp \
 	../src/http_transport.cpp \
 	../src/inventory_vector.cpp \
@@ -105,6 +106,8 @@ LOCAL_SRC_FILES := \
 	../src/wallet_manager.cpp \
 	../src/wallet.cpp \
 	../src/whirlpool.cpp \
+	../src/zerotime.cpp \
+	../src/zerotime_lock.cpp \
 
 include $(BUILD_STATIC_LIBRARY)
 

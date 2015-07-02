@@ -1,9 +1,7 @@
 /*
- * Copyright (c) 2008-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2008-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
- *
- * coinpp is free software: you can redistribute it and/or modify
+ * This is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -23,7 +21,6 @@
 #include <database/message.hpp>
 #include <database/node_impl.hpp>
 #include <database/ping_operation.hpp>
-#include <database/tcp_acceptor.hpp>
 #include <database/udp_multiplexor.hpp>
 
 using namespace database;
@@ -87,52 +84,32 @@ std::shared_ptr<message> ping_operation::next_message(
                     // ...
                 }
                 else
-                {    
-                    if (n->tcp_acceptor_)
-                    {
-                        enum { listen_sockets = 2 };
-                        
-                        /**
-                         * Add the attribute_type_stats_tcp_inbound.
-                         */
-                        if (
-                            n->tcp_acceptor_->tcp_transports().size() >
-                            listen_sockets
-                            )
-                        {
-                            message::attribute_uint32 attr1;
-                            
-                            attr1.type = message::attribute_type_stats_tcp_inbound;
-                            attr1.length = sizeof(attr1.value);
-                            attr1.value =
-                                n->tcp_acceptor_->tcp_transports().size() -
-                                listen_sockets
-                            ;
-                            ret->uint32_attributes().push_back(attr1);
-                        }
-
-                        /**
-                         * Add the attribute_type_stats_udp_bps_inbound.
-                         */
-                        message::attribute_uint32 attr1;
-                        
-                        attr1.type = message::attribute_type_stats_udp_bps_inbound;
-                        attr1.length = sizeof(attr1.value);
-                        attr1.value = n->udp_multiplexor_->bps_received();
-                        
-                        ret->uint32_attributes().push_back(attr1);
-                        
-                        /**
-                         * Add the attribute_type_stats_udp_bps_outbound.
-                         */
-                        message::attribute_uint32 attr2;
-                        
-                        attr2.type = message::attribute_type_stats_udp_bps_outbound;
-                        attr2.length = sizeof(attr2.value);
-                        attr2.value = n->udp_multiplexor_->bps_sent();
-                        
-                        ret->uint32_attributes().push_back(attr2);
-                    }
+                {
+                    /**
+                     * Add the attribute_type_stats_udp_bps_inbound.
+                     */
+                    message::attribute_uint32 attr1;
+                    
+                    attr1.type =
+                        message::attribute_type_stats_udp_bps_inbound
+                    ;
+                    attr1.length = sizeof(attr1.value);
+                    attr1.value = n->udp_multiplexor_->bps_received();
+                    
+                    ret->uint32_attributes().push_back(attr1);
+                    
+                    /**
+                     * Add the attribute_type_stats_udp_bps_outbound.
+                     */
+                    message::attribute_uint32 attr2;
+                    
+                    attr2.type =
+                        message::attribute_type_stats_udp_bps_outbound
+                    ;
+                    attr2.length = sizeof(attr2.value);
+                    attr2.value = n->udp_multiplexor_->bps_sent();
+                    
+                    ret->uint32_attributes().push_back(attr2);
                 }
             }
         }

@@ -1,9 +1,7 @@
 /*
- * Copyright (c) 2008-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2008-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
- *
- * coinpp is free software: you can redistribute it and/or modify
+ * This is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -18,13 +16,17 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef database_random_hpp
-#define database_random_hpp
+#ifndef DATABASE_RANDOM_HPP
+#define DATABASE_RANDOM_HPP
 
+#include <random>
 #include <string>
 
 namespace database {
 
+    /**
+     * Implements random functionality.
+     */
     class random
     {
         public:
@@ -48,6 +50,23 @@ namespace database {
                 return ret;
             }
         
+            /**
+             * Generates a random std::uint16_t in the given range.
+             * @param low The low range.
+             * @param high The high range.
+             */
+            static std::uint16_t uint16_random_range(
+                const std::uint16_t & low, const std::uint16_t & high
+                )
+            {
+                static std::random_device rd;
+                static std::mt19937_64 gen(rd());
+
+                std::uniform_int_distribution<> dist(low, high);
+                
+                return dist(gen);
+            }
+        
         private:
         
             // ...
@@ -59,4 +78,4 @@ namespace database {
 
 } // namespace database
 
-#endif // database_random_hpp
+#endif // DATABASE_RANDOM_HPP

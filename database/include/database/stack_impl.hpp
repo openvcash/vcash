@@ -1,9 +1,7 @@
 /*
- * Copyright (c) 2008-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2008-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
- *
- * coinpp is free software: you can redistribute it and/or modify
+ * This is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -29,8 +27,6 @@
 #include <vector>
 
 #include <boost/asio.hpp>
-
-//#include <utility/io_service.hpp>
 
 namespace database {
 
@@ -94,33 +90,15 @@ namespace database {
             std::uint16_t find(const std::string &, const std::size_t &);
         
             /**
-             * Performs a (tcp) proxy operation given endpoint and buffer.
-             * @param addr The address.
-             * @param port The port.
-             * @param buf The buffer.
-             * @param len The length.
+             * Performs a broadcast operation.
+             * @param buffer The buffer.
              */
-            std::uint16_t proxy(
-                const char * addr, const std::uint16_t & port,
-                const char * buf, const std::size_t & len
-            );
-        
+            std::uint16_t broadcast(const std::vector<std::uint8_t> &);
+            
             /**
              * Returns all of the endpoints in the routing table.
              */
             std::list< std::pair<std::string, std::uint16_t> > endpoints();
-        
-            /**
-             * Called when connected to the network.
-             * @param ep The boost::asio::ip::tcp::endpoint.
-             */
-            void on_connected(const boost::asio::ip::tcp::endpoint & ep);
-        
-            /**
-             * Called when disconnected from the network.
-             * @param ep The boost::asio::ip::tcp::endpoint.
-             */
-            void on_disconnected(const boost::asio::ip::tcp::endpoint & ep);
         
             /**
              * Called when a search result is received.
@@ -133,18 +111,6 @@ namespace database {
             );
         
             /**
-             * Called when a proxy (response) is received.
-             * @param tid The transaction identifier.
-             * @param addr The address.
-             * @param The port.
-             * @param value The value.
-             */
-            void on_proxy(
-                const std::uint16_t & tid, const char * addr,
-                const std::uint16_t & port, const std::string & value
-            );
-        
-            /**
              * Called when a udp packet doesn't match the protocol fingerprint.
              * @param addr The address.
              * @param port The port.
@@ -154,6 +120,18 @@ namespace database {
             void on_udp_receive(
                 const char * addr, const std::uint16_t & port, const char * buf,
                 const std::size_t & len
+            );
+        
+            /**
+             * Called when a broadcast message is received.
+             * @param addr The address.
+             * @param port The port.
+             * @param buf The buffer.
+             * @param len The length.
+             */
+            void on_broadcast(
+                const char * addr, const std::uint16_t & port,
+                const char * buf, const std::size_t & len
             );
             
             /**

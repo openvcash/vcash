@@ -1015,6 +1015,9 @@ void tcp_transport::do_write(const char * buf, const std::size_t & len)
 
 void tcp_transport::set_voip()
 {
+#define USE_IOS_VOIP_FLAG 0
+
+#if (defined USE_IOS_VOIP_FLAG && USE_IOS_VOIP_FLAG)
 #if (defined __IPHONE_OS_VERSION_MAX_ALLOWED)
     CFStreamCreatePairWithSocket(
         0, (CFSocketNativeHandle)m_socket->lowest_layer().native(),
@@ -1065,6 +1068,7 @@ void tcp_transport::set_voip()
         log_error("TCP transport unable open write stream.");
     }
 #endif // __IPHONE_OS_VERSION_MAX_ALLOWED
+#endif // USE_IOS_VOIP_FLAG
 }
 
 int tcp_transport::run_test()

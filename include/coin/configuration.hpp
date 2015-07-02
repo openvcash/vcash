@@ -89,6 +89,17 @@ namespace coin {
             const std::size_t & network_tcp_inbound_maximum() const;
         
             /**
+             * If true network UDP support is enabled.
+             * @param val the value.
+             */
+            void set_network_udp_enable(const bool & val);
+        
+            /**
+             * If true network UDP support is enabled.
+             */
+            const bool & network_udp_enable() const;
+        
+            /**
              * Sets the bootstrap nodes.
              * @param val The 
              */
@@ -192,6 +203,11 @@ namespace coin {
              */
             std::size_t m_network_tcp_inbound_maximum;
         
+            /**
+             * If true network UDP support is enabled.
+             */
+            bool m_network_udp_enable;
+
             /**
              * The bootstrap nodes.
              */

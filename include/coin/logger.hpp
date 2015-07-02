@@ -91,16 +91,16 @@ namespace coin {
              */
 			void log(std::stringstream & val)
 			{
-			    static const bool use_file = false;
+			    static const bool use_file = true;
 
 			    if (use_file)
 			    {
+                    static std::string path =
+                        filesystem::data_path() + "debug.log"
+                    ;
+                    
                     if (ofstream_.is_open() == false)
                     {
-                        std::string path =
-                            filesystem::data_path() + "debug.log"
-                        ;
-                        
                         ofstream_.open(
                             path, std::fstream::out | std::fstream::app
                         );
@@ -111,12 +111,16 @@ namespace coin {
                         /**
                          * Limit size.
                          */
-                        if (ofstream_.tellp() > 50 * 1000000)
+                        if (ofstream_.tellp() > 10 * 1000000)
                         {
-                            ofstream_.clear();
+                            ofstream_.close();
+                            
+                            ofstream_.open(path, std::fstream::out);
                         }
                         
                         ofstream_ << val.str() << std::endl;
+                        
+                        ofstream_.flush();
                     }
 			    }
 

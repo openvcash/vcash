@@ -1,9 +1,7 @@
 /*
- * Copyright (c) 2008-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2008-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
- *
- * coinpp is free software: you can redistribute it and/or modify
+ * This is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -118,6 +116,13 @@ namespace database {
              * The message transaciton id's associated with this operation.
              */
             const std::set<std::uint16_t> & message_tids() const;
+        
+            /**
+             * The storage nodes.
+             */
+            const
+                std::set<boost::asio::ip::udp::endpoint> & storage_nodes() const
+            ;
         
             /**
              * Called when a response is received.

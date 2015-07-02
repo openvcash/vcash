@@ -169,6 +169,12 @@ namespace coin {
             void send_checkpoint_message(checkpoint_sync & checkpoint);
         
             /**
+             * Sends a block message.
+             * @param blk The block.
+             */
+            void send_block_message(const block & blk);
+            
+            /**
              * The tcp_transport.
              */
             std::weak_ptr<tcp_transport> & get_tcp_transport();
@@ -287,12 +293,6 @@ namespace coin {
              * Sends a getdata message if there are any in the queue.
              */
             void send_getdata_message();
-        
-            /**
-             * Sends a block message.
-             * @param blk The block.
-             */
-            void send_block_message(const block & blk);
         
             /**
              * Sends a tx message.
@@ -459,9 +459,16 @@ namespace coin {
             > timer_ping_;
         
             /**
+             * The ping timeout timer.
+             */
+            boost::asio::basic_waitable_timer<
+                std::chrono::steady_clock
+            > timer_ping_timeout_;
+        
+            /**
              * The ping interval in seconds.
              */
-            enum { interval_ping = 60 * 30 };
+            enum { interval_ping = 120 };
         
             /**
              * If true we have sent an initial getblock's message.

@@ -44,6 +44,7 @@ namespace coin {
     class alert_manager;
     class block;
     class block_index;
+    class database_stack;
     class db_env;
     class mining_manager;
     class nat_pmp_client;
@@ -353,6 +354,11 @@ namespace coin {
             std::shared_ptr<alert_manager> m_alert_manager;
         
             /**
+             * The database_stack.
+             */
+            std::shared_ptr<database_stack> m_database_stack;
+        
+            /**
              * The mining_manager.
              */
             std::shared_ptr<mining_manager> m_mining_manager;
@@ -445,6 +451,11 @@ namespace coin {
              * Trys to lock the lock file or exits.
              */
             void lock_file_or_exit();
+        
+            /**
+             * Removes old blocks from disk if we are operating as a client.
+             */
+            void remove_old_blocks_if_client();
         
             /**
              * The main loop.

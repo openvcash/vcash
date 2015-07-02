@@ -61,6 +61,7 @@ tcp_connection::tcp_connection(
     , strand_(ios)
     , stack_impl_(owner)
     , timer_ping_(ios)
+    , timer_ping_timeout_(ios)
     , did_send_getblocks_(false)
     , time_last_block_received_(std::time(0))
     , timer_delayed_stop_(ios)
@@ -224,6 +225,7 @@ void tcp_connection::stop()
     
     read_queue_.clear();
     timer_ping_.cancel();
+    timer_ping_timeout_.cancel();
     timer_getblocks_.cancel();
     timer_addr_rebroadcast_.cancel();
     timer_delayed_stop_.cancel();
@@ -557,14 +559,22 @@ void tcp_connection::send_getdata_message(
     std::lock_guard<std::recursive_mutex> l1(mutex_getdata_);
     
     /**
-     * Append the entries to the end.
+     * Only send a getdata message if the remote node is a peer.
      */
-    getdata_.insert(getdata_.end(), getdata.begin(), getdata.end());
-    
-    /**
-     * Send the getdata message.
-     */
-    send_getdata_message();
+    if (
+        (m_protocol_version_services & protocol::operation_mode_peer) == 1
+        )
+    {
+        /**
+         * Append the entries to the end.
+         */
+        getdata_.insert(getdata_.end(), getdata.begin(), getdata.end());
+        
+        /**
+         * Send the getdata message.
+         */
+        send_getdata_message();
+    }
 }
 
 void tcp_connection::send_checkpoint_message(checkpoint_sync & checkpoint)
@@ -608,6 +618,42 @@ void tcp_connection::send_checkpoint_message(checkpoint_sync & checkpoint)
              */
             t->write(msg.data(), msg.size());
         }
+    }
+    else
+    {
+        stop();
+    }
+}
+
+void tcp_connection::send_block_message(const block & blk)
+{
+    if (auto t = m_tcp_transport.lock())
+    {
+        /**
+         * Allocate the message.
+         */
+        message msg("block");
+        
+        /**
+         * Set the block.
+         */
+        msg.protocol_block().blk = std::make_shared<block> (blk);
+        
+        log_none(
+            "TCP connection is sending block " <<
+            msg.protocol_block().blk->get_hash().to_string().substr(0, 20) <<
+            "."
+        );
+        
+        /**
+         * Encode the message.
+         */
+        msg.encode();
+        
+        /**
+         * Write the message.
+         */
+        t->write(msg.data(), msg.size());
     }
     else
     {
@@ -1012,78 +1058,46 @@ void tcp_connection::send_getdata_message()
     {
         std::lock_guard<std::recursive_mutex> l1(mutex_getdata_);
         
-        if (getdata_.size() > 0)
+        /**
+         * Only send a getdata message if the remote node is a peer.
+         */
+        if (
+            (m_protocol_version_services & protocol::operation_mode_peer) == 1
+            )
         {
-            /**
-             * :FIXME: Keep track of sent inv's and retry after N if necessary?
-             */
-            
-            /**
-             * Allocate the message.
-             */
-            message msg("getdata");
-            
-            /**
-             * Set the getdata.
-             */
-            msg.protocol_getdata().inventory = getdata_;
-            
-            /**
-             * Clear the getdata.
-             */
-            getdata_.clear();
-            
-            log_none(
-                "TCP connection is sending getdata, count = " <<
-                msg.protocol_getdata().inventory.size() << "."
-            );
-            
-            /**
-             * Encode the message.
-             */
-            msg.encode();
-            
-            /**
-             * Write the message.
-             */
-            t->write(msg.data(), msg.size());
+            if (getdata_.size() > 0)
+            {
+                /**
+                 * Allocate the message.
+                 */
+                message msg("getdata");
+                
+                /**
+                 * Set the getdata.
+                 */
+                msg.protocol_getdata().inventory = getdata_;
+                
+                /**
+                 * Clear the getdata.
+                 */
+                getdata_.clear();
+                
+                log_none(
+                    "TCP connection is sending getdata, count = " <<
+                    msg.protocol_getdata().inventory.size() << "."
+                );
+                
+                /**
+                 * Encode the message.
+                 */
+                msg.encode();
+                
+                /**
+                 * Write the message.
+                 */
+                t->write(msg.data(), msg.size());
+            }
         }
-    }
-    else
-    {
-        stop();
-    }
-}
-
-void tcp_connection::send_block_message(const block & blk)
-{
-    if (auto t = m_tcp_transport.lock())
-    {
-        /**
-         * Allocate the message.
-         */
-        message msg("block");
-        
-        /**
-         * Set the block.
-         */
-        msg.protocol_block().blk = std::make_shared<block> (blk);
-        
-        log_none(
-            "TCP connection is sending block " <<
-            msg.protocol_block().blk->get_hash().to_string().substr(0, 20) <<
-            "."
-        );
-        
-        /**
-         * Encode the message.
-         */
-        msg.encode();
-        
-        /**
-         * Write the message.
-         */
-        t->write(msg.data(), msg.size());
     }
     else
     {
@@ -1822,6 +1836,11 @@ bool tcp_connection::handle_message(message & msg)
             "TCP connection got pong, nonce = " <<
             msg.protocol_pong().nonce << "."
         );
+        
+        /**
+         * Cancel the ping timeout timer.
+         */
+        timer_ping_timeout_.cancel();
     }
     else if (msg.header().command == "inv")
     {
@@ -2593,12 +2612,41 @@ void tcp_connection::do_ping(const boost::system::error_code & ec)
     }
     else
     {
+        auto self(shared_from_this());
+        
         /**
-         * Send a ping message every 30 minutes.
+         * Start the ping timeout timer.
+         */
+        timer_ping_timeout_.expires_from_now(
+            std::chrono::seconds(60)
+        );
+        timer_ping_timeout_.async_wait(
+            globals::instance().strand().wrap(
+                [this, self](boost::system::error_code ec)
+                {
+                    if (ec)
+                    {
+                        // ...
+                    }
+                    else
+                    {
+                        log_error(
+                            "TCP connection (ping) timed out, calling stop."
+                        );
+                    
+                        /**
+                         * The connection has timed out, call stop.
+                         */
+                        stop();
+                    }
+                }
+            )
+        );
+    
+        /**
+         * Send a ping message every interval_ping seconds.
          */
         send_ping_message();
-        
-        auto self(shared_from_this());
         
         timer_ping_.expires_from_now(std::chrono::seconds(interval_ping));
         timer_ping_.async_wait(globals::instance().strand().wrap(
@@ -2719,7 +2767,7 @@ void tcp_connection::do_rebroadcast_addr_messages(
                 }
                 else
                 {
-                    do_rebroadcast_addr_messages(8 * 60 * 60);
+                    do_rebroadcast_addr_messages(60 * 60);
                 }
             }
         })

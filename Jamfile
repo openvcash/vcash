@@ -52,6 +52,7 @@ SOURCES =
 	checkpoints
     configuration
 	crypter
+    database_stack
 	db
 	db_env
 	db_tx
@@ -110,6 +111,8 @@ SOURCES =
 	wallet
 	wallet_manager
     whirlpool
+    zerotime
+    zerotime_lock
 ;
 
 local usage-requirements = 

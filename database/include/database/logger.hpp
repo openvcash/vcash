@@ -1,9 +1,8 @@
+
 /*
- * Copyright (c) 2008-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2008-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
- *
- * coinpp is free software: you can redistribute it and/or modify
+ * This is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -17,7 +16,7 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-
+ 
 #ifndef DATABASE_LOGGER_HPP
 #define DATABASE_LOGGER_HPP
 
@@ -30,6 +29,7 @@
 #include <windows.h>
 #endif // (defined _WIN32 || defined WIN32) || (defined _WIN64 || defined WIN64)
 
+#include <chrono>
 #include <iostream>
 #include <memory>
 #include <sstream>
@@ -131,7 +131,9 @@ namespace database {
 #endif // _UNICODE
 #else // Not Windows.
 #if (defined __ANDROID__)
-					__android_log_print(ANDROID_LOG_DEBUG, "logger", val.str().c_str());
+					__android_log_print(
+                        ANDROID_LOG_DEBUG, "logger", val.str().c_str()
+                    );
 #else
 			        std::cerr << val.str() << std::endl;
 #endif
@@ -153,23 +155,29 @@ namespace database {
     
     #define log_xx(severity, strm) \
     { \
+        std::time_t time_now = std::chrono::system_clock::to_time_t( \
+            std::chrono::system_clock::now()); \
+        std::string time_str = std::ctime(&time_now); \
+        time_str.pop_back(), time_str.pop_back(); \
+        time_str.pop_back(), time_str.pop_back(); \
+        time_str.pop_back(), time_str.pop_back(); \
         std::stringstream __ss; \
         switch (severity) \
         { \
             case database::logger::severity_debug: \
-                __ss << "[DEBUG] - "; \
+                __ss << time_str << " database[DEBUG] - "; \
             break; \
             case database::logger::severity_error: \
-                __ss << "[ERROR] - "; \
+                __ss << time_str << " database[ERROR] - "; \
             break; \
             case database::logger::severity_info: \
-                __ss << "[INFO] - "; \
+                __ss << time_str << " database[INFO] - "; \
             break; \
             case database::logger::severity_warning: \
-                __ss << "[WARNING] - "; \
+                __ss << time_str << " database[WARNING] - "; \
             break; \
             default: \
-                __ss << "[UNKNOWN] - "; \
+                __ss << std::ctime(&time_now) << " database[UNKNOWN] - "; \
         } \
 		__ss << __FUNCTION__ << ": "; \
         __ss << strm; \
@@ -187,7 +195,7 @@ namespace database {
 #define log_info(strm) log_xx(database::logger::severity_info, strm)
 #define log_warn(strm) log_xx(database::logger::severity_warning, strm)
 
-} // namespace utility
+} // namespace database
 
 #endif // UTILITY_LOGGER_HPP
 

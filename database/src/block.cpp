@@ -1,9 +1,7 @@
 /*
- * Copyright (c) 2008-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2008-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
- *
- * coinpp is free software: you can redistribute it and/or modify
+ * This is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -139,7 +137,7 @@ void block::update(
     /**
      * The storage node doesn't yet exist in any slot in this block, add it.
      */
-    if (!did_update_slot)
+    if (did_update_slot == false)
     {
         /**
          * Get the slot id for the endpoint.
@@ -148,7 +146,7 @@ void block::update(
         
         if (slot_id > -1)
         {
-            log_none(
+            log_debug(
                 "Block " << m_index << " is inserting " << ep <<
                 " into slot #" << slot_id << "."
             );
@@ -329,12 +327,11 @@ void block::gossip_tick(const boost::system::error_code & ec)
         }
         
         /**
-         * The number of blocks divided by 60 seconds equals 4.26 seconds per
-         * block or 5 seconds at the default values.
+         * ~4.26 seconds
          */
-        long long interval = std::ceil((slot::length / 8 ) / 60);
-        
-        auto timeout = std::chrono::seconds(interval);
+        auto timeout = std::chrono::seconds(
+            static_cast<std::int64_t> (std::ceil(4.26))
+        );
 
         timer_.expires_from_now(timeout);
         timer_.async_wait(

@@ -1,9 +1,7 @@
 /*
- * Copyright (c) 2008-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2008-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
- *
- * coinpp is free software: you can redistribute it and/or modify
+ * This is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -53,7 +51,10 @@ void node::start(const stack::configuration & config)
 
 void node::stop()
 {
-    node_impl_->stop();
+    if (node_impl_)
+    {
+        node_impl_->stop();
+    }
 }
 
 void node::queue_ping(const boost::asio::ip::udp::endpoint & ep)
@@ -86,14 +87,11 @@ std::uint16_t node::find(
     return 0;
 }
 
-std::uint16_t node::proxy(
-    const char * addr, const std::uint16_t & port, const char * buf,
-    const std::size_t & len
-    )
+std::uint16_t node::broadcast(const std::vector<std::uint8_t> & buffer)
 {
     if (node_impl_)
     {
-        return node_impl_->proxy(addr, port, buf, len);
+        return node_impl_->broadcast(buffer);
     }
     
     return 0;
@@ -109,31 +107,11 @@ std::list< std::pair<std::string, std::uint16_t> > node::endpoints()
     return std::list< std::pair<std::string, std::uint16_t> > ();
 }
 
-void node::on_connected(const boost::asio::ip::tcp::endpoint & ep)
-{
-    stack_impl_.on_connected(ep);
-}
-
-void node::on_disconnected(const boost::asio::ip::tcp::endpoint & ep)
-{
-    stack_impl_.on_disconnected(ep);
-}
-
 void node::on_find(
     const std::uint16_t & transaction_id, const std::string & query_string
     )
 {
     stack_impl_.on_find(transaction_id, query_string);
-}
-
-void node::on_proxy(
-    const std::uint16_t & tid, const boost::asio::ip::tcp::endpoint & ep,
-    const std::string & value
-    )
-{
-    stack_impl_.on_proxy(
-        tid, ep.address().to_string().c_str(), ep.port(), value
-    );
 }
 
 void node::on_udp_receive(
@@ -144,11 +122,22 @@ void node::on_udp_receive(
     stack_impl_.on_udp_receive(addr, port, buf, len);
 }
 
+void node::on_broadcast(
+    const char * addr, const std::uint16_t & port,
+    const char * buf, const std::size_t & len
+    )
+{
+    stack_impl_.on_broadcast(addr, port, buf, len);
+}
+
 void node::set_bootstrap_contacts(
     const std::list<boost::asio::ip::udp::endpoint> & val
     )
 {
-    node_impl_->set_bootstrap_contacts(val);
+    if (node_impl_)
+    {
+        node_impl_->set_bootstrap_contacts(val);
+    }
 }
 
 std::list<boost::asio::ip::udp::endpoint> & node::bootstrap_contacts()

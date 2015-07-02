@@ -349,7 +349,7 @@ std::pair<bool, std::string> transaction_pool::accept(
             false, false) == false
             )
         {
-            log_error(
+            log_debug(
                 "Transaction pool connect inputs failed " <<
                 hash.to_string().substr(0, 10) << "."
             );

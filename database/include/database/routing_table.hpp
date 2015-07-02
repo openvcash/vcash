@@ -1,9 +1,7 @@
 /*
- * Copyright (c) 2008-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2008-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
- *
- * coinpp is free software: you can redistribute it and/or modify
+ * This is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -110,10 +108,23 @@ namespace database {
             );
         
             /**
+             * Returns a random storage node from each slot.
+             */
+            std::set<boost::asio::ip::udp::endpoint>
+                random_storage_node_from_each_slot()
+            ;
+        
+            /**
              * Returns all slot id's that are responsible for the given query.
              * @param query_string The query string.
              */
             std::set<std::uint16_t> slot_ids_for_query(const std::string &);
+        
+            /**
+             * Returns the responsible slot for the given slot id.
+             * @param slot_id The slot id.
+             */
+            std::shared_ptr<slot> slot_for_id(const std::uint16_t & slot_id);
         
             /**
              * Returns the responsible slots for the given slot id.
@@ -144,8 +155,12 @@ namespace database {
             /**
              * Queues an endpoint to be pinged at a later time.
              * @param ep The boost::asio::ip::udp::endpoint.
+             * @param force_queue If true the ping will be forcefully queued.
              */
-            void queue_ping(const boost::asio::ip::udp::endpoint &);
+            void queue_ping(
+                const boost::asio::ip::udp::endpoint &,
+                const bool & force_queue = false
+            );
         
             /**
              * Runs the test case.
@@ -269,7 +284,9 @@ namespace database {
             /**
              * Holds the time last pinged for the endpoints.
              */
-            std::map<boost::asio::ip::udp::endpoint, std::time_t> ping_queue_times_;
+            std::map<
+                boost::asio::ip::udp::endpoint, std::time_t
+            > ping_queue_times_;
         
             /**
              * The random find timer.

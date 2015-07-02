@@ -1,9 +1,7 @@
 /*
- * Copyright (c) 2008-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2008-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
- *
- * coinpp is free software: you can redistribute it and/or modify
+ * This is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -62,7 +60,11 @@ std::shared_ptr<message> store_operation::next_message(
      */
     std::int16_t block_index = slot_id / 8;
 
-#if 1 // block level accuracy
+    /**
+     * 0 for slot level accuracy, 1 for block level accuracy.
+     */
+#define STORE_USE_BLOCK_LEVEL_ACCURACY 1
+#if (defined STORE_USE_BLOCK_LEVEL_ACCURACY && STORE_USE_BLOCK_LEVEL_ACCURACY)
     bool found_block = false;
     
     std::int16_t current_slot_id = -1;
@@ -158,8 +160,9 @@ std::shared_ptr<message> store_operation::next_message(
         probed_slots_[current_slot_id]++;
         
         log_debug(
-            "Store operation storing " << current_slot_id << " at " << slot_id <<
-            ", stored so far " << probed_slots_[current_slot_id] << " times."
+            "Store operation storing " << current_slot_id << " at " <<
+            slot_id << ", stored so far " <<
+            probed_slots_[current_slot_id] << " times."
         );
 
         if (
@@ -188,7 +191,7 @@ std::shared_ptr<message> store_operation::next_message(
             {
                 slots_sent_[*it] = 0;
             }
-            
+
             message::attribute_uint32 attr2;
             
             attr2.type = message::attribute_type_slot;

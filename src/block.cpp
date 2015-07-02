@@ -1581,6 +1581,60 @@ bool block::accept_block(
     
     log_debug("Block, accept block, height = " << height << ".");
     
+    /**
+     * Pause Proof-of-Work for mobile Proof-of-Stake testing and development
+     * of FPGA mining support.
+     */
+    
+    /**
+     * The block height at which to pause Proof-of-Work.
+     */
+    enum { block_height_pause_pow = 117833 };
+    
+    /**
+     * The block height at which to resume Proof-of-Work.
+     */
+    enum { block_height_resume_pow = 136000 };
+    
+    /**
+     * The block height at which to pause even Proof-of-Work blocks.
+     */
+    enum { block_height_pause_even_pow = 136400 };
+    
+	if (
+        is_proof_of_work() &&
+        (height > block_height_pause_pow && height < block_height_resume_pow)
+        )
+    {
+        log_error(
+            "Block, accept block failed, PoW is paused until block # " <<
+            block_height_resume_pow << ", height = " <<  height << "."
+        );
+        
+        return false;
+    }
+
+    if (
+        is_proof_of_work() && (height >= block_height_resume_pow &&
+        height < block_height_pause_even_pow)
+        )
+    {
+        /**
+         * When Proof-of-Work is mixed with Proof-of-Stake we see ~22% increase
+         * in block generation as a result of variable timing. By only
+         * accepting even Proof-of-Work blocks "back to back" block generation
+         * will no longer occur from the same entity and the time variation
+         * will be removed. This has the side-effect that it halts an
+         * insta-mine attack attempt immediately.
+         */
+        if (height % 2 == 1)
+        {
+            log_debug("Block, accept block failed, height is not even.");
+            
+            return false;
+        }
+    }
+    
 	if (is_proof_of_work() && height > constants::pow_cutoff_block)
     {
         log_error(
@@ -2654,10 +2708,24 @@ std::string block::get_file_path(const std::uint32_t & file_index)
 {
     std::stringstream ss;
     
-    ss << filesystem::data_path() << boost::format("blk%04u.dat") % file_index;
+    std::string block_path;
     
-    log_none("Block got file path = " << ss.str() << ".");
+    if (
+        globals::instance().operation_mode() == protocol::operation_mode_client
+        )
+    {
+        block_path = "blockchain/client/";
+    }
+    else
+    {
+        block_path = "blockchain/peer/";
+    }
     
+    ss <<
+        filesystem::data_path() << block_path <<
+        boost::format("blk%04u.dat") % file_index
+    ;
+
     return ss.str();
 }
 
@@ -2710,21 +2778,30 @@ std::shared_ptr<file> block::file_append(std::uint32_t & index)
             if (f->seek_end())
             {
                 /**
-                 * A 2 gigabyte file size limit.
+                 * The default maximum size is 128 megabytes.
                  */
-                enum { max_file_size = 0x02000000 };
+                std::size_t max_file_size = 128;
                 
                 /**
-                 * FAT32 file size is a maximum of 4GB, fseek and ftell are a
-                 * maximum 2GB, so we must stay under 2GB.
+                 * The client maximum is 16 megabytes.
                  */
-                if (ftell(f->get_FILE()) < (long)(0x7F000000 - max_file_size))
+                if (
+                    globals::instance().operation_mode() ==
+                    protocol::operation_mode_client
+                    )
+                {
+                    max_file_size = 16;
+                }
+                
+                max_file_size *= 1000000;
+
+                if (ftell(f->get_FILE()) <= max_file_size)
                 {
                     index = current_block_file;
                     
                     return f;
                 }
-                
+
                 f->close();
                 
                 current_block_file++;

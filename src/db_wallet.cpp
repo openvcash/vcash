@@ -397,7 +397,23 @@ bool db_wallet::backup(const wallet & w, const std::string & root_path)
              * Erase use counts.
              */
             stack_impl::get_db_env()->file_use_counts().erase("wallet.dat");
-
+#if (defined __ANDROID__)
+            /**
+             * Copy the wallet file to the sdcard on Android devices.
+             */
+            if (
+                filesystem::copy_file(filesystem::data_path() + "wallet.dat",
+                "/sdcard/Android/data/net.vanillacoin.vanillacoin/wallet.dat"
+                ) == true
+                )
+            {
+                log_info("Database wallet backed up (mobile) wallet file.");
+                
+                /**
+                 * Do not return here for next if statement.
+                 */
+            }
+#endif // __ANDROID__
             /**
              * Attempt to copy the wallet file.
              */

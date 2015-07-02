@@ -1,9 +1,7 @@
 /*
- * Copyright (c) 2008-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2008-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
- *
- * coinpp is free software: you can redistribute it and/or modify
+ * This is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -17,7 +15,7 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-
+ 
 #ifndef DATABASE_BYTE_BUFFER_HPP
 #define DATABASE_BYTE_BUFFER_HPP
 
@@ -156,7 +154,8 @@ namespace database {
 			void write_uint64(const std::uint64_t & val)
 			{
 			    std::uint64_t swapped = (
-                    (std::uint64_t)(((std::uint64_t)htonl((std::uint32_t)val)) << 32) + htonl(val >> 32)
+                    (std::uint64_t)(((std::uint64_t)htonl(
+                    (std::uint32_t)val)) << 32) + htonl(val >> 32)
                 );
 			    write(&swapped, sizeof(val));
 			}
@@ -336,7 +335,9 @@ namespace database {
 			{
 			    if (addr.is_v4())
 			    {
-			        write_uint32(addr.to_v4().to_ulong());
+			        write_uint32(
+                        static_cast<std::uint32_t> (addr.to_v4().to_ulong())
+                    );
 			    }
 			    else if (addr.is_v6())
 			    {

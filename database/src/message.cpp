@@ -1,9 +1,7 @@
 /*
- * Copyright (c) 2008-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2008-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
- *
- * coinpp is free software: you can redistribute it and/or modify
+ * This is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -100,6 +98,11 @@ const boost::asio::ip::udp::endpoint & message::source_endpoint() const
     return m_source_endpoint;
 }
 
+std::vector<message::attribute_binary> & message::binary_attributes()
+{
+    return m_binary_attributes;
+}
+
 std::vector<message::attribute_string> & message::string_attributes()
 {
     return m_string_attributes;
@@ -122,7 +125,25 @@ bool message::encode()
     /**
      * Encode the attributes.
      */
-     
+    
+    for (auto & i : m_binary_attributes)
+    {
+        attributes.write_uint16(i.type);
+        attributes.write_uint16(i.length);
+        attributes.write_bytes(
+            reinterpret_cast<const char *> (&i.value[0]), i.value.size()
+        );
+
+        std::uint16_t padding = i.length % 4 == 0 ?
+            0 : 4 - (i.length % 4)
+        ;
+        
+        for (auto i = 0; i < padding; i++)
+        {
+            attributes.write_uint8(0);
+        }
+    }
+    
     for (auto & i : m_string_attributes)
     {
         attributes.write_uint16(i.type);
@@ -264,34 +285,29 @@ bool message::decode()
                     m_endpoint_attributes.push_back(attr);
                 }
                 break;
-                case attribute_type_client_connection:
+                break;
+                case attribute_type_broadcast_buffer:
                 {
-                    log_none("Message got attribute_type_client_connection.");
+                    log_none("Message got attribute_type_broadcast_buffer.");
                     
-                    attribute_uint32 attr;
+                    attribute_binary attr;
                     
                     attr.type = attribute_type;
                     attr.length = attribute_length;
-                    attr.value = byte_buffer_.read_uint32();
-
-                    m_uint32_attributes.push_back(attr);
+                    attr.value.resize(attribute_length);
+                    
+                    byte_buffer_.read_bytes(
+                        reinterpret_cast<char *> (&attr.value[0]),
+                        attribute_length
+                    );
+                    
+                    m_binary_attributes.push_back(attr);
                 }
                 break;
-                case attribute_type_crypto_mode:
+                case attribute_type_public_key:
                 {
-                    log_none("Message got attribute_type_crypto_mode.");
+                    log_none("Message got attribute_type_public_key.");
                     
-                    attribute_uint32 attr;
-                    
-                    attr.type = attribute_type;
-                    attr.length = attribute_length;
-                    attr.value = byte_buffer_.read_uint32();
-
-                    m_uint32_attributes.push_back(attr);
-                }
-                break;
-                case attribute_type_crypto_key:
-                {
                     attribute_string attr;
                     
                     attr.type = attribute_type;
@@ -322,22 +338,11 @@ bool message::decode()
                     m_string_attributes.push_back(attr);
                 }
                 break;
-                case attribute_type_stats_tcp_inbound:
-                {
-                    log_none("Message got attribute_type_stats_tcp_inbound.");
-                    
-                    attribute_uint32 attr;
-                    
-                    attr.type = attribute_type;
-                    attr.length = attribute_length;
-                    attr.value = byte_buffer_.read_uint32();
-
-                    m_uint32_attributes.push_back(attr);
-                }
-                break;
                 case attribute_type_stats_udp_bps_inbound:
                 {
-                    log_none("Message got attribute_type_stats_udp_bps_inbound.");
+                    log_none(
+                        "Message got attribute_type_stats_udp_bps_inbound."
+                    );
                     
                     attribute_uint32 attr;
                     
@@ -350,7 +355,9 @@ bool message::decode()
                 break;
                 case attribute_type_stats_udp_bps_outbound:
                 {
-                    log_none("Message got attribute_type_stats_udp_bps_outbound.");
+                    log_none(
+                        "Message got attribute_type_stats_udp_bps_outbound."
+                    );
                     
                     attribute_uint32 attr;
                     
@@ -359,23 +366,6 @@ bool message::decode()
                     attr.value = byte_buffer_.read_uint32();
 
                     m_uint32_attributes.push_back(attr);
-                }
-                break;
-                case attribute_type_proxy_payload:
-                {
-                    log_none("Message got attribute_type_proxy_payload.");
-                    
-                    attribute_string attr;
-                    
-                    attr.type = attribute_type;
-                    attr.length = attribute_length;
-                    attr.value.resize(attribute_length);
-                    
-                    byte_buffer_.read_bytes(
-                        const_cast<char *> (attr.value.data()), attribute_length
-                    );
-                    
-                    m_string_attributes.push_back(attr);
                 }
                 break;
                 case attribute_type_error:
@@ -439,13 +429,14 @@ bool message::encode(const database::byte_buffer & attributes)
      * Clear
      */
     byte_buffer_.clear();
-
+    
     /**
      * Set the header flags.
      * 01000001
      */
     m_header.flags =
-        m_header.flags | protocol::message_flag_0x01 | protocol::message_flag_0x40
+        m_header.flags | protocol::message_flag_0x01 |
+        protocol::message_flag_0x40
     ;
 
     /**
@@ -494,7 +485,9 @@ bool message::encode(const database::byte_buffer & attributes)
     return true;
 }
 
-void message::encode_string(database::byte_buffer & body, const std::string & val)
+void message::encode_string(
+    database::byte_buffer & body, const std::string & val
+    )
 {
     assert(0);
     
@@ -595,9 +588,9 @@ void message::encode_endpoint(
     body.write_address(ep.address());
 }
 
-bool message::obfuscate(const std::string & key)
+bool message::encrypt(const std::string & key)
 {
-    if (m_header.flags & protocol::message_flag_obfuscated)
+    if (m_header.flags & protocol::message_flag_encrypted)
     {
         hc256 ctx(
             key, key, "n5tH9JWEuZuA96wkA747jsp4JLvXDV8j"
@@ -627,7 +620,7 @@ bool message::obfuscate(const std::string & key)
     return false;
 }
 
-bool message::unobfuscate(const std::string & key)
+bool message::decrypt(const std::string & key)
 {
     hc256 ctx(
         key, key, "n5tH9JWEuZuA96wkA747jsp4JLvXDV8j"
@@ -681,7 +674,7 @@ boost::asio::ip::udp::endpoint message::decode_endpoint(
     /**
      * Read the ip address.
      */
-   boost::asio::ip::address addr;
+    boost::asio::ip::address addr;
     
     if (version == constants::ipv4)
     {
