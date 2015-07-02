@@ -6,6 +6,7 @@ lib advapi32 : : <name>Advapi32 ;
 lib user32 : : <name>User32 ;
 lib gdi32 : : <name>gdi32 ;
 lib iphlpapi : : <name>iphlpapi ;
+lib ole32 : : <name>ole32 ;
 
 lib pthread : : <name>pthread <link>shared ;
 
@@ -31,7 +32,8 @@ rule linking ( properties * )
 	    result +=
         <library>iphlpapi
 	    	<library>user32 <library>gdi32
-	    	<library>advapi32 <define>WIN32_LEAN_AND_MEAN
+	    	<library>advapi32 <library>ole32
+		<define>WIN32_LEAN_AND_MEAN
 	    ;
 	}
 	else if <target-os>darwin in $(properties)
