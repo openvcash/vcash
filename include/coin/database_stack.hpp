@@ -24,6 +24,7 @@
 #define USE_DATABASE_STACK 0
 
 #include <cstdint>
+#include <chrono>
 #include <string>
 
 #include <boost/asio.hpp>
