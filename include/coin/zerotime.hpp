@@ -21,8 +21,16 @@
 #ifndef COIN_ZEROTIME_HPP
 #define COIN_ZEROTIME_HPP
 
+#include <map>
+#include <mutex>
+
+#include <coin/point_out.hpp>
+#include <coin/zerotime_lock.hpp>
+
 namespace coin {
 
+    class transaction;
+    
     /**
      * Implements the ZeroTime algorithm.
      */
@@ -36,13 +44,60 @@ namespace coin {
              */
             enum { confirmations = 64 };
         
+            /**
+             * The singleton accessor.
+             */
+            static zerotime & instance();
+        
+            /**
+             * The locked inputs.
+             */
+            std::map<point_out, sha256> & locked_inputs();
+        
+            /**
+             * The zerotime_lock's.
+             */
+            std::map<sha256, zerotime_lock> & locks();
+        
+            /**
+             * Checks a transaction for a locked input mismatch.
+             * @param tx The transaction.
+             */
+            bool has_lock_conflict(const transaction & tx);
+        
+            /**
+             * Clears expired input locks.
+             */
+            void clear_expired_input_locks();
+        
         private:
         
-            // ...
+            /**
+             * The locked inputs.
+             */
+            std::map<point_out, sha256> m_locked_inputs;
+        
+            /**
+             * The zerotime_lock's.
+             */
+            std::map<sha256, zerotime_lock> m_locks;
         
         protected:
         
-            // ...
+            /**
+             * The std::mutex.
+             */
+            static std::mutex mutex_;
+        
+            /**
+             * The locked inputs std::recursive_mutex.
+             */
+            std::recursive_mutex recursive_mutex_locked_inputs_;
+        
+            /**
+             * The locks std::recursive_mutex.
+             */
+            std::recursive_mutex recursive_mutex_locks_;
     };
     
 } // namespace
