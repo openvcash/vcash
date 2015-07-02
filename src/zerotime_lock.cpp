@@ -24,7 +24,7 @@
 using namespace coin;
 
 zerotime_lock::zerotime_lock()
-    : m_expiration(time::instance().get_adjusted() + 20 * 60)
+    : m_expiration(time::instance().get_adjusted() + (20 * 60))
 {
     set_null();
 }
@@ -141,6 +141,21 @@ void zerotime_lock::set_null()
 {
     m_transactions_in.clear();
     m_hash_tx.clear();
-    m_expiration = time::instance().get_adjusted() + 20 * 60;
+    m_expiration = time::instance().get_adjusted() + (20 * 60);
     m_signature.clear();
+}
+
+const std::vector<transaction_in> & zerotime_lock::transactions_in() const
+{
+    return m_transactions_in;
+}
+
+const sha256 & zerotime_lock::hash_tx() const
+{
+    return m_hash_tx;
+}
+
+const std::time_t & zerotime_lock::expiration() const
+{
+    return m_expiration;
 }

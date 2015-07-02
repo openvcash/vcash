@@ -56,6 +56,7 @@ void database_stack::start(const std::uint16_t & port, const bool & is_client)
     contacts.push_back(std::make_pair("162.219.176.251", 40004));
     contacts.push_back(std::make_pair("94.23.231.51", 56280));
     contacts.push_back(std::make_pair("pool01.vanillacoin.net", 56280));
+    contacts.push_back(std::make_pair("23.31.159.165", 55555));
     
     /**
      * Set the port.
@@ -105,12 +106,44 @@ void database_stack::stop()
 #endif // USE_DATABASE_STACK
 }
 
+std::pair<std::uint16_t, std::vector<std::string> >
+    database_stack::poll_find_results(const std::uint16_t & transaction_id
+    )
+{
+    std::pair<std::uint16_t, std::vector<std::string> > ret;
+    
+    auto it = find_results_.find(transaction_id);
+    
+    if (it != find_results_.end())
+    {
+        ret.first = it->first;
+        ret.second = it->second;
+    
+        find_results_.erase(it);
+    }
+    
+    return ret;
+}
+
 void database_stack::on_find(
     const std::uint16_t & transaction_id,
     const std::string & query
     )
 {
     // ...
+    
+    log_debug("**** FOUND = transaction_id = " << transaction_id << ", query = " << query);
+    
+    find_results_[transaction_id].push_back(query);
+    
+    auto foo = poll_find_results(transaction_id);
+    
+    auto results = foo.second;
+    
+    for (auto & i : results)
+    {
+        log_debug("GOT POLLED FIND = " << i << ", find_results_ REMAIN = " << find_results_.size());
+    }
 }
 
 void database_stack::on_udp_receive(
@@ -137,6 +170,9 @@ void database_stack::tick(const boost::system::error_code & ec)
     }
     else
     {
+        // For testings
+        database::stack::find("10030=10030", 50);
+        
         auto self(shared_from_this());
         
         /**

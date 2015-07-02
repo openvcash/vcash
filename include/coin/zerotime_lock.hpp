@@ -71,6 +71,21 @@ namespace coin {
              */
             void set_null();
         
+            /**
+             * The transactions in.
+             */
+            const std::vector<transaction_in> & transactions_in() const;
+        
+            /**
+             * The transaction hash.
+             */
+            const sha256 & hash_tx() const;
+        
+            /**
+             *  The expiration.
+             */
+            const std::time_t & expiration() const;
+        
         private:
 
             /**
