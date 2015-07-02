@@ -37,6 +37,19 @@ void zerotime_lock::encode()
 void zerotime_lock::encode(data_buffer & buffer)
 {
     /**
+     * Encode the m_transactions_in size.
+     */
+    buffer.write_var_int(m_transactions_in.size());
+    
+    /**
+     * Encode the m_transactions_in.
+     */
+    for (auto & i : m_transactions_in)
+    {
+        i.encode(buffer);
+    }
+    
+    /**
      * Encode the transaction hash.
      */
     buffer.write_bytes(
@@ -69,6 +82,29 @@ bool zerotime_lock::decode()
 
 bool zerotime_lock::decode(data_buffer & buffer)
 {
+    /**
+     * Read the number of transactions in.
+     */
+    auto number_transactions_in = buffer.read_var_int();
+    
+    for (auto i = 0; i < number_transactions_in; i++)
+    {
+        /**
+         * Allocate the transaction_in.
+         */
+        transaction_in tx_in;
+        
+        /**
+         * Decode the transaction_in.
+         */
+        tx_in.decode(buffer);
+
+        /**
+         * Retain the transaction_in.
+         */
+        m_transactions_in.push_back(tx_in);
+    }
+    
     /**
      * Decode the transaction hash.
      */
@@ -103,6 +139,7 @@ bool zerotime_lock::decode(data_buffer & buffer)
 
 void zerotime_lock::set_null()
 {
+    m_transactions_in.clear();
     m_hash_tx.clear();
     m_expiration = time::instance().get_adjusted() + 20 * 60;
     m_signature.clear();

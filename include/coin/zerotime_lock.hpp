@@ -28,6 +28,7 @@
 
 #include <coin/data_buffer.hpp>
 #include <coin/sha256.hpp>
+#include <coin/transaction_in.hpp>
 
 namespace coin {
 
@@ -72,6 +73,11 @@ namespace coin {
         
         private:
 
+            /**
+             * The transactions in.
+             */
+            std::vector<transaction_in> m_transactions_in;
+        
             /**
              * The transaction hash.
              */
