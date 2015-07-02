@@ -23,9 +23,11 @@
 
 #define USE_DATABASE_STACK 0
 
-#include <cstdint>
 #include <chrono>
+#include <cstdint>
+#include <map>
 #include <string>
+#include <vector>
 
 #include <boost/asio.hpp>
 
@@ -73,6 +75,14 @@ namespace coin {
              * Stops the stack.
              */
             void stop();
+        
+            /**
+             * Polls the find results (for blocking purposes).
+             * @param transaction_id The transaction id.
+             */
+            std::pair<std::uint16_t, std::vector<std::string> >
+                poll_find_results(const std::uint16_t & transaction_id
+            );
         
         private:
         
@@ -139,6 +149,11 @@ namespace coin {
             boost::asio::basic_waitable_timer<
                 std::chrono::steady_clock
             > timer_;
+        
+            /**
+             * The find results.
+             */
+            std::map<std::uint16_t, std::vector<std::string> > find_results_;
     };
     
 } // namespace coin
