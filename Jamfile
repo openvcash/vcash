@@ -120,7 +120,8 @@ local usage-requirements =
 	<include>./include
 	<include>./coin/include
 	<include>./deps
-	<toolset>gcc:<include>$(BOOST_ROOT)
+	<include>./database/include
+        <toolset>gcc:<include>$(BOOST_ROOT)
 	<toolset>clang-darwin:<include>$(BOOST_ROOT)
 	<toolset>darwin:<include>$(BOOST_ROOT)
 	<toolset>msvc:<include>$(BOOST_ROOT)
