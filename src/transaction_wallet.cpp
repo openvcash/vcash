@@ -797,7 +797,7 @@ void transaction_wallet::relay_wallet_zerotime_lock(
              * Do not relay zerotime lock's on coinbase or coinstake
              * transactions as they will be ignored.
              */
-            if ((is_coin_base() && is_coin_stake()) == false)
+            if (is_coin_base() == false && is_coin_stake() == false)
             {
                 log_debug(
                     "Transaction wallet is relaying ztlock " <<
