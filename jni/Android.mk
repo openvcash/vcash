@@ -108,6 +108,7 @@ LOCAL_SRC_FILES := \
 	../src/whirlpool.cpp \
 	../src/zerotime.cpp \
 	../src/zerotime_lock.cpp \
+	../src/zerotime_manager.cpp \
 
 include $(BUILD_STATIC_LIBRARY)
 

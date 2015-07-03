@@ -113,6 +113,7 @@ SOURCES =
     whirlpool
     zerotime
     zerotime_lock
+    zerotime_manager
 ;
 
 local usage-requirements = 
