@@ -30,6 +30,7 @@
 #include <coin/block.hpp>
 #include <coin/block_index.hpp>
 #include <coin/block_locator.hpp>
+#include <coin/database_stack.hpp>
 #include <coin/db_tx.hpp>
 #include <coin/key_reserved.hpp>
 #include <coin/logger.hpp>
@@ -509,6 +510,14 @@ bool rpc_connection::handle_json_rpc_request(
     if (request.method == "checkwallet")
     {
         response = json_checkwallet(request);
+    }
+    else if (request.method == "databasefind")
+    {
+        response = json_databasefind(request);
+    }
+    else if (request.method == "databasestore")
+    {
+        response = json_databasestore(request);
     }
     else if (request.method == "dumpprivkey")
     {
@@ -1085,6 +1094,159 @@ rpc_connection::json_rpc_response_t rpc_connection::json_encryptwallet(
         };
     }
 
+    return ret;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_databasefind(
+    const json_rpc_request_t & request
+    )
+{
+    json_rpc_response_t ret;
+    
+    /**
+     * Set the id from the request.
+     */
+    ret.id = request.id;
+    
+    try
+    {
+        if (request.params.size() == 1)
+        {
+            /**
+             * Get the query parameter.
+             */
+            auto param_query =
+                request.params.front().second.get<std::string> ("")
+            ;
+#if (defined USE_DATABASE_STACK && USE_DATABASE_STACK)
+            /**
+             * Store the query in the database stack.
+             */
+            auto tid = stack_impl_.get_database_stack()->find(param_query, 8);
+#else
+            auto tid = 0;
+#endif // USE_DATABASE_STACK
+            boost::property_tree::ptree pt_results;
+
+            for (auto i = 0; i < 50; i++)
+            {
+                auto results =
+                    stack_impl_.get_database_stack()->poll_find_results(
+                    tid).second
+                ;
+                
+                for (auto & j : results)
+                {
+                    boost::property_tree::ptree pt_child;
+                    
+                    pt_child.put(
+                        "", j, rpc_json_parser::translator<std::string> ()
+                    );
+                    
+                    pt_results.push_back(std::make_pair("", pt_child));
+                }
+                
+                std::this_thread::sleep_for(std::chrono::milliseconds(20));
+            }
+            
+            ret.result.put("tid", tid);
+            
+            if (pt_results.size() > 0)
+            {
+                ret.result.put_child("results", pt_results);
+            }
+        }
+        else
+        {
+            auto pt_error = create_error_object(
+                error_code_invalid_params, "invalid parameter count"
+            );
+            
+            /**
+             * error_code_invalid_params
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
+        }
+    }
+    catch (std::exception & e)
+    {
+        auto pt_error = create_error_object(
+            error_code_internal_error, e.what()
+        );
+        
+        /**
+         * error_code_internal_error
+         */
+        return json_rpc_response_t{
+            boost::property_tree::ptree(), pt_error, request.id
+        };
+    }
+    
+    return ret;
+}
+
+
+rpc_connection::json_rpc_response_t rpc_connection::json_databasestore(
+    const json_rpc_request_t & request
+    )
+{
+    json_rpc_response_t ret;
+    
+    /**
+     * Set the id from the request.
+     */
+    ret.id = request.id;
+    
+    try
+    {
+        if (request.params.size() == 1)
+        {
+            /**
+             * Get the query parameter.
+             */
+            auto param_query =
+                request.params.front().second.get<std::string> ("")
+            ;
+#if (defined USE_DATABASE_STACK && USE_DATABASE_STACK)
+            /**
+             * Store the query in the database stack.
+             */
+            auto tid = stack_impl_.get_database_stack()->store(param_query);
+#else
+            auto tid = 0;
+#endif // USE_DATABASE_STACK
+            ret.result.put("tid", tid);
+        }
+        else
+        {
+            auto pt_error = create_error_object(
+                error_code_invalid_params, "invalid parameter count"
+            );
+            
+            /**
+             * error_code_invalid_params
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
+        }
+    }
+    catch (std::exception & e)
+    {
+        auto pt_error = create_error_object(
+            error_code_internal_error, e.what()
+        );
+        
+        /**
+         * error_code_internal_error
+         */
+        return json_rpc_response_t{
+            boost::property_tree::ptree(), pt_error, request.id
+        };
+    }
+    
     return ret;
 }
 

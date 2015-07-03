@@ -136,14 +136,14 @@ void database_stack::on_find(
     
     find_results_[transaction_id].push_back(query);
     
-    auto foo = poll_find_results(transaction_id);
-    
-    auto results = foo.second;
-    
-    for (auto & i : results)
-    {
-        log_debug("GOT POLLED FIND = " << i << ", find_results_ REMAIN = " << find_results_.size());
-    }
+//    auto foo = poll_find_results(transaction_id);
+//    
+//    auto results = foo.second;
+//    
+//    for (auto & i : results)
+//    {
+//        log_debug("GOT POLLED FIND = " << i << ", find_results_ REMAIN = " << find_results_.size());
+//    }
 }
 
 void database_stack::on_udp_receive(
@@ -170,9 +170,6 @@ void database_stack::tick(const boost::system::error_code & ec)
     }
     else
     {
-        // For testings
-        database::stack::find("10030=10030", 50);
-        
         auto self(shared_from_this());
         
         /**

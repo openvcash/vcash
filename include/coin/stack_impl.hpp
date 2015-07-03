@@ -209,6 +209,11 @@ namespace coin {
             std::shared_ptr<alert_manager> & get_alert_manager();
         
             /**
+             * The database_stack.
+             */
+            std::shared_ptr<database_stack> & get_database_stack();
+        
+            /**
              * The mining_manager.
              */
             std::shared_ptr<mining_manager> & get_mining_manager();

@@ -2832,6 +2832,11 @@ std::shared_ptr<alert_manager> & stack_impl::get_alert_manager()
     return m_alert_manager;
 }
 
+std::shared_ptr<database_stack> & stack_impl::get_database_stack()
+{
+    return m_database_stack;
+}
+
 std::shared_ptr<mining_manager> & stack_impl::get_mining_manager()
 {
     return m_mining_manager;

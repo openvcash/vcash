@@ -334,6 +334,22 @@ namespace coin {
             );
         
             /**
+             * Encodes databasefind data into JSON format.
+             * @param request The json_rpc_request_t.
+             */
+            json_rpc_response_t json_databasefind(
+                const json_rpc_request_t & request
+            );
+        
+            /**
+             * Encodes databasestore data into JSON format.
+             * @param request The json_rpc_request_t.
+             */
+            json_rpc_response_t json_databasestore(
+                const json_rpc_request_t & request
+            );
+        
+            /**
              * Encodes dumpprivkey data into JSON format.
              * @param request The json_rpc_request_t.
              */
