@@ -100,11 +100,10 @@ const sha256 & inventory_vector::hash() const
 
 bool inventory_vector::is_know_type() const
 {
-    #warning :TODO: :FIXME:
     return
         m_type > type_error && m_type <
-        sizeof(protocol::inventory_type_names) /
-        sizeof(protocol::inventory_type_names[0])
+        static_cast<type_t> (sizeof(protocol::inventory_type_names) /
+        sizeof(protocol::inventory_type_names[0]))
     ;
 }
 
