@@ -22,6 +22,7 @@
 #define COIN_MEDIAN_FILTER_HPP
 
 #include <string>
+#include <algorithm>
 #include <vector>
 
 namespace coin {

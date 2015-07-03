@@ -9,6 +9,7 @@ lib iphlpapi : : <name>iphlpapi ;
 lib ole32 : : <name>ole32 ;
 
 lib pthread : : <name>pthread <link>shared ;
+lib dl : : <name>dl <link>shared ;
 
 lib crypto : : <name>crypto <link>static
   <search>./../deps/openssl
@@ -47,7 +48,7 @@ rule linking ( properties * )
 	{
 		result += 
 			<library>crypto <library>ssl
-			<library>pthread
+			<library>pthread <library>dl
 		;
 	}
 	else
