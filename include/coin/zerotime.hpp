@@ -23,6 +23,7 @@
 
 #include <map>
 #include <mutex>
+#include <vector>
 
 #include <coin/point_out.hpp>
 #include <coin/zerotime_lock.hpp>

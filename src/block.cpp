@@ -36,6 +36,7 @@
 #include <coin/filesystem.hpp>
 #include <coin/globals.hpp>
 #include <coin/hash.hpp>
+#include <coin/hash_scrypt.hpp>
 #include <coin/kernel.hpp>
 #include <coin/key_reserved.hpp>
 #include <coin/key_store.hpp>
@@ -52,6 +53,7 @@
 #include <coin/transaction_pool.hpp>
 #include <coin/utility.hpp>
 #include <coin/wallet_manager.hpp>
+#include <coin/zerotime.hpp>
 
 using namespace coin;
 
@@ -214,12 +216,21 @@ sha256 block::get_hash() const
     buffer.write_uint32(m_header.nonce);
 
     assert(buffer.size() == header_length);
-
+#if (defined USE_WHIRLPOOL && USE_WHIRLPOOL)
     auto digest = hash::whirlpoolx(
         reinterpret_cast<std::uint8_t *>(buffer.data()), buffer.size()
     );
     
     std::memcpy(ptr, &digest[0], digest.size());
+#else
+    auto buf = scrypt_buffer_alloc();
+    
+    hash_scrypt(
+        (const void *)buffer.data(), buffer.size(), ptr, buf
+    );
+    
+    free(buf);
+#endif // USE_WHIRLPOOL
 
     return ret;
 }
@@ -1374,7 +1385,30 @@ bool block::check_block(
             return false;
         }
     }
-    
+
+    /**
+     * ZeroTime transaction checking.
+     */
+    if (globals::instance().is_zerotime_enabled())
+    {
+        if (utility::is_initial_block_download() == false)
+        {
+            for (auto & i : m_transactions)
+            {
+                if (i.is_coin_base() || i.is_coin_stake())
+                {
+                    continue;
+                }
+                else if (zerotime::instance().has_lock_conflict(i))
+                {
+                    throw std::runtime_error("zerotime lock conflict");
+                    
+                    return false;
+                }
+            }
+        }
+    }
+
     /**
      * Check the transactions.
      */

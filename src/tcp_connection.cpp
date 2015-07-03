@@ -42,6 +42,8 @@
 #include <coin/time.hpp>
 #include <coin/utility.hpp>
 #include <coin/wallet_manager.hpp>
+#include <coin/zerotime.hpp>
+#include <coin/zerotime_lock.hpp>
 
 using namespace coin;
 
@@ -1141,6 +1143,42 @@ void tcp_connection::send_tx_message(const transaction & tx)
     }
 }
 
+void tcp_connection::send_ztlock_message(const zerotime_lock & ztlock)
+{
+    if (auto t = m_tcp_transport.lock())
+    {
+        /**
+         * Allocate the message.
+         */
+        message msg("ztlock");
+
+        /**
+         * Set the tx.
+         */
+        msg.protocol_ztlock().ztlock = std::make_shared<zerotime_lock> (ztlock);
+        
+        log_debug(
+            "TCP connection is sending ztlock " <<
+            msg.protocol_ztlock().ztlock->hash_tx().to_string().substr(0, 20) <<
+            "."
+        );
+
+        /**
+         * Encode the message.
+         */
+        msg.encode();
+        
+        /**
+         * Write the message.
+         */
+        t->write(msg.data(), msg.size());
+    }
+    else
+    {
+        stop();
+    }
+}
+
 void tcp_connection::send_mempool_message()
 {
     if (auto t = m_tcp_transport.lock())
@@ -2108,6 +2146,26 @@ bool tcp_connection::handle_message(message & msg)
                                 send_tx_message(tx);
                             }
                         }
+                        
+                        if (
+                            did_send == false &&
+                            i.type() == inventory_vector::type_msg_ztlock
+                            )
+                        {
+                            if (
+                                zerotime::instance().locks().count(i.hash()) > 0
+                                )
+                            {
+                                auto ztlock =
+                                    zerotime::instance().locks()[i.hash()]
+                                ;
+
+                                /**
+                                 * Send the ztlock message.
+                                 */
+                                send_ztlock_message(ztlock);
+                            }
+                        }
                     }
                     
                     /**
@@ -2364,6 +2422,8 @@ bool tcp_connection::handle_message(message & msg)
          */
         inventory_vector inv(inventory_vector::type_msg_tx, tx->get_hash());
         
+        std::lock_guard<std::mutex> l2(mutex_inventory_cache_);
+        
         /**
          * Add to the inventory_cache.
          */
@@ -2526,6 +2586,97 @@ bool tcp_connection::handle_message(message & msg)
                 /**
                  * The inv as been fulfilled.
                  */
+            }
+        }
+    }
+    else if (msg.header().command == "ztlock")
+    {
+        log_debug("Got ztlock");
+
+        if (globals::instance().is_zerotime_enabled())
+        {
+            const auto & ztlock = msg.protocol_ztlock().ztlock;
+
+            if (ztlock)
+            {
+                /**
+                 * Allocate the inventory_vector.
+                 */
+                inventory_vector inv(
+                    inventory_vector::type_msg_ztlock, ztlock->hash_tx()
+                );
+                
+                std::lock_guard<std::mutex> l2(mutex_inventory_cache_);
+                
+                /**
+                 * Add to the inventory_cache.
+                 */
+                inventory_cache_.insert(inv);
+                
+                /**
+                 * Clear expired zerotime input locks.
+                 */
+                zerotime::instance().clear_expired_input_locks();
+                
+                /**
+                 * Check that the zerotime lock is not expired.
+                 */
+                if (time::instance().get_adjusted() > ztlock->expiration())
+                {
+                    /**
+                     * Check if we already have this zerotime lock.
+                     */
+                    if (
+                        zerotime::instance().locks().count(
+                        ztlock->hash_tx()) > 0
+                        )
+                    {
+                        // ...
+                    }
+                    else
+                    {
+                        /**
+                         * Alllocate the buffer for relaying.
+                         */
+                        data_buffer buffer;
+                    
+                        /**
+                         * Encode the zerotime_lock.
+                         */
+                        ztlock->encode(buffer);
+                        
+                        /**
+                         * Relay the inv.
+                         */
+                        relay_inv(inv, buffer);
+                        
+                        /**
+                         * :TODO: If any voting or storage, do it here.
+                         */
+
+                        log_info(
+                            "TCP connection is adding ZeroTime lock " <<
+                            ztlock->hash_tx().to_string() << "."
+                        );
+                        
+                        /**
+                         * Insert the zerotime_lock.
+                         */
+                        zerotime::instance().locks().insert(
+                            std::make_pair(ztlock->hash_tx(), *ztlock)
+                        );
+                        
+                        /**
+                         * Lock the inputs.
+                         */
+                        for (auto & i : ztlock->transactions_in())
+                        {
+                            zerotime::instance().locked_inputs()[
+                                i.previous_out()] = ztlock->hash_tx()
+                            ;
+                        }
+                    }
+                }
             }
         }
     }

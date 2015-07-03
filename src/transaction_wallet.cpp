@@ -26,6 +26,8 @@
 #include <coin/transaction_pool.hpp>
 #include <coin/transaction_wallet.hpp>
 #include <coin/wallet.hpp>
+#include <coin/zerotime.hpp>
+#include <coin/zerotime_lock.hpp>
 
 using namespace coin;
 
@@ -756,6 +758,110 @@ void transaction_wallet::relay_wallet_transaction(
                 if (auto t = i.second.lock())
                 {
                     t->send_relayed_inv_message(inv, buffer);
+                }
+            }
+        }
+    }
+}
+
+void transaction_wallet::relay_wallet_zerotime_lock(
+    const std::shared_ptr<tcp_connection_manager> & connection_manager
+    )
+{
+   db_tx tx_db("r");
+   
+   relay_wallet_zerotime_lock(tx_db, connection_manager);
+}
+
+void transaction_wallet::relay_wallet_zerotime_lock(
+    db_tx & tx_db,
+    const std::shared_ptr<tcp_connection_manager> & connection_manager
+    )
+{
+    if (globals::instance().is_zerotime_enabled())
+    {
+        auto hash_tx = get_hash();
+        
+        /**
+         * Check if we already have this zerotime lock.
+         */
+        if (
+            zerotime::instance().locks().count(hash_tx) > 0
+            )
+        {
+            // ...
+        }
+        else
+        {
+            /**
+             * Do not relay zerotime lock's on coinbase or coinstake
+             * transactions as they will be ignored.
+             */
+            if ((is_coin_base() && is_coin_stake()) == false)
+            {
+                log_debug(
+                    "Transaction wallet is relaying ztlock " <<
+                    hash_tx.to_string().substr(0, 10) << "."
+                );
+
+                for (auto & i : connection_manager->tcp_connections())
+                {
+                    /**
+                     * Allocate the inventory_vector.
+                     */
+                    inventory_vector inv(
+                        inventory_vector::type_msg_ztlock, hash_tx
+                    );
+                    
+                    /**
+                     * Allocate the data_buffer.
+                     */
+                    data_buffer buffer;
+                    
+                    /**
+                     * Allocate the zerotime_lock.
+                     */
+                    zerotime_lock ztlock;
+                    
+                    /**
+                     * Set the transaction inputs.
+                     */
+                    ztlock.set_transactions_in(
+                        reinterpret_cast<transaction *> (
+                        this)->transactions_in()
+                    );
+                    
+                    /**
+                     * Set the transaction hash.
+                     */
+                    ztlock.set_hash_tx(hash_tx);
+                    
+                    /**
+                     * Insert the zerotime_lock.
+                     */
+                    zerotime::instance().locks().insert(
+                        std::make_pair(hash_tx, ztlock)
+                    );
+                    
+                    /**
+                     * Lock the inputs.
+                     */
+                    for (auto & i : ztlock.transactions_in())
+                    {
+                        zerotime::instance().locked_inputs()[
+                            i.previous_out()] = hash_tx
+                        ;
+                    }
+                    
+                    /**
+                     * Encode the zerotime_lock.
+                     */
+                    ztlock.encode(buffer);
+                    
+                    if (auto t = i.second.lock())
+                    {
+                        t->send_relayed_inv_message(inv, buffer);
+                    }
                 }
             }
         }

@@ -35,6 +35,7 @@
 #include <coin/protocol.hpp>
 #include <coin/stack_impl.hpp>
 #include <coin/time.hpp>
+#include <coin/zerotime_lock.hpp>
 
 using namespace coin;
 
@@ -147,6 +148,13 @@ void message::encode()
              * Create the alert.
              */
             m_payload = create_alert();
+        }
+        else if (m_header.command == "ztlock")
+        {
+            /**
+             * Create the ztlock.
+             */
+            m_payload = create_ztlock();
         }
     }
     
@@ -536,6 +544,25 @@ void message::decode()
                 log_error("Message failed to decode alert.");
             }
         }
+        else if (m_header.command == "ztlock")
+        {
+            /**
+             * Allocate the ztlock.
+             */
+            m_protocol_ztlock.ztlock = std::make_shared<zerotime_lock> ();
+            
+            /**
+             * Decode the ztlock.
+             */
+            if (m_protocol_ztlock.ztlock->decode(*this))
+            {
+                // ...
+            }
+            else
+            {
+                log_error("Message failed to decode ztlock.");
+            }
+        }
         else
         {
             log_error(
@@ -628,6 +655,11 @@ protocol::tx_t & message::protocol_tx()
 protocol::alert_t & message::protocol_alert()
 {
     return m_protocol_alert;
+}
+
+protocol::ztlock_t & message::protocol_ztlock()
+{
+    return m_protocol_ztlock;
 }
 
 data_buffer message::create_version()
@@ -1024,6 +1056,18 @@ data_buffer message::create_alert()
         &m_protocol_alert.a->signature()[0]),
         m_protocol_alert.a->signature().size()
     );
+    
+    return ret;
+}
+
+data_buffer message::create_ztlock()
+{
+    data_buffer ret;
+    
+    if (m_protocol_ztlock.ztlock)
+    {
+        m_protocol_ztlock.ztlock->encode(ret);
+    }
     
     return ret;
 }

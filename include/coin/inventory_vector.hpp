@@ -42,15 +42,17 @@ namespace coin {
         
             /**
              * The types.
-             * ERROR Any data of with this number may be ignored.
-             * MSG_TX Hash is related to a transaction.
-             * MSG_BLOCK Hash is related to a data block.
+             * @param type_error Any data of with this number may be ignored.
+             * @param type_msg_tx Hash is related to a transaction.
+             * @param type_msg_block Hash is related to a data block.
+             * @param type_msg_ztlock Hash is related to a zerotime lock.
              */
             typedef enum
             {
                 type_error,
                 type_msg_tx,
-                type_msg_block
+                type_msg_block,
+                type_msg_ztlock,
             } type_t;
     
             /**

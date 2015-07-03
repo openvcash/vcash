@@ -26,6 +26,7 @@
 #include <coin/transaction_pool.hpp>
 #include <coin/wallet.hpp>
 #include <coin/wallet_manager.hpp>
+#include <coin/zerotime.hpp>
 
 using namespace coin;
 
@@ -112,6 +113,29 @@ std::pair<bool, std::string> transaction_pool::accept(
         );
         
         return std::make_pair(false, "db tx contains transaction.");
+    }
+    
+    /**
+     * ZeroTime transaction checking.
+     */
+    if (globals::instance().is_zerotime_enabled())
+    {
+        /**
+         * Clear expired zerotime input locks.
+         */
+        zerotime::instance().clear_expired_input_locks();
+        
+        /**
+         * Check for a zerotime_lock conflict.
+         */
+        if (zerotime::instance().has_lock_conflict(tx))
+        {
+            log_error(
+                "Transaction pool failed to accept, zerotime lock conflict."
+            );
+            
+            return std::make_pair(false, "zerotime lock conflict.");
+        }
     }
     
     /**

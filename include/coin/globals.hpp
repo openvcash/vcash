@@ -146,6 +146,14 @@ namespace coin {
             }
         
             /**
+             * If true ZeroTime is enabled.
+             */
+            const bool is_zerotime_enabled() const
+            {                
+                return false;
+            }
+        
+            /**
              * Sets the version nonce.
              */
             void set_version_nonce(const std::uint64_t & val)

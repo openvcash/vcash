@@ -40,6 +40,16 @@ namespace coin {
         public:
         
             /**
+             * The minimum expire interval.
+             */
+            enum { interval_min_expire = 20 * 60 };
+        
+            /**
+             * The maximum expire interval.
+             */
+            enum { interval_max_expire = 60 * 60 };
+            
+            /**
              * Constructor
              */
             zerotime_lock();
@@ -72,9 +82,20 @@ namespace coin {
             void set_null();
         
             /**
+             * Set the transaction_in's.
+             * @param val The transaction_in's.
+             */
+            void set_transactions_in(const std::vector<transaction_in> & val);
+        
+            /**
              * The transactions in.
              */
             const std::vector<transaction_in> & transactions_in() const;
+        
+            /**
+             * Sets the transaction hash.
+             */
+            void set_hash_tx(const sha256 & val);
         
             /**
              * The transaction hash.
@@ -87,7 +108,7 @@ namespace coin {
             const std::time_t & expiration() const;
         
         private:
-
+        
             /**
              * The transactions in.
              */

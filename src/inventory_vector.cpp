@@ -23,6 +23,7 @@
 #include <coin/globals.hpp>
 #include <coin/inventory_vector.hpp>
 #include <coin/transaction_pool.hpp>
+#include <coin/zerotime.hpp>
 
 using namespace coin;
 
@@ -99,6 +100,7 @@ const sha256 & inventory_vector::hash() const
 
 bool inventory_vector::is_know_type() const
 {
+    #warning :TODO: :FIXME:
     return
         m_type > type_error && m_type <
         sizeof(protocol::inventory_type_names) /
@@ -154,6 +156,13 @@ bool inventory_vector::already_have(
                 globals::instance().orphan_blocks().count(inv.hash())
             ;
         }
+        break;
+        case type_msg_ztlock:
+        {
+            return zerotime::instance().locks().count(inv.hash()) > 0;
+        }
+        break;
+        default:
         break;
     }
     

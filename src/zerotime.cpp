@@ -25,6 +25,8 @@
 
 using namespace coin;
 
+std::mutex zerotime::mutex_;
+
 zerotime & zerotime::instance()
 {
     static zerotime g_zerotime;
@@ -50,6 +52,8 @@ std::map<sha256, zerotime_lock> & zerotime::locks()
 
 bool zerotime::has_lock_conflict(const transaction & tx)
 {
+    std::lock_guard<std::recursive_mutex> l1(recursive_mutex_locked_inputs_);
+    
     for (auto & i : tx.transactions_in())
     {
         if (m_locked_inputs.count(i.previous_out()) > 0)

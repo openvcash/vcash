@@ -24,7 +24,7 @@
 using namespace coin;
 
 zerotime_lock::zerotime_lock()
-    : m_expiration(time::instance().get_adjusted() + (20 * 60))
+    : m_expiration(time::instance().get_adjusted() + interval_min_expire)
 {
     set_null();
 }
@@ -83,7 +83,7 @@ bool zerotime_lock::decode()
 bool zerotime_lock::decode(data_buffer & buffer)
 {
     /**
-     * Read the number of transactions in.
+     * Read the number of transactions inputs.
      */
     auto number_transactions_in = buffer.read_var_int();
     
@@ -116,6 +116,17 @@ bool zerotime_lock::decode(data_buffer & buffer)
      * Decode the expiration.
      */
     m_expiration = buffer.read_uint64();
+
+    /**
+     * Enforce the expiration.
+     */
+    if (
+        m_expiration < time::instance().get_adjusted() + interval_min_expire ||
+        m_expiration > time::instance().get_adjusted() + interval_max_expire
+        )
+    {
+        m_expiration = time::instance().get_adjusted() + interval_min_expire;
+    }
     
     /**
      * Decode the signature length.
@@ -141,13 +152,25 @@ void zerotime_lock::set_null()
 {
     m_transactions_in.clear();
     m_hash_tx.clear();
-    m_expiration = time::instance().get_adjusted() + (20 * 60);
+    m_expiration = time::instance().get_adjusted() + interval_min_expire;
     m_signature.clear();
+}
+
+void zerotime_lock::set_transactions_in(
+    const std::vector<transaction_in> & val
+    )
+{
+    m_transactions_in = val;
 }
 
 const std::vector<transaction_in> & zerotime_lock::transactions_in() const
 {
     return m_transactions_in;
+}
+
+void zerotime_lock::set_hash_tx(const sha256 & val)
+{
+    m_hash_tx = val;
 }
 
 const sha256 & zerotime_lock::hash_tx() const

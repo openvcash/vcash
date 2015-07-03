@@ -2670,6 +2670,13 @@ std::pair<bool, std::string> wallet::commit_transaction(
             stack_impl_->get_tcp_connection_manager()
         );
         
+        /**
+         * Relay the zerotime_lock if required.
+         */
+        wtx_new.relay_wallet_zerotime_lock(
+            stack_impl_->get_tcp_connection_manager()
+        );
+        
         return std::make_pair(true, "");
     }
     

@@ -208,6 +208,26 @@ namespace coin {
                 const std::shared_ptr<tcp_connection_manager> &
                 connection_manager
             );
+        
+            /**
+             * Relays a zerotime_lock for the wallet transaction.
+             * @param connection_manager The tcp_connection_manager.
+             */
+            void relay_wallet_zerotime_lock(
+                const std::shared_ptr<tcp_connection_manager> &
+                connection_manager
+            );
+        
+            /**
+             * Relays a zerotime_lock for the wallet transaction.
+             * @param tx_db The db_tx.
+             * @param connection_manager The tcp_connection_manager.
+             */
+            void relay_wallet_zerotime_lock(
+                db_tx & tx_db,
+                const std::shared_ptr<tcp_connection_manager> &
+                connection_manager
+            );
 
             /**
              * The previous transactions.

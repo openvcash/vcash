@@ -160,6 +160,11 @@ namespace coin {
              */
             protocol::alert_t & protocol_alert();
         
+            /**
+             * The protocol ztlock structure.
+             */
+            protocol::ztlock_t & protocol_ztlock();
+        
         private:
         
             /**
@@ -227,6 +232,11 @@ namespace coin {
              */
             protocol::alert_t m_protocol_alert;
         
+            /**
+             * The protocol ztlock structure.
+             */
+            protocol::ztlock_t m_protocol_ztlock;
+        
         protected:
         
             /**
@@ -283,6 +293,11 @@ namespace coin {
              * Creates an alert.
              */
             data_buffer create_alert();
+        
+            /**
+             * Creates an ztlock.
+             */
+            data_buffer create_ztlock();
     };
     
 } // namespace coin
