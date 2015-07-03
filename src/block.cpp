@@ -36,7 +36,6 @@
 #include <coin/filesystem.hpp>
 #include <coin/globals.hpp>
 #include <coin/hash.hpp>
-#include <coin/hash_scrypt.hpp>
 #include <coin/kernel.hpp>
 #include <coin/key_reserved.hpp>
 #include <coin/key_store.hpp>
