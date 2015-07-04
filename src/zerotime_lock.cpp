@@ -80,15 +80,15 @@ bool zerotime_lock::decode(data_buffer & buffer)
      * Decode the transaction.
      */
     m_transaction.decode(buffer);
-    
-    assert(m_transaction.get_hash() == m_hash_tx);
-    
+
     /**
      * Decode the transaction hash.
      */
     buffer.read_bytes(
         reinterpret_cast<char *> (m_hash_tx.digest()), sha256::digest_length
     );
+    
+    assert(m_transaction.get_hash() == m_hash_tx);
     
     /**
      * Decode the expiration.
@@ -123,7 +123,7 @@ bool zerotime_lock::decode(data_buffer & buffer)
         );
     }
     
-    return true;
+    return m_transaction.get_hash() == m_hash_tx;
 }
 
 void zerotime_lock::set_null()
