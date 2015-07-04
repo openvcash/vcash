@@ -18,6 +18,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <cassert>
+
 #include <coin/time.hpp>
 #include <coin/zerotime_lock.hpp>
 
@@ -37,17 +39,9 @@ void zerotime_lock::encode()
 void zerotime_lock::encode(data_buffer & buffer)
 {
     /**
-     * Encode the m_transactions_in size.
+     * Encode the transaction.
      */
-    buffer.write_var_int(m_transactions_in.size());
-    
-    /**
-     * Encode the m_transactions_in.
-     */
-    for (auto & i : m_transactions_in)
-    {
-        i.encode(buffer);
-    }
+    m_transaction.encode(buffer);
     
     /**
      * Encode the transaction hash.
@@ -83,27 +77,11 @@ bool zerotime_lock::decode()
 bool zerotime_lock::decode(data_buffer & buffer)
 {
     /**
-     * Read the number of transactions inputs.
+     * Decode the transaction.
      */
-    auto number_transactions_in = buffer.read_var_int();
+    m_transaction.decode(buffer);
     
-    for (auto i = 0; i < number_transactions_in; i++)
-    {
-        /**
-         * Allocate the transaction_in.
-         */
-        transaction_in tx_in;
-        
-        /**
-         * Decode the transaction_in.
-         */
-        tx_in.decode(buffer);
-
-        /**
-         * Retain the transaction_in.
-         */
-        m_transactions_in.push_back(tx_in);
-    }
+    assert(m_transaction.get_hash() == m_hash_tx);
     
     /**
      * Decode the transaction hash.
@@ -150,22 +128,20 @@ bool zerotime_lock::decode(data_buffer & buffer)
 
 void zerotime_lock::set_null()
 {
-    m_transactions_in.clear();
+    m_transaction.set_null();
     m_hash_tx.clear();
     m_expiration = time::instance().get_adjusted() + interval_min_expire;
     m_signature.clear();
 }
 
-void zerotime_lock::set_transactions_in(
-    const std::vector<transaction_in> & val
-    )
+void zerotime_lock::set_transaction(const transaction & val)
 {
-    m_transactions_in = val;
+    m_transaction = val;
 }
 
 const std::vector<transaction_in> & zerotime_lock::transactions_in() const
 {
-    return m_transactions_in;
+    return m_transaction.transactions_in();
 }
 
 void zerotime_lock::set_hash_tx(const sha256 & val)

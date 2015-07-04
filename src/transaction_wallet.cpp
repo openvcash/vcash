@@ -824,11 +824,10 @@ void transaction_wallet::relay_wallet_zerotime_lock(
                     zerotime_lock ztlock;
                     
                     /**
-                     * Set the transaction inputs.
+                     * Set the transaction.
                      */
-                    ztlock.set_transactions_in(
-                        reinterpret_cast<transaction *> (
-                        this)->transactions_in()
+                    ztlock.set_transaction(
+                        *reinterpret_cast<transaction *> (this)
                     );
                     
                     /**

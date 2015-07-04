@@ -18,7 +18,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #ifndef COIN_ZEROTIME_LOCK_HPP
 #define COIN_ZEROTIME_LOCK_HPP
 
@@ -28,6 +27,7 @@
 
 #include <coin/data_buffer.hpp>
 #include <coin/sha256.hpp>
+#include <coin/transaction.hpp>
 #include <coin/transaction_in.hpp>
 
 namespace coin {
@@ -82,10 +82,10 @@ namespace coin {
             void set_null();
         
             /**
-             * Set the transaction_in's.
-             * @param val The transaction_in's.
+             * Set the transaction.
+             * @param val The transaction.
              */
-            void set_transactions_in(const std::vector<transaction_in> & val);
+            void set_transaction(const transaction & val);
         
             /**
              * The transactions in.
@@ -110,9 +110,9 @@ namespace coin {
         private:
         
             /**
-             * The transactions in.
+             * The transaction.
              */
-            std::vector<transaction_in> m_transactions_in;
+            transaction m_transaction;
         
             /**
              * The transaction hash.
