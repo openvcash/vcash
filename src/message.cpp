@@ -488,6 +488,11 @@ void message::decode()
             else
             {
                 log_error("Message failed to decode block.");
+                
+                /**
+                 * Deallocate the block.
+                 */
+                m_protocol_block.blk.reset();
             }
         }
         else if (m_header.command == "checkpoint")
@@ -523,6 +528,11 @@ void message::decode()
             else
             {
                 log_error("Message failed to decode tx.");
+                
+                /**
+                 * Deallocate the tx.
+                 */
+                m_protocol_tx.tx.reset();
             }
         }
         else if (m_header.command == "alert")
@@ -542,6 +552,11 @@ void message::decode()
             else
             {
                 log_error("Message failed to decode alert.");
+                
+                /**
+                 * Deallocate the alert.
+                 */
+                m_protocol_alert.a.reset();
             }
         }
         else if (m_header.command == "ztlock")
@@ -561,6 +576,11 @@ void message::decode()
             else
             {
                 log_error("Message failed to decode ztlock.");
+                
+                /**
+                 * Deallocate the ztlock.
+                 */
+                m_protocol_ztlock.ztlock.reset();
             }
         }
         else

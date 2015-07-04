@@ -107,8 +107,10 @@ LOCAL_SRC_FILES := \
 	../src/wallet.cpp \
 	../src/whirlpool.cpp \
 	../src/zerotime.cpp \
+	../src/zerotime_answer.cpp \
 	../src/zerotime_lock.cpp \
 	../src/zerotime_manager.cpp \
+	../src/zerotime_question.cpp \
 
 include $(BUILD_STATIC_LIBRARY)
 

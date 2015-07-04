@@ -112,8 +112,10 @@ SOURCES =
 	wallet_manager
     whirlpool
     zerotime
+    zerotime_answer
     zerotime_lock
     zerotime_manager
+    zerotime_question
 ;
 
 local usage-requirements = 

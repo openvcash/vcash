@@ -2412,134 +2412,141 @@ bool tcp_connection::handle_message(message & msg)
 
         const auto & tx = msg.protocol_tx().tx;
         
-        std::vector<sha256> queue_work;
-        std::vector<sha256> queue_erase;
-        
-        db_tx txdb("r");
-
-        /**
-         * Allocate the inventory_vector.
-         */
-        inventory_vector inv(inventory_vector::type_msg_tx, tx->get_hash());
-        
-        std::lock_guard<std::mutex> l2(mutex_inventory_cache_);
-        
-        /**
-         * Add to the inventory_cache.
-         */
-        inventory_cache_.insert(inv);
-        
-        bool missing_inputs = false;
-        
-        data_buffer buffer;
-        
-        tx->encode(buffer);
-        
-        if (tx->accept_to_transaction_pool(txdb, &missing_inputs).first)
+        if (tx)
         {
+            std::vector<sha256> queue_work;
+            std::vector<sha256> queue_erase;
+            
+            db_tx txdb("r");
+
             /**
-             * Inform the wallet_manager.
+             * Allocate the inventory_vector.
              */
-            wallet_manager::instance().sync_with_wallets(*tx, 0, true);
+            inventory_vector inv(inventory_vector::type_msg_tx, tx->get_hash());
+            
+            std::lock_guard<std::mutex> l2(mutex_inventory_cache_);
             
             /**
-             * Relay the inv.
+             * Add to the inventory_cache.
              */
-            relay_inv(inv, buffer);
-
-            queue_work.push_back(inv.hash());
-            queue_erase.push_back(inv.hash());
-
-            /**
-             * Recursively process any orphan transactions that depended on
-             * this one.
-             */
-            for (auto i = 0; i < queue_work.size(); i++)
+            inventory_cache_.insert(inv);
+            
+            bool missing_inputs = false;
+            
+            data_buffer buffer;
+            
+            tx->encode(buffer);
+            
+            if (tx->accept_to_transaction_pool(txdb, &missing_inputs).first)
             {
-                auto hash_previous = queue_work[i];
-
-                auto it = globals::instance().orphan_transactions_by_previous()[
-                    hash_previous].begin()
-                ;
+                /**
+                 * Inform the wallet_manager.
+                 */
+                wallet_manager::instance().sync_with_wallets(*tx, 0, true);
                 
-                for (
-                    ;
-                    it != globals::instance().orphan_transactions_by_previous()[
-                    hash_previous].end();
-                    ++it
-                    )
+                /**
+                 * Relay the inv.
+                 */
+                relay_inv(inv, buffer);
+
+                queue_work.push_back(inv.hash());
+                queue_erase.push_back(inv.hash());
+
+                /**
+                 * Recursively process any orphan transactions that depended on
+                 * this one.
+                 */
+                for (auto i = 0; i < queue_work.size(); i++)
                 {
-                    data_buffer buffer2(it->second->data(), it->second->size());
-                    
-                    transaction tx2;
-                    
-                    tx2.decode(buffer2);
-                    
-                    inventory_vector inv2(
-                        inventory_vector::type_msg_tx, tx2.get_hash()
-                    );
-                    
-                    bool missing_inputs2 = false;
+                    auto hash_previous = queue_work[i];
 
-                    if (
-                        tx2.accept_to_transaction_pool(txdb,
-                        &missing_inputs2).first
+                    auto it = globals::instance(
+                        ).orphan_transactions_by_previous()[
+                        hash_previous].begin()
+                    ;
+                    
+                    for (
+                        ;
+                        it != globals::instance(
+                        ).orphan_transactions_by_previous()[
+                        hash_previous].end();
+                        ++it
                         )
                     {
-                        log_debug(
-                            "TCP connection accepted orphan transaction " <<
-                            inv2.hash().to_string().substr(0, 10) << "."
-                        )
-                        /**
-                         * Inform the wallet_manager.
-                         */
-                        wallet_manager::instance().sync_with_wallets(
-                            tx2, 0, true
+                        data_buffer buffer2(
+                            it->second->data(), it->second->size()
                         );
+                        
+                        transaction tx2;
+                        
+                        tx2.decode(buffer2);
+                        
+                        inventory_vector inv2(
+                            inventory_vector::type_msg_tx, tx2.get_hash()
+                        );
+                        
+                        bool missing_inputs2 = false;
 
-                        relay_inv(inv2, buffer2);
-                        
-                        queue_work.push_back(inv2.hash());
-                        queue_erase.push_back(inv2.hash());
-                    }
-                    else if (missing_inputs2 == false)
-                    {
-                        /**
-                         * Invalid orphan.
-                         */
-                        queue_erase.push_back(inv2.hash());
-                        
-                        log_debug(
-                            "TCP connection removed invalid orphan "
-                            "transaction " <<
-                            inv2.hash().to_string().substr(0, 10) << "."
-                        );
+                        if (
+                            tx2.accept_to_transaction_pool(txdb,
+                            &missing_inputs2).first
+                            )
+                        {
+                            log_debug(
+                                "TCP connection accepted orphan transaction " <<
+                                inv2.hash().to_string().substr(0, 10) << "."
+                            )
+                            /**
+                             * Inform the wallet_manager.
+                             */
+                            wallet_manager::instance().sync_with_wallets(
+                                tx2, 0, true
+                            );
+
+                            relay_inv(inv2, buffer2);
+                            
+                            queue_work.push_back(inv2.hash());
+                            queue_erase.push_back(inv2.hash());
+                        }
+                        else if (missing_inputs2 == false)
+                        {
+                            /**
+                             * Invalid orphan.
+                             */
+                            queue_erase.push_back(inv2.hash());
+                            
+                            log_debug(
+                                "TCP connection removed invalid orphan "
+                                "transaction " <<
+                                inv2.hash().to_string().substr(0, 10) << "."
+                            );
+                        }
                     }
                 }
-            }
 
-            for (auto & i : queue_erase)
-            {
-                utility::erase_orphan_tx(i);
+                for (auto & i : queue_erase)
+                {
+                    utility::erase_orphan_tx(i);
+                }
             }
-        }
-        else if (missing_inputs)
-        {
-            utility::add_orphan_tx(buffer);
-
-            /**
-             * Limit the size of the orphan transactions.
-             */
-            auto evicted = utility::limit_orphan_tx_size(
-                constants::max_orphan_transactions
-            );
-            
-            if (evicted > 0)
+            else if (missing_inputs)
             {
-                log_debug(
-                    "TCP connection orphans overflow, evicted = " <<
-                    evicted << "."
+                utility::add_orphan_tx(buffer);
+
+                /**
+                 * Limit the size of the orphan transactions.
+                 */
+                auto evicted = utility::limit_orphan_tx_size(
+                    constants::max_orphan_transactions
                 );
+                
+                if (evicted > 0)
+                {
+                    log_debug(
+                        "TCP connection orphans overflow, evicted = " <<
+                        evicted << "."
+                    );
+                }
             }
         }
     }
@@ -2612,12 +2619,7 @@ bool tcp_connection::handle_message(message & msg)
                  * Add to the inventory_cache.
                  */
                 inventory_cache_.insert(inv);
-                
-                /**
-                 * Clear expired zerotime input locks.
-                 */
-                zerotime::instance().clear_expired_input_locks();
-                
+
                 /**
                  * Check that the zerotime lock is not expired.
                  */
