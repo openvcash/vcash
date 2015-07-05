@@ -8,21 +8,21 @@ BOOST_ROOT = [ modules.peek : BOOST_ROOT ] ;
 
 if [ os.name ] = MACOSX
 {
-	BOOST_ROOT = ./deps/boost ;
+	BOOST_ROOT = ./../deps/boost ;
 }
 else if [ os.name ] = NT
 {
-	BOOST_ROOT = ./deps/boost ;
+	BOOST_ROOT = ./../deps/boost ;
 }
 else if [ os.name ] = LINUX
 {
-	BOOST_ROOT = ./deps/boost ;
+	BOOST_ROOT = ./../deps/boost ;
 }
 else
 {
 	if ! $(BOOST_ROOT)
 	{
-		BOOST_ROOT = ./deps/boost ;
+		BOOST_ROOT = ./../deps/boost ;
 	}
 }
 
