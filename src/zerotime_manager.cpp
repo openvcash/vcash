@@ -18,6 +18,89 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <coin/globals.hpp>
+#include <coin/stack_impl.hpp>
+#include <coin/zerotime.hpp>
 #include <coin/zerotime_manager.hpp>
 
 using namespace coin;
+
+zerotime_manager::zerotime_manager(
+    boost::asio::io_service & ios, boost::asio::strand & s, stack_impl & owner
+    )
+    : io_service_(ios)
+    , strand_(s)
+    , stack_impl_(owner)
+    , timer_(ios)
+{
+    // ...
+}
+
+void zerotime_manager::start()
+{
+    /**
+     * Start the timer.
+     */
+    do_tick(60);
+}
+
+void zerotime_manager::stop()
+{
+    timer_.cancel();
+}
+
+void zerotime_manager::probe_for_answers(
+    const sha256 & hash_tx,
+    const std::vector<transaction_in> & transactions_in
+    )
+{
+    if (globals::instance().is_zerotime_enabled())
+    {
+        if (m_questions.count(hash_tx) == 0)
+        {
+            #warning :TODO:
+            
+            // Prepare:
+            // :TODO: m_questions[hash_tx] = zerotime_question(transactions_in);
+            // :TODO: 6 blocks = 20 mins = 1200 seconds
+            // :TODO: m_qa_expire_times[hash_tx] = std::time(0) + (20 * 60);
+            
+            // Probe:
+            // :TODO: auto addrs = stack_impl_.get_address_manager()->get_addr(8);
+            // :TODO: m_questioned_tcp_endpoints[hash_tx].push_back(addrs[0]);
+
+            // Listen:
+            // :TODO: m_answers_tcp[ztanswer.hash_tx()].push_back(std::make_pair(ep, ztanswer));
+        }
+    }
+}
+
+void zerotime_manager::do_tick(const std::uint32_t & interval)
+{
+    auto self(shared_from_this());
+    
+    timer_.expires_from_now(std::chrono::seconds(interval));
+    timer_.async_wait(strand_.wrap([this, self, interval]
+        (boost::system::error_code ec)
+    {
+        if (ec)
+        {
+            // ...
+        }
+        else
+        {
+            if (globals::instance().is_zerotime_enabled())
+            {
+                /**
+                 * Clear expired input locks.
+                 */
+                zerotime::instance().clear_expired_input_locks();
+            }
+            
+            /**
+             * Start the timer.
+             */
+            do_tick(60);
+        }
+    }));
+}

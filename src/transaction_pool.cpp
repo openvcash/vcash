@@ -121,11 +121,6 @@ std::pair<bool, std::string> transaction_pool::accept(
     if (globals::instance().is_zerotime_enabled())
     {
         /**
-         * Clear expired zerotime input locks.
-         */
-        zerotime::instance().clear_expired_input_locks();
-        
-        /**
          * Check for a zerotime_lock conflict.
          */
         if (zerotime::instance().has_lock_conflict(tx))

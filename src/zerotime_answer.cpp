@@ -21,3 +21,52 @@
 #include <coin/zerotime_answer.hpp>
 
 using namespace coin;
+
+zerotime_answer::zerotime_answer(const sha256 & hash_tx)
+    : m_hash_tx(hash_tx)
+{
+    set_null();
+}
+
+void zerotime_answer::encode()
+{
+    encode(*this);
+}
+
+void zerotime_answer::encode(data_buffer & buffer)
+{
+    /**
+     * Encode the transaction hash.
+     */
+    buffer.write_bytes(
+        reinterpret_cast<const char *> (m_hash_tx.digest()),
+        sha256::digest_length
+    );
+}
+
+bool zerotime_answer::decode()
+{
+    return decode(*this);
+}
+
+bool zerotime_answer::decode(data_buffer & buffer)
+{
+    /**
+     * Decode the transaction hash.
+     */
+    buffer.read_bytes(
+        reinterpret_cast<char *> (m_hash_tx.digest()), sha256::digest_length
+    );
+    
+    return true;
+}
+
+void zerotime_answer::set_null()
+{
+    m_hash_tx.clear();
+}
+
+const sha256 & zerotime_answer::hash_tx() const
+{
+    return m_hash_tx;
+}

@@ -490,7 +490,7 @@ void tcp_connection_manager::tick(const boost::system::error_code & ec)
             
             auto self(shared_from_this());
             
-            timer_.expires_from_now(std::chrono::seconds(2));
+            timer_.expires_from_now(std::chrono::seconds(1));
             timer_.async_wait(globals::instance().strand().wrap(
                 std::bind(&tcp_connection_manager::tick, self,
                 std::placeholders::_1))

@@ -21,20 +21,62 @@
 #ifndef COIN_ZEROTIME_QUESTION_HPP
 #define COIN_ZEROTIME_QUESTION_HPP
 
+#include <coin/data_buffer.hpp>
+#include <coin/transaction_in.hpp>
+
 namespace coin {
 
     /**
      * Implements a ZeroTime question message (ztquestion).
      */
-    class zerotime_question
+    class zerotime_question : public data_buffer
     {
         public:
         
-            // ...
+            /**
+             * Constructor
+             * @param tx_in The transaction_in.
+             */
+            explicit zerotime_question(const transaction_in & tx_in);
+        
+            /**
+             * Encodes
+             */
+            void encode();
+        
+            /**
+             * Encodes
+             * @param buffer The data_buffer.
+             */
+            void encode(data_buffer & buffer);
+        
+            /**
+             * Decodes
+             */
+            bool decode();
+        
+            /**
+             * Encodes
+             * @param buffer The data_buffer.
+             */
+            bool decode(data_buffer & buffer);
+        
+            /**
+             * Set's null.
+             */
+            void set_null();
+        
+            /**
+             * The transaction_in.
+             */
+            const transaction_in & get_transaction_in() const;
         
         private:
         
-            // ...
+            /**
+             * The transaction_in.
+             */
+            transaction_in m_transaction_in;
         
         protected:
         

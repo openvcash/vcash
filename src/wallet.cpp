@@ -44,6 +44,7 @@
 #include <coin/time.hpp>
 #include <coin/tcp_connection_manager.hpp>
 #include <coin/wallet.hpp>
+#include <coin/zerotime_manager.hpp>
 
 using namespace coin;
 
@@ -2678,10 +2679,18 @@ std::pair<bool, std::string> wallet::commit_transaction(
         if (globals::instance().is_zerotime_enabled() && use_zerotime)
         {
             /**
-             * Relay the zerotime_lock if required.
+             * Relay the zerotime_lock (if required).
              */
             wtx_new.relay_wallet_zerotime_lock(
                 stack_impl_->get_tcp_connection_manager()
+            );
+
+            /**
+             * Inform the zerotime_manager of the transaction inputs and
+             * hash.
+             */
+            stack_impl_->get_zerotime_manager()->probe_for_answers(
+                wtx_new.get_hash(), wtx_new.transactions_in()
             );
         }
         

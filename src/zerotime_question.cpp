@@ -21,3 +21,47 @@
 #include <coin/zerotime_question.hpp>
 
 using namespace coin;
+
+zerotime_question::zerotime_question(const transaction_in & tx_in)
+    : m_transaction_in(tx_in)
+{
+    set_null();
+}
+
+void zerotime_question::encode()
+{
+    encode(*this);
+}
+
+void zerotime_question::encode(data_buffer & buffer)
+{
+    /**
+     * Encode the transaction_in.
+     */
+    m_transaction_in.encode(buffer);
+}
+
+bool zerotime_question::decode()
+{
+    return decode(*this);
+}
+
+bool zerotime_question::decode(data_buffer & buffer)
+{
+    /**
+     * Decode the transaction_in.
+     */
+    m_transaction_in.decode(buffer);
+    
+    return true;
+}
+
+void zerotime_question::set_null()
+{
+    m_transaction_in.clear();
+}
+
+const transaction_in & zerotime_question::get_transaction_in() const
+{
+    return m_transaction_in;
+}

@@ -21,20 +21,62 @@
 #ifndef COIN_ZEROTIME_ANSWER_HPP
 #define COIN_ZEROTIME_ANSWER_HPP
 
+#include <coin/data_buffer.hpp>
+#include <coin/sha256.hpp>
+
 namespace coin {
 
     /**
      * Implements a ZeroTime answer message (ztanswer).
      */
-    class zerotime_answer
+    class zerotime_answer : public data_buffer
     {
         public:
         
-            // ...
+            /**
+             * Constructor
+             * @param hash_tx The transaction hash.
+             */
+            explicit zerotime_answer(const sha256 & hash_tx);
+        
+            /**
+             * Encodes
+             */
+            void encode();
+        
+            /**
+             * Encodes
+             * @param buffer The data_buffer.
+             */
+            void encode(data_buffer & buffer);
+        
+            /**
+             * Decodes
+             */
+            bool decode();
+        
+            /**
+             * Encodes
+             * @param buffer The data_buffer.
+             */
+            bool decode(data_buffer & buffer);
+        
+            /**
+             * Set's null.
+             */
+            void set_null();
+        
+            /**
+             * The transaction hash.
+             */
+            const sha256 & hash_tx() const;
         
         private:
         
-            // ...
+            /**
+             * The transaction hash.
+             */
+            sha256 m_hash_tx;
         
         protected:
         

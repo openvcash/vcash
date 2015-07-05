@@ -78,7 +78,14 @@ void zerotime::clear_expired_input_locks()
 
     while (it != m_locks.end())
     {
-        if (time::instance().get_adjusted() > it->second.expiration())
+        /**
+         * Remove locks that are either expired or have an invalid expiration.
+         */
+        if (
+            time::instance().get_adjusted() > it->second.expiration() ||
+            it->second.expiration() - time::instance().get_adjusted() >
+            zerotime_lock::interval_max_expire
+            )
         {
             log_info(
                 "ZeroTime is removing expired transaction lock " <<

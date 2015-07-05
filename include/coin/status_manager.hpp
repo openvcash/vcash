@@ -21,6 +21,7 @@
 #ifndef COIN_STATUS_MANAGER_HPP
 #define COIN_STATUS_MANAGER_HPP
 
+#include <cstdint>
 #include <map>
 #include <mutex>
 #include <string>
