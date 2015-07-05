@@ -156,6 +156,8 @@ void message::encode()
              */
             m_payload = create_ztlock();
         }
+        
+        // :TODO: ztquestion and ztanswer
     }
     
     /**
@@ -583,7 +585,7 @@ void message::decode()
                 m_protocol_ztlock.ztlock.reset();
             }
         }
-        else
+        else // :TODO: ztquestion and ztanswer
         {
             log_error(
                 "Message got invalid command = " << m_header.command << "."

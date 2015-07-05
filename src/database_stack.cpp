@@ -52,11 +52,14 @@ void database_stack::start(const std::uint16_t & port, const bool & is_client)
     /**
      * Add the hard-coded bootstrap contacts.
      */
-    contacts.push_back(std::make_pair("127.0.0.1", 40004));
-    contacts.push_back(std::make_pair("162.219.176.251", 40004));
-    contacts.push_back(std::make_pair("94.23.231.51", 56280));
-    contacts.push_back(std::make_pair("pool01.vanillacoin.net", 56280));
-    contacts.push_back(std::make_pair("23.31.159.165", 55555));
+    contacts.push_back(std::make_pair("p01.vanillacoin.net", 40004));
+    contacts.push_back(std::make_pair("p02.vanillacoin.net", 40006));
+    contacts.push_back(std::make_pair("p03.vanillacoin.net", 40008));
+    contacts.push_back(std::make_pair("p04.vanillacoin.net", 40010));
+    contacts.push_back(std::make_pair("p05.vanillacoin.net", 55555));
+    contacts.push_back(std::make_pair("p06.vanillacoin.net", 40014));
+    contacts.push_back(std::make_pair("p07.vanillacoin.net", 55555));
+    contacts.push_back(std::make_pair("p08.vanillacoin.net", 40018));
     
     /**
      * Set the port.
@@ -130,20 +133,7 @@ void database_stack::on_find(
     const std::string & query
     )
 {
-    // ...
-    
-    log_debug("**** FOUND = transaction_id = " << transaction_id << ", query = " << query);
-    
     find_results_[transaction_id].push_back(query);
-    
-//    auto foo = poll_find_results(transaction_id);
-//    
-//    auto results = foo.second;
-//    
-//    for (auto & i : results)
-//    {
-//        log_debug("GOT POLLED FIND = " << i << ", find_results_ REMAIN = " << find_results_.size());
-//    }
 }
 
 void database_stack::on_udp_receive(
@@ -222,4 +212,3 @@ void database_stack::tick(const boost::system::error_code & ec)
         );
     }
 }
-
