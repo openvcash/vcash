@@ -1313,7 +1313,9 @@ void stack_impl::start()
             if (m_configuration.network_udp_enable() == true)
             {
                 m_database_stack->start(
-                    tcp_port, globals::instance().is_client()
+                    tcp_port,
+                    globals::instance().operation_mode() ==
+                    protocol::operation_mode_client
                 );
             }
             
