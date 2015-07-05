@@ -58,19 +58,7 @@ void zerotime_manager::probe_for_answers(
     {
         if (m_questions.count(hash_tx) == 0)
         {
-            #warning :TODO:
-            
-            // Prepare:
-            // :TODO: m_questions[hash_tx] = zerotime_question(transactions_in);
-            // :TODO: 6 blocks = 20 mins = 1200 seconds
-            // :TODO: m_qa_expire_times[hash_tx] = std::time(0) + (20 * 60);
-            
-            // Probe:
-            // :TODO: auto addrs = stack_impl_.get_address_manager()->get_addr(8);
-            // :TODO: m_questioned_tcp_endpoints[hash_tx].push_back(addrs[0]);
 
-            // Listen:
-            // :TODO: m_answers_tcp[ztanswer.hash_tx()].push_back(std::make_pair(ep, ztanswer));
         }
     }
 }
