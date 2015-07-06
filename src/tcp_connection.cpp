@@ -59,6 +59,7 @@ tcp_connection::tcp_connection(
     , m_protocol_version_start_height(-1)
     , m_sent_getaddr(false)
     , m_dos_score(0)
+    , m_probe_only(false)
     , io_service_(ios)
     , strand_(ios)
     , stack_impl_(owner)
@@ -711,6 +712,11 @@ void tcp_connection::set_dos_score(const std::uint8_t & val)
 const std::uint8_t & tcp_connection::dos_score() const
 {
     return m_dos_score;
+}
+
+void tcp_connection::set_probe_only(const bool & val)
+{
+    m_probe_only = val;
 }
 
 bool tcp_connection::is_transport_valid()
@@ -1541,12 +1547,29 @@ bool tcp_connection::handle_message(message & msg)
                 }
                 else if (m_direction == direction_outgoing)
                 {
+                    if (auto transport = m_tcp_transport.lock())
+                    {
+                        /**
+                         * Inform the address_manager.
+                         */
+                        stack_impl_.get_address_manager()->mark_good(
+                            protocol::network_address_t::from_endpoint(
+                            transport->socket().remote_endpoint())
+                        );
+                    }
+                    
                     /**
-                     * Inform the address_manager.
+                     * If this is a probe only connection call stop and return.
                      */
-                    stack_impl_.get_address_manager()->mark_good(
-                        msg.protocol_version().addr_src
-                    );
+                    if (m_probe_only == true)
+                    {
+                        /**
+                         * Stop
+                         */
+                        stop();
+                        
+                        return false;
+                    }
                     
                     /**
                      * Set our public ip address for this connection as
@@ -2679,6 +2702,34 @@ bool tcp_connection::handle_message(message & msg)
                         }
                     }
                 }
+            }
+        }
+    }
+    else if (msg.header().command == "ztquestion")
+    {
+        log_debug("Got ztquestion");
+
+        if (globals::instance().is_zerotime_enabled())
+        {
+            const auto & ztquestion = msg.protocol_ztquestion().ztquestion;
+
+            if (ztquestion)
+            {
+                // :TODO:
+            }
+        }
+    }
+    else if (msg.header().command == "ztanswer")
+    {
+        log_debug("Got ztanswer");
+
+        if (globals::instance().is_zerotime_enabled())
+        {
+            const auto & ztanswer = msg.protocol_ztanswer().ztanswer;
+
+            if (ztanswer)
+            {
+                // :TODO:
             }
         }
     }

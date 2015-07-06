@@ -1177,7 +1177,10 @@ void stack_impl::start()
             /**
              * Allocate the address_manager.
              */
-            m_address_manager.reset(new address_manager());
+            m_address_manager.reset(
+                new address_manager(globals::instance().io_service(),
+                globals::instance().strand(), *this)
+            );
             
             /**
              * Allocate the alert_manager.

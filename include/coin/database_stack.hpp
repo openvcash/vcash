@@ -25,6 +25,7 @@
 
 #include <chrono>
 #include <cstdint>
+#include <list>
 #include <map>
 #include <string>
 #include <vector>
@@ -75,6 +76,11 @@ namespace coin {
              * Stops the stack.
              */
             void stop();
+        
+            /**
+             * Returns all of the endpoints in the routing table.
+             */
+            std::list< std::pair<std::string, std::uint16_t> > endpoints();
         
             /**
              * Polls the find results (for blocking purposes).

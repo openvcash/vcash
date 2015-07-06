@@ -37,7 +37,9 @@ namespace coin {
 class alert;
 class block;
 class transaction;
+class zerotime_answer;
 class zerotime_lock;
+class zerotime_question;
 
 namespace protocol {
 
@@ -740,6 +742,22 @@ namespace protocol {
         {
             std::shared_ptr<zerotime_lock> ztlock;
         } ztlock_t;
+    
+        /**
+         * The ztquestion structure.
+         */
+        typedef struct
+        {
+            std::shared_ptr<zerotime_question> ztquestion;
+        } ztquestion_t;
+    
+        /**
+         * The ztanswer structure.
+         */
+        typedef struct
+        {
+            std::shared_ptr<zerotime_answer> ztanswer;
+        } ztanswer_t;
 
         /**
          * The maximum inventory size.

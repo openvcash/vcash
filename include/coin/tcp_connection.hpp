@@ -245,6 +245,13 @@ namespace coin {
             const std::uint8_t & dos_score() const;
         
             /**
+             * If set to true the connection will stop after the initial
+             * handshake and the address_manager will be informed.
+             * @param val The value.
+             */
+            void set_probe_only(const bool & val);
+        
+            /**
              * If true the transport is valid (usable).
              */
             bool is_transport_valid();
@@ -430,6 +437,12 @@ namespace coin {
              * The seen alerts to prevent broadcasting duplicates.
              */
             std::set<sha256> m_seen_alerts;
+        
+            /**
+             * If set to true the connection will stop after the initial
+             * handshake occurs and the address_manager will be informed.
+             */
+            bool m_probe_only;
         
         protected:
         

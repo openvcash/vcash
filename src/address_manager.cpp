@@ -21,23 +21,35 @@
 #include <fstream>
 #include <memory>
 #include <stdexcept>
+#include <sstream>
 
 #include <boost/asio.hpp>
 
 #include <openssl/rand.h>
 
 #include <coin/address_manager.hpp>
+#include <coin/database_stack.hpp>
 #include <coin/data_buffer.hpp>
 #include <coin/hash.hpp>
 #include <coin/filesystem.hpp>
 #include <coin/logger.hpp>
 #include <coin/message.hpp>
 #include <coin/random.hpp>
+#include <coin/stack_impl.hpp>
+#include <coin/tcp_connection.hpp>
+#include <coin/tcp_transport.hpp>
 
 using namespace coin;
 
-address_manager::address_manager()
-    : id_count_(0)
+address_manager::address_manager(
+    boost::asio::io_service & ios, boost::asio::strand & s,
+    stack_impl & owner
+    )
+    : io_service_(ios)
+    , strand_(s)
+    , stack_impl_(owner)
+    , timer_(ios)
+    , id_count_(0)
     , number_tried_(0)
     , number_new_(0)
     , buckets_new_(std::vector< std::set<std::uint32_t> >(
@@ -71,17 +83,31 @@ void address_manager::start()
         save();
         
         /**
-         * Try again, if thisfails something fatal has occured.
+         * Try again, if this fails something fatal has occured.
          */
         if (load() == false)
         {
             throw std::runtime_error("failed to write empty peers file");
         }
     }
+    
+    /**
+     * Start the timer.
+     */
+    timer_.expires_from_now(std::chrono::seconds(12));
+    timer_.async_wait(strand_.wrap(
+        std::bind(&address_manager::tick, this,
+        std::placeholders::_1))
+    );
 }
 
 void address_manager::stop()
 {
+    /**
+     * Stop the timer.
+     */
+    timer_.cancel();
+    
     /**
      * Save the file.
      */
@@ -798,13 +824,20 @@ void address_manager::on_connection_attempt(
 }
 
 void address_manager::mark_good(
-    const protocol::network_address_t & addr, const std::uint64_t &  timestamp
+    const protocol::network_address_t & addr, const std::uint64_t & timestamp
     )
 {
-    log_none(
+    log_debug(
         "Address manager is marking " <<
         addr.ipv4_mapped_address() << ":" << addr.port << " as good."
     );
+
+    std::lock_guard<std::recursive_mutex> l1(mutex_recent_good_endpoints_);
+    
+    /**
+     * Update the recent good endpoint's time.
+     */
+    m_recent_good_endpoints[addr] = std::time(0);
 
     std::uint32_t nid;
     
@@ -1215,6 +1248,24 @@ const std::size_t address_manager::size() const
     return random_ids_.size();
 }
 
+std::vector<boost::asio::ip::tcp::endpoint>
+    address_manager::recent_good_endpoints()
+{
+    std::vector<boost::asio::ip::tcp::endpoint> ret;
+    
+    std::lock_guard<std::recursive_mutex> l1(mutex_recent_good_endpoints_);
+    
+    for (auto & i : m_recent_good_endpoints)
+    {
+        ret.push_back(
+            boost::asio::ip::tcp::endpoint(
+            i.first.ipv4_mapped_address(), i.first.port)
+        );
+    }
+    
+    return ret;
+}
+
 std::int32_t address_manager::select_tried(const std::uint32_t & bucket_index)
 {
     std::lock_guard<std::recursive_mutex> l1(mutex_buckets_tried_);
@@ -1372,5 +1423,208 @@ void address_manager::swap_random(
 
         random_ids_[first] = nid2;
         random_ids_[second] = nid1;
+    }
+}
+
+void address_manager::tick(const boost::system::error_code & ec)
+{
+    if (ec)
+    {
+        // ...
+    }
+    else
+    {
+        std::lock_guard<std::recursive_mutex> l1(mutex_recent_good_endpoints_);
+        
+        /**
+         * Only keep recent good endpoints that are less than N hours old.
+         */
+        auto it = m_recent_good_endpoints.begin();
+        
+        while (it != m_recent_good_endpoints.end())
+        {
+            if (std::time(0) - it->second > (3 * 60 * 60))
+            {
+                it = m_recent_good_endpoints.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+        
+        std::stringstream ss;
+        
+        auto index = 0;
+        
+        for (auto & i : m_recent_good_endpoints)
+        {
+            ss <<
+                "\t" << ++index << ". " << i.first.ipv4_mapped_address() <<
+                ":" << i.first.port << ":" << std::time(0) - i.second << "\n"
+            ;
+        }
+        
+        log_debug("Address manager recent good endpoints:\n" << ss.str());
+        
+        std::vector<boost::asio::ip::tcp::endpoint> endpoints;
+        
+        auto eps = stack_impl_.get_database_stack()->endpoints();
+
+        for (auto & i : eps)
+        {
+            endpoints.push_back(
+                boost::asio::ip::tcp::endpoint(
+                boost::asio::ip::address::from_string(i.first), i.second)
+            );
+        }
+        
+        auto max_addr = eps.size();
+        
+        auto addrs = get_addr(max_addr);
+        
+        for (auto & i : addrs)
+        {
+            endpoints.push_back(
+                boost::asio::ip::tcp::endpoint(i.ipv4_mapped_address(), i.port)
+            );
+        }
+        
+        std::random_shuffle(endpoints.begin(), endpoints.end());
+        
+        enum { max_probes_new = 8 };
+        
+        if (endpoints.size() > max_probes_new)
+        {
+            endpoints.resize(max_probes_new);
+        }
+        
+        /**
+         * Always probe the recent good endpoints.
+         */
+        for (auto & i : m_recent_good_endpoints)
+        {
+            endpoints.push_back(
+                boost::asio::ip::tcp::endpoint(i.first.ipv4_mapped_address(),
+                i.first.port)
+            );
+        }
+        
+        std::sort(endpoints.begin(), endpoints.end());
+        endpoints.erase(
+            std::unique(endpoints.begin(), endpoints.end()), endpoints.end()
+        );
+        
+        enum { max_probes_total = 12 };
+        
+        if (endpoints.size() > max_probes_total)
+        {
+            endpoints.resize(max_probes_total);
+        }
+        
+        log_debug(
+            "Address manager is probing " << endpoints.size() << " endpoints."
+        );
+        
+        for (auto & i : endpoints)
+        {
+            /**
+             * Allocate tcp_transport.
+             */
+            auto transport =
+                std::make_shared<tcp_transport> (io_service_, strand_)
+            ;
+            
+            /**
+             * Allocate the tcp_connection.
+             */
+            auto connection = std::make_shared<tcp_connection> (
+                io_service_, stack_impl_, tcp_connection::direction_outgoing,
+                transport
+            );
+
+            auto should_probe = true;
+            
+            if (probed_endpoints_.count(i) > 0)
+            {
+                if (std::time(0) - probed_endpoints_[i] > (1 * 60 * 60))
+                {
+                    should_probe = true;
+                }
+                else
+                {
+                    should_probe = false;
+                }
+            }
+            
+            if (probed_endpoints_.size() > 2048)
+            {
+                probed_endpoints_.clear();
+            }
+            
+            if (should_probe)
+            {
+                log_debug("Address manager is probing " << i << ".");
+                
+                /**
+                 * If the endpoint doesn't exist add it.
+                 */
+                if (
+                    find(protocol::network_address_t::from_endpoint(i)) == 0
+                    )
+                {
+                    add(
+                        protocol::network_address_t::from_endpoint(i),
+                        protocol::network_address_t::from_endpoint(i)
+                    );
+                }
+                
+                /**
+                 * Inform the address_manager.
+                 */
+                stack_impl_.get_address_manager()->on_connection_attempt(
+                    protocol::network_address_t::from_endpoint(i)
+                );
+        
+                /**
+                 * Retain the time the endpoint was probed.
+                 */
+                probed_endpoints_[i] = std::time(0);
+                
+                /**
+                 * Set that this is a probe only connection.
+                 */
+                connection->set_probe_only(true);
+                
+                /**
+                 * Start the tcp_connection.
+                 */
+                connection->start(i);
+            }
+            else
+            {
+                log_debug(
+                    "Address manager is not probing " << i << ", too soon."
+                );
+            }
+        }
+        
+        /**
+         * The number of minimum good endpoints to maintain.
+         */
+        enum { min_good_endpoints = 8 };
+        
+        /**
+         * Start the timer.
+         */
+        timer_.expires_from_now(
+            std::chrono::seconds(
+            m_recent_good_endpoints.size() <
+            min_good_endpoints ? 8 : (20 * 60))
+        );
+        timer_.async_wait(strand_.wrap(
+            std::bind(&address_manager::tick, this,
+            std::placeholders::_1))
+        );
     }
 }

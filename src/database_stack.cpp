@@ -109,6 +109,15 @@ void database_stack::stop()
 #endif // USE_DATABASE_STACK
 }
 
+std::list< std::pair<std::string, std::uint16_t> > database_stack::endpoints()
+{
+#if (defined USE_DATABASE_STACK && USE_DATABASE_STACK)
+    return database::stack::endpoints();
+#else
+    return std::list< std::pair<std::string, std::uint16_t> > ();
+#endif // USE_DATABASE_STACK
+}
+
 std::pair<std::uint16_t, std::vector<std::string> >
     database_stack::poll_find_results(const std::uint16_t & transaction_id
     )

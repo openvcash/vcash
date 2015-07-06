@@ -22,6 +22,11 @@
 
 using namespace coin;
 
+zerotime_answer::zerotime_answer()
+{
+    set_null();
+}
+
 zerotime_answer::zerotime_answer(const sha256 & hash_tx)
     : m_hash_tx(hash_tx)
 {

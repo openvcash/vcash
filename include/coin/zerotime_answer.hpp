@@ -35,9 +35,14 @@ namespace coin {
         
             /**
              * Constructor
+             */
+            zerotime_answer();
+        
+            /**
+             * Constructor
              * @param hash_tx The transaction hash.
              */
-            explicit zerotime_answer(const sha256 & hash_tx);
+            zerotime_answer(const sha256 & hash_tx);
         
             /**
              * Encodes

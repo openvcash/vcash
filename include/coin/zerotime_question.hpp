@@ -35,9 +35,14 @@ namespace coin {
         
             /**
              * Constructor
+             */
+            zerotime_question();
+        
+            /**
+             * Constructor
              * @param tx_in The transaction_in.
              */
-            explicit zerotime_question(const transaction_in & tx_in);
+            zerotime_question(const transaction_in & tx_in);
         
             /**
              * Encodes

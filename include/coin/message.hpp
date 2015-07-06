@@ -165,6 +165,16 @@ namespace coin {
              */
             protocol::ztlock_t & protocol_ztlock();
         
+            /**
+             * The protocol ztquestion structure.
+             */
+            protocol::ztquestion_t & protocol_ztquestion();
+        
+            /**
+             * The protocol ztanswer structure.
+             */
+            protocol::ztanswer_t & protocol_ztanswer();
+        
         private:
         
             /**
@@ -237,6 +247,16 @@ namespace coin {
              */
             protocol::ztlock_t m_protocol_ztlock;
         
+            /**
+             * The protocol ztquestion structure.
+             */
+            protocol::ztquestion_t m_protocol_ztquestion;
+        
+            /**
+             * The protocol ztanswer structure.
+             */
+            protocol::ztanswer_t m_protocol_ztanswer;
+        
         protected:
         
             /**
@@ -298,6 +318,16 @@ namespace coin {
              * Creates an ztlock.
              */
             data_buffer create_ztlock();
+        
+            /**
+             * Creates an ztquestion.
+             */
+            data_buffer create_ztquestion();
+        
+            /**
+             * Creates an ztanswer.
+             */
+            data_buffer create_ztanswer();
     };
     
 } // namespace coin

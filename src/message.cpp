@@ -35,7 +35,9 @@
 #include <coin/protocol.hpp>
 #include <coin/stack_impl.hpp>
 #include <coin/time.hpp>
+#include <coin/zerotime_answer.hpp>
 #include <coin/zerotime_lock.hpp>
+#include <coin/zerotime_question.hpp>
 
 using namespace coin;
 
@@ -156,8 +158,20 @@ void message::encode()
              */
             m_payload = create_ztlock();
         }
-        
-        // :TODO: ztquestion and ztanswer
+        else if (m_header.command == "ztquestion")
+        {
+            /**
+             * Create the ztquestion.
+             */
+            m_payload = create_ztquestion();
+        }
+        else if (m_header.command == "ztanswer")
+        {
+            /**
+             * Create the ztanswer.
+             */
+            m_payload = create_ztanswer();
+        }
     }
     
     /**
@@ -585,7 +599,59 @@ void message::decode()
                 m_protocol_ztlock.ztlock.reset();
             }
         }
-        else // :TODO: ztquestion and ztanswer
+        else if (m_header.command == "ztquestion")
+        {
+            /**
+             * Allocate the ztquestion.
+             */
+            m_protocol_ztquestion.ztquestion =
+                std::make_shared<zerotime_question> ()
+            ;
+            
+            /**
+             * Decode the ztquestion.
+             */
+            if (m_protocol_ztquestion.ztquestion->decode(*this))
+            {
+                // ...
+            }
+            else
+            {
+                log_error("Message failed to decode ztquestion.");
+                
+                /**
+                 * Deallocate the ztquestion.
+                 */
+                m_protocol_ztquestion.ztquestion.reset();
+            }
+        }
+        else if (m_header.command == "ztanswer")
+        {
+            /**
+             * Allocate the ztanswer.
+             */
+            m_protocol_ztanswer.ztanswer =
+                std::make_shared<zerotime_answer> ()
+            ;
+            
+            /**
+             * Decode the ztanswer.
+             */
+            if (m_protocol_ztanswer.ztanswer->decode(*this))
+            {
+                // ...
+            }
+            else
+            {
+                log_error("Message failed to decode ztanswer.");
+                
+                /**
+                 * Deallocate the ztanswer.
+                 */
+                m_protocol_ztanswer.ztanswer.reset();
+            }
+        }
+        else
         {
             log_error(
                 "Message got invalid command = " << m_header.command << "."
@@ -682,6 +748,16 @@ protocol::alert_t & message::protocol_alert()
 protocol::ztlock_t & message::protocol_ztlock()
 {
     return m_protocol_ztlock;
+}
+
+protocol::ztquestion_t & message::protocol_ztquestion()
+{
+    return m_protocol_ztquestion;
+}
+
+protocol::ztanswer_t & message::protocol_ztanswer()
+{
+    return m_protocol_ztanswer;
 }
 
 data_buffer message::create_version()
@@ -1089,6 +1165,30 @@ data_buffer message::create_ztlock()
     if (m_protocol_ztlock.ztlock)
     {
         m_protocol_ztlock.ztlock->encode(ret);
+    }
+    
+    return ret;
+}
+
+data_buffer message::create_ztquestion()
+{
+    data_buffer ret;
+    
+    if (m_protocol_ztquestion.ztquestion)
+    {
+        m_protocol_ztquestion.ztquestion->encode(ret);
+    }
+    
+    return ret;
+}
+
+data_buffer message::create_ztanswer()
+{
+    data_buffer ret;
+    
+    if (m_protocol_ztanswer.ztanswer)
+    {
+        m_protocol_ztanswer.ztanswer->encode(ret);
     }
     
     return ret;

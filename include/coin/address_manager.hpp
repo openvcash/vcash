@@ -36,6 +36,8 @@
 
 namespace coin {
 
+    class stack_impl;
+    
     /**
      * Implements an address manager.
      */
@@ -281,8 +283,14 @@ namespace coin {
         
             /**
              * Constructor
+             * @param ios The boost::asio::io_service.
+             * @param s The boost::asio::strand.
+             * @param owner The stack_impl.
              */
-            address_manager();
+            address_manager(
+                boost::asio::io_service & ios, boost::asio::strand & s,
+                stack_impl & owner
+            );
         
             /**
              * Starts
@@ -405,6 +413,13 @@ namespace coin {
              */
             const std::size_t size() const;
         
+            /**
+             * The recently marked good endpoints.
+             */
+            std::vector<boost::asio::ip::tcp::endpoint>
+                recent_good_endpoints()
+            ;
+        
         private:
 
             /**
@@ -428,7 +443,42 @@ namespace coin {
                 const std::uint32_t & first, const std::uint32_t & second
             );
         
+            /**
+             * The recently marked good endpoints.
+             */
+            std::map<protocol::network_address_t, std::time_t>
+                m_recent_good_endpoints
+            ;
+        
         protected:
+        
+            /**
+             * The timer handler.
+             * @param ec The boost::system::error_code.
+             */
+            void tick(const boost::system::error_code & ec);
+        
+            /**
+             * The boost::asio::io_service.
+             */
+            boost::asio::io_service & io_service_;
+        
+            /**
+             * The boost::asio::strand.
+             */
+            boost::asio::strand & strand_;
+        
+            /**
+             * The stack_impl.
+             */
+            stack_impl & stack_impl_;
+        
+            /**
+             * The timer.
+             */
+            boost::asio::basic_waitable_timer<
+                std::chrono::steady_clock
+            > timer_;
         
             /**
              * The key used to randomize bucket selection.
@@ -491,6 +541,18 @@ namespace coin {
              * The buckets_tried_ std::recursive_mutex.
              */
             std::recursive_mutex mutex_buckets_tried_;
+        
+            /**
+             * The probed endpoints.
+             */
+            std::map<boost::asio::ip::tcp::endpoint, std::time_t>
+                probed_endpoints_
+            ;
+        
+            /**
+             * The recent_good_endpoints_ std::recursive_mutex.
+             */
+            std::recursive_mutex mutex_recent_good_endpoints_;
     };
     
 } // namespace coin

@@ -22,6 +22,11 @@
 
 using namespace coin;
 
+zerotime_question::zerotime_question()
+{
+    set_null();
+}
+
 zerotime_question::zerotime_question(const transaction_in & tx_in)
     : m_transaction_in(tx_in)
 {
