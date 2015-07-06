@@ -23,6 +23,7 @@ LOCAL_CPPFLAGS := \
 LOCAL_C_INCLUDES := \
     $(LOCAL_PATH)/include \
 	./include \
+    ./database/include \
 	./deps/boost \
 	./deps/db/build_unix \
 	./deps/openssl/include
