@@ -22,6 +22,7 @@ LOCAL_CPPFLAGS := \
 LOCAL_C_INCLUDES := \
     $(LOCAL_PATH)/include \
 	../database/include \
+    ./../deps/openssl/include \
 	./../deps/boost \
 
 LOCAL_SRC_FILES := \

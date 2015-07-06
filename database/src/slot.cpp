@@ -25,6 +25,7 @@
 #include <database/node_impl.hpp>
 #include <database/routing_table.hpp>
 #include <database/slot.hpp>
+#include <database/utility.hpp>
 
 using namespace database;
 
@@ -688,7 +689,7 @@ int slot::run_test()
     
     for (;;)
     {
-        std::string random_str = std::to_string(std::rand()).substr(0, 5);
+        std::string random_str = utility::to_string(std::rand()).substr(0, 5);
         
         std::int16_t slot_id = id(random_str);
 
