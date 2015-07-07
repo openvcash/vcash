@@ -44,7 +44,9 @@ namespace coin {
     class stack_impl;
     class tcp_transport;
     class transaction;
+    class zerotime_answer;
     class zerotime_lock;
+    class zerotime_question;
     
     /**
      * Implement a tcp connection.
@@ -313,6 +315,18 @@ namespace coin {
              * @param ztlock The transaction.
              */
             void send_ztlock_message(const zerotime_lock & ztlock);
+        
+            /**
+             * Sends a ztlock message.
+             * @param ztquestion The zerotime_question.
+             */
+            void send_ztquestion_message(const zerotime_question & ztquestion);
+        
+            /**
+             * Sends a ztlock message.
+             * @param ztanswer The zerotime_answer.
+             */
+            void send_ztanswer_message(const zerotime_answer & ztanswer);
         
             /**
              * Sends a mempool message.

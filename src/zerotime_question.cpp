@@ -27,8 +27,10 @@ zerotime_question::zerotime_question()
     set_null();
 }
 
-zerotime_question::zerotime_question(const transaction_in & tx_in)
-    : m_transaction_in(tx_in)
+zerotime_question::zerotime_question(
+    const std::vector<transaction_in> & tx_ins
+    )
+    : m_transactions_in(tx_ins)
 {
     set_null();
 }
@@ -40,10 +42,18 @@ void zerotime_question::encode()
 
 void zerotime_question::encode(data_buffer & buffer)
 {
-    /**
-     * Encode the transaction_in.
+    /** 
+     * Encode the transaction inputs length.
      */
-    m_transaction_in.encode(buffer);
+    buffer.write_var_int(m_transactions_in.size());
+    
+    for (auto & i : m_transactions_in)
+    {
+        /**
+         * Encode the transaction_in.
+         */
+        i.encode(buffer);
+    }
 }
 
 bool zerotime_question::decode()
@@ -54,19 +64,33 @@ bool zerotime_question::decode()
 bool zerotime_question::decode(data_buffer & buffer)
 {
     /**
-     * Decode the transaction_in.
+     * Decode the transaction inputs length.
      */
-    m_transaction_in.decode(buffer);
+    auto len = buffer.read_var_int();
+
+    /**
+     * Allocate the transaction inputs.
+     */
+    m_transactions_in.resize(len);
+    
+    for (auto i = 0; i < len; i++)
+    {
+        /**
+         * Decode the transaction_in.
+         */
+        m_transactions_in[i].decode(buffer);
+    }
     
     return true;
 }
 
 void zerotime_question::set_null()
 {
-    m_transaction_in.clear();
+    m_transactions_in.clear();
 }
 
-const transaction_in & zerotime_question::get_transaction_in() const
+const std::vector<transaction_in> &
+    zerotime_question::transactions_in() const
 {
-    return m_transaction_in;
+    return m_transactions_in;
 }

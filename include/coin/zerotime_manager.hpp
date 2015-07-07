@@ -24,6 +24,7 @@
 #include <cstdint>
 #include <ctime>
 #include <map>
+#include <mutex>
 #include <vector>
 
 #include <boost/asio.hpp>
@@ -76,33 +77,22 @@ namespace coin {
                 const std::vector<transaction_in> & transactions_in
             );
         
+            /**
+             * Handles an answer.
+             * @param ep The boost::asio::ip::tcp::endpoint.
+             * @param ztanswer The zerotime_answer.
+             */
+            void handle_answer(
+                const boost::asio::ip::tcp::endpoint & ep,
+                const zerotime_answer & ztanswer
+            );
+        
         private:
         
             /**
-             * The answers (we've received over TCP) under key question.
+             * The time interval in seconds of six blocks.
              */
-            std::map<sha256, std::vector< std::pair<
-                boost::asio::ip::tcp::endpoint, zerotime_answer> > >
-                m_answers_tcp
-            ;
-        
-            /**
-             * The questions (that we've asked) under key answer.
-             */
-            std::map<sha256, zerotime_question> m_questions;
-        
-            /**
-             * A map of the times of which questions and all related answers
-             * are to be expired.
-             */
-            std::map<sha256, std::time_t> m_qa_expire_times;
-        
-            /**
-             * The questioned endpoints.
-             */
-            std::map<
-                sha256, std::vector<boost::asio::ip::tcp::endpoint>
-            > m_questioned_tcp_endpoints;
+            enum { interval_six_blocks = 1200 };
         
         protected:
         
@@ -133,6 +123,44 @@ namespace coin {
             boost::asio::basic_waitable_timer<
                 std::chrono::steady_clock
             > timer_;
+        
+            /**
+             * The questions (that we've asked) under key answer.
+             */
+            std::map<
+                sha256, std::pair<std::time_t, zerotime_question>
+            > questions_;
+        
+            /**
+             * The std::mutex
+             */
+            std::mutex mutex_questions_;
+        
+            /**
+             * The answers (we've received over TCP) under key question.
+             */
+            std::map<
+                sha256, std::pair<std::time_t,
+                std::map<boost::asio::ip::tcp::endpoint, zerotime_answer> >
+            > zerotime_answers_tcp_;
+        
+            /**
+             * The std::mutex
+             */
+            std::mutex mutex_zerotime_answers_tcp_;
+        
+            /**
+             * The questioned endpoints.
+             */
+            std::map<
+                sha256, std::pair<std::time_t,
+                std::vector<boost::asio::ip::tcp::endpoint> >
+            > questioned_tcp_endpoints_;
+        
+            /**
+             * The std::mutex
+             */
+            std::mutex mutex_questioned_tcp_endpoints_;
     };
     
 } // namespace coin

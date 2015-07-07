@@ -56,10 +56,26 @@ void zerotime_manager::probe_for_answers(
 {
     if (globals::instance().is_zerotime_enabled())
     {
-        if (m_questions.count(hash_tx) == 0)
+        std::lock_guard<std::mutex> l1(mutex_questions_);
+        
+        if (questions_.count(hash_tx) == 0)
         {
-
+            questions_[hash_tx].first = std::time(0);
+            questions_[hash_tx].second = zerotime_question(transactions_in);
         }
+    }
+}
+
+void zerotime_manager::handle_answer(
+    const boost::asio::ip::tcp::endpoint & ep, const zerotime_answer & ztanswer
+    )
+{
+    if (globals::instance().is_zerotime_enabled())
+    {
+        std::lock_guard<std::mutex> l1(mutex_zerotime_answers_tcp_);
+        
+        zerotime_answers_tcp_[ztanswer.hash_tx()].first = std::time(0);
+        zerotime_answers_tcp_[ztanswer.hash_tx()].second[ep] = ztanswer;
     }
 }
 
@@ -83,6 +99,56 @@ void zerotime_manager::do_tick(const std::uint32_t & interval)
                  * Clear expired input locks.
                  */
                 zerotime::instance().clear_expired_input_locks();
+                
+                std::lock_guard<std::mutex> l1(mutex_zerotime_answers_tcp_);
+                
+                auto it1 = zerotime_answers_tcp_.begin();
+                
+                while (it1 != zerotime_answers_tcp_.end())
+                {
+                    if (std::time(0) - it1->second.first > interval_six_blocks)
+                    {
+                        it1 = zerotime_answers_tcp_.erase(it1);
+                    }
+                    else
+                    {
+                        ++it1;
+                    }
+                }
+                
+                std::lock_guard<std::mutex> l2(mutex_questions_);
+                
+                auto it2 = questions_.begin();
+                
+                while (it2 != questions_.end())
+                {
+                    if (std::time(0) - it2->second.first > interval_six_blocks)
+                    {
+                        it2 = questions_.erase(it2);
+                    }
+                    else
+                    {
+                        ++it2;
+                    }
+                }
+                
+                std::lock_guard<std::mutex> l3(
+                    mutex_questioned_tcp_endpoints_
+                );
+                
+                auto it3 = questioned_tcp_endpoints_.begin();
+                
+                while (it3 != questioned_tcp_endpoints_.end())
+                {
+                    if (std::time(0) - it3->second.first > interval_six_blocks)
+                    {
+                        it3 = questioned_tcp_endpoints_.erase(it3);
+                    }
+                    else
+                    {
+                        ++it3;
+                    }
+                }
             }
             
             /**

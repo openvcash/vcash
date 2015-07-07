@@ -21,6 +21,8 @@
 #ifndef COIN_ZEROTIME_QUESTION_HPP
 #define COIN_ZEROTIME_QUESTION_HPP
 
+#include <vector>
+
 #include <coin/data_buffer.hpp>
 #include <coin/transaction_in.hpp>
 
@@ -40,9 +42,9 @@ namespace coin {
         
             /**
              * Constructor
-             * @param tx_in The transaction_in.
+             * @param tx_in The transaction_in's.
              */
-            zerotime_question(const transaction_in & tx_in);
+            zerotime_question(const std::vector<transaction_in> & tx_ins);
         
             /**
              * Encodes
@@ -74,14 +76,14 @@ namespace coin {
             /**
              * The transaction_in.
              */
-            const transaction_in & get_transaction_in() const;
+            const std::vector<transaction_in> & transactions_in() const;
         
         private:
         
             /**
-             * The transaction_in.
+             * The transaction_in's.
              */
-            transaction_in m_transaction_in;
+            std::vector<transaction_in> m_transactions_in;
         
         protected:
         

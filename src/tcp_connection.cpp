@@ -43,7 +43,10 @@
 #include <coin/utility.hpp>
 #include <coin/wallet_manager.hpp>
 #include <coin/zerotime.hpp>
+#include <coin/zerotime_answer.hpp>
 #include <coin/zerotime_lock.hpp>
+#include <coin/zerotime_manager.hpp>
+#include <coin/zerotime_question.hpp>
 
 using namespace coin;
 
@@ -1159,7 +1162,7 @@ void tcp_connection::send_ztlock_message(const zerotime_lock & ztlock)
         message msg("ztlock");
 
         /**
-         * Set the tx.
+         * Set the ztlock.
          */
         msg.protocol_ztlock().ztlock = std::make_shared<zerotime_lock> (ztlock);
         
@@ -1167,6 +1170,82 @@ void tcp_connection::send_ztlock_message(const zerotime_lock & ztlock)
             "TCP connection is sending ztlock " <<
             msg.protocol_ztlock().ztlock->hash_tx().to_string().substr(0, 20) <<
             "."
+        );
+
+        /**
+         * Encode the message.
+         */
+        msg.encode();
+        
+        /**
+         * Write the message.
+         */
+        t->write(msg.data(), msg.size());
+    }
+    else
+    {
+        stop();
+    }
+}
+
+void tcp_connection::send_ztquestion_message(const zerotime_question & ztquestion)
+{
+    if (auto t = m_tcp_transport.lock())
+    {
+        /**
+         * Allocate the message.
+         */
+        message msg("ztquestion");
+
+        /**
+         * Set the ztquestion.
+         */
+        msg.protocol_ztquestion().ztquestion =
+            std::make_shared<zerotime_question> (ztquestion)
+        ;
+        
+        log_debug(
+            "TCP connection is sending ztquestion " <<
+            msg.protocol_ztquestion(
+            ).ztquestion->transactions_in().size() << "."
+        );
+
+        /**
+         * Encode the message.
+         */
+        msg.encode();
+        
+        /**
+         * Write the message.
+         */
+        t->write(msg.data(), msg.size());
+    }
+    else
+    {
+        stop();
+    }
+}
+
+void tcp_connection::send_ztanswer_message(const zerotime_answer & ztanswer)
+{
+    if (auto t = m_tcp_transport.lock())
+    {
+        /**
+         * Allocate the message.
+         */
+        message msg("ztanswer");
+
+        /**
+         * Set the ztanswer.
+         */
+        msg.protocol_ztanswer().ztanswer =
+            std::make_shared<zerotime_answer> (ztanswer)
+        ;
+        
+        log_debug(
+            "TCP connection is sending ztanswer " <<
+            msg.protocol_ztanswer().ztanswer->hash_tx(
+            ).to_string().substr(0, 20) << "."
         );
 
         /**
@@ -2715,7 +2794,59 @@ bool tcp_connection::handle_message(message & msg)
 
             if (ztquestion)
             {
-                // :TODO:
+                const auto & tx_ins = ztquestion->transactions_in();
+                
+                sha256 hash_tx;
+                
+                auto should_send_answer = false;
+                
+                for (auto & i : tx_ins)
+                {
+                    if (
+                        zerotime::instance().locked_inputs().count(
+                        i.previous_out()) > 0
+                        )
+                    {
+                        /**
+                         * Get the transaction's hash.
+                         */
+                        hash_tx =
+                            zerotime::instance().locked_inputs()[
+                            i.previous_out()
+                        ];
+                        
+                        /**
+                         * The transaction hash must remain the same as the
+                         * first for all transaction_in's in the question.
+                         */
+                        if (
+                            hash_tx == zerotime::instance().locked_inputs()[
+                            tx_ins.front().previous_out()]
+                            )
+                        {
+                            should_send_answer = true;
+                        }
+                        else
+                        {
+                            should_send_answer = false;
+                            
+                            break;
+                        }
+                    }
+                }
+                
+                if (should_send_answer)
+                {
+                    /**
+                     * Allocate the answer.
+                     */
+                    zerotime_answer ztanswer(hash_tx);
+                
+                    /**
+                     * Send the message.
+                     */
+                    send_ztanswer_message(ztanswer);
+                }
             }
         }
     }
@@ -2729,7 +2860,15 @@ bool tcp_connection::handle_message(message & msg)
 
             if (ztanswer)
             {
-                // :TODO:
+                if (auto transport = m_tcp_transport.lock())
+                {
+                    /**
+                     * Inform the zerotime_manager.
+                     */
+                    stack_impl_.get_zerotime_manager()->handle_answer(
+                        transport->socket().remote_endpoint(), *ztanswer
+                    );
+                }
             }
         }
     }

@@ -1465,7 +1465,7 @@ void address_manager::tick(const boost::system::error_code & ec)
             ;
         }
         
-        log_debug("Address manager recent good endpoints:\n" << ss.str());
+        log_info("Address manager recent good endpoints:\n" << ss.str());
         
         std::vector<boost::asio::ip::tcp::endpoint> endpoints;
         
@@ -1623,8 +1623,7 @@ void address_manager::tick(const boost::system::error_code & ec)
             min_good_endpoints ? 8 : (20 * 60))
         );
         timer_.async_wait(strand_.wrap(
-            std::bind(&address_manager::tick, this,
-            std::placeholders::_1))
+            std::bind(&address_manager::tick, this, std::placeholders::_1))
         );
     }
 }
