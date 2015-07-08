@@ -1905,47 +1905,56 @@ void node_impl::handle_broadcast_message(
                          * Get the slot.
                          */
                         auto slot = routing_table_->slot_for_id(slot_id);
+#define USE_SLOT_MESSAGE_FORWARDING 0
+#if (defined USE_SLOT_MESSAGE_FORWARDING && USE_SLOT_MESSAGE_FORWARDING)
 
                         /**
                          * Limit the number of storage nodes.
                          */
                         auto limit = random::uint16_random_range(1, 3);
+#else
+                        auto limit = 0;
+#endif // USE_SLOT_FORWARDING
                         
-                        /**
-                         * Get the storage nodes.
-                         */
-                        auto snodes = slot->storage_node_endpoints(limit);
+                        if (limit > 0)
+                        {
+                            /**
+                             * Get the storage nodes.
+                             */
+                            auto snodes = slot->storage_node_endpoints(limit);
 
-                        if (snodes.size() == 0)
-                        {
-                            log_error(
-                                "Node attempted broadcast (forward) operation "
-                                "but no endpoints were found."
-                            );
-                        }
-                        else
-                        {
-                            if (
-                                operation_queue_->find(
-                                msg.header_transaction_id()) == 0
-                                )
+                            if (snodes.size() == 0)
                             {
-                                /**
-                                 * Allocate the broadcast_operation reusing the
-                                 * transaction id from the originating message.
-                                 */
-                                std::shared_ptr<broadcast_operation> op(
-                                    new broadcast_operation(io_service_,
-                                    msg.header_transaction_id(),
-                                    operation_queue_, shared_from_this(),
-                                    snodes, attr.value)
+                                log_error(
+                                    "Node attempted broadcast (forward) "
+                                    "operation but no endpoints were found."
                                 );
-                                
-                                /**
-                                 * Insert the broadcast_operation into the
-                                 * operation_queue.
-                                 */
-                                operation_queue_->insert(op);
+                            }
+                            else
+                            {
+                                if (
+                                    operation_queue_->find(
+                                    msg.header_transaction_id()) == 0
+                                    )
+                                {
+                                    /**
+                                     * Allocate the broadcast_operation reusing
+                                     * the transaction id from the originating
+                                     * message.
+                                     */
+                                    std::shared_ptr<broadcast_operation> op(
+                                        new broadcast_operation(io_service_,
+                                        msg.header_transaction_id(),
+                                        operation_queue_, shared_from_this(),
+                                        snodes, attr.value)
+                                    );
+                                    
+                                    /**
+                                     * Insert the broadcast_operation into the
+                                     * operation_queue.
+                                     */
+                                    operation_queue_->insert(op);
+                                }
                             }
                         }
                     })));
