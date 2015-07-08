@@ -254,6 +254,14 @@ namespace coin {
             void set_probe_only(const bool & val);
         
             /**
+             * Set's the one-shot ztquestion.
+             * @param val The zerotime_question.
+             */
+            void set_oneshot_ztquestion(
+                const std::shared_ptr<zerotime_question> & val
+            );
+        
+            /**
              * If true the transport is valid (usable).
              */
             bool is_transport_valid();
@@ -317,13 +325,13 @@ namespace coin {
             void send_ztlock_message(const zerotime_lock & ztlock);
         
             /**
-             * Sends a ztlock message.
+             * Sends a ztquestion message.
              * @param ztquestion The zerotime_question.
              */
             void send_ztquestion_message(const zerotime_question & ztquestion);
         
             /**
-             * Sends a ztlock message.
+             * Sends a ztanswer message.
              * @param ztanswer The zerotime_answer.
              */
             void send_ztanswer_message(const zerotime_answer & ztanswer);
@@ -457,6 +465,11 @@ namespace coin {
              * handshake occurs and the address_manager will be informed.
              */
             bool m_probe_only;
+        
+            /**
+             * The one-shot ztquestion (if any).
+             */
+            std::shared_ptr<zerotime_question> m_oneshot_ztquestion;
         
         protected:
         

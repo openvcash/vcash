@@ -722,6 +722,13 @@ void tcp_connection::set_probe_only(const bool & val)
     m_probe_only = val;
 }
 
+void tcp_connection::set_oneshot_ztquestion(
+    const std::shared_ptr<zerotime_question> & val
+    )
+{
+    m_oneshot_ztquestion = std::make_shared<zerotime_question> (*val);
+}
+
 bool tcp_connection::is_transport_valid()
 {
     if (auto transport = m_tcp_transport.lock())
@@ -1638,163 +1645,190 @@ bool tcp_connection::handle_message(message & msg)
                     }
                     
                     /**
-                     * If this is a probe only connection call stop and return.
+                     * If we have a one-shot ztquestion send it.
                      */
-                    if (m_probe_only == true)
+                    if (m_oneshot_ztquestion)
                     {
                         /**
-                         * Stop
+                         * Stop the connection after N seconds, in case we
+                         * get a ztanswer it will be closed immediately.
+                         */
+                        stop_after(8);
+                        
+                        /**
+                         * Send the ztquestion.
+                         */
+                        send_ztquestion_message(*m_oneshot_ztquestion);
+                    }
+                    else if (m_probe_only == true)
+                    {
+                        /**
+                         * We have confirmed the peer is valid, stop the
+                         * connection.
                          */
                         stop();
-                        
-                        return false;
-                    }
-                    
-                    /**
-                     * Set our public ip address for this connection as
-                     * reported in the version message.
-                     */
-                    m_address_public =
-                        msg.protocol_version().addr_dst.ipv4_mapped_address()
-                    ;
-                    
-                    /**
-                     * Set our public ip address for this connection as
-                     * reported in the version message into the global
-                     * variables.
-                     */
-                    globals::instance().set_address_public(m_address_public);
 
-                    log_debug(
-                        "TCP connection learned our public ip address (" <<
-                        m_address_public.to_string() << ") from "
-                        "version message."
-                    );
-                    
-                    if (utility::is_initial_block_download() == false)
+                        return true;
+                    }
+                    else
                     {
                         /**
-                         * If we are a peer advertise our address.
+                         * Set our public ip address for this connection as
+                         * reported in the version message.
                          */
-                        if (
-                            globals::instance().operation_mode() ==
-                            protocol::operation_mode_peer
-                            )
+                        m_address_public =
+                            msg.protocol_version().addr_dst.ipv4_mapped_address()
+                        ;
+                        
+                        /**
+                         * Set our public ip address for this connection as
+                         * reported in the version message into the global
+                         * variables.
+                         */
+                        globals::instance().set_address_public(
+                            m_address_public
+                        );
+
+                        log_debug(
+                            "TCP connection learned our public ip address (" <<
+                            m_address_public.to_string() << ") from "
+                            "version message."
+                        );
+                        
+                        if (utility::is_initial_block_download() == false)
                         {
                             /**
-                             * Send an addr message to advertise our address
-                             * only.
+                             * If we are a peer advertise our address.
                              */
-                            send_addr_message(true);
+                            if (
+                                globals::instance().operation_mode() ==
+                                protocol::operation_mode_peer
+                                )
+                            {
+                                /**
+                                 * Send an addr message to advertise our
+                                 * address only.
+                                 */
+                                send_addr_message(true);
+                            }
                         }
-                    }
-                    
-                    /**
-                     * Only send a getaddr message if we have less than 1000
-                     * peers.
-                     */
-                    if (stack_impl_.get_address_manager()->size() < 1000)
-                    {
-                        /**
-                         * Send a getaddr message to get more addresses.
-                         */
-                        send_getaddr_message();
                         
                         /**
-                         * Set that we just sent a getaddr message.
+                         * Only send a getaddr message if we have less than
+                         * 1000 peers.
                          */
-                        m_sent_getaddr = true;
+                        if (stack_impl_.get_address_manager()->size() < 1000)
+                        {
+                            /**
+                             * Send a getaddr message to get more addresses.
+                             */
+                            send_getaddr_message();
+                            
+                            /**
+                             * Set that we just sent a getaddr message.
+                             */
+                            m_sent_getaddr = true;
+                        }
                     }
                 }
             }
 
-            /**
-             * Send bip-0035 mempool message.
-             */
-            if (
-                m_direction == direction_outgoing &&
-                utility::is_initial_block_download() == false &&
-                m_protocol_version >= constants::mempool_getdata_version
-                )
-            {
-                send_mempool_message();
-            }
-            
-            /**
-             * If we have never sent a getblocks message or if our best
-             * block is the genesis block send getblocks.
-             */
-            if (
-                did_send_getblocks_ == false ||
-                (constants::test_net == true &&
-                stack_impl::get_block_index_best()->get_block_hash() ==
-                block::get_hash_genesis_test_net()) ||
-                (constants::test_net == false &&
-                stack_impl::get_block_index_best()->get_block_hash() ==
-                block::get_hash_genesis())
-                )
-            {
-                did_send_getblocks_ = true;
-                
-                log_debug(
-                    "Connection is sending getblocks, best block = " <<
-                    stack_impl::get_block_index_best()->get_block_hash(
-                    ).to_string().substr(0, 20) << "."
-                );
-                
-                send_getblocks_message(
-                    stack_impl::get_block_index_best(), sha256()
-                );
-            }
-
-            /**
-             * If we are a peer relay alerts and checkpoints.
-             */
-            if (
-                globals::instance().operation_mode() ==
-                protocol::operation_mode_peer
-                )
+            if (m_oneshot_ztquestion)
             {
                 /**
-                 * Relay alerts.
+                 * This is a one-shot connection, no need to proceed.
                  */
-                for (auto & i : stack_impl_.get_alert_manager()->alerts())
+            }
+            else
+            {
+                /**
+                 * Send bip-0035 mempool message.
+                 */
+                if (
+                    m_direction == direction_outgoing &&
+                    utility::is_initial_block_download() == false &&
+                    m_protocol_version >= constants::mempool_getdata_version
+                    )
                 {
-                    relay_alert(i.second);
+                    send_mempool_message();
+                }
+                
+                /**
+                 * If we have never sent a getblocks message or if our best
+                 * block is the genesis block send getblocks.
+                 */
+                if (
+                    did_send_getblocks_ == false ||
+                    (constants::test_net == true &&
+                    stack_impl::get_block_index_best()->get_block_hash() ==
+                    block::get_hash_genesis_test_net()) ||
+                    (constants::test_net == false &&
+                    stack_impl::get_block_index_best()->get_block_hash() ==
+                    block::get_hash_genesis())
+                    )
+                {
+                    did_send_getblocks_ = true;
+                    
+                    log_debug(
+                        "Connection is sending getblocks, best block = " <<
+                        stack_impl::get_block_index_best()->get_block_hash(
+                        ).to_string().substr(0, 20) << "."
+                    );
+                    
+                    send_getblocks_message(
+                        stack_impl::get_block_index_best(), sha256()
+                    );
                 }
 
                 /**
-                 * Relay the sync-checkpoint (ppcoin).
+                 * If we are a peer relay alerts and checkpoints.
                  */
-                relay_checkpoint(
-                    checkpoints::instance().get_checkpoint_message()
-                );
-            }
-        
-            log_debug(
-                "Connection received version message, version = " <<
-                msg.protocol_version().version << ", start height = " <<
-                msg.protocol_version().start_height << ", dest = " <<
-                msg.protocol_version().addr_dst.ipv4_mapped_address(
-                ).to_string() << ", src = " << msg.protocol_version(
-                ).addr_src.ipv4_mapped_address().to_string() << "."
-            );
+                if (
+                    globals::instance().operation_mode() ==
+                    protocol::operation_mode_peer
+                    )
+                {
+                    /**
+                     * Relay alerts.
+                     */
+                    for (auto & i : stack_impl_.get_alert_manager()->alerts())
+                    {
+                        relay_alert(i.second);
+                    }
 
-            /**
-             * Update the peer block counts.
-             */
-            globals::instance().peer_block_counts().input(
-                m_protocol_version_start_height
-            );
-
-            /**
-             * Ask for pending sync-checkpoint if any (ppcoin).
-             */
-            if (utility::is_initial_block_download() == false)
-            {
-                checkpoints::instance().ask_for_pending_sync_checkpoint(
-                    shared_from_this()
+                    /**
+                     * Relay the sync-checkpoint (ppcoin).
+                     */
+                    relay_checkpoint(
+                        checkpoints::instance().get_checkpoint_message()
+                    );
+                }
+            
+                log_debug(
+                    "Connection received version message, version = " <<
+                    msg.protocol_version().version << ", start height = " <<
+                    msg.protocol_version().start_height << ", dest = " <<
+                    msg.protocol_version().addr_dst.ipv4_mapped_address(
+                    ).to_string() << ", src = " << msg.protocol_version(
+                    ).addr_src.ipv4_mapped_address().to_string() << "."
                 );
+
+                /**
+                 * Update the peer block counts.
+                 */
+                globals::instance().peer_block_counts().input(
+                    m_protocol_version_start_height
+                );
+
+                /**
+                 * Ask for pending sync-checkpoint if any (ppcoin).
+                 */
+                if (utility::is_initial_block_download() == false)
+                {
+                    checkpoints::instance().ask_for_pending_sync_checkpoint(
+                        shared_from_this()
+                    );
+                }
             }
         }
     }
@@ -2524,7 +2558,9 @@ bool tcp_connection::handle_message(message & msg)
             /**
              * Allocate the inventory_vector.
              */
-            inventory_vector inv(inventory_vector::type_msg_tx, tx->get_hash());
+            inventory_vector inv(
+                inventory_vector::type_msg_tx, tx->get_hash()
+            );
             
             std::lock_guard<std::mutex> l2(mutex_inventory_cache_);
             
@@ -2535,8 +2571,14 @@ bool tcp_connection::handle_message(message & msg)
             
             bool missing_inputs = false;
             
+            /**
+             * Allocate the data_buffer.
+             */
             data_buffer buffer;
             
+            /**
+             * Encode the transaction.
+             */
             tx->encode(buffer);
             
             if (tx->accept_to_transaction_pool(txdb, &missing_inputs).first)
@@ -2753,10 +2795,6 @@ bool tcp_connection::handle_message(message & msg)
                          * Relay the inv.
                          */
                         relay_inv(inv, buffer);
-                        
-                        /**
-                         * :TODO: If any voting or storage, do it here.
-                         */
 
                         log_info(
                             "TCP connection is adding ZeroTime lock " <<
@@ -2869,6 +2907,17 @@ bool tcp_connection::handle_message(message & msg)
                         transport->socket().remote_endpoint(), *ztanswer
                     );
                 }
+            }
+            
+            /**
+             * If we have a one-shot ztquestion call stop.
+             */
+            if (m_oneshot_ztquestion)
+            {
+                /**
+                 * Stop
+                 */
+                stop();
             }
         }
     }

@@ -192,41 +192,45 @@ namespace coin {
             /**
              * Relays a wallet transaction.
              * @param connection_manager The tcp_connection_manager.
+             * @param use_udp If true it will be broadcast over UDP.
              */
             void relay_wallet_transaction(
                 const std::shared_ptr<tcp_connection_manager> &
-                connection_manager
+                connection_manager, const bool & use_udp
             );
         
             /**
              * Relays a wallet transaction.
              * @param tx_db The db_tx.
              * @param connection_manager The tcp_connection_manager.
+             * @param use_udp If true it will be broadcast over UDP.
              */
             void relay_wallet_transaction(
                 db_tx & tx_db,
                 const std::shared_ptr<tcp_connection_manager> &
-                connection_manager
+                connection_manager, const bool & use_udp
             );
         
             /**
              * Relays a zerotime_lock for the wallet transaction.
              * @param connection_manager The tcp_connection_manager.
+             * @param use_udp If true it will be broadcast over UDP.
              */
             void relay_wallet_zerotime_lock(
                 const std::shared_ptr<tcp_connection_manager> &
-                connection_manager
+                connection_manager, const bool & use_udp
             );
         
             /**
              * Relays a zerotime_lock for the wallet transaction.
              * @param tx_db The db_tx.
              * @param connection_manager The tcp_connection_manager.
+             * @param use_udp If true it will be broadcast over UDP.
              */
             void relay_wallet_zerotime_lock(
                 db_tx & tx_db,
                 const std::shared_ptr<tcp_connection_manager> &
-                connection_manager
+                connection_manager, const bool & use_udp
             );
 
             /**

@@ -27,6 +27,7 @@
 #include <cstdint>
 #include <list>
 #include <map>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -76,6 +77,12 @@ namespace coin {
              * Stops the stack.
              */
             void stop();
+        
+            /**
+             * Performs a broadcast operation.
+             * @param buffer The buffer.
+             */
+            std::uint16_t broadcast(const std::vector<std::uint8_t> &);
         
             /**
              * Returns all of the endpoints in the routing table.
@@ -160,6 +167,16 @@ namespace coin {
              * The find results.
              */
             std::map<std::uint16_t, std::vector<std::string> > find_results_;
+        
+            /**
+             * The packet times.
+             */
+            std::map<std::string, std::time_t> packet_times_;
+        
+            /**
+             * The packet times std::mutex.
+             */
+            std::mutex mutex_packet_times_;
     };
     
 } // namespace coin

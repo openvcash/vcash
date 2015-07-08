@@ -18,12 +18,20 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stdexcept>
 #include <vector>
 
 #include <coin/database_stack.hpp>
+#include <coin/db_tx.hpp>
 #include <coin/logger.hpp>
+#include <coin/message.hpp>
 #include <coin/stack_impl.hpp>
 #include <coin/status_manager.hpp>
+#include <coin/time.hpp>
+#include <coin/tcp_connection_manager.hpp>
+#include <coin/wallet_manager.hpp>
+#include <coin/zerotime.hpp>
+#include <coin/zerotime_lock.hpp>
 
 using namespace coin;
 
@@ -109,6 +117,15 @@ void database_stack::stop()
 #endif // USE_DATABASE_STACK
 }
 
+std::uint16_t database_stack::broadcast(const std::vector<std::uint8_t> & val)
+{
+#if (defined USE_DATABASE_STACK && USE_DATABASE_STACK)
+    return database::stack::broadcast(val);
+#else
+    return 0;
+#endif // USE_DATABASE_STACK
+}
+
 std::list< std::pair<std::string, std::uint16_t> > database_stack::endpoints()
 {
 #if (defined USE_DATABASE_STACK && USE_DATABASE_STACK)
@@ -158,7 +175,219 @@ void database_stack::on_broadcast(
     const char * buf, const std::size_t & len
     )
 {
-    // ...
+    /**
+     * Packets closer than one second apart from a single endpoint are
+     * dropped for rate limiting purposes.
+     */
+    std::lock_guard<std::mutex> l1(mutex_packet_times_);
+    
+    if (packet_times_.count(addr) > 0)
+    {
+        if (std::time(0) - packet_times_[addr] < 2)
+        {
+            log_debug(
+                "Database stack (UDP) is dropping packet received too soon."
+            );
+            
+            return;
+        }
+    }
+
+    /**
+     * Set the time this packet arrived from the address.
+     */
+    packet_times_[addr] = std::time(0);
+    
+    enum { max_udp_length = 2048 };
+    
+    log_debug("Database stack (UDP) got len = " << len << ".");
+    
+    if (len <= max_udp_length)
+    {
+        /**
+         * Allocate the message.
+         */
+        message msg(buf, len);
+
+        try
+        {
+            /**
+             * Decode the message.
+             */
+            msg.decode();
+            
+            log_debug(
+                "Database stack (UDP) got " << msg.header().command <<
+                " from " << addr << ":" << port << "."
+            );
+            
+            return;
+        }
+        catch (std::exception & e)
+        {
+            log_debug(
+                "Database stack (UDP) failed to decode message, "
+                "what = " << e.what() << "."
+            );
+            
+            return;
+        }
+        
+        if (msg.header().command == "tx")
+        {
+            const auto & tx = msg.protocol_tx().tx;
+            
+            if (tx)
+            {
+                db_tx txdb("r");
+                
+                bool missing_inputs = false;
+                
+                /**
+                 * Allocate the data_buffer.
+                 */
+                data_buffer buffer;
+                
+                /**
+                 * Encode the transaction.
+                 */
+                tx->encode(buffer);
+                
+                if (
+                    tx->accept_to_transaction_pool(txdb, &missing_inputs).first
+                    )
+                {
+                    /**
+                     * Inform the wallet_manager.
+                     */
+                    wallet_manager::instance().sync_with_wallets(*tx, 0, true);
+                    
+                    /**
+                     * Allocate the inventory_vector.
+                     */
+                    inventory_vector inv(
+                        inventory_vector::type_msg_tx, tx->get_hash()
+                    );
+
+                    log_info(
+                        "Database stack (UDP) is relaying inv message, "
+                        "command = " << inv.command() << "."
+                    );
+                    
+                    /**
+                     * Allocate the message.
+                     */
+                    message msg(inv.command(), buffer);
+
+                    /**
+                     * Encode the message.
+                     */
+                    msg.encode();
+
+                    /**
+                     * Broadcast the message to "all" connected peers.
+                     */
+                    stack_impl_.get_tcp_connection_manager()->broadcast(
+                        msg.data(), msg.size()
+                    );
+                }
+                else if (missing_inputs)
+                {
+                    utility::add_orphan_tx(buffer);
+                }
+            }
+        }
+        else if (msg.header().command == "ztlock")
+        {
+            if (globals::instance().is_zerotime_enabled())
+            {
+                const auto & ztlock = msg.protocol_ztlock().ztlock;
+
+                if (ztlock)
+                {
+                    /**
+                     * Allocate the inventory_vector.
+                     */
+                    inventory_vector inv(
+                        inventory_vector::type_msg_ztlock, ztlock->hash_tx()
+                    );
+                    
+                    /**
+                     * Check that the zerotime lock is not expired.
+                     */
+                    if (time::instance().get_adjusted() > ztlock->expiration())
+                    {
+                        /**
+                         * Check if we already have this zerotime lock.
+                         */
+                        if (
+                            zerotime::instance().locks().count(
+                            ztlock->hash_tx()) > 0
+                            )
+                        {
+                            // ...
+                        }
+                        else
+                        {
+                            /**
+                             * Alllocate the buffer for relaying.
+                             */
+                            data_buffer buffer;
+                        
+                            /**
+                             * Encode the zerotime_lock.
+                             */
+                            ztlock->encode(buffer);
+                            
+                            log_info(
+                                "Database stack (UDP) is relaying inv "
+                                "message, command = " << inv.command() << "."
+                            );
+                            
+                            /**
+                             * Allocate the message.
+                             */
+                            message msg(inv.command(), buffer);
+
+                            /**
+                             * Encode the message.
+                             */
+                            msg.encode();
+
+                            /**
+                             * Broadcast the message to "all" connected peers.
+                             */
+                            stack_impl_.get_tcp_connection_manager(
+                                )->broadcast(msg.data(), msg.size()
+                            );
+                    
+                            log_info(
+                                "Database stack (UDP) is adding ZeroTime "
+                                "lock " << ztlock->hash_tx().to_string() << "."
+                            );
+                            
+                            /**
+                             * Insert the zerotime_lock.
+                             */
+                            zerotime::instance().locks().insert(
+                                std::make_pair(ztlock->hash_tx(), *ztlock)
+                            );
+                            
+                            /**
+                             * Lock the inputs.
+                             */
+                            for (auto & i : ztlock->transactions_in())
+                            {
+                                zerotime::instance().locked_inputs()[
+                                    i.previous_out()] = ztlock->hash_tx()
+                                ;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 void database_stack::tick(const boost::system::error_code & ec)
@@ -170,6 +399,27 @@ void database_stack::tick(const boost::system::error_code & ec)
     else
     {
         auto self(shared_from_this());
+        
+        /**
+         * If we have not received a packet within eight seconds from an
+         * address erase it from the packet times.
+         */
+        
+        std::lock_guard<std::mutex> l1(mutex_packet_times_);
+        
+        auto it = packet_times_.begin();
+        
+        while (it != packet_times_.end())
+        {
+            if (std::time(0) - it->second >= 8)
+            {
+                it = packet_times_.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
         
         /**
          * Get the number of udp endpoints in the routing table.

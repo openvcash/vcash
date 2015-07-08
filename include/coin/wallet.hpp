@@ -631,6 +631,11 @@ namespace coin {
             );
         
             /**
+             * The stack_impl.
+             */
+            const stack_impl * get_stack_impl() const;
+        
+            /**
              * The transactions.
              */
             std::map<sha256, transaction_wallet> & transactions();
@@ -731,6 +736,11 @@ namespace coin {
             bool do_encrypt(const std::string & passphrase);
         
             /**
+             * The stack_impl.
+             */
+            stack_impl * m_stack_impl;
+        
+            /**
              * The database wallet encryption.
              */
             std::shared_ptr<db_wallet> m_db_wallet_encryption;
@@ -793,11 +803,6 @@ namespace coin {
             bool m_is_file_backed;
         
         protected:
-        
-            /**
-             * The stack_impl.
-             */
-            stack_impl * stack_impl_;
             
             /**
              * The mutex.

@@ -1479,9 +1479,16 @@ void address_manager::tick(const boost::system::error_code & ec)
             );
         }
         
-        auto max_addr = eps.size();
+        std::random_shuffle(endpoints.begin(), endpoints.end());
         
-        auto addrs = get_addr(max_addr);
+        enum { max_probes_new = 64 };
+        
+        if (endpoints.size() > max_probes_new)
+        {
+            endpoints.resize(max_probes_new);
+        }
+
+        auto addrs = get_addr(max_probes_new);
         
         for (auto & i : addrs)
         {
@@ -1489,14 +1496,19 @@ void address_manager::tick(const boost::system::error_code & ec)
                 boost::asio::ip::tcp::endpoint(i.ipv4_mapped_address(), i.port)
             );
         }
+
+        std::sort(endpoints.begin(), endpoints.end());
+        endpoints.erase(
+            std::unique(endpoints.begin(), endpoints.end()), endpoints.end()
+        );
         
         std::random_shuffle(endpoints.begin(), endpoints.end());
+
+        enum { max_probes_total = 12 };
         
-        enum { max_probes_new = 8 };
-        
-        if (endpoints.size() > max_probes_new)
+        if (endpoints.size() > max_probes_total)
         {
-            endpoints.resize(max_probes_new);
+            endpoints.resize(max_probes_total);
         }
         
         /**
@@ -1515,16 +1527,9 @@ void address_manager::tick(const boost::system::error_code & ec)
             std::unique(endpoints.begin(), endpoints.end()), endpoints.end()
         );
         
-        enum { max_probes_total = 12 };
+        std::random_shuffle(endpoints.begin(), endpoints.end());
         
-        if (endpoints.size() > max_probes_total)
-        {
-            endpoints.resize(max_probes_total);
-        }
-        
-        log_debug(
-            "Address manager is probing " << endpoints.size() << " endpoints."
-        );
+        auto probed = 0;
         
         for (auto & i : endpoints)
         {
@@ -1567,6 +1572,11 @@ void address_manager::tick(const boost::system::error_code & ec)
                 log_debug("Address manager is probing " << i << ".");
                 
                 /**
+                 * Increment the number we've probed so far.
+                 */
+                probed++;
+                
+                /**
                  * If the endpoint doesn't exist add it.
                  */
                 if (
@@ -1582,8 +1592,9 @@ void address_manager::tick(const boost::system::error_code & ec)
                 /**
                  * Inform the address_manager.
                  */
-                stack_impl_.get_address_manager()->on_connection_attempt(
-                    protocol::network_address_t::from_endpoint(i)
+                on_connection_attempt(
+                    protocol::network_address_t::from_endpoint(i),
+                    std::time(0) - (20 * 60)
                 );
         
                 /**
@@ -1608,6 +1619,8 @@ void address_manager::tick(const boost::system::error_code & ec)
                 );
             }
         }
+        
+        log_info("Address manager probed " << probed << " endpoints.");
         
         /**
          * The number of minimum good endpoints to maintain.

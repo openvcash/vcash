@@ -49,11 +49,11 @@
 using namespace coin;
 
 wallet::wallet()
-    : m_wallet_version(feature_base)
+    : m_stack_impl(0)
+    , m_wallet_version(feature_base)
     , m_wallet_version_max(feature_base)
     , m_order_position_next(0)
     , m_master_key_max_id(0)
-    , stack_impl_(0)
     , m_is_file_backed(true)
     , resend_transactions_timer_(globals::instance().io_service())
     , time_last_resend_(0)
@@ -62,11 +62,11 @@ wallet::wallet()
 }
 
 wallet::wallet(stack_impl & impl)
-    : m_wallet_version(feature_base)
+    : m_stack_impl(&impl)
+    , m_wallet_version(feature_base)
     , m_wallet_version_max(feature_base)
     , m_order_position_next(0)
     , m_master_key_max_id(0)
-    , stack_impl_(&impl)
     , m_is_file_backed(true)
     , resend_transactions_timer_(globals::instance().io_service())
     , time_last_resend_(0)
@@ -114,12 +114,12 @@ void wallet::start()
          */
         status["wallet.address_book.name"] = i.second;
         
-        if (stack_impl_)
+        if (m_stack_impl)
         {
             /**
              * Callback on new or updated transaction.
              */
-            stack_impl_->get_status_manager()->insert(status);
+            m_stack_impl->get_status_manager()->insert(status);
         }
     }
 }
@@ -430,11 +430,11 @@ bool wallet::new_key_pool()
          */
         auto target_size = 0;
         
-        if (stack_impl_)
+        if (m_stack_impl)
         {
             target_size =
                 std::max(
-                stack_impl_->get_configuration().wallet_keypool_size(), 0)
+                m_stack_impl->get_configuration().wallet_keypool_size(), 0)
             ;
         }
         
@@ -481,11 +481,11 @@ bool wallet::top_up_key_pool()
      */
     auto target_size = 0;
     
-    if (stack_impl_)
+    if (m_stack_impl)
     {
         target_size =
             std::max(
-            stack_impl_->get_configuration().wallet_keypool_size(), 0)
+            m_stack_impl->get_configuration().wallet_keypool_size(), 0)
         ;
     }
 
@@ -979,12 +979,12 @@ void wallet::on_transaction_updated(const sha256 & val)
             status["wallet.transaction.type"] = "mined";
         }
     
-        if (stack_impl_)
+        if (m_stack_impl)
         {
             /**
              * Callback on new or updated transaction.
              */
-            stack_impl_->get_status_manager()->insert(status);
+            m_stack_impl->get_status_manager()->insert(status);
         }
     }
 }
@@ -1443,12 +1443,12 @@ void wallet::update_spent(const transaction & tx) const
                     i.previous_out().to_string()
                 ;
                 
-                if (stack_impl_)
+                if (m_stack_impl)
                 {
                     /**
                      * Callback on new or updated transaction.
                      */
-                    stack_impl_->get_status_manager()->insert(status);
+                    m_stack_impl->get_status_manager()->insert(status);
                 }
             }
         }
@@ -1787,12 +1787,12 @@ bool wallet::add_to_wallet(const transaction_wallet & wtx_in)
             status["wallet.transaction.type"] = "mined";
         }
         
-        if (stack_impl_)
+        if (m_stack_impl)
         {
             /**
              * Callback on new or updated transaction.
              */
-            stack_impl_->get_status_manager()->insert(status);
+            m_stack_impl->get_status_manager()->insert(status);
         }
         
         /**
@@ -1869,12 +1869,12 @@ bool wallet::set_address_book_name(
      */
     status["wallet.address_book.name"] = name;
     
-    if (stack_impl_)
+    if (m_stack_impl)
     {
         /**
          * Callback on new or updated transaction.
          */
-        stack_impl_->get_status_manager()->insert(status);
+        m_stack_impl->get_status_manager()->insert(status);
     }
     
     if (m_is_file_backed == false)
@@ -2622,12 +2622,12 @@ std::pair<bool, std::string> wallet::commit_transaction(
             status["wallet.transaction.type"] = "mined";
         }
         
-        if (stack_impl_)
+        if (m_stack_impl)
         {
             /**
              * Callback
              */
-            stack_impl_->get_status_manager()->insert(status);
+            m_stack_impl->get_status_manager()->insert(status);
         }
     }
     
@@ -2662,13 +2662,13 @@ std::pair<bool, std::string> wallet::commit_transaction(
         return std::make_pair(false, ret.second);
     }
     
-    if (stack_impl_)
+    if (m_stack_impl)
     {
         /**
          * Relay the wallet transaction.
          */
         wtx_new.relay_wallet_transaction(
-            stack_impl_->get_tcp_connection_manager()
+            m_stack_impl->get_tcp_connection_manager(), true
         );
 
         /**
@@ -2682,14 +2682,14 @@ std::pair<bool, std::string> wallet::commit_transaction(
              * Relay the zerotime_lock (if required).
              */
             wtx_new.relay_wallet_zerotime_lock(
-                stack_impl_->get_tcp_connection_manager()
+                m_stack_impl->get_tcp_connection_manager(), true
             );
 
             /**
              * Inform the zerotime_manager of the transaction inputs and
              * hash.
              */
-            stack_impl_->get_zerotime_manager()->probe_for_answers(
+            m_stack_impl->get_zerotime_manager()->probe_for_answers(
                 wtx_new.get_hash(), wtx_new.transactions_in()
             );
         }
@@ -3587,6 +3587,11 @@ void wallet::approximate_best_subset(
     }
 }
 
+const stack_impl * wallet::get_stack_impl() const
+{
+    return m_stack_impl;
+}
+
 std::map<sha256, transaction_wallet> & wallet::transactions()
 {
     std::lock_guard<std::recursive_mutex> l1(mutex_);
@@ -3792,11 +3797,11 @@ void wallet::resend_transactions_tick(const boost::system::error_code & ec)
         
         std::lock_guard<std::recursive_mutex> l1(mutex_);
         
-        if (stack_impl_)
+        if (m_stack_impl)
         {
             if (
                 utility::is_initial_block_download() == false &&
-                stack_impl_->get_tcp_connection_manager()->is_connected() &&
+                m_stack_impl->get_tcp_connection_manager()->is_connected() &&
                 globals::instance().time_best_received() >= time_last_resend_
                 )
             {
@@ -3849,10 +3854,13 @@ void wallet::resend_transactions_tick(const boost::system::error_code & ec)
                             );
                             
                             /**
-                             * Relay the transaction to all connected peers.
+                             * Relay the transaction over TCP (but not
+                             * over UDP).
                              */
                             wtx.relay_wallet_transaction(
-                                tx_db, stack_impl_->get_tcp_connection_manager()
+                                tx_db,
+                                m_stack_impl->get_tcp_connection_manager(),
+                                false
                             );
                         }
                         else

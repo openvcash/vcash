@@ -21,6 +21,8 @@
 #include <boost/lexical_cast.hpp>
 
 #include <coin/db_wallet.hpp>
+#include <coin/message.hpp>
+#include <coin/database_stack.hpp>
 #include <coin/tcp_connection.hpp>
 #include <coin/tcp_connection_manager.hpp>
 #include <coin/transaction_pool.hpp>
@@ -696,17 +698,19 @@ bool transaction_wallet::write_to_disk()
 }
 
 void transaction_wallet::relay_wallet_transaction(
-    const std::shared_ptr<tcp_connection_manager> & connection_manager
+    const std::shared_ptr<tcp_connection_manager> & connection_manager,
+    const bool & use_udp
     )
 {
    db_tx tx_db("r");
    
-   relay_wallet_transaction(tx_db, connection_manager);
+   relay_wallet_transaction(tx_db, connection_manager, use_udp);
 }
 
 void transaction_wallet::relay_wallet_transaction(
     db_tx & tx_db,
-    const std::shared_ptr<tcp_connection_manager> & connection_manager
+    const std::shared_ptr<tcp_connection_manager> & connection_manager,
+    const bool & use_udp
     )
 {
     for (auto & i : m_previous_transactions)
@@ -717,16 +721,16 @@ void transaction_wallet::relay_wallet_transaction(
             
             if (tx_db.contains_transaction(hash_tx) == false)
             {
+                inventory_vector inv(
+                    inventory_vector::type_msg_tx, hash_tx
+                );
+                
+                data_buffer buffer;
+            
+                i.encode(buffer);
+                
                 for (auto & j : connection_manager->tcp_connections())
                 {
-                    inventory_vector inv(
-                        inventory_vector::type_msg_tx, hash_tx
-                    );
-                    
-                    data_buffer buffer;
-                
-                    i.encode(buffer);
-                    
                     if (auto t = j.second.lock())
                     {
                         t->send_relayed_inv_message(inv, buffer);
@@ -747,17 +751,62 @@ void transaction_wallet::relay_wallet_transaction(
                 hash_tx.to_string().substr(0, 10) << "."
             );
 
+            /**
+             * Allocate the inventory_vector.
+             */
+            inventory_vector inv(inventory_vector::type_msg_tx, hash_tx);
+            
+            /**
+             * Allocate the data_buffer.
+             */
+            data_buffer buffer;
+            
+            /**
+             * Encode the transaction.
+             */
+            reinterpret_cast<transaction *> (this)->encode(buffer);
+            
+            /**
+             * Relay the transaction over TCP.
+             */
             for (auto & i : connection_manager->tcp_connections())
             {
-                inventory_vector inv(inventory_vector::type_msg_tx, hash_tx);
-                
-                data_buffer buffer;
-                
-                reinterpret_cast<transaction *> (this)->encode(buffer);
-                
                 if (auto t = i.second.lock())
                 {
                     t->send_relayed_inv_message(inv, buffer);
+                }
+            }
+            
+            if (use_udp)
+            {
+                if (wallet_)
+                {
+                    /**
+                     * Allocate the message.
+                     */
+                    message msg(inv.command(), buffer);
+
+                    /**
+                     * Encode the message.
+                     */
+                    msg.encode();
+        
+                    /**
+                     * Allocate the UDP packet.
+                     */
+                    std::vector<std::uint8_t> udp_packet(msg.size());
+                    
+                    /**
+                     * Copy the message to the UDP packet.
+                     */
+                    std::memcpy(&udp_packet[0], msg.data(), msg.size());
+            
+                    /**
+                     * Broadcast the message over UDP.
+                     */
+                    const_cast<stack_impl *> (wallet_->get_stack_impl()
+                        )->get_database_stack()->broadcast(udp_packet
+                    );
                 }
             }
         }
@@ -765,17 +814,19 @@ void transaction_wallet::relay_wallet_transaction(
 }
 
 void transaction_wallet::relay_wallet_zerotime_lock(
-    const std::shared_ptr<tcp_connection_manager> & connection_manager
+    const std::shared_ptr<tcp_connection_manager> & connection_manager,
+    const bool & use_udp
     )
 {
    db_tx tx_db("r");
    
-   relay_wallet_zerotime_lock(tx_db, connection_manager);
+   relay_wallet_zerotime_lock(tx_db, connection_manager, use_udp);
 }
 
 void transaction_wallet::relay_wallet_zerotime_lock(
     db_tx & tx_db,
-    const std::shared_ptr<tcp_connection_manager> & connection_manager
+    const std::shared_ptr<tcp_connection_manager> & connection_manager,
+    const bool & use_udp
     )
 {
     if (globals::instance().is_zerotime_enabled())
@@ -804,62 +855,95 @@ void transaction_wallet::relay_wallet_zerotime_lock(
                     hash_tx.to_string().substr(0, 10) << "."
                 );
 
+                /**
+                 * Allocate the inventory_vector.
+                 */
+                inventory_vector inv(
+                    inventory_vector::type_msg_ztlock, hash_tx
+                );
+                
+                /**
+                 * Allocate the data_buffer.
+                 */
+                data_buffer buffer;
+                
+                /**
+                 * Allocate the zerotime_lock.
+                 */
+                zerotime_lock ztlock;
+                
+                /**
+                 * Set the transaction.
+                 */
+                ztlock.set_transaction(
+                    *reinterpret_cast<transaction *> (this)
+                );
+                
+                /**
+                 * Set the transaction hash.
+                 */
+                ztlock.set_hash_tx(hash_tx);
+                
+                /**
+                 * Insert the zerotime_lock.
+                 */
+                zerotime::instance().locks().insert(
+                    std::make_pair(hash_tx, ztlock)
+                );
+                
+                /**
+                 * Lock the inputs.
+                 */
+                for (auto & i : ztlock.transactions_in())
+                {
+                    zerotime::instance().locked_inputs()[
+                        i.previous_out()] = hash_tx
+                    ;
+                }
+                
+                /**
+                 * Encode the zerotime_lock.
+                 */
+                ztlock.encode(buffer);
+                
                 for (auto & i : connection_manager->tcp_connections())
                 {
-                    /**
-                     * Allocate the inventory_vector.
-                     */
-                    inventory_vector inv(
-                        inventory_vector::type_msg_ztlock, hash_tx
-                    );
-                    
-                    /**
-                     * Allocate the data_buffer.
-                     */
-                    data_buffer buffer;
-                    
-                    /**
-                     * Allocate the zerotime_lock.
-                     */
-                    zerotime_lock ztlock;
-                    
-                    /**
-                     * Set the transaction.
-                     */
-                    ztlock.set_transaction(
-                        *reinterpret_cast<transaction *> (this)
-                    );
-                    
-                    /**
-                     * Set the transaction hash.
-                     */
-                    ztlock.set_hash_tx(hash_tx);
-                    
-                    /**
-                     * Insert the zerotime_lock.
-                     */
-                    zerotime::instance().locks().insert(
-                        std::make_pair(hash_tx, ztlock)
-                    );
-                    
-                    /**
-                     * Lock the inputs.
-                     */
-                    for (auto & i : ztlock.transactions_in())
-                    {
-                        zerotime::instance().locked_inputs()[
-                            i.previous_out()] = hash_tx
-                        ;
-                    }
-                    
-                    /**
-                     * Encode the zerotime_lock.
-                     */
-                    ztlock.encode(buffer);
-                    
                     if (auto t = i.second.lock())
                     {
                         t->send_relayed_inv_message(inv, buffer);
+                    }
+                }
+                
+                if (use_udp)
+                {
+                    if (wallet_)
+                    {
+                        /**
+                         * Allocate the message.
+                         */
+                        message msg(inv.command(), buffer);
+
+                        /**
+                         * Encode the message.
+                         */
+                        msg.encode();
+            
+                        /**
+                         * Allocate the UDP packet.
+                         */
+                        std::vector<std::uint8_t> udp_packet(msg.size());
+                        
+                        /**
+                         * Copy the message to the UDP packet.
+                         */
+                        std::memcpy(&udp_packet[0], msg.data(), msg.size());
+                
+                        /**
+                         * Broadcast the message over UDP.
+                         */
+                        const_cast<stack_impl *> (wallet_->get_stack_impl()
+                            )->get_database_stack()->broadcast(udp_packet
+                        );
                     }
                 }
             }

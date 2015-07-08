@@ -41,9 +41,9 @@ namespace coin {
         
             /**
              * The number of confirmations required for a transaction to be
-             * considered final.
+             * considered confirmed equivalent to 6 block confirmations.
              */
-            enum { confirmations = 64 };
+            enum { confirmations = 8 };
         
             /**
              * The singleton accessor.

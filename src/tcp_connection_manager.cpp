@@ -455,7 +455,7 @@ void tcp_connection_manager::tick(const boost::system::error_code & ec)
                      * Do not retry connections to the same network address more
                      * often than every 60 seconds.
                      */
-                    if (time::instance().get_adjusted() - addr.last_try < 60)
+                    if (std::time(0) - addr.last_try < 60)
                     {
                         log_info(
                             "TCP connection manager attempted to "

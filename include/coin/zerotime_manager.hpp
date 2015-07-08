@@ -25,6 +25,7 @@
 #include <ctime>
 #include <map>
 #include <mutex>
+#include <set>
 #include <vector>
 
 #include <boost/asio.hpp>
@@ -103,6 +104,12 @@ namespace coin {
             void do_tick(const std::uint32_t & interval);
 
             /**
+             * The tick probe handler.
+             * @param interval The interval.
+             */
+            void do_tick_probe(const std::uint32_t & interval);
+        
+            /**
              * The boost::asio::io_service.
              */
             boost::asio::io_service & io_service_;
@@ -125,10 +132,18 @@ namespace coin {
             > timer_;
         
             /**
+             * The probe timer.
+             */
+            boost::asio::basic_waitable_timer<
+                std::chrono::steady_clock
+            > timer_probe_;
+        
+            /**
              * The questions (that we've asked) under key answer.
              */
             std::map<
-                sha256, std::pair<std::time_t, zerotime_question>
+                sha256, std::pair<std::time_t,
+                std::shared_ptr<zerotime_question> >
             > questions_;
         
             /**
@@ -161,6 +176,24 @@ namespace coin {
              * The std::mutex
              */
             std::mutex mutex_questioned_tcp_endpoints_;
+        
+            /**
+             * The queue of TCP endpoints to question.
+             */
+            std::map<
+                sha256, std::pair<std::time_t,
+                std::set<boost::asio::ip::tcp::endpoint> >
+            > question_queue_tcp_endpoints_;
+        
+            /**
+             * The std::mutex
+             */
+            std::mutex mutex_question_queue_tcp_endpoints_;
+        
+            /**
+             * The probe (question) interval.
+             */
+            enum { interval_probe = 3 };
     };
     
 } // namespace coin
