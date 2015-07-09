@@ -308,6 +308,12 @@ void zerotime_manager::do_tick_probe(const std::uint32_t & interval)
                          */
                         if (questions_.count(hash_tx) > 0)
                         {
+                            log_info(
+                                "ZeroTime manager is questioning " << ep <<
+                                " regarding transaction " <<
+                                hash_tx.to_string().substr(0, 8) << "."
+                            );
+                            
                             /**
                              * Get the question.
                              */
