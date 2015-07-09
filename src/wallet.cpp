@@ -2449,7 +2449,8 @@ bool wallet::get_transaction(
 }
 
 std::pair<bool, std::string> wallet::commit_transaction(
-    transaction_wallet & wtx_new, key_reserved & reserve_key
+    transaction_wallet & wtx_new, key_reserved & reserve_key,
+    const bool & use_zerotime
     )
 {
     std::lock_guard<std::recursive_mutex> l1(mutex_);
@@ -2671,11 +2672,6 @@ std::pair<bool, std::string> wallet::commit_transaction(
             m_stack_impl->get_tcp_connection_manager(), true
         );
 
-        /**
-         * :TODO: Pass true if this transaction is ZeroTime enabled.
-         */
-        bool use_zerotime = false;
-        
         if (globals::instance().is_zerotime_enabled() && use_zerotime)
         {
             /**
@@ -3160,7 +3156,7 @@ bool wallet::create_coin_stake(
 
 std::pair<bool, std::string> wallet::send_money(
     const script & script_pub_key, const std::int64_t & value,
-    const transaction_wallet & wtx_new
+    const transaction_wallet & wtx_new, const bool & use_zerotime
     )
 {
     std::lock_guard<std::recursive_mutex> l1(mutex_);
@@ -3228,7 +3224,7 @@ std::pair<bool, std::string> wallet::send_money(
      * Commit the transaction.
      */
     auto ret_pair = commit_transaction(
-        *const_cast<transaction_wallet *> (&wtx_new), *reserve_key
+        *const_cast<transaction_wallet *> (&wtx_new), *reserve_key, use_zerotime
     );
     
     /**
@@ -3278,7 +3274,7 @@ std::pair<bool, std::string> wallet::send_money_to_destination(
     
     script_pub_key.set_destination(address);
 
-    return send_money(script_pub_key, value, wtx_new);
+    return send_money(script_pub_key, value, wtx_new, use_zerotime);
 }
 
 void wallet::available_coins(

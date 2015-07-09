@@ -544,9 +544,11 @@ namespace coin {
              * Commits a transaction.
              * @param wtx_new The transaction_wallet.
              * @param reserve_key The key_reserved.
+             * @param use_zerotime If true ZeroTime will be used.
              */
             std::pair<bool, std::string> commit_transaction(
-                transaction_wallet & wtx_new, key_reserved & reserve_key
+                transaction_wallet & wtx_new, key_reserved & reserve_key,
+                const bool & use_zerotime
             );
         
             /**
@@ -566,10 +568,11 @@ namespace coin {
              * @param script_pub_key The script public key.
              * @param value The value.
              * @param wtx_new The new transaction_wallet.
+             * @param use_zerotime If true ZeroTime will be used.
              */
             std::pair<bool, std::string> send_money(
                 const script & script_pub_key, const std::int64_t & value,
-                const transaction_wallet & wtx_new
+                const transaction_wallet & wtx_new, const bool & use_zerotime
             );
         
             /**

@@ -4253,11 +4253,16 @@ rpc_connection::json_rpc_response_t rpc_connection::json_sendmany(
                 }
                 
                 /**
+                 * Do not use ZeroTime over RPC.
+                 */
+                bool use_zerotime = false;
+                
+                /**
                  * Commit the transaction.
                  */
                 auto ret_pair =
                     globals::instance().wallet_main()->commit_transaction(
-                    wtx, k)
+                    wtx, k, use_zerotime)
                 ;
 
                 if (ret_pair.first == false)
