@@ -83,7 +83,7 @@ namespace database {
             /**
              * The maximum shared secret lifetime.
              */
-            enum { max_shared_secret_lifetime = 24 * 60 * 60 };
+            enum { max_shared_secret_lifetime = 72 * 60 * 60 };
         
             /**
              * The cleanup timer handler.
