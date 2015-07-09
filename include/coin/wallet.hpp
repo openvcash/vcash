@@ -577,10 +577,11 @@ namespace coin {
              * @param address The destination::tx_t.
              * @param value The value.
              * @param wtx_new The new transaction_wallet.
+             * @param use_zerotime If true ZeroTime will be used.
              */
             std::pair<bool, std::string> send_money_to_destination(
                 const destination::tx_t & address, const std::int64_t & value,
-                const transaction_wallet & wtx_new
+                const transaction_wallet & wtx_new, const bool & use_zerotime
             );
         
             /**

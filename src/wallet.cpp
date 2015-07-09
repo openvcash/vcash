@@ -3249,7 +3249,7 @@ std::pair<bool, std::string> wallet::send_money(
 
 std::pair<bool, std::string> wallet::send_money_to_destination(
     const destination::tx_t & address, const std::int64_t & value,
-    const transaction_wallet & wtx_new
+    const transaction_wallet & wtx_new, const bool & use_zerotime
     )
 {
     if (value <= 0)
