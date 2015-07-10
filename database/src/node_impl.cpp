@@ -1519,12 +1519,12 @@ void node_impl::handle_public_key_ping_message(
     if (msg.endpoint_attributes().size() > 0)
     {
         auto ep = msg.endpoint_attributes().front();
-// :TODO: Re-enable after testing.
-//        if (
-//            network::address_is_private(ep.value.address()) == false &&
-//            network::address_is_loopback(ep.value.address()) == false &&
-//            network::address_is_any(ep.value.address()) == false
-//            )
+
+        if (
+            network::address_is_private(ep.value.address()) == false &&
+            network::address_is_loopback(ep.value.address()) == false &&
+            network::address_is_any(ep.value.address()) == false
+            )
         {
             std::lock_guard<std::recursive_mutex> l(
                 public_endpoint_mutex_
