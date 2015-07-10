@@ -126,11 +126,18 @@ void zerotime_manager::handle_answer(
              * Check the number of answers.
              */
             if (
-                zerotime_answers_tcp_[
-                ztanswer.hash_tx()].second.size() == zerotime::confirmations
+                questions_.count(ztanswer.hash_tx()) > 0 &&
+                zerotime_answers_tcp_[ztanswer.hash_tx()].second.size() ==
+                zerotime::confirmations
                 )
             {
-                // :TODO: The transaction is confirmed.
+                /**
+                 * The transaction is confirmed.
+                 */
+                if (m_on_confirmation)
+                {
+                    m_on_confirmation(ztanswer.hash_tx());
+                }
             }
         }
         else

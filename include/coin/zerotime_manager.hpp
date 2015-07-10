@@ -23,6 +23,7 @@
 
 #include <cstdint>
 #include <ctime>
+#include <functional>
 #include <map>
 #include <mutex>
 #include <set>
@@ -94,6 +95,11 @@ namespace coin {
              * The time interval in seconds of six blocks.
              */
             enum { interval_six_blocks = 1200 };
+        
+            /**
+             * Called when a transaction is confirmed.
+             */
+            std::function<void (const sha256 & hash_tx)> m_on_confirmation;
         
         protected:
         
