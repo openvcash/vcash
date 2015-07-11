@@ -93,6 +93,14 @@ namespace coin {
                     return 0;
                 }
                 
+                if (constants::test_net == true)
+                {
+                    return std::max(
+                        0, (constants::coinbase_maturity_test_network + 20) -
+                        get_depth_in_main_chain()
+                    );
+                }
+                
                 return std::max(
                     0, (constants::coinbase_maturity + 20) -
                     get_depth_in_main_chain()

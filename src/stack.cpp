@@ -52,21 +52,42 @@ void stack::start(const std::map<std::string, std::string> & args)
          */
         stack_impl_->get_configuration().set_args(args);
 
-        stack_impl_->get_configuration().bootstrap_nodes().push_back(
-            std::make_pair("94.102.60.170", 55555)
-        );
+        /**
+         * Use different bootstrap endpoints for test networks.
+         */
+        if (constants::test_net == true)
+        {
+            stack_impl_->get_configuration().bootstrap_nodes().push_back(
+                std::make_pair("10.0.0.1", 50002)
+            );
+            stack_impl_->get_configuration().bootstrap_nodes().push_back(
+                std::make_pair("10.0.0.2", 50004)
+            );
+            stack_impl_->get_configuration().bootstrap_nodes().push_back(
+                std::make_pair("10.0.0.3", 50006)
+            );
+            stack_impl_->get_configuration().bootstrap_nodes().push_back(
+                std::make_pair("10.0.0.4", 50008)
+            );
+        }
+        else
+        {
+            stack_impl_->get_configuration().bootstrap_nodes().push_back(
+                std::make_pair("94.102.60.170", 55555)
+            );
 
-        stack_impl_->get_configuration().bootstrap_nodes().push_back(
-            std::make_pair("72.47.234.147", 41134)
-        );
+            stack_impl_->get_configuration().bootstrap_nodes().push_back(
+                std::make_pair("72.47.234.147", 41134)
+            );
 
-        stack_impl_->get_configuration().bootstrap_nodes().push_back(
-            std::make_pair("72.47.234.148", 45874)
-        );
-        
-        stack_impl_->get_configuration().bootstrap_nodes().push_back(
-            std::make_pair("72.47.235.241", 39457)
-        );
+            stack_impl_->get_configuration().bootstrap_nodes().push_back(
+                std::make_pair("72.47.234.148", 45874)
+            );
+            
+            stack_impl_->get_configuration().bootstrap_nodes().push_back(
+                std::make_pair("72.47.235.241", 39457)
+            );
+        }
 
         /**
          * Start the stack implementation.

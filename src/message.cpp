@@ -672,14 +672,32 @@ const std::uint32_t message::header_magic()
     if (ret == 0)
     {
         /**
-         * The first four bytes of the header.
+         * Use a different header magic for test networks.
          */
-        std::uint8_t magic[4] = { 0xce, 0xa9, 0xcf, 0x80 };
-        
-        /**
-         * Copy into a 32-bit unsigned integer.
-         */
-        std::memcpy(&ret, &magic, sizeof(ret));
+        if (constants::test_net == true)
+        {
+            /**
+             * The first four bytes of the header.
+             */
+            std::uint8_t magic[4] = { 0x02, 0x04, 0x06, 0x08 };
+            
+            /**
+             * Copy into a 32-bit unsigned integer.
+             */
+            std::memcpy(&ret, &magic, sizeof(ret));
+        }
+        else
+        {
+            /**
+             * The first four bytes of the header.
+             */
+            std::uint8_t magic[4] = { 0xce, 0xa9, 0xcf, 0x80 };
+            
+            /**
+             * Copy into a 32-bit unsigned integer.
+             */
+            std::memcpy(&ret, &magic, sizeof(ret));
+        }
     }
 
     return ret;

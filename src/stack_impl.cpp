@@ -3622,9 +3622,25 @@ void stack_impl::load_block_index(
                 assert(blk.header().bits == 504365055);
                 
                 /**
-                 * Set the header nonce.
+                 * The test network uses a different genesis block by using a
+                 * different nonce.
                  */
-                blk.header().nonce = constants::chain_start_time - 10000;
+                if (constants::test_net == true)
+                {
+                    /**
+                     * Set the header nonce.
+                     */
+                    blk.header().nonce =
+                        constants::chain_start_time - 10000 + 1
+                    ;
+                }
+                else
+                {
+                    /**
+                     * Set the header nonce.
+                     */
+                    blk.header().nonce = constants::chain_start_time - 10000;
+                }
 
                 /**
                  * Print the block.

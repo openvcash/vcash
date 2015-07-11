@@ -138,6 +138,11 @@ namespace constants {
     enum { coinbase_maturity = 200 };
     
     /**
+     * The number of blocks after which a coin matures on a test network.
+     */
+    enum { coinbase_maturity_test_network = 1 };
+    
+    /**
      * The initial proof of work limit.
      * 0.0002441
      */

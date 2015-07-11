@@ -1504,7 +1504,7 @@ void address_manager::tick(const boost::system::error_code & ec)
         
         std::random_shuffle(endpoints.begin(), endpoints.end());
 
-        enum { max_probes_total = 12 };
+        enum { max_probes_total = 16 };
         
         if (endpoints.size() > max_probes_total)
         {
@@ -1617,6 +1617,11 @@ void address_manager::tick(const boost::system::error_code & ec)
                 log_debug(
                     "Address manager is not probing " << i << ", too soon."
                 );
+            }
+            
+            if (probed == max_probes_total)
+            {
+                break;
             }
         }
         

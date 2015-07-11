@@ -119,7 +119,13 @@ bool filesystem::copy_file(const std::string & src, const std::string & dest)
 
 std::string filesystem::data_path()
 {
-    static const auto bundle_id = constants::client_name;
+    auto bundle_id = constants::client_name;
+    
+    if (constants::test_net == true)
+    {
+        bundle_id += "TestNet";
+    }
+    
     std::string ret;
 #if (defined _MSC_VER)
     ret += getenv("APPDATA");

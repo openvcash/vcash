@@ -50,47 +50,53 @@ database_stack::database_stack(
 void database_stack::start(const std::uint16_t & port, const bool & is_client)
 {
 #if (defined USE_DATABASE_STACK && USE_DATABASE_STACK)
-    database::stack::configuration stack_config;
-    
     /**
-     * The bootstrap contacts.
+     * Do not start the database on test networks.
      */
-    std::vector< std::pair<std::string, std::uint16_t> > contacts;
-    
-    /**
-     * Add the hard-coded bootstrap contacts.
-     */
-    contacts.push_back(std::make_pair("p01.vanillacoin.net", 40004));
-    contacts.push_back(std::make_pair("p02.vanillacoin.net", 40006));
-    contacts.push_back(std::make_pair("p03.vanillacoin.net", 40008));
-    contacts.push_back(std::make_pair("p04.vanillacoin.net", 40010));
-    contacts.push_back(std::make_pair("p05.vanillacoin.net", 55555));
-    contacts.push_back(std::make_pair("p06.vanillacoin.net", 40014));
-    contacts.push_back(std::make_pair("p07.vanillacoin.net", 55555));
-    contacts.push_back(std::make_pair("p08.vanillacoin.net", 40018));
-    
-    /**
-     * Set the port.
-     */
-    stack_config.set_port(port);
-    
-    /**
-     * Set the operation mode.
-     */
-    stack_config.set_operation_mode(
-        is_client ? database::stack::configuration::operation_mode_interface :
-        database::stack::configuration::operation_mode_storage
-    );
-    
-    /**
-     * Start the database::stack.
-     */
-    database::stack::start(stack_config);
-    
-    /**
-     * Join the database::stack.
-     */
-    database::stack::join(contacts);
+    if (constants::test_net == false)
+    {
+        database::stack::configuration stack_config;
+        
+        /**
+         * The bootstrap contacts.
+         */
+        std::vector< std::pair<std::string, std::uint16_t> > contacts;
+        
+        /**
+         * Add the hard-coded bootstrap contacts.
+         */
+        contacts.push_back(std::make_pair("p01.vanillacoin.net", 40004));
+        contacts.push_back(std::make_pair("p02.vanillacoin.net", 40006));
+        contacts.push_back(std::make_pair("p03.vanillacoin.net", 40008));
+        contacts.push_back(std::make_pair("p04.vanillacoin.net", 40010));
+        contacts.push_back(std::make_pair("p05.vanillacoin.net", 55555));
+        contacts.push_back(std::make_pair("p06.vanillacoin.net", 40014));
+        contacts.push_back(std::make_pair("p07.vanillacoin.net", 55555));
+        contacts.push_back(std::make_pair("p08.vanillacoin.net", 40018));
+        
+        /**
+         * Set the port.
+         */
+        stack_config.set_port(port);
+        
+        /**
+         * Set the operation mode.
+         */
+        stack_config.set_operation_mode(
+            is_client ? database::stack::configuration::operation_mode_interface :
+            database::stack::configuration::operation_mode_storage
+        );
+        
+        /**
+         * Start the database::stack.
+         */
+        database::stack::start(stack_config);
+        
+        /**
+         * Join the database::stack.
+         */
+        database::stack::join(contacts);
+    }
 #endif // USE_DATABASE_STACK
 
     auto self(shared_from_this());
