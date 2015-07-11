@@ -443,6 +443,7 @@ void tcp_connection_manager::tick(const boost::system::error_code & ec)
                 }
 
                 if (
+                    constants::test_net == false &&
                     addr.is_valid() == false || addr.is_local() ||
                     is_in_same_group
                     )
@@ -455,7 +456,10 @@ void tcp_connection_manager::tick(const boost::system::error_code & ec)
                      * Do not retry connections to the same network address more
                      * often than every 60 seconds.
                      */
-                    if (std::time(0) - addr.last_try < 60)
+                    if (
+                        constants::test_net == false &&
+                        std::time(0) - addr.last_try < 60
+                        )
                     {
                         log_info(
                             "TCP connection manager attempted to "
