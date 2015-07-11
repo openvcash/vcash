@@ -444,8 +444,8 @@ void tcp_connection_manager::tick(const boost::system::error_code & ec)
 
                 if (
                     constants::test_net == false &&
-                    addr.is_valid() == false || addr.is_local() ||
-                    is_in_same_group
+                    (addr.is_valid() == false || addr.is_local() ||
+                    is_in_same_group)
                     )
                 {
                     // ...
