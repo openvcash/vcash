@@ -469,7 +469,7 @@ namespace coin {
             /**
              * The one-shot ztquestion (if any).
              */
-            std::shared_ptr<zerotime_question> m_oneshot_ztquestion;
+            std::weak_ptr<zerotime_question> m_oneshot_ztquestion;
         
         protected:
         

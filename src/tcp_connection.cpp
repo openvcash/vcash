@@ -726,7 +726,7 @@ void tcp_connection::set_oneshot_ztquestion(
     const std::shared_ptr<zerotime_question> & val
     )
 {
-    m_oneshot_ztquestion = std::make_shared<zerotime_question> (*val);
+    m_oneshot_ztquestion = val;
 }
 
 bool tcp_connection::is_transport_valid()
@@ -1647,7 +1647,7 @@ bool tcp_connection::handle_message(message & msg)
                     /**
                      * If we have a one-shot ztquestion send it.
                      */
-                    if (m_oneshot_ztquestion)
+                    if (auto ztquestion = m_oneshot_ztquestion.lock())
                     {
                         /**
                          * Stop the connection after N seconds, in case we
@@ -1658,7 +1658,7 @@ bool tcp_connection::handle_message(message & msg)
                         /**
                          * Send the ztquestion.
                          */
-                        send_ztquestion_message(*m_oneshot_ztquestion);
+                        send_ztquestion_message(*ztquestion);
                     }
                     else if (m_probe_only == true)
                     {
@@ -1733,7 +1733,7 @@ bool tcp_connection::handle_message(message & msg)
                 }
             }
 
-            if (m_oneshot_ztquestion)
+            if (m_oneshot_ztquestion.lock())
             {
                 /**
                  * This is a one-shot connection, no need to proceed.
@@ -2265,41 +2265,43 @@ bool tcp_connection::handle_message(message & msg)
                             did_send = true;
                         }
                         
-                        if (
-                            did_send == false &&
-                            i.type() == inventory_vector::type_msg_tx
-                            )
+                        if (did_send == false)
                         {
-                            if (transaction_pool::instance().exists(i.hash()))
+                            if (i.type() == inventory_vector::type_msg_tx)
                             {
-                                auto tx = transaction_pool::instance().lookup(
-                                    i.hash()
-                                );
+                                if (
+                                    transaction_pool::instance().exists(
+                                    i.hash())
+                                    )
+                                {
+                                    auto tx = transaction_pool::instance(
+                                        ).lookup(i.hash()
+                                    );
 
-                                /**
-                                 * Send the tx message.
-                                 */
-                                send_tx_message(tx);
+                                    /**
+                                     * Send the tx message.
+                                     */
+                                    send_tx_message(tx);
+                                }
                             }
-                        }
-                        
-                        if (
-                            did_send == false &&
-                            i.type() == inventory_vector::type_msg_ztlock
-                            )
-                        {
-                            if (
-                                zerotime::instance().locks().count(i.hash()) > 0
+                            else if (
+                                i.type() == inventory_vector::type_msg_ztlock
                                 )
                             {
-                                auto ztlock =
-                                    zerotime::instance().locks()[i.hash()]
-                                ;
+                                if (
+                                    zerotime::instance().locks().count(
+                                    i.hash()) > 0
+                                    )
+                                {
+                                    auto ztlock =
+                                        zerotime::instance().locks()[i.hash()]
+                                    ;
 
-                                /**
-                                 * Send the ztlock message.
-                                 */
-                                send_ztlock_message(ztlock);
+                                    /**
+                                     * Send the ztlock message.
+                                     */
+                                    send_ztlock_message(ztlock);
+                                }
                             }
                         }
                     }
@@ -2767,12 +2769,26 @@ bool tcp_connection::handle_message(message & msg)
                 /**
                  * Check that the zerotime lock is not expired.
                  */
-                if (time::instance().get_adjusted() > ztlock->expiration())
+                if (time::instance().get_adjusted() < ztlock->expiration())
                 {
                     /**
-                     * Check if we already have this zerotime lock.
+                     * Check that the transaction hash exists in the
+                     * transaction pool before accepting a zerotime_lock.
                      */
-                    if (
+                    auto hash_not_found =
+                        transaction_pool::instance().transactions().count(
+                        ztlock->hash_tx()) == 0
+                    ;
+
+                    if (hash_not_found)
+                    {
+                        log_info(
+                            "TCP connection got ZeroTime (hash not found)"
+                            ", dropping " <<
+                            ztlock->hash_tx().to_string().substr(0, 8) << "."
+                        );
+                    }
+                    else if (
                         zerotime::instance().locks().count(
                         ztlock->hash_tx()) > 0
                         )
@@ -2782,7 +2798,7 @@ bool tcp_connection::handle_message(message & msg)
                     else
                     {
                         /**
-                         * Alllocate the buffer for relaying.
+                         * Allocate the buffer for relaying.
                          */
                         data_buffer buffer;
                     
@@ -2798,7 +2814,7 @@ bool tcp_connection::handle_message(message & msg)
 
                         log_info(
                             "TCP connection is adding ZeroTime lock " <<
-                            ztlock->hash_tx().to_string() << "."
+                            ztlock->hash_tx().to_string().substr(0, 8) << "."
                         );
                         
                         /**
@@ -2818,6 +2834,12 @@ bool tcp_connection::handle_message(message & msg)
                             ;
                         }
                     }
+                }
+                else
+                {
+                    log_debug(
+                        "TCP connection got expired ZeroTime lock, dropping."
+                    );
                 }
             }
         }
@@ -2912,7 +2934,7 @@ bool tcp_connection::handle_message(message & msg)
             /**
              * If we have a one-shot ztquestion call stop.
              */
-            if (m_oneshot_ztquestion)
+            if (m_oneshot_ztquestion.lock())
             {
                 /**
                  * Stop
