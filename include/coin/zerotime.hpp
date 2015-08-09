@@ -21,12 +21,17 @@
 #ifndef COIN_ZEROTIME_HPP
 #define COIN_ZEROTIME_HPP
 
+#include <cstdint>
 #include <map>
 #include <mutex>
 #include <vector>
 
+#include <coin/key.hpp>
 #include <coin/point_out.hpp>
+#include <coin/sha256.hpp>
+#include <coin/transaction_in.hpp>
 #include <coin/zerotime_lock.hpp>
+#include <coin/zerotime_vote.hpp>
 
 namespace coin {
 
@@ -40,15 +45,35 @@ namespace coin {
         public:
         
             /**
-             * The number of confirmations required for a transaction to be
+             * K
+             */
+            enum { k = 24 };
+        
+            /**
+             * The depth.
+             */
+            enum { depth = 1 };
+            
+            /**
+             * The number of answers required for a transaction to be
              * considered confirmed equivalent to 6 block confirmations.
              */
-            enum { confirmations = 8 };
+            enum { answers_required = 1 };
         
+            /**
+             * Constructor
+             */
+            zerotime();
+            
             /**
              * The singleton accessor.
              */
             static zerotime & instance();
+        
+            /**
+             * The zerotime key.
+             */
+            key & get_key();
         
             /**
              * The locked inputs.
@@ -61,17 +86,80 @@ namespace coin {
             std::map<sha256, zerotime_lock> & locks();
         
             /**
+             * The zerotime_vote's.
+             */
+            std::map<sha256, zerotime_vote> & votes();
+        
+            /**
+             * The number of confirmations.
+             */
+            std::map<sha256, std::size_t> & confirmations();
+        
+            /**
              * Checks a transaction for a locked input mismatch.
              * @param tx The transaction.
              */
             bool has_lock_conflict(const transaction & tx);
         
             /**
+             * Checks inputs for a lock mismatch.
+             * @param transactions_in The transactions in.
+             * @param hash_tx The transaction hash.
+             */
+            bool has_lock_conflict(
+                const std::vector<transaction_in> & transactions_in,
+                const sha256 & hash_tx
+            );
+        
+            /**
+             * Resolves lock conflicts.
+             * @param transactions_in The transactions in.
+             * @param hash_tx The transaction hash.
+             */
+            void resolve_conflicts(
+                const std::vector<transaction_in> & transactions_in,
+                const sha256 & hash_tx
+            );
+
+            /**
              * Clears expired input locks.
              */
             void clear_expired_input_locks();
         
+            /**
+             * Calculates the score of a zerotime_vote.
+             * @param val ztvote The zerotime_vote.
+             */
+            std::int16_t calculate_score(const zerotime_vote & ztvote);
+
+            /**
+             * Signs
+             * @param hash_value The hash of the value.
+             * @param signature The signature.
+             */
+            bool sign(
+                const sha256 & hash_value,
+                std::vector<std::uint8_t> & signature
+            );
+
+            /**
+             * Verifies
+             * @param public_key The public key.
+             * @param hash_value The hash of the value.
+             * @param signature The signature.
+             */
+            bool verify(
+                const key_public & public_key,
+                const sha256 & hash_value,
+                const std::vector<std::uint8_t> & signature
+            );
+
         private:
+        
+            /**
+             * The zerotime key.
+             */
+            key m_key;
         
             /**
              * The locked inputs.
@@ -82,6 +170,16 @@ namespace coin {
              * The zerotime_lock's.
              */
             std::map<sha256, zerotime_lock> m_locks;
+
+            /**
+             * The zerotime_vote's.
+             */
+            std::map<sha256, zerotime_vote> m_votes;
+
+            /**
+             * The number of confirmations.
+             */
+            std::map<sha256, std::size_t> m_confirmations;
         
         protected:
         
@@ -99,6 +197,16 @@ namespace coin {
              * The locks std::recursive_mutex.
              */
             std::recursive_mutex recursive_mutex_locks_;
+        
+            /**
+             * The locks std::recursive_mutex.
+             */
+            std::recursive_mutex recursive_mutex_votes_;
+        
+            /**
+             * The confirmations std::recursive_mutex.
+             */
+            std::recursive_mutex recursive_mutex_confirmations_;
     };
     
 } // namespace
