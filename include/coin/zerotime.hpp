@@ -37,6 +37,8 @@ namespace coin {
 
     class transaction;
     
+    #error "Until the ZeroTime branched is fully merged you will not be able to compile"
+    
     /**
      * Implements the ZeroTime algorithm.
      */
