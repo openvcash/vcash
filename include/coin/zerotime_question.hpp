@@ -81,6 +81,16 @@ namespace coin {
         private:
         
             /**
+             * The version.
+             */
+            enum { current_version = 1 };
+        
+            /**
+             * The version.
+             */
+            std::uint32_t m_version;
+            
+            /**
              * The transaction_in's.
              */
             std::vector<transaction_in> m_transactions_in;

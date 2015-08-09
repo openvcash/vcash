@@ -18,11 +18,14 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <cassert>
+
 #include <coin/zerotime_question.hpp>
 
 using namespace coin;
 
 zerotime_question::zerotime_question()
+    : m_version(current_version)
 {
     set_null();
 }
@@ -30,9 +33,10 @@ zerotime_question::zerotime_question()
 zerotime_question::zerotime_question(
     const std::vector<transaction_in> & tx_ins
     )
-    : m_transactions_in(tx_ins)
+    : m_version(current_version)
+    , m_transactions_in(tx_ins)
 {
-    set_null();
+    // ..
 }
 
 void zerotime_question::encode()
@@ -42,6 +46,11 @@ void zerotime_question::encode()
 
 void zerotime_question::encode(data_buffer & buffer)
 {
+    /**
+     * Encode the version.
+     */
+    buffer.write_uint32(m_version);
+    
     /** 
      * Encode the transaction inputs length.
      */
@@ -63,6 +72,13 @@ bool zerotime_question::decode()
 
 bool zerotime_question::decode(data_buffer & buffer)
 {
+    /**
+     * Decode the version.
+     */
+    m_version = buffer.read_uint32();
+    
+    assert(m_version == current_version);
+    
     /**
      * Decode the transaction inputs length.
      */
@@ -86,6 +102,7 @@ bool zerotime_question::decode(data_buffer & buffer)
 
 void zerotime_question::set_null()
 {
+    m_version = current_version;
     m_transactions_in.clear();
 }
 

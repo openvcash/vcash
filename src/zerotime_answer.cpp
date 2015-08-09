@@ -18,19 +18,23 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <cassert>
+
 #include <coin/zerotime_answer.hpp>
 
 using namespace coin;
 
 zerotime_answer::zerotime_answer()
+    : m_version(current_version)
 {
     set_null();
 }
 
 zerotime_answer::zerotime_answer(const sha256 & hash_tx)
-    : m_hash_tx(hash_tx)
+    : m_version(current_version)
+    , m_hash_tx(hash_tx)
 {
-    set_null();
+    // ...
 }
 
 void zerotime_answer::encode()
@@ -40,6 +44,11 @@ void zerotime_answer::encode()
 
 void zerotime_answer::encode(data_buffer & buffer)
 {
+    /**
+     * Encode the version.
+     */
+    buffer.write_uint32(m_version);
+    
     /**
      * Encode the transaction hash.
      */
@@ -57,6 +66,13 @@ bool zerotime_answer::decode()
 bool zerotime_answer::decode(data_buffer & buffer)
 {
     /**
+     * Decode the version.
+     */
+    m_version = buffer.read_uint32();
+    
+    assert(m_version == current_version);
+    
+    /**
      * Decode the transaction hash.
      */
     buffer.read_bytes(
@@ -68,6 +84,7 @@ bool zerotime_answer::decode(data_buffer & buffer)
 
 void zerotime_answer::set_null()
 {
+    m_version = current_version;
     m_hash_tx.clear();
 }
 

@@ -79,6 +79,16 @@ namespace coin {
         private:
         
             /**
+             * The version.
+             */
+            enum { current_version = 1 };
+        
+            /**
+             * The version.
+             */
+            std::uint32_t m_version;
+            
+            /**
              * The transaction hash.
              */
             sha256 m_hash_tx;
