@@ -63,6 +63,7 @@ tcp_connection::tcp_connection(
     , m_sent_getaddr(false)
     , m_dos_score(0)
     , m_probe_only(false)
+    , m_state(state_none)
     , io_service_(ios)
     , strand_(ios)
     , stack_impl_(owner)
@@ -87,6 +88,8 @@ tcp_connection::~tcp_connection()
 
 void tcp_connection::start()
 {
+    m_state = state_starting;
+    
     if (m_direction == direction_incoming)
     {
         if (auto transport = m_tcp_transport.lock())
@@ -136,10 +139,14 @@ void tcp_connection::start()
     {
         assert(0);
     }
+    
+    m_state = state_started;
 }
 
 void tcp_connection::start(const boost::asio::ip::tcp::endpoint & ep)
 {
+    m_state = state_starting;
+    
     auto self(shared_from_this());
 
     if (m_direction == direction_incoming)
@@ -220,10 +227,14 @@ void tcp_connection::start(const boost::asio::ip::tcp::endpoint & ep)
             assert(0);
         }
     }
+    
+    m_state = state_started;
 }
 
 void tcp_connection::stop()
 {
+    m_state = state_stopping;
+    
     if (auto t = m_tcp_transport.lock())
     {
         t->stop();
@@ -235,6 +246,8 @@ void tcp_connection::stop()
     timer_getblocks_.cancel();
     timer_addr_rebroadcast_.cancel();
     timer_delayed_stop_.cancel();
+    
+    m_state = state_stopped;
 }
 
 void tcp_connection::stop_after(const std::uint32_t & interval)
@@ -544,7 +557,7 @@ void tcp_connection::send_relayed_inv_message(
 
         log_debug(
             "TCP connection is sending (relayed) inv message, command = " <<
-            inv.command() << "."
+            inv.command() << ", buffer size = " << buffer.size() << "."
         );
     
         /**
@@ -758,12 +771,14 @@ void tcp_connection::on_read(const char * buf, const std::size_t & len)
         while (read_queue_.size() >= message::header_length)
         {
             /**
-             * Allocate a packet.
+             * Allocate a packet from the entire read queue.
              */
             std::string packet(read_queue_.begin(), read_queue_.end());
             
             /**
              * Allocate the message.
+             * @note Packets can be combined, after decoding the message it's
+             * buffer will be resized to the actual length.
              */
             message msg(packet.data(), packet.size());
         
@@ -773,8 +788,6 @@ void tcp_connection::on_read(const char * buf, const std::size_t & len)
                  * Decode the message.
                  */
                 msg.decode();
-                
-                log_none("TCP connection got " << msg.header().command << ".");
             }
             catch (std::exception & e)
             {
@@ -1464,7 +1477,7 @@ void tcp_connection::relay_inv(
      * Encode the message.
      */
     msg.encode();
-
+    
     /**
      * Broadcast the message to "all" connected peers.
      */
@@ -1475,7 +1488,15 @@ void tcp_connection::relay_inv(
 
 bool tcp_connection::handle_message(message & msg)
 {
-    if (msg.header().command == "verack")
+    if (m_state == state_stopped)
+    {
+        log_debug(
+            "TCP connection got message while stopped, returning."
+        );
+        
+        return false;
+    }
+    else if (msg.header().command == "verack")
     {
         // ...
     }
@@ -2049,7 +2070,6 @@ bool tcp_connection::handle_message(message & msg)
             }
             
             std::lock_guard<std::recursive_mutex> l1(mutex_getdata_);
-            std::lock_guard<std::mutex> l2(mutex_inventory_cache_);
             
             /**
              * Open the transaction database for reading.
@@ -2062,11 +2082,6 @@ bool tcp_connection::handle_message(message & msg)
             
             for (auto & i : inventory)
             {
-                /**
-                 * Add to the inventory_cache.
-                 */
-                inventory_cache_.insert(i);
-
                 auto already_have = inventory_vector::already_have(tx_db, i);
                 
                 if (globals::instance().debug() && false)
@@ -2564,13 +2579,6 @@ bool tcp_connection::handle_message(message & msg)
                 inventory_vector::type_msg_tx, tx->get_hash()
             );
             
-            std::lock_guard<std::mutex> l2(mutex_inventory_cache_);
-            
-            /**
-             * Add to the inventory_cache.
-             */
-            inventory_cache_.insert(inv);
-            
             bool missing_inputs = false;
             
             /**
@@ -2721,13 +2729,6 @@ bool tcp_connection::handle_message(message & msg)
                 msg.protocol_block().blk->get_hash()
             );
             
-            std::lock_guard<std::mutex> l2(mutex_inventory_cache_);
-            
-            /**
-             * Cache the inventory_vector.
-             */
-            inventory_cache_.insert(inv);
-            
             /**
              * Process the block.
              */
@@ -2746,6 +2747,8 @@ bool tcp_connection::handle_message(message & msg)
     {
         log_debug("Got ztlock");
 
+        assert(msg.protocol_ztlock().ztlock);
+        
         if (globals::instance().is_zerotime_enabled())
         {
             const auto & ztlock = msg.protocol_ztlock().ztlock;
@@ -2758,13 +2761,6 @@ bool tcp_connection::handle_message(message & msg)
                 inventory_vector inv(
                     inventory_vector::type_msg_ztlock, ztlock->hash_tx()
                 );
-                
-                std::lock_guard<std::mutex> l2(mutex_inventory_cache_);
-                
-                /**
-                 * Add to the inventory_cache.
-                 */
-                inventory_cache_.insert(inv);
 
                 /**
                  * Check that the zerotime lock is not expired.
@@ -2798,40 +2794,66 @@ bool tcp_connection::handle_message(message & msg)
                     else
                     {
                         /**
-                         * Allocate the buffer for relaying.
+                         * Prevent a peer from sending a conflicting lock.
                          */
-                        data_buffer buffer;
-                    
-                        /**
-                         * Encode the zerotime_lock.
-                         */
-                        ztlock->encode(buffer);
-                        
-                        /**
-                         * Relay the inv.
-                         */
-                        relay_inv(inv, buffer);
-
-                        log_info(
-                            "TCP connection is adding ZeroTime lock " <<
-                            ztlock->hash_tx().to_string().substr(0, 8) << "."
-                        );
-                        
-                        /**
-                         * Insert the zerotime_lock.
-                         */
-                        zerotime::instance().locks().insert(
-                            std::make_pair(ztlock->hash_tx(), *ztlock)
-                        );
-                        
-                        /**
-                         * Lock the inputs.
-                         */
-                        for (auto & i : ztlock->transactions_in())
+                        if (
+                            zerotime::instance().has_lock_conflict(
+                            ztlock->transactions_in(), ztlock->hash_tx())
+                            )
                         {
-                            zerotime::instance().locked_inputs()[
-                                i.previous_out()] = ztlock->hash_tx()
-                            ;
+                            log_info(
+                                "TCP connection got ZeroTime (lock conflict)"
+                                ", dropping " <<
+                                ztlock->hash_tx().to_string().substr(0, 8) <<
+                                "."
+                            );
+                        }
+                        else
+                        {
+                            /**
+                             * Allocate the buffer for relaying.
+                             */
+                            data_buffer buffer;
+                        
+                            /**
+                             * Encode the zerotime_lock.
+                             */
+                            ztlock->encode(buffer);
+                            
+                            /**
+                             * Relay the inv.
+                             */
+                            relay_inv(inv, buffer);
+
+                            log_info(
+                                "TCP connection is adding ZeroTime lock " <<
+                                ztlock->hash_tx().to_string().substr(0, 8) <<
+                                "."
+                            );
+                            
+                            /**
+                             * Insert the zerotime_lock.
+                             */
+                            zerotime::instance().locks().insert(
+                                std::make_pair(ztlock->hash_tx(), *ztlock)
+                            );
+                            
+                            /**
+                             * Lock the inputs.
+                             */
+                            for (auto & i : ztlock->transactions_in())
+                            {
+                                zerotime::instance().locked_inputs()[
+                                    i.previous_out()] = ztlock->hash_tx()
+                                ;
+                            }
+                            
+                            /**
+                             * Vote for the ztlock if score allows.
+                             */
+                            stack_impl_.get_zerotime_manager()->vote(
+                                ztlock->hash_tx(), ztlock->transactions_in()
+                            );
                         }
                     }
                 }
@@ -2940,6 +2962,70 @@ bool tcp_connection::handle_message(message & msg)
                  * Stop
                  */
                 stop();
+            }
+        }
+    }
+    else if (msg.header().command == "ztvote")
+    {
+        log_debug("Got ztvote");
+        
+        assert(msg.protocol_ztvote().ztvote);
+
+        if (globals::instance().is_zerotime_enabled())
+        {
+            const auto & ztvote = msg.protocol_ztvote().ztvote;
+
+            if (ztvote)
+            {
+                /**
+                 * Allocate the inventory_vector.
+                 */
+                inventory_vector inv(
+                    inventory_vector::type_msg_ztvote,
+                    ztvote->hash_nonce()
+                );
+
+                if (
+                    zerotime::instance().votes().count(
+                    ztvote->hash_nonce()) > 0
+                    )
+                {
+                    // ...
+                }
+                else
+                {
+                    /**
+                     * Insert the zerotime_vote.
+                     */
+                    zerotime::instance().votes()[
+                        ztvote->hash_nonce()] = *ztvote
+                    ;
+                    
+                    /**
+                     * Inform the zerotime_manager.
+                     */
+                    if (auto transport = m_tcp_transport.lock())
+                    {
+                        stack_impl_.get_zerotime_manager()->handle_vote(
+                            transport->socket().remote_endpoint(), *ztvote
+                        );
+                    }
+
+                    /**
+                     * Allocate the data_buffer.
+                     */
+                    data_buffer buffer;
+                    
+                    /**
+                     * Encode the transaction (reuse the signature).
+                     */
+                    ztvote->encode(buffer, true);
+            
+                    /**
+                     * Relay the ztvote.
+                     */
+                    relay_inv(inv, buffer);
+                }
             }
         }
     }

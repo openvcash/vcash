@@ -615,13 +615,7 @@ bool tcp_connection_manager::is_ip_banned(const std::string & val)
         (val[0] == '5' && val[1] == '4') ||
         (val[0] == '5' && val[1] == '0') ||
         (val[0] == '2' && val[1] == '1' && val[2] == '1') ||
-        (val[0] == '2' && val[1] == '1' && val[2] == '9') ||
-        (val.find("222.190.") != std::string::npos) ||
-        (val.find("41.224.") != std::string::npos) ||
-        (val.find("5.246.") != std::string::npos) ||
-        (val.find("184.73.") != std::string::npos) ||
-        (val.find("186.73.252.") != std::string::npos) ||
-        (val.find("61.164.110.") != std::string::npos)
+        (val[0] == '2' && val[1] == '1' && val[2] == '9')
         )
     {
         return true;

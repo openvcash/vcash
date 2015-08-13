@@ -26,7 +26,8 @@
 using namespace coin;
 
 zerotime_lock::zerotime_lock()
-    : m_expiration(time::instance().get_adjusted() + interval_min_expire)
+    : m_version(current_version)
+    , m_expiration(time::instance().get_adjusted() + interval_min_expire)
 {
     set_null();
 }
@@ -38,6 +39,11 @@ void zerotime_lock::encode()
 
 void zerotime_lock::encode(data_buffer & buffer)
 {
+    /**
+     * Encode the version.
+     */
+    buffer.write_uint32(m_version);
+    
     /**
      * Encode the transaction.
      */
@@ -56,17 +62,12 @@ void zerotime_lock::encode(data_buffer & buffer)
      */
     buffer.write_uint64(m_expiration);
     
-    /** 
-     * Encode the signature length.
+    /**
+     * No signature is required because:
+     * 1. The receiver may want to lock a non-zerotime transaction.
+     * 2. It causes no harm to let other's lock the transaction.
+     * 3. It conserves bandwidth and processing power.
      */
-    buffer.write_var_int(m_signature.size());
-    
-    /** 
-     * Encode the signature.
-     */
-    buffer.write_bytes(
-        reinterpret_cast<char *>(&m_signature[0]), m_signature.size()
-    );
 }
 
 bool zerotime_lock::decode()
@@ -76,6 +77,13 @@ bool zerotime_lock::decode()
 
 bool zerotime_lock::decode(data_buffer & buffer)
 {
+    /**
+     * Decode the version.
+     */
+    m_version = buffer.read_uint32();
+    
+    assert(m_version == current_version);
+    
     /**
      * Decode the transaction.
      */
@@ -107,31 +115,21 @@ bool zerotime_lock::decode(data_buffer & buffer)
     }
     
     /**
-     * Decode the signature length.
+     * No signature is required because:
+     * 1. The receiver may want to lock a non-zerotime transaction.
+     * 2. It causes no harm to let other's lock the transaction.
+     * 3. It conserves bandwidth and processing power.
      */
-    auto len = buffer.read_var_int();
-    
-    /**
-     * Decode the signature.
-     */
-    if (len > 0)
-    {
-        m_signature.resize(len);
-
-        buffer.read_bytes(
-            reinterpret_cast<char *>(&m_signature[0]), m_signature.size()
-        );
-    }
     
     return m_transaction.get_hash() == m_hash_tx;
 }
 
 void zerotime_lock::set_null()
 {
+    m_version = current_version;
     m_transaction.set_null();
     m_hash_tx.clear();
     m_expiration = time::instance().get_adjusted() + interval_min_expire;
-    m_signature.clear();
 }
 
 void zerotime_lock::set_transaction(const transaction & val)

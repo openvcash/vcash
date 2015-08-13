@@ -4944,10 +4944,13 @@ boost::property_tree::ptree rpc_connection::transaction_wallet_to_ptree(
             rpc_json_parser::translator<std::string> ()
         );
         ret.put("blockindex", wtx.index());
+        
+        const auto & index = globals::instance().block_indexes()[
+            wtx.block_hash()
+        ];
+        
         ret.put(
-            "blocktime",
-            globals::instance().block_indexes()[
-            wtx.block_hash()]->time()
+            "blocktime", index ? index->time() : -1
         );
     }
     

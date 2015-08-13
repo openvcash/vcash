@@ -2682,10 +2682,9 @@ std::pair<bool, std::string> wallet::commit_transaction(
             );
 
             /**
-             * Inform the zerotime_manager of the transaction inputs and
-             * hash.
+             * Vote for the ztlock if score allows.
              */
-            m_stack_impl->get_zerotime_manager()->probe_for_answers(
+            m_stack_impl->get_zerotime_manager()->vote(
                 wtx_new.get_hash(), wtx_new.transactions_in()
             );
         }
