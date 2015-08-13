@@ -47,6 +47,7 @@ namespace coin {
     class zerotime_answer;
     class zerotime_lock;
     class zerotime_question;
+    class zerotime_vote;
     
     /**
      * Implement a tcp connection.
@@ -471,6 +472,18 @@ namespace coin {
              */
             std::weak_ptr<zerotime_question> m_oneshot_ztquestion;
         
+            /**
+             * The state.
+             */
+            enum
+            {
+                state_none,
+                state_starting,
+                state_started,
+                state_stopping,
+                state_stopped,
+            } m_state;
+        
         protected:
         
             /**
@@ -531,16 +544,6 @@ namespace coin {
              * The getdata mutex.
              */
             std::recursive_mutex mutex_getdata_;
-        
-            /**
-             * The inventory cache (known).
-             */
-            inventory_cache inventory_cache_;
-        
-            /**
-             * The inventory_cache mutex.
-             */
-            std::mutex mutex_inventory_cache_;
         
             /**
              * The last getblocks index_begin.

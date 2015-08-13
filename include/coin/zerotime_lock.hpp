@@ -110,6 +110,16 @@ namespace coin {
         private:
         
             /**
+             * The version.
+             */
+            enum { current_version = 1 };
+        
+            /**
+             * The version.
+             */
+            std::uint32_t m_version;
+            
+            /**
              * The transaction.
              */
             transaction m_transaction;
@@ -123,11 +133,6 @@ namespace coin {
              *  The expiration.
              */
             std::time_t m_expiration;
-        
-            /**
-             * The signature.
-             */
-            std::vector<std::uint8_t> m_signature;
         
         protected:
         

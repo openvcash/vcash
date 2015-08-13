@@ -25,11 +25,14 @@
 #include <vector>
 
 #include <coin/block.hpp>
+#include <coin/configuration.hpp>
 #include <coin/globals.hpp>
 #include <coin/logger.hpp>
 #include <coin/stack_impl.hpp>
 #include <coin/transaction.hpp>
 #include <coin/transaction_index.hpp>
+#include <coin/transaction_pool.hpp>
+#include <coin/zerotime.hpp>
 
 namespace coin {
 
@@ -97,34 +100,85 @@ namespace coin {
                 {
                     return std::max(
                         0, (constants::coinbase_maturity_test_network + 20) -
-                        get_depth_in_main_chain()
+                        get_depth_in_main_chain(false)
                     );
                 }
                 
                 return std::max(
                     0, (constants::coinbase_maturity + 20) -
-                    get_depth_in_main_chain()
+                    get_depth_in_main_chain(false)
                 );
             }
         
             /**
              * Gets the depth in the main chain.
+             * @param is_zerotime If true this transaction is ZeroTime
+             * protected.
              */
-            int get_depth_in_main_chain() const
+            int get_depth_in_main_chain(const bool & is_zerotime = true) const
             {
                 std::shared_ptr<block_index> index_out;
                 
-                return get_depth_in_main_chain(index_out);
+                return get_depth_in_main_chain(index_out, is_zerotime);
+            }
+        
+            /**
+             * Gets the depth in the main chain.
+             * @param index_out The block_index.
+             * @param is_zerotime If true this transaction is ZeroTime
+             * protected.
+             */
+            int get_depth_in_main_chain(
+                std::shared_ptr<block_index> & index_out,
+                const bool & is_zerotime
+                ) const
+            {
+                auto ret = get_depth_in_main_chain_no_zerotime(index_out);
+                
+                if (ret == 0)
+                {
+                    if (
+                        transaction_pool::instance().exists(get_hash()) == false
+                        )
+                    {
+                        return -1;
+                    }
+                }
+
+                /**
+                 * ZeroTime protected transactions act as if they have a
+                 * single confirmation.
+                 */
+                if (globals::instance().is_zerotime_enabled() && is_zerotime)
+                {
+                    if (ret < 1)
+                    {
+                        if (
+                            zerotime::instance().confirmations()[get_hash()] >=
+                            zerotime::answers_required
+                            )
+                        {
+                            /**
+                             * :TODO: Use globals and configuration.
+                             */
+                            ret = zerotime::depth;
+                        }
+                    }
+                }
+
+                return ret;
             }
         
             /**
              * Gets the depth in the main chain.
              * @param index_out The block_index.
              */
-            int get_depth_in_main_chain(
+            int get_depth_in_main_chain_no_zerotime(
                 std::shared_ptr<block_index> & index_out
                 ) const
             {
+                int ret = -1;
+                
                 if (m_block_hash == 0 || m_index == -1)
                 {
                     return 0;
@@ -166,19 +220,21 @@ namespace coin {
                 }
 
                 index_out = index;
-                
-                return
+
+                ret =
                     stack_impl::get_block_index_best()->height() -
                     index->height() + 1
                 ;
+
+                return ret;
             }
-        
+
             /**
              * If true it is in the main chain.
              */
             bool is_in_main_chain() const
             {
-                return get_depth_in_main_chain() > 0;
+                return get_depth_in_main_chain(false) > 0;
             }
 
             /**

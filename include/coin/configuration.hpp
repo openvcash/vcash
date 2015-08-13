@@ -153,6 +153,14 @@ namespace coin {
             }
         
             /**
+             * The ZeroTime depth.
+             */
+            const std::uint8_t & zerotime_depth() const
+            {
+                return m_zerotime_depth;
+            }
+        
+            /**
              * Set wallet rescan.
              * @param val The value.
              */
@@ -224,6 +232,11 @@ namespace coin {
              * The wallet keypool size.
              */
             std::int32_t m_wallet_keypool_size;
+        
+            /**
+             * The ZeroTime depth.
+             */
+            std::uint8_t m_zerotime_depth;
         
             /**
              * The wallet rescan.
