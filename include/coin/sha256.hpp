@@ -341,6 +341,96 @@ namespace coin {
 
                 return *this;
             }
+
+            /**
+             * Operator ++
+             */
+            sha256 & operator ++ ()
+            {
+                int i = 0;
+                
+                while (
+                    ++m_digest[i] == 0 &&
+                    i < (digest_length / sizeof(std::uint32_t) - 1)
+                    )
+                {
+                    i++;
+                }
+                
+                return *this;
+            }
+
+            /**
+             * Operator ++
+             */
+            const sha256 operator ++ (int)
+            {
+                const sha256 ret = *this;
+                
+                ++(*this);
+                
+                return ret;
+            }
+        
+            /**
+             * operator -
+             */
+            const sha256 operator - () const
+            {
+                sha256 ret;
+                
+                auto ptr1 =
+                    reinterpret_cast<const std::uint32_t *>(m_digest)
+                ;
+                auto ptr2 =
+                    reinterpret_cast<std::uint32_t *>(ret.m_digest)
+                ;
+                
+                for (auto i = 0; i < digest_length / sizeof(std::uint32_t); i++)
+                {
+                    ptr2[i] = ~ptr1[i];
+                }
+
+                ret++;
+                
+                return ret;
+            }
+    
+            /**
+             * operator +=
+             */
+            sha256 & operator += (const sha256 & b)
+            {
+                std::uint64_t carry = 0;
+                
+                for (auto i = 0; i < digest_length / sizeof(std::uint32_t); i++)
+                {
+                    auto ptr1 =
+                        reinterpret_cast<std::uint32_t *>(m_digest)
+                    ;
+                    auto ptr2 =
+                        reinterpret_cast<const std::uint32_t *>(b.m_digest)
+                    ;
+                    
+                    std::uint64_t n = carry + ptr1[i] + ptr2[i];
+                    
+                    ptr1[i] = n & 0xffffffff;
+                    
+                    carry = n >> 32;
+                }
+
+                return *this;
+            }
+    
+            /**
+             * operator -=
+             */
+            sha256 & operator -= (const sha256 & b)
+            {
+                *this += -b;
+                
+                return *this;
+            }
         
             /**
              * operator ^
@@ -411,6 +501,11 @@ namespace coin {
              */
             SHA256_CTX context_;
     };
+    
+    inline const sha256 operator - (const sha256 & a, const sha256 & b)
+    {
+        return sha256(a) -= b;
+    }
     
     inline const sha256 operator >> (const sha256 & a, unsigned int shift)
     {

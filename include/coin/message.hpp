@@ -175,6 +175,11 @@ namespace coin {
              */
             protocol::ztanswer_t & protocol_ztanswer();
         
+            /**
+             * The protocol ztvote structure.
+             */
+            protocol::ztvote_t & protocol_ztvote();
+        
         private:
         
             /**
@@ -257,6 +262,11 @@ namespace coin {
              */
             protocol::ztanswer_t m_protocol_ztanswer;
         
+            /**
+             * The protocol ztvote structure.
+             */
+            protocol::ztvote_t m_protocol_ztvote;
+        
         protected:
         
             /**
@@ -328,6 +338,11 @@ namespace coin {
              * Creates an ztanswer.
              */
             data_buffer create_ztanswer();
+        
+            /**
+             * Creates an ztvote.
+             */
+            data_buffer create_ztvote();
     };
     
 } // namespace coin

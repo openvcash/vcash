@@ -46,6 +46,7 @@ namespace coin {
              * @param type_msg_tx Hash is related to a transaction.
              * @param type_msg_block Hash is related to a data block.
              * @param type_msg_ztlock Hash is related to a zerotime lock.
+             * @param type_msg_ztvote Hash is related to zerotime vote.
              */
             typedef enum
             {
@@ -53,6 +54,7 @@ namespace coin {
                 type_msg_tx,
                 type_msg_block,
                 type_msg_ztlock,
+                type_msg_ztvote,
             } type_t;
     
             /**

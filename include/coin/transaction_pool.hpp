@@ -98,6 +98,11 @@ namespace coin {
             std::map<sha256, transaction> & transactions();
         
             /**
+             * The next transactions.
+             */
+            const std::map<point_out, point_in> & transactions_next() const;
+        
+            /**
              * The number of transactons updated.
              */
             std::uint32_t & transactions_updated();
@@ -116,6 +121,11 @@ namespace coin {
             std::map<sha256, transaction> m_transactions;
         
             /**
+             * The next transactions.
+             */
+            std::map<point_out, point_in> m_transactions_next;
+        
+            /**
              * The number of transactons updated.
              */
             std::uint32_t m_transactions_updated;
@@ -125,12 +135,7 @@ namespace coin {
             /**
              * The std::recursive_mutex.
              */
-            std::recursive_mutex mutex_;
-
-            /**
-             * The next transactions.
-             */
-            std::map<point_out, point_in> transactions_next_;
+            mutable std::recursive_mutex mutex_;
     };
     
 } // namespace coin

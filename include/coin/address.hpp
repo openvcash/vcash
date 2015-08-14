@@ -84,7 +84,7 @@ namespace coin {
             
             /**
              * @param type_pubkey 'V'
-             * @param type_script
+             * @param type_script 8
              * @param type_pubkey_test 111
              * @param type_script_test 196
              */
