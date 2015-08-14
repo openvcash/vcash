@@ -38,6 +38,7 @@
 #include <coin/zerotime_answer.hpp>
 #include <coin/zerotime_lock.hpp>
 #include <coin/zerotime_question.hpp>
+#include <coin/zerotime_vote.hpp>
 
 using namespace coin;
 
@@ -171,6 +172,13 @@ void message::encode()
              * Create the ztanswer.
              */
             m_payload = create_ztanswer();
+        }
+        else if (m_header.command == "ztvote")
+        {
+            /**
+             * Create the ztvote.
+             */
+            m_payload = create_ztvote();
         }
     }
     
@@ -651,6 +659,32 @@ void message::decode()
                 m_protocol_ztanswer.ztanswer.reset();
             }
         }
+        else if (m_header.command == "ztvote")
+        {
+            /**
+             * Allocate the ztvote.
+             */
+            m_protocol_ztvote.ztvote =
+                std::make_shared<zerotime_vote> ()
+            ;
+            
+            /**
+             * Decode the ztvote.
+             */
+            if (m_protocol_ztvote.ztvote->decode(*this))
+            {
+                // ...
+            }
+            else
+            {
+                log_error("Message failed to decode ztvote.");
+                
+                /**
+                 * Deallocate the ztvote.
+                 */
+                m_protocol_ztvote.ztvote.reset();
+            }
+        }
         else
         {
             log_error(
@@ -776,6 +810,11 @@ protocol::ztquestion_t & message::protocol_ztquestion()
 protocol::ztanswer_t & message::protocol_ztanswer()
 {
     return m_protocol_ztanswer;
+}
+
+protocol::ztvote_t & message::protocol_ztvote()
+{
+    return m_protocol_ztvote;
 }
 
 data_buffer message::create_version()
@@ -1207,6 +1246,18 @@ data_buffer message::create_ztanswer()
     if (m_protocol_ztanswer.ztanswer)
     {
         m_protocol_ztanswer.ztanswer->encode(ret);
+    }
+    
+    return ret;
+}
+
+data_buffer message::create_ztvote()
+{
+    data_buffer ret;
+    
+    if (m_protocol_ztvote.ztvote)
+    {
+        m_protocol_ztvote.ztvote->encode(ret);
     }
     
     return ret;

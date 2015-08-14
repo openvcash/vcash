@@ -29,6 +29,7 @@
 #include <coin/status_manager.hpp>
 #include <coin/time.hpp>
 #include <coin/tcp_connection_manager.hpp>
+#include <coin/transaction_pool.hpp>
 #include <coin/wallet_manager.hpp>
 #include <coin/zerotime.hpp>
 #include <coin/zerotime_lock.hpp>
@@ -65,7 +66,7 @@ void database_stack::start(const std::uint16_t & port, const bool & is_client)
         /**
          * Add the hard-coded bootstrap contacts.
          */
-        contacts.push_back(std::make_pair("p01.vanillacoin.net", 40004));
+        contacts.push_back(std::make_pair("p01.vanillacoin.net", 39457));
         contacts.push_back(std::make_pair("p02.vanillacoin.net", 40006));
         contacts.push_back(std::make_pair("p03.vanillacoin.net", 40008));
         contacts.push_back(std::make_pair("p04.vanillacoin.net", 40010));
@@ -119,7 +120,13 @@ void database_stack::stop()
     timer_.cancel();
 
 #if (defined USE_DATABASE_STACK && USE_DATABASE_STACK)
-    database::stack::stop();
+    /**
+     * Do not stop the database on test networks.
+     */
+    if (constants::test_net == false)
+    {
+        database::stack::stop();
+    }
 #endif // USE_DATABASE_STACK
 }
 
@@ -317,16 +324,31 @@ void database_stack::on_broadcast(
                     inventory_vector inv(
                         inventory_vector::type_msg_ztlock, ztlock->hash_tx()
                     );
-                    
+
                     /**
                      * Check that the zerotime lock is not expired.
                      */
-                    if (time::instance().get_adjusted() > ztlock->expiration())
+                    if (time::instance().get_adjusted() < ztlock->expiration())
                     {
                         /**
-                         * Check if we already have this zerotime lock.
+                         * Check that the transaction hash exists in the
+                         * transaction pool before accepting a zerotime_lock.
                          */
-                        if (
+                        auto hash_not_found =
+                            transaction_pool::instance().transactions().count(
+                            ztlock->hash_tx()) == 0
+                        ;
+                    
+                        if (hash_not_found)
+                        {
+                            log_info(
+                                "Database stack (UDP) got ZeroTime "
+                                "(hash not found), dropping " <<
+                                ztlock->hash_tx().to_string().substr(0, 8) <<
+                                "."
+                            );
+                        }
+                        else if (
                             zerotime::instance().locks().count(
                             ztlock->hash_tx()) > 0
                             )
@@ -336,57 +358,78 @@ void database_stack::on_broadcast(
                         else
                         {
                             /**
-                             * Alllocate the buffer for relaying.
+                             * Prevent a peer from sending a conflicting lock.
                              */
-                            data_buffer buffer;
-                        
-                            /**
-                             * Encode the zerotime_lock.
-                             */
-                            ztlock->encode(buffer);
-                            
-                            log_info(
-                                "Database stack (UDP) is relaying inv "
-                                "message, command = " << inv.command() << "."
-                            );
-                            
-                            /**
-                             * Allocate the message.
-                             */
-                            message msg(inv.command(), buffer);
-
-                            /**
-                             * Encode the message.
-                             */
-                            msg.encode();
-
-                            /**
-                             * Broadcast the message to "all" connected peers.
-                             */
-                            stack_impl_.get_tcp_connection_manager(
-                                )->broadcast(msg.data(), msg.size()
-                            );
-                    
-                            log_info(
-                                "Database stack (UDP) is adding ZeroTime "
-                                "lock " << ztlock->hash_tx().to_string() << "."
-                            );
-                            
-                            /**
-                             * Insert the zerotime_lock.
-                             */
-                            zerotime::instance().locks().insert(
-                                std::make_pair(ztlock->hash_tx(), *ztlock)
-                            );
-                            
-                            /**
-                             * Lock the inputs.
-                             */
-                            for (auto & i : ztlock->transactions_in())
+                            if (
+                                zerotime::instance().has_lock_conflict(
+                                ztlock->transactions_in(), ztlock->hash_tx())
+                                )
                             {
-                                zerotime::instance().locked_inputs()[
-                                    i.previous_out()] = ztlock->hash_tx()
-                                ;
+                                log_info(
+                                    "TCP connection got ZeroTime "
+                                    "(lock conflict), dropping " <<
+                                    ztlock->hash_tx().to_string().substr(
+                                    0, 8) << "."
+                                );
+                            }
+                            else
+                            {
+                                /**
+                                 * Alllocate the buffer for relaying.
+                                 */
+                                data_buffer buffer;
+                            
+                                /**
+                                 * Encode the zerotime_lock.
+                                 */
+                                ztlock->encode(buffer);
+                                
+                                log_info(
+                                    "Database stack (UDP) is relaying inv "
+                                    "message, command = " << inv.command() <<
+                                    "."
+                                );
+                                
+                                /**
+                                 * Allocate the message.
+                                 */
+                                message msg(inv.command(), buffer);
+
+                                /**
+                                 * Encode the message.
+                                 */
+                                msg.encode();
+
+                                /**
+                                 * Broadcast the message to "all" connected
+                                 * peers.
+                                 */
+                                stack_impl_.get_tcp_connection_manager(
+                                    )->broadcast(msg.data(), msg.size()
+                                );
+                        
+                                log_info(
+                                    "Database stack (UDP) is adding ZeroTime "
+                                    "lock " << ztlock->hash_tx().to_string() <<
+                                    "."
+                                );
+                                
+                                /**
+                                 * Insert the zerotime_lock.
+                                 */
+                                zerotime::instance().locks().insert(
+                                    std::make_pair(ztlock->hash_tx(), *ztlock)
+                                );
+                                
+                                /**
+                                 * Lock the inputs.
+                                 */
+                                for (auto & i : ztlock->transactions_in())
+                                {
+                                    zerotime::instance().locked_inputs()[
+                                        i.previous_out()] = ztlock->hash_tx()
+                                    ;
+                                }
                             }
                         }
                     }
