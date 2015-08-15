@@ -21,9 +21,13 @@
 #include <chrono>
 #include <iomanip>
 
+#define USE_SCRYPT 0
+
 #include <coin/block.hpp>
 #include <coin/globals.hpp>
+#if (defined USE_SCRYPT && USE_SCRYPT)
 #include <coin/hash_scrypt.hpp>
+#endif // USE_SCRYPT
 #include <coin/key_reserved.hpp>
 #include <coin/logger.hpp>
 #include <coin/mining.hpp>
@@ -282,7 +286,6 @@ const double & mining_manager::hashes_per_second() const
 
 void mining_manager::loop(const bool & is_proof_of_stake)
 {
-#define USE_SCRYPT 0
 #if (defined USE_SCRYPT && USE_SCRYPT)
     void * buf_scrypt = scrypt_buffer_alloc();
 #endif // USE_SCRYPT
