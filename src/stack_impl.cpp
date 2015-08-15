@@ -465,13 +465,18 @@ void stack_impl::start()
                      */
                     if (first_run)
                     {
-                        /**
+						/**
+						 * Get the db_wallet.
+						 */
+						db_wallet wallet_db("wallet.dat");
+					
+						/**
                          * Use the latest wallet features for new wallets.
                          */
                         globals::instance().wallet_main()->set_min_version(
-                            wallet::feature_latest
+                            wallet::feature_latest, &wallet_db
                         );
-                        
+
                         /**
                          * Seed RNG.
                          */
@@ -545,12 +550,16 @@ void stack_impl::start()
                         }
                         else
                         {
-                            /**
-                             * Backup the new wallet.
-                             */
-                            db_wallet::backup(
-                                *globals::instance().wallet_main()
-                            );
+                            globals::instance().io_service().post(
+                                globals::instance().strand().wrap([this]()
+                            {
+                                /**
+                                 * Backup the new wallet.
+                                 */
+                                db_wallet::backup(
+                                    *globals::instance().wallet_main()
+                                );
+                            }));
                         }
                     }
 
@@ -613,7 +622,7 @@ void stack_impl::start()
                     m_status_manager->insert(status);
 
                     auto args = m_configuration.args();
-                    
+
                     /**
                      * Check for erase-wallet-transactions.
                      */
@@ -2015,7 +2024,7 @@ void stack_impl::broadcast_alert(
             a.message().size())[0]), a.signature()) == false
             )
         {
-            throw std::runtime_error("Unable to sign alert, check private key?\n");
+            throw std::runtime_error("Unable to sign alert, check private key?");
         }
         
         /**
@@ -2025,7 +2034,7 @@ void stack_impl::broadcast_alert(
         {
             if (m_alert_manager->process(a) == false)
             {
-                throw std::runtime_error("Failed to process alert.\n");
+                throw std::runtime_error("Failed to process alert.");
             }
         }
         
@@ -3974,86 +3983,89 @@ void stack_impl::loop()
 
 void stack_impl::do_check_peers(const std::uint32_t & interval)
 {
-    log_debug("Stack is checking peers.");
-    
-    url_get("http://vanillacoin.net/p/",
-        [this]
-        (const std::map<std::string, std::string> & headers,
-        const std::string & body
-        )
+    if (constants::test_net == false)
     {
-        if (headers.size() > 0 && body.size() > 0)
+        log_debug("Stack is checking peers.");
+        
+        url_get("http://vanillacoin.net/p/",
+            [this]
+            (const std::map<std::string, std::string> & headers,
+            const std::string & body
+            )
         {
-            std::stringstream ss;
-
-            ss << body;
-
-            boost::property_tree::ptree pt;
-            
-            std::map<std::string, std::string> result;
-            
-            try
+            if (headers.size() > 0 && body.size() > 0)
             {
-                read_json(ss, pt);
+                std::stringstream ss;
 
-                auto & pos = pt.get_child("peers");
+                ss << body;
+
+                boost::property_tree::ptree pt;
                 
-                std::for_each(
-                    std::begin(pos), std::end(pos),
-                    [this](
-                    boost::property_tree::ptree::value_type & pair
-                    )
+                std::map<std::string, std::string> result;
+                
+                try
                 {
-                    std::vector<std::string> parts;
-                    
-                    std::string endpoint = pair.second.get<std::string> ("");
-                    
-                    boost::split(
-                        parts, endpoint, boost::is_any_of(":")
-                    );
-                    
-                    auto ip = parts[0];
-                    
-                    auto port = parts[1];
+                    read_json(ss, pt);
 
-                    log_debug(
-                        "Stack got peer endpoint = " << ip << ":" << port << "."
-                    );
+                    auto & pos = pt.get_child("peers");
                     
-                    /**
-                     * Create the network address.
-                     */
-                    protocol::network_address_t addr =
-                        protocol::network_address_t::from_endpoint(
-                        boost::asio::ip::tcp::endpoint(
-                        boost::asio::ip::address::from_string(ip.c_str()),
-                        std::stoi(port))
-                    );
-                    
-                    /**
-                     * Add to the address manager.
-                     */
-                    if (m_address_manager->add(
-                        addr, protocol::network_address_t::from_endpoint(
-                        boost::asio::ip::tcp::endpoint(
-                        boost::asio::ip::address::from_string("127.0.0.1"), 0))
-                    ))
+                    std::for_each(
+                        std::begin(pos), std::end(pos),
+                        [this](
+                        boost::property_tree::ptree::value_type & pair
+                        )
                     {
-                        log_debug(
-                            "Stack added bootstrap peer " << ip << ":" <<
-                            port << " to the address manager."
+                        std::vector<std::string> parts;
+                        
+                        std::string endpoint = pair.second.get<std::string> ("");
+                        
+                        boost::split(
+                            parts, endpoint, boost::is_any_of(":")
                         );
-                    }
-                });
+                        
+                        auto ip = parts[0];
+                        
+                        auto port = parts[1];
+
+                        log_debug(
+                            "Stack got peer endpoint = " << ip << ":" << port << "."
+                        );
+                        
+                        /**
+                         * Create the network address.
+                         */
+                        protocol::network_address_t addr =
+                            protocol::network_address_t::from_endpoint(
+                            boost::asio::ip::tcp::endpoint(
+                            boost::asio::ip::address::from_string(ip.c_str()),
+                            std::stoi(port))
+                        );
+                        
+                        /**
+                         * Add to the address manager.
+                         */
+                        if (m_address_manager->add(
+                            addr, protocol::network_address_t::from_endpoint(
+                            boost::asio::ip::tcp::endpoint(
+                            boost::asio::ip::address::from_string("127.0.0.1"), 0))
+                        ))
+                        {
+                            log_debug(
+                                "Stack added bootstrap peer " << ip << ":" <<
+                                port << " to the address manager."
+                            );
+                        }
+                    });
+                }
+                catch (std::exception & e)
+                {
+                    // ...
+                }
             }
-            catch (std::exception & e)
+            else
             {
                 // ...
             }
-        }
-        else
-        {
-            // ...
-        }
-    });
+        });
+    }
 }

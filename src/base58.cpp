@@ -163,7 +163,7 @@ inline bool decode_base58(const char * str, std::vector<std::uint8_t> & value)
     }
 
     /**
-     * Get big_numeber as little endian data.
+     * Get big_number as little endian data.
      */
     auto tmp = bn.get_vector();
 
@@ -172,7 +172,7 @@ inline bool decode_base58(const char * str, std::vector<std::uint8_t> & value)
      */
     if (tmp.size() >= 2 && tmp.end()[-1] == 0 && tmp.end()[-2] >= 0x80)
     {
-        tmp.erase(tmp.end()-1);
+        tmp.erase(tmp.end() - 1);
     }
     
     /**
@@ -180,7 +180,7 @@ inline bool decode_base58(const char * str, std::vector<std::uint8_t> & value)
      */
     int leading_zeros = 0;
     
-    for (const char* p = str; *p == g_base58[0]; p++)
+    for (const char * p = str; *p == g_base58[0]; p++)
     {
         leading_zeros++;
     }
@@ -231,7 +231,7 @@ inline bool decode_base58_check(
     const char * str, std::vector<std::uint8_t> & value
     )
 {
-    if (!decode_base58(str, value))
+    if (decode_base58(str, value) == false)
     {
         return false;
     }
@@ -294,27 +294,28 @@ void base58::set_data(
 
 bool base58::set_string(const std::string & value)
 {
-    std::vector<std::uint8_t> vchTemp;
+    std::vector<std::uint8_t> tmp;
     
-    decode_base58_check(value.c_str(), vchTemp);
+    decode_base58_check(value.c_str(), tmp);
     
-    if (vchTemp.empty())
+    if (tmp.empty())
     {
         m_data.clear();
         m_version = 0;
+        
         return false;
     }
     
-    m_version = vchTemp[0];
+    m_version = tmp[0];
 
-    m_data.resize(vchTemp.size() - 1);
+    m_data.resize(tmp.size() - 1);
     
     if (m_data.size() > 0)
     {
-        std::memcpy(&m_data[0], &vchTemp[1], m_data.size());
+        std::memcpy(&m_data[0], &tmp[1], m_data.size());
     }
     
-    std::memset(&vchTemp[0], 0, vchTemp.size());
+    std::memset(&tmp[0], 0, tmp.size());
     
     return true;
 }

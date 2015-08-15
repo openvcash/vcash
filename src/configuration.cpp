@@ -32,6 +32,7 @@
 #include <coin/logger.hpp>
 #include <coin/network.hpp>
 #include <coin/protocol.hpp>
+#include <coin/zerotime.hpp>
 #include <coin/wallet.hpp>
 
 using namespace coin;
@@ -42,6 +43,7 @@ configuration::configuration()
     , m_network_udp_enable(false)
     , m_wallet_transaction_history_maximum(wallet::configuration_interval_history)
     , m_wallet_keypool_size(wallet::configuration_keypool_size)
+    , m_zerotime_depth(zerotime::depth)
     , m_wallet_rescan(false)
     , m_mining_proof_of_stake(true)
 {
@@ -147,6 +149,19 @@ bool configuration::load()
             "Configuration read wallet.keypool.size = " <<
             m_wallet_keypool_size << "."
         );
+
+        /**
+         * Get the zerotime.depth.
+         */
+        m_zerotime_depth = std::stoi(pt.get(
+            "zerotime.depth",
+            std::to_string(m_zerotime_depth))
+        );
+        
+        log_debug(
+            "Configuration read zerotime.depth = " <<
+            m_zerotime_depth << "."
+        );
         
         /**
          * Get the wallet.rescan.
@@ -237,6 +252,13 @@ bool configuration::save()
          */
         pt.put(
             "wallet.keypool.size", std::to_string(m_wallet_keypool_size)
+        );
+        
+        /**
+         * Put the zerotime.depth into property tree.
+         */
+        pt.put(
+            "zerotime.depth", std::to_string(m_zerotime_depth)
         );
         
         /**

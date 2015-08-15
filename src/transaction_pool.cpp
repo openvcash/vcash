@@ -142,7 +142,7 @@ std::pair<bool, std::string> transaction_pool::accept(
     {
         auto outpoint = tx.transactions_in()[i].previous_out();
         
-        if (transactions_next_.count(outpoint) > 0)
+        if (m_transactions_next.count(outpoint) > 0)
         {
 #if 1
             log_error(
@@ -170,7 +170,7 @@ std::pair<bool, std::string> transaction_pool::accept(
             }
             
             tx_old = const_cast<transaction *> (
-                &transactions_next_[outpoint].get_transaction()
+                &m_transactions_next[outpoint].get_transaction()
             );
             
             if (tx_old->is_final())
@@ -202,8 +202,8 @@ std::pair<bool, std::string> transaction_pool::accept(
                 auto outpoint = i.previous_out();
                 
                 if (
-                    transactions_next_.count(outpoint) == 0 ||
-                    &transactions_next_[outpoint].get_transaction() != tx_old
+                    m_transactions_next.count(outpoint) == 0 ||
+                    &m_transactions_next[outpoint].get_transaction() != tx_old
                     )
                 {
                     log_error(
@@ -418,7 +418,7 @@ bool transaction_pool::remove(transaction & tx)
     {
         for (auto & i : tx.transactions_in())
         {
-            transactions_next_.erase(i.previous_out());
+            m_transactions_next.erase(i.previous_out());
         }
         
         m_transactions.erase(hash);
@@ -434,7 +434,7 @@ void transaction_pool::clear()
     std::lock_guard<std::recursive_mutex> l1(mutex_);
     
     m_transactions.clear();
-    transactions_next_.clear();
+    m_transactions_next.clear();
     
     ++m_transactions_updated;
 }
@@ -474,6 +474,14 @@ transaction & transaction_pool::lookup(const sha256 & hash)
     return m_transactions[hash];
 }
 
+const std::map<point_out, point_in> &
+    transaction_pool::transactions_next() const
+{
+    std::lock_guard<std::recursive_mutex> l1(mutex_);
+    
+    return m_transactions_next;
+}
+
 std::map<sha256, transaction> & transaction_pool::transactions()
 {
     std::lock_guard<std::recursive_mutex> l1(mutex_);
@@ -496,7 +504,7 @@ bool transaction_pool::add_unchecked(const sha256 & hash, transaction & tx)
     
     for (auto i = 0; i < tx.transactions_in().size(); i++)
     {
-        transactions_next_[
+        m_transactions_next[
             tx.transactions_in()[i].previous_out()
         ] = point_in(m_transactions[hash], i);
     }

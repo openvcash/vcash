@@ -161,6 +161,11 @@ bool inventory_vector::already_have(
             return zerotime::instance().locks().count(inv.hash()) > 0;
         }
         break;
+        case type_msg_ztvote:
+        {
+            return zerotime::instance().votes().count(inv.hash()) > 0;
+        }
+        break;
         default:
         break;
     }

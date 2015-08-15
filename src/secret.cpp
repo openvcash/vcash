@@ -63,7 +63,7 @@ bool secret::is_valid()
 {
     bool expect_test_net = false;
 
-    switch(version())
+    switch (version())
     {
         case (128 + address::type_pubkey):
         {
@@ -81,6 +81,7 @@ bool secret::is_valid()
         }
         break;
     }
+    
     return
         expect_test_net == constants::test_net &&
         (data().size() == 32 || (data().size() == 33 &&

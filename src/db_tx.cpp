@@ -830,7 +830,7 @@ bool db_tx::load_block_index_guts()
                     index_new->m_time = index_disk.m_time;
                     index_new->m_bits = index_disk.m_bits;
                     index_new->m_nonce = index_disk.m_nonce;
-
+                    
                     /**
                      * Check for the genesis block.
                      */

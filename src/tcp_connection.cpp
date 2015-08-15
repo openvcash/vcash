@@ -1208,7 +1208,9 @@ void tcp_connection::send_ztlock_message(const zerotime_lock & ztlock)
     }
 }
 
-void tcp_connection::send_ztquestion_message(const zerotime_question & ztquestion)
+void tcp_connection::send_ztquestion_message(
+    const zerotime_question & ztquestion
+    )
 {
     if (auto t = m_tcp_transport.lock())
     {

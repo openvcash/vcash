@@ -36,6 +36,11 @@
 #include <coin/filesystem.hpp>
 #include <coin/globals.hpp>
 #include <coin/hash.hpp>
+#if (defined USE_WHIRLPOOL && USE_WHIRLPOOL)
+    // ...
+#else
+#include <coin/hash_scrypt.hpp>
+#endif // USE_WHIRLPOOL
 #include <coin/kernel.hpp>
 #include <coin/key_reserved.hpp>
 #include <coin/key_store.hpp>

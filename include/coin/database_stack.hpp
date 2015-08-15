@@ -21,7 +21,7 @@
 #ifndef COIN_DATABASE_STACK_HPP
 #define COIN_DATABASE_STACK_HPP
 
-#define USE_DATABASE_STACK 0
+#define USE_DATABASE_STACK 1
 
 #include <chrono>
 #include <cstdint>

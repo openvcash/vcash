@@ -947,7 +947,9 @@ bool transaction::connect_inputs(
                 for (
                     auto pindex = ptr_block_index;
                     pindex && ptr_block_index->height() - pindex->height() <
-                    constants::coinbase_maturity;
+                    (constants::test_net ?
+                    constants::coinbase_maturity_test_network :
+                    constants::coinbase_maturity);
                     pindex = pindex->block_index_previous()
                     )
                 {

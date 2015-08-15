@@ -23,7 +23,6 @@
 
 #include <cstdint>
 #include <ctime>
-#include <functional>
 #include <map>
 #include <mutex>
 #include <set>
@@ -31,10 +30,12 @@
 
 #include <boost/asio.hpp>
 
+#include <coin/constants.hpp>
 #include <coin/sha256.hpp>
 #include <coin/transaction_in.hpp>
 #include <coin/zerotime_answer.hpp>
 #include <coin/zerotime_question.hpp>
+#include <coin/zerotime_vote.hpp>
 
 namespace coin {
 
@@ -70,6 +71,16 @@ namespace coin {
             void stop();
         
             /**
+             * Votes for a transaction hash and it's inputs.
+             * @param hash_tx The transaction hash.
+             * @param transactions_in The transaction_in's.
+             */
+            void vote(
+                const sha256 & hash_tx,
+                const std::vector<transaction_in> & transactions_in
+            );
+        
+            /**
              * Starts probing the network for answers.
              * @param hash_tx The transaction hash.
              * @param transactions_in The transaction_in's.
@@ -89,17 +100,25 @@ namespace coin {
                 const zerotime_answer & ztanswer
             );
         
+            /**
+             * Handles a vote.
+             * @param ep The boost::asio::ip::tcp::endpoint.
+             * @param ztvote The zerotime_vote.
+             */
+            void handle_vote(
+                const boost::asio::ip::tcp::endpoint & ep,
+                const zerotime_vote & ztvote
+            );
+        
         private:
         
             /**
              * The time interval in seconds of six blocks.
              */
-            enum { interval_six_blocks = 1200 };
-        
-            /**
-             * Called when a transaction is confirmed.
-             */
-            std::function<void (const sha256 & hash_tx)> m_on_confirmation;
+            enum {
+                interval_six_blocks =
+                constants::work_and_stake_target_spacing * 6
+            };
         
         protected:
         
@@ -114,6 +133,18 @@ namespace coin {
              * @param interval The interval.
              */
             void do_tick_probe(const std::uint32_t & interval);
+        
+            /**
+             * Returns the K closets scores to the block height.
+             * @param vote_scores The vote scores.
+             * @param block_height The block heigt.
+             * @param k The maximum number of scores.
+             */
+            std::vector<std::uint32_t> k_closest(
+                const std::vector<std::int16_t> & vote_scores,
+                const std::uint32_t & block_height,
+                const std::uint32_t & k
+            );
         
             /**
              * The boost::asio::io_service.
@@ -199,7 +230,17 @@ namespace coin {
             /**
              * The probe (question) interval.
              */
-            enum { interval_probe = 3 };
+            enum { interval_probe = 500 };
+        
+            /**
+             * The std::mutex
+             */
+            std::mutex mutex_safe_percentages_;
+        
+            /**
+             * The transactions with safe percentages.
+             */
+            std::map<sha256, std::time_t> safe_percentages_;
     };
     
 } // namespace coin

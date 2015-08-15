@@ -75,8 +75,16 @@ std::int64_t reward::get_proof_of_work_vanilla(
     )
 {
     std::int64_t subsidy = 0;
-    
-    if (height >= 136400 && height <= 137400)
+ 
+    /**
+     * The block height at which to pause even Proof-of-Work blocks.
+     */
+    enum { block_height_pause_even_pow = 136400 };
+
+    if (
+        height >= block_height_pause_even_pow &&
+        height <= block_height_pause_even_pow + 1000
+        )
     {
         subsidy = 1;
     }

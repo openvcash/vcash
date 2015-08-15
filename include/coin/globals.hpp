@@ -150,7 +150,7 @@ namespace coin {
              */
             const bool is_zerotime_enabled() const
             {                
-                return false;
+                return constants::test_net == true;
             }
         
             /**

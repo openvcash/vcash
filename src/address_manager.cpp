@@ -1070,7 +1070,7 @@ bool address_manager::add(
             addr.ipv4_mapped_address() << "."
         );
     }
-    else if (addr.is_routable() == false)
+    else if (constants::test_net == false && addr.is_routable() == false)
     {
         log_debug(
             "Address manager unable to add non-routable address = " <<

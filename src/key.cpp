@@ -744,13 +744,8 @@ bool key::verify_compact(
     {
         return false;
     }
-    
-    if (get_public_key() != k.get_public_key())
-    {
-        return false;
-    }
-    
-    return true;
+
+    return get_public_key() == k.get_public_key();
 }
 
 bool key::is_valid()
@@ -790,13 +785,13 @@ void key::set_compressed_public_key()
 int key::run_test()
 {
     log_test("Testing class key.");
-    
+
     secret s1, s2, s3, s4, s5;
-    
-    assert(s1.set_string("6EFa4mpu3ShjZmjgsaK99mc4tQ9wg5ZkAwHXgNX6uCeubQZo6KA"));
-    assert(s2.set_string("6EG1ubjQW4AWKHPH5S3g5taq6jWBkVmeWVh7Bu8pkTaaRhr5yhE"));
-    assert(s3.set_string("Q5VJwerQhnSnseTQzE34yhsn9sCUKV9XYrbxQmys3QSK8da3z4Pc"));
-    assert(s4.set_string("Q5XH1AJAjExxPhKKxZYoWagKJJbpSyz4ZBe2K77XkpKCXisSkjV8"));
+
+    assert(s1.set_string("7gP7i2F9nKhDbjx5qgoy14ar8nSc7MqFs4p3kZq8DHAovP5TQvv"));
+    assert(s2.set_string("7gHopFmzZvTppKdUnUfCGXWu62MEFa2ZVTYcURoDkwRb1EJb4Ci"));
+    assert(s3.set_string("WUpcc4VTm3WWcLa8MtiJBGpPsMa1y4wzbypf9HuQqCNJ6Hqgauex"));
+    assert(s4.set_string("WURBdaDb6JyQ3sE1dj5ajXgxuAxHVJmtQcAXa4T1JwDX5kXoC9og"));
 
     /**
      * A bad address.
@@ -838,10 +833,10 @@ int key::run_test()
     log_test("class address var a1c " << a1c.to_string());
     log_test("class address var a2c " << a2c.to_string());
 
-    assert("CUbKWmahSBZ1SW5MVrdcEguRxbG3Umt31o" == a1.to_string());
-    assert("CSLUWXteM7wc4hX2VK4KprezuLU6VtftfX" == a2.to_string());
-    assert("CRFi3TYETX1NoR1jXy3MkQjzTaPh7VqUVj" == a1c.to_string());
-    assert("CQ7DiTA96ZHwGcPuumjVRNW9RLDgUd2yuK" == a2c.to_string());
+    assert("ViTU88LacykhqctosDe7qQiYieoRapugmn" == a1.to_string());
+    assert("VbGoy26u8CHru1pDQQwRAsFbBxGMfkAh1w" == a2.to_string());
+    assert("VmRSdA11YnTSFP389tFAQjq8Lj1D9xWQHB" == a1c.to_string());
+    assert("VucpF5NMepUcQXjDa4Pf9yZHRiNLyTUAKX" == a2c.to_string());
     
     assert(secret1 == secret1C);
     assert(secret2 == secret2C);
@@ -901,8 +896,8 @@ int key::run_test()
 
         key rkey1, rkey2, rkey1C, rkey2c;
 
-        assert(rkey1.set_compact_signature (hash_msg, csign1));
-        assert(rkey2.set_compact_signature (hash_msg, csign2));
+        assert(rkey1.set_compact_signature(hash_msg, csign1));
+        assert(rkey2.set_compact_signature(hash_msg, csign2));
         assert(rkey1C.set_compact_signature(hash_msg, csign1c));
         assert(rkey2c.set_compact_signature(hash_msg, csign2c));
 
