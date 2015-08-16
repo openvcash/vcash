@@ -126,6 +126,10 @@ std::string filesystem::data_path()
         bundle_id += "TestNet";
     }
     
+    // :TODO: REMOVE
+    
+    //bundle_id += "7";
+    
     std::string ret;
 #if (defined _MSC_VER)
     ret += getenv("APPDATA");

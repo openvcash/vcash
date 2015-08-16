@@ -37,8 +37,6 @@ namespace coin {
 
     class transaction;
     
-    #error "Until the ZeroTime branched is fully merged you will not be able to compile"
-    
     /**
      * Implements the ZeroTime algorithm.
      */
@@ -47,9 +45,14 @@ namespace coin {
         public:
         
             /**
+             * K for the test network.
+             */
+            enum { k_test_network = 24 };
+        
+            /**
              * K
              */
-            enum { k = 24 };
+            enum { k = 64 };
         
             /**
              * The depth.
@@ -60,7 +63,7 @@ namespace coin {
              * The number of answers required for a transaction to be
              * considered confirmed equivalent to 6 block confirmations.
              */
-            enum { answers_required = 1 };
+            enum { answers_required = 3 };
         
             /**
              * Constructor
