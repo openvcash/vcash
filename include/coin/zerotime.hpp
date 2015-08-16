@@ -52,7 +52,7 @@ namespace coin {
             /**
              * K
              */
-            enum { k = 64 };
+            enum { k = 32 };
         
             /**
              * The depth.
