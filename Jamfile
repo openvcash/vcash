@@ -116,6 +116,7 @@ SOURCES =
     zerotime_lock
     zerotime_manager
     zerotime_question
+    zerotime_vote
 ;
 
 local usage-requirements = 
