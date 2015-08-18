@@ -14,6 +14,8 @@ lib dl : : <name>dl <link>shared ;
 lib crypto : : <name>crypto <link>static
   <search>./../deps/openssl
   <search>./../deps/openssl/lib
+  <search>./../../deps/openssl
+  <search>./../../deps/openssl/lib
   <search>/usr/local/ssl/lib
 ;
 lib ssl : : <name>ssl <link>static
@@ -21,6 +23,10 @@ lib ssl : : <name>ssl <link>static
   <search>./../deps/openssl/lib
   <search>./../deps/platforms/osx/openssl/lib
   <search>./../deps/windows/osx/openssl/lib
+  <search>./../../deps/openssl
+  <search>./../../deps/openssl/lib
+  <search>./../../deps/platforms/osx/openssl/lib
+  <search>./../../deps/windows/osx/openssl/lib
   <search>/usr/local/ssl/lib
 ;
 
