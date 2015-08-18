@@ -18,18 +18,20 @@ lib ssl : : <name>ssl <link>static
   <search>./../deps/openssl
   <search>./../deps/openssl/lib
   <search>./../deps/platforms/osx/openssl/lib
-  <search>./../deps/platforms/windows/openssl/lib
+  <search>./../deps/windows/osx/openssl/lib
   <search>/usr/local/ssl/lib
 ;
 
 lib db : : <name>db <link>static
   <search>./../deps/db/lib
   <search>./../deps/platforms/osx/db/build_unix
+  <search>./../deps/platforms/osx/db/lib
   <search>./../deps/platforms/windows/db/build_unix
 ;
 
 lib db_cxx : : <name>db_cxx <link>static
   <search>./../deps/platforms/osx/db/build_unix
+  <search>./../deps/platforms/osx/db/lib
   <search>./../deps/platforms/windows/db/build_unix
   <search>./../deps/db/lib
 ;
@@ -81,7 +83,7 @@ local usage-requirements =
 	<toolset>msvc:<define>_SCL_SECURE_NO_DEPRECATE
 	<toolset>msvc:<define>_CRT_SECURE_NO_DEPRECATE
 	<toolset>msvc:<define>_WIN32_WINNT=0x0501
-     <toolset>msvc:<define>BOOST_ALL_NO_LIB=1
+    <toolset>msvc:<define>BOOST_ALL_NO_LIB=1
 	<toolset>msvc,<variant>release:<linkflags>/OPT:ICF=5
 	<toolset>msvc,<variant>release:<linkflags>/OPT:REF
 ;
@@ -93,7 +95,7 @@ project stack
 
 exe stack
     : # sources
-    main.cpp ./..//coin /boost//system 
+    main.cpp ./..//coin /boost//system ./../database//database
     : <link>static
     : <conditional>@linking
 	: # usage requirements
