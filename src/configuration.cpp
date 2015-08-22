@@ -175,7 +175,7 @@ bool configuration::load()
         /**
          * Enforce the minimum zerotime.answers.minimum.
          */
-        if (m_zerotime_answers_minimum < zerotime::answers_maximum)
+        if (m_zerotime_answers_minimum > zerotime::answers_maximum)
         {
             m_zerotime_answers_minimum = zerotime::answers_maximum;
         }
