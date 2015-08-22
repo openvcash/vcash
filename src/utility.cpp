@@ -34,6 +34,9 @@
 
 using namespace coin;
 
+#define FORK_HEIGHT_V023 74525
+#define FORK_HEIGHT_V020 50399
+
 utility::disk_info_t utility::disk_info(const std::string & path)
 {
     disk_info_t ret = { 0, 0, 0 };
@@ -463,6 +466,13 @@ std::uint32_t utility::compute_min_stake(
     return compute_max_bits(constants::proof_of_stake_limit, base, time);
 }
 
+std::uint32_t utility::get_target_spacing(
+    const std::shared_ptr<block_index> & index_last
+    )
+{
+    return constants::work_and_stake_target_spacing;
+}
+
 std::uint32_t utility::get_next_target_required(
     const std::shared_ptr<block_index> & index_last, const bool & is_pos
     )
@@ -537,12 +547,12 @@ std::uint32_t utility::get_next_target_required(
         /**
          * The block height at which version 0.2.3 retargeting begins.
          */
-        enum { block_height_v023_retargeting = 74525 };
+        enum { block_height_v023_retargeting = FORK_HEIGHT_V023 };
         
         /**
          * The block height at which version 0.2.0 retargeting begins.
          */
-        enum { block_height_v020_retargeting = 50399 };
+        enum { block_height_v020_retargeting = FORK_HEIGHT_V020 };
 
         /**
          * Check for version retargeting.
@@ -973,6 +983,7 @@ bool utility::get_transaction(
         {
             hash_block_out = blk.get_hash();
         }
+        
         return true;
     }
     

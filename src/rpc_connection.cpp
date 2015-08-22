@@ -18,8 +18,10 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <chrono>
 #include <future>
 #include <sstream>
+#include <thread>
 #include <vector>
 
 #include <boost/asio.hpp>
@@ -3346,7 +3348,7 @@ rpc_connection::json_rpc_response_t rpc_connection::json_importprivkey(
             }
             else if (index == 1)
             {
-                label = i.second.get<std::int32_t> ("");
+                label = i.second.get<std::string> ("");
             }
         
             index++;

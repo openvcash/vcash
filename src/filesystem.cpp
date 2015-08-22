@@ -125,7 +125,7 @@ std::string filesystem::data_path()
     {
         bundle_id += "TestNet";
     }
-    
+
     std::string ret;
 #if (defined _MSC_VER)
     ret += getenv("APPDATA");

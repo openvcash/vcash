@@ -235,7 +235,7 @@ void zerotime_manager::probe_for_answers(
                 /**
                  * Start the timer.
                  */
-                do_tick_probe(0);
+                do_tick_probe(interval_probe);
             }
             else
             {
@@ -274,7 +274,7 @@ void zerotime_manager::handle_answer(
              */
             if (
                 zerotime_answers_tcp_[ztanswer.hash_tx()].second.size() ==
-                zerotime::answers_required
+                globals::instance().zerotime_answers_minimum()
                 )
             {
                 /**
@@ -288,7 +288,7 @@ void zerotime_manager::handle_answer(
                  * Set the number of confirmations for this transaction.
                  */
                 zerotime::instance().confirmations()[ztanswer.hash_tx()] =
-                    zerotime::answers_required
+                    globals::instance().zerotime_answers_minimum()
                 ;
             
                 /**
@@ -373,16 +373,7 @@ void zerotime_manager::handle_vote(
                 vote_scores, block_height,
                 constants::test_net ? zerotime::k_test_network : zerotime::k
             );
-#if 1
-            printf("%s: kclosest:\n", __FUNCTION__);
-            
-            for (auto & i : kclosest)
-            {
-                printf("\t %d\n", i);
-            }
-            
-            printf("\n");
-#endif
+
             auto percentage =
                 (static_cast<double> (kclosest.size()) /
                 static_cast<double> (constants::test_net ?
@@ -463,11 +454,10 @@ void zerotime_manager::handle_vote(
                                      * If the transaction is to/from us perform
                                      * interrogation if the configured depth is
                                      * greater than zero.
-                                     * :TODO: Use globals and configuration for
-                                     * zerotime::depth.
                                      */
                                     if (
-                                        zerotime::depth > 0 &&
+                                        globals::instance(
+                                        ).zerotime_depth() > 0 &&
                                         wallet_manager::instance(
                                         ).get_transaction(i2.second.hash_tx(),
                                         wtx) == true
@@ -499,7 +489,8 @@ void zerotime_manager::handle_vote(
                                              */
                                             zerotime::instance().confirmations()[
                                                 i2.second.hash_tx()] =
-                                                zerotime::answers_required
+                                                globals::instance(
+                                                ).zerotime_answers_minimum()
                                             ;
                                             
                                             /**
@@ -528,7 +519,8 @@ void zerotime_manager::handle_vote(
                                          */
                                         zerotime::instance().confirmations()[
                                             i2.second.hash_tx()] =
-                                            zerotime::answers_required
+                                            globals::instance(
+                                            ).zerotime_answers_minimum()
                                         ;
                                         
                                         /**
@@ -734,11 +726,19 @@ void zerotime_manager::do_tick_probe(const std::uint32_t & interval)
                         i.second.second.erase(i.second.second.begin());
                         
                         std::lock_guard<std::mutex> l3(mutex_questions_);
+                        std::lock_guard<std::mutex> l4(
+                            mutex_zerotime_answers_tcp_
+                        );
                         
                         /**
-                         * Make sure we have the question.
+                         * Make sure we have the question and have not yet
+                         * received the required number of answers.
                          */
-                        if (questions_.count(hash_tx) > 0)
+                        if (
+                            questions_.count(hash_tx) > 0 &&
+                            zerotime_answers_tcp_[hash_tx].second.size() <
+                            globals::instance().zerotime_answers_minimum()
+                            )
                         {
                             log_info(
                                 "ZeroTime manager is questioning " << ep <<

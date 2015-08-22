@@ -159,19 +159,19 @@ bool kernel::compute_next_stake_modifier(
     std::vector< std::pair<std::int64_t, sha256> > sorted_by_timestamp;
 
     sorted_by_timestamp.reserve(
-        64 * m_modifier_interval / constants::work_and_stake_target_spacing
+        64 * m_modifier_interval / utility::get_target_spacing(index_previous)
     );
     
     auto selection_interval = get_stake_modifier_selection_interval();
     
-    auto selection_intervalStart =
+    auto selection_interval_start =
         (index_previous->time() / m_modifier_interval) *
         m_modifier_interval - selection_interval
     ;
     
     auto index_tmp = std::make_shared<block_index> (*index_previous);
     
-    while (index_tmp && index_tmp->time() >= selection_intervalStart)
+    while (index_tmp && index_tmp->time() >= selection_interval_start)
     {
         sorted_by_timestamp.push_back(
             std::make_pair(index_tmp->time(), index_tmp->get_block_hash())
@@ -193,7 +193,7 @@ bool kernel::compute_next_stake_modifier(
      */
     std::uint64_t stake_modifier_new = 0;
     
-    std::int64_t selection_intervalStop = selection_intervalStart;
+    std::int64_t selection_intervalStop = selection_interval_start;
     
     std::map<sha256, std::shared_ptr<block_index> > selected_blocks;
     

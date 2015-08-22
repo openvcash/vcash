@@ -679,7 +679,6 @@ void mining_manager::pos_tick(const boost::system::error_code & ec)
             globals::instance().state() == globals::state_started
             )
         {
-
             if (
                 (utility::is_initial_block_download() ||
                 stack_impl_.get_tcp_connection_manager()->is_connected() ==

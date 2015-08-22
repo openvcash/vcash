@@ -20,6 +20,7 @@
 
 #include <coin/globals.hpp>
 #include <coin/script.hpp>
+#include <coin/zerotime.hpp>
 
 using namespace coin;
 
@@ -46,6 +47,8 @@ globals::globals()
     , m_last_block_size(0)
     , m_money_supply(0)
     , m_coinbase_flags(new script())
+    , m_zerotime_depth(zerotime::depth)
+    , m_zerotime_answers_minimum(zerotime::answers_minimum)
 {
     /**
      * P2SH (BIP16 support) can be removed eventually.
@@ -68,4 +71,24 @@ protocol::operation_mode_t & globals::operation_mode()
 script & globals::coinbase_flags()
 {
     return *m_coinbase_flags;
+}
+
+void globals::set_zerotime_depth(const std::uint8_t & val)
+{
+    m_zerotime_depth = val;
+}
+
+const std::uint8_t & globals::zerotime_depth() const
+{
+    return m_zerotime_depth;
+}
+
+void globals::set_zerotime_answers_minimum(const std::uint8_t & val)
+{
+    m_zerotime_answers_minimum = val;
+}
+
+const std::uint8_t & globals::zerotime_answers_minimum() const
+{
+    return m_zerotime_answers_minimum;
 }

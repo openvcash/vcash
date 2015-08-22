@@ -67,11 +67,6 @@ namespace coin {
              * The current version.
              */
             enum { current_version = 4 };
-        
-            /**
-             * The maximum size.
-             */
-            enum { size_maximum = 1000000 };
 
             /**
              * Constructor

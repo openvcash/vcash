@@ -110,7 +110,7 @@ namespace constants {
     /**
      * The maximum block size.
      */
-    static const auto max_block_size = 1000000;
+    static const auto max_block_size = 3000000;
     
     /**
      * The maximum number of orphan transactions.
@@ -185,7 +185,7 @@ namespace constants {
     static const std::uint64_t locktime_threshold = 500000000;
 
     /**
-     * The work and stake target spacing (variable by up to 1/3).
+     * The work and stake target spacing.
      */
     enum { work_and_stake_target_spacing = 200 };
 

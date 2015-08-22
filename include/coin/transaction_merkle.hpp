@@ -155,13 +155,13 @@ namespace coin {
                     {
                         if (
                             zerotime::instance().confirmations()[get_hash()] >=
-                            zerotime::answers_required
+                            globals::instance().zerotime_answers_minimum()
                             )
                         {
                             /**
-                             * :TODO: Use globals and configuration.
+                             * Use the configured ZeroTime depth.
                              */
-                            ret = zerotime::depth;
+                            ret = globals::instance().zerotime_depth();
                         }
                     }
                 }

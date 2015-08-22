@@ -545,6 +545,28 @@ namespace coin {
              */
             script & coinbase_flags();
         
+            /**
+             * Set the ZeroTime depth.
+             * @parm val The value.
+             */
+            void set_zerotime_depth(const std::uint8_t & val);
+        
+            /**
+             * The ZeroTime depth.
+             */
+            const std::uint8_t & zerotime_depth() const;
+        
+            /**
+             * Set the ZeroTime answers required.
+             * @parm val The value.
+             */
+            void set_zerotime_answers_minimum(const std::uint8_t & val);
+        
+            /**
+             * The ZeroTime answers required.
+             */
+            const std::uint8_t & zerotime_answers_minimum() const;
+        
         private:
         
             /**
@@ -714,6 +736,16 @@ namespace coin {
              * The coinbase flags.
              */
             std::shared_ptr<script> m_coinbase_flags;
+        
+            /**
+             * The ZeroTime depth.
+             */
+            std::uint8_t m_zerotime_depth;
+        
+            /**
+             * The ZeroTime answers minimum.
+             */
+            std::uint8_t m_zerotime_answers_minimum;
         
         protected:
         

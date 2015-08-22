@@ -44,6 +44,7 @@ configuration::configuration()
     , m_wallet_transaction_history_maximum(wallet::configuration_interval_history)
     , m_wallet_keypool_size(wallet::configuration_keypool_size)
     , m_zerotime_depth(zerotime::depth)
+    , m_zerotime_answers_minimum(zerotime::answers_minimum)
     , m_wallet_rescan(false)
     , m_mining_proof_of_stake(true)
 {
@@ -160,9 +161,30 @@ bool configuration::load()
         
         log_debug(
             "Configuration read zerotime.depth = " <<
-            m_zerotime_depth << "."
+            static_cast<std::uint32_t> (m_zerotime_depth) << "."
         );
         
+        /**
+         * Get the zerotime.answers.minimum.
+         */
+        m_zerotime_answers_minimum = std::stoi(pt.get(
+            "zerotime.answers.minimum",
+            std::to_string(m_zerotime_answers_minimum))
+        );
+        
+        /**
+         * Enforce the minimum zerotime.answers.minimum.
+         */
+        if (m_zerotime_answers_minimum < zerotime::answers_maximum)
+        {
+            m_zerotime_answers_minimum = zerotime::answers_maximum;
+        }
+        
+        log_debug(
+            "Configuration read zerotime.answers.minimum = " <<
+            static_cast<std::uint32_t> (m_zerotime_answers_minimum) << "."
+        );
+
         /**
          * Get the wallet.rescan.
          */
@@ -259,6 +281,14 @@ bool configuration::save()
          */
         pt.put(
             "zerotime.depth", std::to_string(m_zerotime_depth)
+        );
+        
+        /**
+         * Put the zerotime.answers.minimum into property tree.
+         */
+        pt.put(
+            "zerotime.answers.minimum",
+            std::to_string(m_zerotime_answers_minimum)
         );
         
         /**

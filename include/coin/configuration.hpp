@@ -161,6 +161,14 @@ namespace coin {
             }
         
             /**
+             * The ZeroTime answers minimum.
+             */
+            const std::uint8_t & zerotime_answers_minimum() const
+            {
+                return m_zerotime_answers_minimum;
+            }
+        
+            /**
              * Set wallet rescan.
              * @param val The value.
              */
@@ -237,6 +245,11 @@ namespace coin {
              * The ZeroTime depth.
              */
             std::uint8_t m_zerotime_depth;
+        
+            /**
+             * The ZeroTime answers minimum.
+             */
+            std::uint8_t m_zerotime_answers_minimum;
         
             /**
              * The wallet rescan.

@@ -230,7 +230,7 @@ namespace coin {
             /**
              * The probe (question) interval.
              */
-            enum { interval_probe = 500 };
+            enum { interval_probe = 900 };
         
             /**
              * The std::mutex

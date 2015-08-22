@@ -343,8 +343,8 @@ std::shared_ptr<block> block::create_new(
     priority_size = std::min(max_size, priority_size);
 
     /**
-     * Minimum block size you want to create; block will be filled with free transactions
-     * until there are no more or the block reaches this size:
+     * Minimum block size you want to create; block will be filled with free
+     * transactions until there are no more or the block reaches this size:
      * -blockminsize
      */
     auto min_size = 0;
@@ -1219,8 +1219,9 @@ bool block::check_block(
      * Check size limits.
      */
     if (
-        m_transactions.size() == 0 || m_transactions.size() > size_maximum ||
-        size() > size_maximum
+        m_transactions.size() == 0 ||
+        m_transactions.size() > constants::max_block_size ||
+        size() > constants::max_block_size
         )
     {
         /**

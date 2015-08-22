@@ -3167,9 +3167,9 @@ void tcp_connection::do_send_getblocks(const boost::system::error_code & ec)
     else
     {
         /**
-         * The block spacing must be more than 60 seconds.
+         * The block spacing must be more than 63 seconds.
          */
-        assert(constants::work_and_stake_target_spacing > 60);
+        assert(constants::work_and_stake_target_spacing > 63);
         
         /**
          * If we have not received a block in a while or we know we need to

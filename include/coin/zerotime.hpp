@@ -52,7 +52,7 @@ namespace coin {
             /**
              * K
              */
-            enum { k = 32 };
+            enum { k = 24 };
         
             /**
              * The depth.
@@ -63,7 +63,12 @@ namespace coin {
              * The number of answers required for a transaction to be
              * considered confirmed equivalent to 6 block confirmations.
              */
-            enum { answers_required = 3 };
+            enum { answers_minimum = 1 };
+        
+            /**
+             * The number of maximum answers.
+             */
+            enum { answers_maximum = 8 };
         
             /**
              * Constructor

@@ -154,7 +154,19 @@ void stack_impl::start()
          */
         m_configuration.save();
     }
+    
+    /**
+     * Set the globals::zerotime_depth.
+     */
+    globals::instance().set_zerotime_depth(m_configuration.zerotime_depth());
 
+    /**
+     * Set the globals::zerotime_answers_minimum.
+     */
+    globals::instance().set_zerotime_answers_minimum(
+        m_configuration.zerotime_answers_minimum()
+    );
+    
     /**
      * Reset the boost::asio::io_service.
      */
