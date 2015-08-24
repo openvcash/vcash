@@ -11,6 +11,8 @@ openssl
 
 Windows also requires miniupnpc but can be disabled by the use of USE_UPNP=0.
 
+The easiest way to build is using one of xCore's scripts from https://github.com/xCoreDev/vanillacoin-scripts but here are the manual instructions.
+
 ```
 Extract boost to ./deps
 
@@ -62,7 +64,5 @@ cd test
 
 bjam.exe toolset=msvc link=static runtime-link=static release
 ```
-
-The source code in the ./database directory may be ignored as it is not yet integrated. I also have IDE project files for Visual Studio and Xcode(which also supports iOS) that I will be uploading soon.
 
 Thank you for your support.
