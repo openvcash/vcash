@@ -11,7 +11,7 @@ openssl
 
 Windows also requires miniupnpc but can be disabled by the use of USE_UPNP=0.
 
-The easiest way to build is using one of xCore's scripts from https://github.com/xCoreDev/vanillacoin-scripts but here are the manual instructions.
+The easiest way to build for linux is using one of xCore's scripts from https://github.com/xCoreDev/vanillacoin-scripts but here are the manual instructions.
 
 ```
 Extract boost to ./deps
