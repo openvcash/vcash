@@ -209,9 +209,27 @@ void routing_table::update_statistics(
     m_blocks[block_index]->update_statistics(ep, attr);
 }
 
+std::set<storage_node> routing_table::storage_nodes()
+{
+    std::set<storage_node> ret;
+
+    for (auto & i : m_blocks)
+    {
+        for (auto & j : i->slots())
+        {
+            for (auto & k : j->storage_nodes())
+            {
+                ret.insert(k);
+            }
+        }
+    }
+    
+    return ret;
+}
+
 std::set<boost::asio::ip::udp::endpoint> routing_table::storage_nodes(
     const std::uint32_t & limit
-)
+    )
 {
     std::set<boost::asio::ip::udp::endpoint> ret;
     

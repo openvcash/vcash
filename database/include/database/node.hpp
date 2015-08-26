@@ -83,6 +83,11 @@ namespace database {
             std::uint16_t broadcast(const std::vector<std::uint8_t> &);
 
             /**
+             * Returns all of the storage nodes in the routing table.
+             */
+            std::vector< std::map<std::string, std::string> > storage_nodes();
+        
+            /**
              * Returns all of the endpoints in the routing table.
              */
             std::list< std::pair<std::string, std::uint16_t> > endpoints();

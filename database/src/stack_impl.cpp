@@ -206,6 +206,16 @@ std::uint16_t stack_impl::broadcast(const std::vector<std::uint8_t> & buffer)
     return 0;
 }
 
+std::vector< std::map<std::string, std::string> > stack_impl::storage_nodes()
+{
+    if (m_node.get())
+    {
+        return m_node->storage_nodes();
+    }
+    
+    return std::vector< std::map<std::string, std::string> > ();
+}
+
 std::list< std::pair<std::string, std::uint16_t> > stack_impl::endpoints()
 {
     if (m_node.get())

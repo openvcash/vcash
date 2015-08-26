@@ -83,10 +83,15 @@ namespace database {
         
             /**
              * Returns all storage nodes from all slots in all blocks.
+             */
+            std::set<storage_node> storage_nodes();
+        
+            /**
+             * Returns all storage nodes from all slots in all blocks.
              * @param limit Limits the number of storage nodes returned.
              */
             std::set<boost::asio::ip::udp::endpoint> storage_nodes(
-                const std::uint32_t & limit = 0
+                const std::uint32_t & limit
             );
 
             /**

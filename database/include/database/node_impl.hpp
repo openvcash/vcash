@@ -107,7 +107,12 @@ namespace database {
              * @param buffer The buffer.
              */
             std::uint16_t broadcast(const std::vector<std::uint8_t> &);
-            
+        
+            /**
+             * Returns all storage nodes in the routing table.
+             */
+            std::set<storage_node> storage_nodes();
+        
             /**
              * Returns all of the endpoints in the routing table.
              */

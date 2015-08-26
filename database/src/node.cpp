@@ -22,6 +22,7 @@
 #include <database/node.hpp>
 #include <database/node_impl.hpp>
 #include <database/stack_impl.hpp>
+#include <database/storage_node.hpp>
 
 using namespace database;
 
@@ -95,6 +96,38 @@ std::uint16_t node::broadcast(const std::vector<std::uint8_t> & buffer)
     }
     
     return 0;
+}
+
+std::vector< std::map<std::string, std::string> > node::storage_nodes()
+{
+    std::vector< std::map<std::string, std::string> > ret;
+    
+    if (node_impl_)
+    {
+        auto snodes = node_impl_->storage_nodes();
+        
+        for (auto & i : snodes)
+        {
+            std::map<std::string, std::string> entry;
+            
+            entry["uptime"] = std::to_string(i.uptime);
+            entry["endpoint"] =
+                i.endpoint.address().to_string() +
+                std::to_string(i.endpoint.port())
+            ;
+            entry["rtt"] = std::to_string(i.rtt);
+            entry["stats_udp_bps_inbound"] =
+                std::to_string(i.stats_udp_bps_inbound)
+            ;
+            entry["stats_udp_bps_outbound"] =
+                std::to_string(i.stats_udp_bps_outbound)
+            ;
+            
+            ret.push_back(entry);
+        }
+    }
+    
+    return ret;
 }
 
 std::list< std::pair<std::string, std::uint16_t> > node::endpoints()

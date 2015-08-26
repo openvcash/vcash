@@ -21,6 +21,7 @@
 
 #include <cstdint>
 #include <list>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -160,6 +161,11 @@ namespace database {
              * @param buffer The buffer.
              */
             std::uint16_t broadcast(const std::vector<std::uint8_t> &);
+        
+            /**
+             * Returns all of the storage nodes in the routing table.
+             */
+            std::vector< std::map<std::string, std::string> > storage_nodes();
         
             /**
              * Returns all of the endpoints in the routing table.

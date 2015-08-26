@@ -455,13 +455,25 @@ std::uint16_t node_impl::broadcast(const std::vector<std::uint8_t> & buffer)
     return ret;
 }
 
+std::set<storage_node> node_impl::storage_nodes()
+{
+    std::set<storage_node> ret;
+    
+    if (routing_table_)
+    {
+        ret = routing_table_->storage_nodes();
+    }
+    
+    return ret;
+}
+
 std::list< std::pair<std::string, std::uint16_t> > node_impl::endpoints()
 {
     std::list< std::pair<std::string, std::uint16_t> > ret;
     
     if (routing_table_)
     {
-        const auto & snodes = routing_table_->storage_nodes();
+        const auto & snodes = routing_table_->storage_nodes(0);
         
         for (auto & i : snodes)
         {
