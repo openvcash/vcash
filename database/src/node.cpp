@@ -116,6 +116,9 @@ std::vector< std::map<std::string, std::string> > node::storage_nodes()
                 std::to_string(i.endpoint.port())
             ;
             entry["rtt"] = std::to_string(i.rtt);
+            entry["last_update"] = std::to_string(
+                i.last_update.time_since_epoch().count()
+            );
             entry["stats_udp_bps_inbound"] =
                 std::to_string(i.stats_udp_bps_inbound)
             ;
