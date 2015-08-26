@@ -112,7 +112,7 @@ std::vector< std::map<std::string, std::string> > node::storage_nodes()
             
             entry["uptime"] = std::to_string(i.uptime);
             entry["endpoint"] =
-                i.endpoint.address().to_string() +
+                i.endpoint.address().to_string() + ":" +
                 std::to_string(i.endpoint.port())
             ;
             entry["rtt"] = std::to_string(i.rtt);
