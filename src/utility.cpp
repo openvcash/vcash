@@ -543,7 +543,7 @@ std::uint32_t utility::get_next_target_required(
         /**
          * These MUST always be top down.
          */
-
+        
         /**
          * The block height at which version 0.2.3 retargeting begins.
          */

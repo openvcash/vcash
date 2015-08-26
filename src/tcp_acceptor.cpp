@@ -22,7 +22,6 @@
 
 #include <boost/asio.hpp>
 
-#include <coin/http_transport.hpp>
 #include <coin/logger.hpp>
 #include <coin/protocol.hpp>
 #include <coin/tcp_acceptor.hpp>
