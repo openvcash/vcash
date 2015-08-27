@@ -16,6 +16,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <chrono>
 #include <stdexcept>
 
 #include <database/logger.hpp>
@@ -116,9 +117,13 @@ std::vector< std::map<std::string, std::string> > node::storage_nodes()
                 std::to_string(i.endpoint.port())
             ;
             entry["rtt"] = std::to_string(i.rtt);
-            entry["last_update"] = std::to_string(
-                i.last_update.time_since_epoch().count()
-            );
+            
+            auto last_update = std::chrono::duration_cast<
+                std::chrono::seconds
+            >(std::chrono::steady_clock::now() -
+            i.last_update).count();
+            
+            entry["last_update"] = std::to_string(last_update);
             entry["stats_udp_bps_inbound"] =
                 std::to_string(i.stats_udp_bps_inbound)
             ;
