@@ -837,7 +837,15 @@ void tcp_connection::on_read(const char * buf, const std::size_t & len)
             /**
              * Allocate the body.
              */
-            std::string body = "{\"statistics\": {}}";
+            std::string body =
+                "{\"version\":\"" +
+                constants::version_string + "\"""," +
+                "\"protocol\":\"" +
+                std::to_string(protocol::version) + "\"""," +
+                "\"height\":\"" +
+                std::to_string(stack_impl::get_block_index_best()->height()) +
+                "\"""}"
+            ;
             
             /**
              * Formulate the response.
