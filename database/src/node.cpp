@@ -24,6 +24,7 @@
 #include <database/node_impl.hpp>
 #include <database/stack_impl.hpp>
 #include <database/storage_node.hpp>
+#include <database/utility.hpp>
 
 using namespace database;
 
@@ -111,24 +112,24 @@ std::vector< std::map<std::string, std::string> > node::storage_nodes()
         {
             std::map<std::string, std::string> entry;
             
-            entry["uptime"] = std::to_string(i.uptime);
+            entry["uptime"] = utility::to_string(i.uptime);
             entry["endpoint"] =
                 i.endpoint.address().to_string() + ":" +
-                std::to_string(i.endpoint.port())
+                utility::to_string(i.endpoint.port())
             ;
-            entry["rtt"] = std::to_string(i.rtt);
+            entry["rtt"] = utility::to_string(i.rtt);
             
             auto last_update = std::chrono::duration_cast<
                 std::chrono::seconds
             >(std::chrono::steady_clock::now() -
             i.last_update).count();
             
-            entry["last_update"] = std::to_string(last_update);
+            entry["last_update"] = utility::to_string(last_update);
             entry["stats_udp_bps_inbound"] =
-                std::to_string(i.stats_udp_bps_inbound)
+                utility::to_string(i.stats_udp_bps_inbound)
             ;
             entry["stats_udp_bps_outbound"] =
-                std::to_string(i.stats_udp_bps_outbound)
+                utility::to_string(i.stats_udp_bps_outbound)
             ;
             
             ret.push_back(entry);
