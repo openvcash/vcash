@@ -112,6 +112,7 @@ LOCAL_SRC_FILES := \
 	../src/zerotime_lock.cpp \
 	../src/zerotime_manager.cpp \
 	../src/zerotime_question.cpp \
+	../src/zerotime_vote.cpp \
 
 include $(BUILD_STATIC_LIBRARY)
 
