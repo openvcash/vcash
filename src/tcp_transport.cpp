@@ -598,7 +598,7 @@ void tcp_transport::set_on_read(
 }
 
 void tcp_transport::write(const char * buf, const std::size_t & len)
-{
+{    
     auto self(shared_from_this());
     
     std::vector<char> buffer(buf, buf + len);

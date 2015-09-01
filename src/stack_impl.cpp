@@ -108,9 +108,9 @@ void stack_impl::start()
     globals::instance().set_state(globals::state_starting);
     
     /**
-     * Set the state to starting.
+     * @note Do not enable.
      */
-#if 0 // Do not enable.
+#if 0
     /**
      * Try to remove old client blocks.
      */
@@ -2494,6 +2494,25 @@ void stack_impl::rpc_send(const std::string & command_line)
     }
 }
 
+void stack_impl::set_configuration_wallet_transaction_history_maximum(
+    const std::time_t & val
+    )
+{
+    globals::instance().io_service().post(globals::instance().strand().wrap(
+        [this, val]()
+    {
+        m_configuration.set_wallet_transaction_history_maximum(val);
+        
+        m_configuration.save();
+    }));
+}
+
+const std::time_t
+    stack_impl::configuration_wallet_transaction_history_maximum() const
+{
+    return m_configuration.wallet_transaction_history_maximum();
+}
+
 void stack_impl::url_get(
     const std::string & url,
     const std::function<void (const std::map<std::string, std::string> &,
@@ -3916,9 +3935,9 @@ void stack_impl::remove_old_blocks_if_client()
         std::vector<std::uint32_t> indexes;
 
         /** 
-         * Try to remove the last 5 blocks before the last 3.
+         * Try to remove the last N block files before the last 32.
          */
-        for (auto i = 1; i < 9; i++)
+        for (auto i = 1; i < 32; i++)
         {
             auto f = block::file_open(i, 0, "r");
             
@@ -3930,6 +3949,14 @@ void stack_impl::remove_old_blocks_if_client()
             {
                 indexes.push_back(i);
             }
+        }
+        
+        /**
+         * Never remove the last - 3.
+         */
+        if (indexes.size() > 0)
+        {
+            indexes.pop_back();
         }
         
         /**

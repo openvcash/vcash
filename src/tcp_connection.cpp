@@ -364,9 +364,9 @@ void tcp_connection::send_getblocks_message(
         }
         
         /**
-         * Only allow one getblocks message every 8 seconds per connection.
+         * Only allow one getblocks message every 3 seconds per connection.
          */
-        if (std::time(0) - time_last_getblocks_sent_ >= 8)
+        if (std::time(0) - time_last_getblocks_sent_ >= 3)
         {
             /**
              * Set the last time we sent a getblocks.
@@ -376,7 +376,7 @@ void tcp_connection::send_getblocks_message(
             /**
              * Set that we need to send getblocks.
              */
-            need_to_send_getblocks_ = true;
+            //need_to_send_getblocks_ = true;
             
             last_getblocks_index_begin_ = index_begin;
             last_getblocks_hash_end_ = hash_end;
@@ -1110,6 +1110,15 @@ void tcp_connection::send_getdata_message()
                  * Allocate the message.
                  */
                 message msg("getdata");
+
+                /**
+                 * Remove any duplicates.
+                 */
+                std::sort(getdata_.begin(), getdata_.end());
+                getdata_.erase(
+                    std::unique(getdata_.begin(), getdata_.end()),
+                    getdata_.end()
+                );
                 
                 /**
                  * Set the getdata.
@@ -1362,6 +1371,14 @@ const protocol::network_address_t &
     return m_protocol_version_addr_src;
 }
 
+void tcp_connection::set_on_probe(
+    const std::function<void (const std::uint32_t &, const std::string &,
+    const std::uint64_t &, const std::int32_t &)> & f
+    )
+{
+    m_on_probe = f;
+}
+
 void tcp_connection::relay_checkpoint(const checkpoint_sync & checkpoint)
 {
     /**
@@ -1566,7 +1583,7 @@ bool tcp_connection::handle_message(message & msg)
                     
                     return false;
                 }
-                
+
                 /**
                  * Set the protocol version services.
                  */
@@ -1693,6 +1710,19 @@ bool tcp_connection::handle_message(message & msg)
                     }
                     else if (m_probe_only == true)
                     {
+                        /**
+                         * Callback
+                         */
+                        if (m_on_probe)
+                        {
+                            m_on_probe(
+                                m_protocol_version,
+                                m_protocol_version_user_agent,
+                                m_protocol_version_services,
+                                m_protocol_version_start_height
+                            );
+                        }
+                        
                         /**
                          * We have confirmed the peer is valid, stop the
                          * connection.
@@ -2104,10 +2134,65 @@ bool tcp_connection::handle_message(message & msg)
                 
                 if (already_have == false)
                 {
-                    /**
-                     * Ask for the data.
-                     */
-                    getdata_.push_back(i);
+                    if (utility::is_initial_block_download() == false)
+                    {
+                        /**
+                         * Ask for the data.
+                         */
+                        getdata_.push_back(i);
+                    }
+                    else
+                    {
+                        /**
+                         * Do not allow tcp_connection's to send duplicate
+                         * getdata requests during a small window.
+                         */
+                        static std::map<inventory_vector, std::time_t>
+                            g_last_getdatas
+                        ;
+                     
+                        static std::recursive_mutex g_mutex_last_getdatas;
+                        
+                        std::lock_guard<std::recursive_mutex> l1(
+                            g_mutex_last_getdatas
+                        );
+                        
+                        if (g_last_getdatas.count(i) == 0)
+                        {
+                            g_last_getdatas[i] = std::time(0);
+                            
+                            /**
+                             * Ask for the data.
+                             */
+                            getdata_.push_back(i);
+                        }
+                        else
+                        {
+                            auto last_getdata = g_last_getdatas[i];
+                            
+                            if ((std::time(0) - last_getdata) >= 3)
+                            {
+                                /**
+                                 * Ask for the data.
+                                 */
+                                getdata_.push_back(i);
+                            }
+                        }
+                        
+                        auto it = g_last_getdatas.begin();
+                        
+                        while (it != g_last_getdatas.end())
+                        {
+                            if ((std::time(0) - it->second) >= 3)
+                            {
+                                it = g_last_getdatas.erase(it);
+                            }
+                            else
+                            {
+                                ++it;
+                            }
+                        }
+                    }
                 }
                 else if (
                     i.type() == inventory_vector::type_msg_block &&
@@ -2348,7 +2433,7 @@ bool tcp_connection::handle_message(message & msg)
     }
     else if (msg.header().command == "getblocks")
     {
-        if (std::time(0) - time_last_getblocks_received_ < 8)
+        if (std::time(0) - time_last_getblocks_received_ < 3)
         {
             log_debug(
                 "TCP connection remote peer is sending getblocks too fast (" <<
@@ -2369,9 +2454,11 @@ bool tcp_connection::handle_message(message & msg)
             time_last_getblocks_received_ = std::time(0);
             
             /**
-             * If we are a peer handle the getblocks message.
+             * If we are a peer with an up-to-date blockchain handle the
+             * getblocks message.
              */
             if (
+                utility::is_initial_block_download() == false &&
                 globals::instance().operation_mode() ==
                 protocol::operation_mode_peer
                 )
@@ -2429,8 +2516,7 @@ bool tcp_connection::handle_message(message & msg)
                 );
                 
                 /**
-                 * The block hashes to send (we do not trickle like the reference
-                 * implementation).
+                 * The block hashes to send.
                  */
                 std::vector<sha256> block_hashes;
                 
@@ -2512,8 +2598,8 @@ bool tcp_connection::handle_message(message & msg)
             else
             {
                 log_info(
-                    "TCP connection (operation mode client) is dropping "
-                    "getblocks message."
+                    "TCP connection (operation mode client or initial download)"
+                    " is dropping getblocks message."
                 );
             }
         }
@@ -3186,7 +3272,9 @@ void tcp_connection::do_send_getblocks(const boost::system::error_code & ec)
         if (
             std::time(0) - time_last_block_received_ >=
             (constants::work_and_stake_target_spacing * 2) ||
-            need_to_send_getblocks_ == true
+            need_to_send_getblocks_ == true ||
+            (utility::is_initial_block_download() &&
+            std::time(0) - time_last_block_received_ > 3)
             )
         {
             /**

@@ -1487,7 +1487,10 @@ bool wallet::add_to_wallet(const transaction_wallet & wtx_in)
      
         if (wtx.block_hash() != 0)
         {
-            if (globals::instance().block_indexes().count(wtx_in.block_hash()))
+            if (
+                globals::instance().block_indexes().count(
+                wtx_in.block_hash()) > 0
+                )
             {
                 auto latest_now = wtx.time_received();
                 

@@ -22,6 +22,7 @@
 #define COIN_TCP_CONNECTION_HPP
 
 #include <deque>
+#include <functional>
 #include <mutex>
 #include <set>
 #include <string>
@@ -219,6 +220,16 @@ namespace coin {
             const protocol::network_address_t &
                 protocol_version_addr_src() const
             ;
+        
+            /**
+             * Sets the on probe handler (probe-only mode).
+             * @param f The std::function.
+             */
+            void set_on_probe(
+                const std::function<void (const std::uint32_t &,
+                const std::string &, const std::uint64_t &,
+                const std::int32_t &)> & f
+            );
         
             /**
              * Sets the hash of the known checkpoint.
@@ -425,6 +436,14 @@ namespace coin {
              * The (remote) protocol version source address.
              */
             protocol::network_address_t m_protocol_version_addr_src;
+        
+            /**
+             * The probe handler (probe-only mode).
+             */
+            std::function<
+                void (const std::uint32_t &, const std::string &,
+                const std::uint64_t &, const std::int32_t &)
+            > m_on_probe;
         
             /**
              * Our public address as advertised in the version message.

@@ -219,7 +219,7 @@ namespace coin {
              */
             std::map<
                 sha256, std::pair<std::time_t,
-                std::set<boost::asio::ip::tcp::endpoint> >
+                std::vector<boost::asio::ip::tcp::endpoint> >
             > question_queue_tcp_endpoints_;
         
             /**

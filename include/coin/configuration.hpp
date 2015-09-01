@@ -137,6 +137,17 @@ namespace coin {
             }
         
             /**
+             * Sets the wallet.transaction.history.maximum
+             * @param val The value.
+             */
+            void set_wallet_transaction_history_maximum(
+                const std::time_t & val
+                )
+            {
+                m_wallet_transaction_history_maximum = val;
+            }
+        
+            /**
              * The maximum transaction history.
              */
             const std::time_t & wallet_transaction_history_maximum() const

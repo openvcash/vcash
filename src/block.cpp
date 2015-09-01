@@ -1876,19 +1876,25 @@ bool block::accept_block(
     }
 
     /**
-     * Relay inventory.
+     * Do not relay during initial download.
      */
-    if (globals::instance().hash_best_chain() == hash_block)
+    if (utility::is_initial_block_download() == false)
     {
-        auto connections = connection_manager->tcp_connections();
-        
-        for (auto & i : connections)
+        /**
+         * Relay inventory.
+         */
+        if (globals::instance().hash_best_chain() == hash_block)
         {
-            if (auto connection = i.second.lock())
+            auto connections = connection_manager->tcp_connections();
+            
+            for (auto & i : connections)
             {
-                connection->send_inv_message(
-                    inventory_vector::type_msg_block, hash_block
-                );
+                if (auto connection = i.second.lock())
+                {
+                    connection->send_inv_message(
+                        inventory_vector::type_msg_block, hash_block
+                    );
+                }
             }
         }
     }
@@ -1970,7 +1976,7 @@ bool block::read_from_disk(
     }
     else
     {
-        throw std::runtime_error("failed to open block file");
+        log_error("Block failed to open block file.");
         
         return false;
     }

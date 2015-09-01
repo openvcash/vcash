@@ -395,12 +395,38 @@ void tcp_connection_manager::tick(const boost::system::error_code & ec)
         }
         
         /**
+         * If we are in "initial block download" connect outbound to more
+         * nodes then drop the excess connections once synchronised.
+         */
+        auto is_initial_block_download = utility::is_initial_block_download();
+        
+        if (is_initial_block_download == false)
+        {
+            /**
+             * Enforce the minimum_tcp_connections.
+             */
+            if (tcp_connections > minimum_tcp_connections)
+            {
+                auto it = m_tcp_connections.begin();
+                
+                std::advance(it, std::rand() % m_tcp_connections.size());
+                
+                m_tcp_connections.erase(it);
+            }
+        }
+        
+        /**
          * Maintain at least minimum_tcp_connections tcp connections.
          */
-        if (tcp_connections < minimum_tcp_connections)
+        if (
+            tcp_connections < (is_initial_block_download ?
+            minimum_tcp_connections * 3 : minimum_tcp_connections)
+            )
         {
             for (
-                auto i = 0; i < minimum_tcp_connections - tcp_connections; i++
+                auto i = 0; i < (is_initial_block_download ?
+                minimum_tcp_connections * 3 : minimum_tcp_connections) -
+                tcp_connections; i++
                 )
             {
                 /**

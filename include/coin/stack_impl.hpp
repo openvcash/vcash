@@ -154,6 +154,21 @@ namespace coin {
              * @param command_line The command line.
              */
             void rpc_send(const std::string & command_line);
+        
+            /**
+             * Sets the wallet.transaction.history.maximum
+             * @param val The value.
+             */
+            void set_configuration_wallet_transaction_history_maximum(
+                const std::time_t & val
+            );
+        
+            /**
+             * The wallet.transaction.history.maximum.
+             */
+            const std::time_t
+                configuration_wallet_transaction_history_maximum() const
+            ;
             
             /**
              * Performs an http get operation toward the url.

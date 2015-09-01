@@ -121,6 +121,16 @@ namespace coin {
             );
 
             /**
+             * operator ==
+             */
+            friend bool operator == (
+                const inventory_vector & a, const inventory_vector & b
+                )
+            {
+                return a.m_type == b.m_type && a.m_hash == b.m_hash;
+            }
+        
+            /**
              * operator <
              */
             friend bool operator < (

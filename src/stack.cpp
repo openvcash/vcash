@@ -257,6 +257,35 @@ void stack::rpc_send(const std::string & command_line)
     }
 }
 
+void stack::set_configuration_wallet_transaction_history_maximum(
+    const std::time_t & val
+    )
+{
+    if (stack_impl_)
+    {
+        stack_impl_->set_configuration_wallet_transaction_history_maximum(val);
+    }
+    else
+    {
+        throw std::runtime_error("Stack is not allocated");
+    }
+}
+
+const std::time_t
+    stack::configuration_wallet_transaction_history_maximum() const
+{
+    if (stack_impl_)
+    {
+        return stack_impl_->configuration_wallet_transaction_history_maximum();
+    }
+    else
+    {
+        throw std::runtime_error("Stack is not allocated");
+    }
+    
+    return 0;
+}
+
 void stack::on_status(const std::map<std::string, std::string> & pairs)
 {
     log_none("Stack got info, pairs = " << pairs.size() << ".");

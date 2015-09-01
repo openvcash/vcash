@@ -442,11 +442,24 @@ namespace coin {
             void swap_random(
                 const std::uint32_t & first, const std::uint32_t & second
             );
+   
+            /**
+             * Defines a recent endpoint.
+             */
+            typedef struct recent_endpoint_s
+            {
+                protocol::network_address_t addr;
+                std::time_t time;
+                std::uint32_t protocol_version;
+                std::string protocol_version_user_agent;
+                std::uint64_t protocol_version_services;
+                std::int32_t protocol_version_start_height;
+            } recent_endpoint_t;
         
             /**
              * The recently marked good endpoints.
              */
-            std::map<protocol::network_address_t, std::time_t>
+            std::map<protocol::network_address_t, recent_endpoint_t>
                 m_recent_good_endpoints
             ;
         

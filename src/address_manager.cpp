@@ -837,7 +837,7 @@ void address_manager::mark_good(
     /**
      * Update the recent good endpoint's time.
      */
-    m_recent_good_endpoints[addr] = std::time(0);
+    m_recent_good_endpoints[addr].time = std::time(0);
 
     std::uint32_t nid;
     
@@ -1443,7 +1443,7 @@ void address_manager::tick(const boost::system::error_code & ec)
         
         while (it != m_recent_good_endpoints.end())
         {
-            if (std::time(0) - it->second > (3 * 60 * 60))
+            if (std::time(0) - it->second.time > (3 * 60 * 60))
             {
                 it = m_recent_good_endpoints.erase(it);
             }
@@ -1461,7 +1461,11 @@ void address_manager::tick(const boost::system::error_code & ec)
         {
             ss <<
                 "\t" << ++index << ". " << i.first.ipv4_mapped_address() <<
-                ":" << i.first.port << ":" << std::time(0) - i.second << "\n"
+                ":" << i.first.port << ":" << std::time(0) - i.second.time <<
+                ":" << i.second.protocol_version << ":" <<
+                i.second.protocol_version_user_agent << ":" <<
+                i.second.protocol_version_services << ":" <<
+                i.second.protocol_version_start_height << "\n"
             ;
         }
         
@@ -1504,7 +1508,7 @@ void address_manager::tick(const boost::system::error_code & ec)
         
         std::random_shuffle(endpoints.begin(), endpoints.end());
 
-        enum { max_probes_total = 16 };
+        enum { max_probes_total = 24 };
         
         if (endpoints.size() > max_probes_total)
         {
@@ -1552,7 +1556,7 @@ void address_manager::tick(const boost::system::error_code & ec)
             
             if (probed_endpoints_.count(i) > 0)
             {
-                if (std::time(0) - probed_endpoints_[i] > (1 * 60 * 60))
+                if (std::time(0) - probed_endpoints_[i] > (20 * 60))
                 {
                     should_probe = true;
                 }
@@ -1608,6 +1612,77 @@ void address_manager::tick(const boost::system::error_code & ec)
                 connection->set_probe_only(true);
                 
                 /**
+                 * Set the probe callback.
+                 */
+                connection->set_on_probe(
+                    [this, i](
+                        const std::uint32_t & protocol_version,
+                        const std::string & protocol_version_user_agent,
+                        const std::uint64_t & protocol_version_services,
+                        const std::int32_t & protocol_version_start_height
+                        )
+                    {
+                        log_info(
+                            "Address manager probed " << i << ":" <<
+                            protocol_version << ":" <<
+                            protocol_version_user_agent << ":" <<
+                            protocol_version_services << ":" <<
+                            protocol_version_start_height << "."
+                        );
+                        
+
+                        if (
+                            m_recent_good_endpoints.count(
+                            protocol::network_address_t::from_endpoint(i)) > 0
+                            )
+                        {
+                            recent_endpoint_t & recent =
+                                m_recent_good_endpoints[
+                                protocol::network_address_t::from_endpoint(i)]
+                            ;
+                            
+                            recent.addr =
+                                protocol::network_address_t::from_endpoint(i)
+                            ;
+                            recent.time = std::time(0);
+                            recent.protocol_version = protocol_version;
+                            recent.protocol_version_user_agent =
+                                protocol_version_user_agent
+                            ;
+                            recent.protocol_version_services =
+                                protocol_version_services
+                            ;
+                            recent.protocol_version_start_height =
+                                protocol_version_start_height
+                            ;
+                        }
+                        else
+                        {
+                            recent_endpoint_t recent;
+                            
+                            recent.addr =
+                                protocol::network_address_t::from_endpoint(i)
+                            ;
+                            recent.time = std::time(0);
+                            recent.protocol_version = protocol_version;
+                            recent.protocol_version_user_agent =
+                                protocol_version_user_agent
+                            ;
+                            recent.protocol_version_services =
+                                protocol_version_services
+                            ;
+                            recent.protocol_version_start_height =
+                                protocol_version_start_height
+                            ;
+                            
+                            m_recent_good_endpoints[
+                                protocol::network_address_t::from_endpoint(i)
+                            ] = recent;
+                        }
+                    }
+                );
+                
+                /**
                  * Start the tcp_connection.
                  */
                 connection->start(i);
@@ -1630,7 +1705,7 @@ void address_manager::tick(const boost::system::error_code & ec)
         /**
          * The number of minimum good endpoints to maintain.
          */
-        enum { min_good_endpoints = 8 };
+        enum { min_good_endpoints = 20 };
         
         /**
          * Start the timer.

@@ -229,6 +229,7 @@ void zerotime_manager::probe_for_answers(
                 
                 question_queue_tcp_endpoints_[hash_tx].first = std::time(0);
                 question_queue_tcp_endpoints_[hash_tx].second.insert(
+                    question_queue_tcp_endpoints_[hash_tx].second.end(),
                     eps.begin(), eps.end()
                 );
                 
