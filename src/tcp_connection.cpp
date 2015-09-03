@@ -114,7 +114,9 @@ void tcp_connection::start()
             /**
              * Start the ping timer.
              */
-            timer_ping_.expires_from_now(std::chrono::seconds(interval_ping));
+            timer_ping_.expires_from_now(
+                std::chrono::seconds(interval_ping / 4)
+            );
             timer_ping_.async_wait(globals::instance().strand().wrap(
                 std::bind(&tcp_connection::do_ping, self,
                 std::placeholders::_1))
