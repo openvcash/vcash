@@ -2134,65 +2134,7 @@ bool tcp_connection::handle_message(message & msg)
                 
                 if (already_have == false)
                 {
-                    if (utility::is_initial_block_download() == false)
-                    {
-                        /**
-                         * Ask for the data.
-                         */
-                        getdata_.push_back(i);
-                    }
-                    else
-                    {
-                        /**
-                         * Do not allow tcp_connection's to send duplicate
-                         * getdata requests during a small window.
-                         */
-                        static std::map<inventory_vector, std::time_t>
-                            g_last_getdatas
-                        ;
-                     
-                        static std::recursive_mutex g_mutex_last_getdatas;
-                        
-                        std::lock_guard<std::recursive_mutex> l1(
-                            g_mutex_last_getdatas
-                        );
-                        
-                        if (g_last_getdatas.count(i) == 0)
-                        {
-                            g_last_getdatas[i] = std::time(0);
-                            
-                            /**
-                             * Ask for the data.
-                             */
-                            getdata_.push_back(i);
-                        }
-                        else
-                        {
-                            auto last_getdata = g_last_getdatas[i];
-                            
-                            if ((std::time(0) - last_getdata) >= 3)
-                            {
-                                /**
-                                 * Ask for the data.
-                                 */
-                                getdata_.push_back(i);
-                            }
-                        }
-                        
-                        auto it = g_last_getdatas.begin();
-                        
-                        while (it != g_last_getdatas.end())
-                        {
-                            if ((std::time(0) - it->second) >= 3)
-                            {
-                                it = g_last_getdatas.erase(it);
-                            }
-                            else
-                            {
-                                ++it;
-                            }
-                        }
-                    }
+                    getdata_.push_back(i);
                 }
                 else if (
                     i.type() == inventory_vector::type_msg_block &&
