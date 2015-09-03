@@ -376,7 +376,7 @@ void tcp_connection::send_getblocks_message(
             /**
              * Set that we need to send getblocks.
              */
-            //need_to_send_getblocks_ = true;
+            need_to_send_getblocks_ = true;
             
             last_getblocks_index_begin_ = index_begin;
             last_getblocks_hash_end_ = hash_end;
