@@ -4735,7 +4735,7 @@ rpc_connection::json_rpc_response_t rpc_connection::json_validateaddress(
         else
         {
             auto pt_error = create_error_object(
-                error_code_invalid_params, "invalid parameter coiunt"
+                error_code_invalid_params, "invalid parameter count"
             );
             
             /**
