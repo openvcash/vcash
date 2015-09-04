@@ -362,6 +362,7 @@ void tcp_connection_manager::tick(const boost::system::error_code & ec)
         std::lock_guard<std::recursive_mutex> l1(mutex_tcp_connections_);
         
         auto tcp_connections = 0;
+        auto outgoing_tcp_connections = 0;
         
         auto it = m_tcp_connections.begin();
         
@@ -376,6 +377,14 @@ void tcp_connection_manager::tick(const boost::system::error_code & ec)
                         if (t->state() == tcp_transport::state_connected)
                         {
                             ++tcp_connections;
+                            
+                            if (
+                                connection->direction() ==
+                                tcp_connection::direction_outgoing
+                                )
+                            {
+                                ++outgoing_tcp_connections;
+                            }
                         }
                     }
                     
@@ -403,15 +412,24 @@ void tcp_connection_manager::tick(const boost::system::error_code & ec)
         if (is_initial_block_download == false)
         {
             /**
-             * Enforce the minimum_tcp_connections.
+             * Enforce the minimum_tcp_connections (outgoing).
              */
-            if (tcp_connections > minimum_tcp_connections)
+            if (outgoing_tcp_connections > minimum_tcp_connections)
             {
                 auto it = m_tcp_connections.begin();
                 
                 std::advance(it, std::rand() % m_tcp_connections.size());
                 
-                m_tcp_connections.erase(it);
+                if (auto connection = it->second.lock())
+                {
+                    if (
+                        connection->direction() ==
+                        tcp_connection::direction_outgoing
+                        )
+                    {
+                        m_tcp_connections.erase(it);
+                    }
+                }
             }
         }
         
