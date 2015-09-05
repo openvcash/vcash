@@ -131,7 +131,7 @@ namespace coin {
             /**
              * The minimum number of tcp connections to maintain.
              */
-            enum { minimum_tcp_connections = 3 };
+            enum { minimum_tcp_connections = 6 };
         
             /**
              * The boost::asio::io_service.
