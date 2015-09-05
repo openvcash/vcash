@@ -439,12 +439,12 @@ void tcp_connection_manager::tick(const boost::system::error_code & ec)
          */
         if (
             tcp_connections < (is_initial_block_download ?
-            minimum_tcp_connections * 3 : minimum_tcp_connections)
+            minimum_tcp_connections * 2 : minimum_tcp_connections)
             )
         {
             for (
                 auto i = 0; i < (is_initial_block_download ?
-                minimum_tcp_connections * 3 : minimum_tcp_connections) -
+                minimum_tcp_connections * 2 : minimum_tcp_connections) -
                 tcp_connections; i++
                 )
             {
@@ -656,12 +656,36 @@ void tcp_connection_manager::do_resolve(
 
 bool tcp_connection_manager::is_ip_banned(const std::string & val)
 {
+    /**
+     * Amazon EC2 IP's.
+     */
     if (
         (val[0] == '5' && val[1] == '4') ||
         (val[0] == '5' && val[1] == '0') ||
         (val[0] == '2' && val[1] == '1' && val[2] == '1') ||
         (val[0] == '2' && val[1] == '1' && val[2] == '9')
         )
+    {
+        return true;
+    }
+    
+    /**
+     * Known attack IP's.
+     */
+    static const std::map<std::string, std::int32_t> g_known_attack_ips =
+    {
+        /**
+         * bbqpool.net - Opens TCP connections to all network nodes.
+         */
+        {"144.76.238.2", -1},
+        
+        /**
+         * Possible ToR node - Opens TCP connections to all network nodes.
+         */
+        {"93.174.95.100", -1}
+    };
+    
+    if (g_known_attack_ips.count(val) > 0)
     {
         return true;
     }
@@ -1634,6 +1658,7 @@ bool tcp_connection_manager::is_ip_banned(const std::string & val)
         {"89.234.157.254", -1},
         {"89.234.157.254", -1},
         {"89.238.77.4", -1},
+        {"89.248.164.56", -1},
         {"89.252.2.140", -1},
         {"89.46.100.13", -1},
         {"89.46.100.182", -1},
