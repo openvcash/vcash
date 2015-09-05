@@ -3127,7 +3127,6 @@ bool tcp_connection::handle_message(message & msg)
             }
         }
     }
-    #warning :TODO: incentive
     else if (msg.header().command == "mempool")
     {
         log_debug("Got mempool");
