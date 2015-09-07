@@ -3268,35 +3268,63 @@ void tcp_connection::do_send_getblocks(const boost::system::error_code & ec)
         assert(constants::work_and_stake_target_spacing > 63);
         
         /**
-         * If we have not received a block in a while or we know we need to
-         * then send a getblocks message.
+         * If we have not received a block in a long time drop the connection
+         * but do not ban it.
          */
         if (
-            std::time(0) - time_last_block_received_ >=
-            (constants::work_and_stake_target_spacing * 2) ||
-            need_to_send_getblocks_ == true ||
-            (utility::is_initial_block_download() &&
-            std::time(0) - time_last_block_received_ > 3)
+            m_direction == direction_outgoing &&
+            std::time(0) - time_last_block_received_ >
+            constants::work_and_stake_target_spacing * 12
             )
         {
+            if (auto transport = m_tcp_transport.lock())
+            {
+                auto ep = transport->socket().remote_endpoint();
+                
+                log_info(
+                    "TCP connection has not received a block since too "
+                    "long, dropping connection to " << ep << "."
+                );
+            }
+            
             /**
-             * Send a getblocks message with our best index.
+             * Call stop.
              */
-            send_getblocks_message(
-                stack_impl::get_block_index_best(), sha256()
+            stop();
+        }
+        else
+        {
+            /**
+             * If we have not received a block in a while or we know we need to
+             * then send a getblocks message.
+             */
+            if (
+                std::time(0) - time_last_block_received_ >=
+                (constants::work_and_stake_target_spacing * 2) ||
+                need_to_send_getblocks_ == true ||
+                (utility::is_initial_block_download() &&
+                std::time(0) - time_last_block_received_ > 3)
+                )
+            {
+                /**
+                 * Send a getblocks message with our best index.
+                 */
+                send_getblocks_message(
+                    stack_impl::get_block_index_best(), sha256()
+                );
+            }
+            
+            auto self(shared_from_this());
+            
+            /**
+             * Start the getblocks timer.
+             */
+            timer_getblocks_.expires_from_now(std::chrono::seconds(8));
+            timer_getblocks_.async_wait(globals::instance().strand().wrap(
+                std::bind(&tcp_connection::do_send_getblocks, self,
+                std::placeholders::_1))
             );
         }
-        
-        auto self(shared_from_this());
-        
-        /**
-         * Start the getblocks timer.
-         */
-        timer_getblocks_.expires_from_now(std::chrono::seconds(8));
-        timer_getblocks_.async_wait(globals::instance().strand().wrap(
-            std::bind(&tcp_connection::do_send_getblocks, self,
-            std::placeholders::_1))
-        );
     }
 }
 
