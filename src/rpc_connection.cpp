@@ -2536,7 +2536,7 @@ boost::property_tree::ptree rpc_connection::json_getinfo()
         );
         ret.put(
             "connections",
-            stack_impl_.get_tcp_connection_manager()->tcp_connections().size()
+            stack_impl_.get_tcp_connection_manager()->active_tcp_connections()
         );
         ret.put(
             "ip", globals::instance().address_public().to_string(),

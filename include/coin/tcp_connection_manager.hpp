@@ -85,6 +85,11 @@ namespace coin {
             > & tcp_connections();
         
             /**
+             * Returns the number of active (open socket) TCP connections.
+             */
+            std::size_t active_tcp_connections();
+        
+            /**
              * If true we are connected to the network.
              */
             bool is_connected();
