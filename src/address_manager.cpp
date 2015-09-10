@@ -31,6 +31,7 @@
 #include <coin/database_stack.hpp>
 #include <coin/data_buffer.hpp>
 #include <coin/hash.hpp>
+#include <coin/incentive_answer.hpp>
 #include <coin/filesystem.hpp>
 #include <coin/logger.hpp>
 #include <coin/message.hpp>
@@ -1248,21 +1249,18 @@ const std::size_t address_manager::size() const
     return random_ids_.size();
 }
 
-std::vector<boost::asio::ip::tcp::endpoint>
+std::vector<address_manager::recent_endpoint_t>
     address_manager::recent_good_endpoints()
 {
-    std::vector<boost::asio::ip::tcp::endpoint> ret;
+    std::vector<address_manager::recent_endpoint_t> ret;
     
     std::lock_guard<std::recursive_mutex> l1(mutex_recent_good_endpoints_);
-    
+
     for (auto & i : m_recent_good_endpoints)
     {
-        ret.push_back(
-            boost::asio::ip::tcp::endpoint(
-            i.first.ipv4_mapped_address(), i.first.port)
-        );
+        ret.push_back(i.second);
     }
-    
+
     return ret;
 }
 
@@ -1630,7 +1628,10 @@ void address_manager::tick(const boost::system::error_code & ec)
                             protocol_version_start_height << "."
                         );
                         
-
+                        std::lock_guard<std::recursive_mutex> l1(
+                            mutex_recent_good_endpoints_
+                        );
+                        
                         if (
                             m_recent_good_endpoints.count(
                             protocol::network_address_t::from_endpoint(i)) > 0
@@ -1663,6 +1664,7 @@ void address_manager::tick(const boost::system::error_code & ec)
                             recent.addr =
                                 protocol::network_address_t::from_endpoint(i)
                             ;
+
                             recent.time = std::time(0);
                             recent.protocol_version = protocol_version;
                             recent.protocol_version_user_agent =
@@ -1681,7 +1683,54 @@ void address_manager::tick(const boost::system::error_code & ec)
                         }
                     }
                 );
-                
+
+                /**
+                 * Set the ianswer callback.
+                 */
+                connection->set_on_ianswer(
+                    [this, i](
+                        const incentive_answer & ianswer
+                        )
+                    {
+                        log_info("Address manager got ianswer.");
+                        
+                        std::lock_guard<std::recursive_mutex> l1(
+                            mutex_recent_good_endpoints_
+                        );
+                        
+                        if (
+                            m_recent_good_endpoints.count(
+                            protocol::network_address_t::from_endpoint(i)) > 0
+                            )
+                        {
+                            recent_endpoint_t & recent =
+                                m_recent_good_endpoints[
+                                protocol::network_address_t::from_endpoint(i)]
+                            ;
+                            
+                            recent.addr =
+                                protocol::network_address_t::from_endpoint(i)
+                            ;
+                            recent.wallet_address = ianswer.get_address();
+                            recent.time = std::time(0);
+                        }
+                        else
+                        {
+                            recent_endpoint_t recent;
+                            
+                            recent.addr =
+                                protocol::network_address_t::from_endpoint(i)
+                            ;
+                            recent.wallet_address = ianswer.get_address();
+                            recent.time = std::time(0);
+                            
+                            m_recent_good_endpoints[
+                                protocol::network_address_t::from_endpoint(i)
+                            ] = recent;
+                        }
+                    }
+                );
+
                 /**
                  * Start the tcp_connection.
                  */
@@ -1713,7 +1762,7 @@ void address_manager::tick(const boost::system::error_code & ec)
         timer_.expires_from_now(
             std::chrono::seconds(
             m_recent_good_endpoints.size() <
-            min_good_endpoints ? 8 : (20 * 60))
+            min_good_endpoints ? 8 : (10 * 60))
         );
         timer_.async_wait(strand_.wrap(
             std::bind(&address_manager::tick, this, std::placeholders::_1))

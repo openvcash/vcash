@@ -63,6 +63,11 @@ SOURCES =
     globals
 	hash
 	http_transport
+	incentive
+	incentive_answer
+	incentive_manager
+	incentive_question
+	incentive_vote
 	inventory_vector
 	kernel
 	key

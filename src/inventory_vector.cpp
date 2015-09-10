@@ -21,6 +21,7 @@
 #include <coin/data_buffer.hpp>
 #include <coin/db_tx.hpp>
 #include <coin/globals.hpp>
+#include <coin/incentive.hpp>
 #include <coin/inventory_vector.hpp>
 #include <coin/transaction_pool.hpp>
 #include <coin/zerotime.hpp>
@@ -164,6 +165,11 @@ bool inventory_vector::already_have(
         case type_msg_ztvote:
         {
             return zerotime::instance().votes().count(inv.hash()) > 0;
+        }
+        break;
+        case type_msg_ivote:
+        {
+            return incentive::instance().votes().count(inv.hash()) > 0;
         }
         break;
         default:

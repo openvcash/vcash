@@ -29,6 +29,9 @@
 #include <coin/endian.hpp>
 #include <coin/globals.hpp>
 #include <coin/hash.hpp>
+#include <coin/incentive_answer.hpp>
+#include <coin/incentive_question.hpp>
+#include <coin/incentive_vote.hpp>
 #include <coin/inventory_vector.hpp>
 #include <coin/logger.hpp>
 #include <coin/message.hpp>
@@ -179,6 +182,27 @@ void message::encode()
              * Create the ztvote.
              */
             m_payload = create_ztvote();
+        }
+        else if (m_header.command == "ianswer")
+        {
+            /**
+             * Create the ianswer.
+             */
+            m_payload = create_ianswer();
+        }
+        else if (m_header.command == "ivote")
+        {
+            /**
+             * Create the ivote.
+             */
+            m_payload = create_ivote();
+        }
+        else if (m_header.command == "iquestion")
+        {
+            /**
+             * Create the iquestion.
+             */
+            m_payload = create_iquestion();
         }
     }
     
@@ -685,6 +709,84 @@ void message::decode()
                 m_protocol_ztvote.ztvote.reset();
             }
         }
+        else if (m_header.command == "ianswer")
+        {
+            /**
+             * Allocate the ianswer.
+             */
+            m_protocol_ianswer.ianswer =
+                std::make_shared<incentive_answer> ()
+            ;
+            
+            /**
+             * Decode the ianswer.
+             */
+            if (m_protocol_ianswer.ianswer->decode(*this))
+            {
+                // ...
+            }
+            else
+            {
+                log_error("Message failed to decode ianswer.");
+                
+                /**
+                 * Deallocate the ianswer.
+                 */
+                m_protocol_ianswer.ianswer.reset();
+            }
+        }
+        else if (m_header.command == "iquestion")
+        {
+            /**
+             * Allocate the iquestion.
+             */
+            m_protocol_iquestion.iquestion =
+                std::make_shared<incentive_question> ()
+            ;
+            
+            /**
+             * Decode the iquestion.
+             */
+            if (m_protocol_iquestion.iquestion->decode(*this))
+            {
+                // ...
+            }
+            else
+            {
+                log_error("Message failed to decode iquestion.");
+                
+                /**
+                 * Deallocate the iquestion.
+                 */
+                m_protocol_iquestion.iquestion.reset();
+            }
+        }
+        else if (m_header.command == "ivote")
+        {
+            /**
+             * Allocate the ivote.
+             */
+            m_protocol_ivote.ivote =
+                std::make_shared<incentive_vote> ()
+            ;
+            
+            /**
+             * Decode the ivote.
+             */
+            if (m_protocol_ivote.ivote->decode(*this))
+            {
+                // ...
+            }
+            else
+            {
+                log_error("Message failed to decode ivote.");
+                
+                /**
+                 * Deallocate the ivote.
+                 */
+                m_protocol_ivote.ivote.reset();
+            }
+        }
         else
         {
             log_error(
@@ -815,6 +917,21 @@ protocol::ztanswer_t & message::protocol_ztanswer()
 protocol::ztvote_t & message::protocol_ztvote()
 {
     return m_protocol_ztvote;
+}
+
+protocol::ianswer_t & message::protocol_ianswer()
+{
+    return m_protocol_ianswer;
+}
+
+protocol::iquestion_t & message::protocol_iquestion()
+{
+    return m_protocol_iquestion;
+}
+
+protocol::ivote_t & message::protocol_ivote()
+{
+    return m_protocol_ivote;
 }
 
 data_buffer message::create_version()
@@ -1258,6 +1375,42 @@ data_buffer message::create_ztvote()
     if (m_protocol_ztvote.ztvote)
     {
         m_protocol_ztvote.ztvote->encode(ret);
+    }
+    
+    return ret;
+}
+
+data_buffer message::create_ianswer()
+{
+    data_buffer ret;
+    
+    if (m_protocol_ianswer.ianswer)
+    {
+        m_protocol_ianswer.ianswer->encode(ret);
+    }
+    
+    return ret;
+}
+
+data_buffer message::create_iquestion()
+{
+    data_buffer ret;
+    
+    if (m_protocol_iquestion.iquestion)
+    {
+        m_protocol_iquestion.iquestion->encode(ret);
+    }
+    
+    return ret;
+}
+
+data_buffer message::create_ivote()
+{
+    data_buffer ret;
+    
+    if (m_protocol_ivote.ivote)
+    {
+        m_protocol_ivote.ivote->encode(ret);
     }
     
     return ret;

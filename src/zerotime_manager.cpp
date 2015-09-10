@@ -215,17 +215,29 @@ void zerotime_manager::probe_for_answers(
             /**
              * Try to get some recent good endpoints.
              */
-            auto eps =
+            auto recent_good_endpoints =
                 stack_impl_.get_address_manager()->recent_good_endpoints()
             ;
             
-            std::random_shuffle(eps.begin(), eps.end());
+            std::random_shuffle(
+                recent_good_endpoints.begin(), recent_good_endpoints.end()
+            );
 
-            if (eps.size() > 0)
+            if (recent_good_endpoints.size() > 0)
             {
                 std::lock_guard<std::mutex> l1(
                     mutex_question_queue_tcp_endpoints_
                 );
+                
+                std::vector<boost::asio::ip::tcp::endpoint> eps;
+                
+                for (auto & i : recent_good_endpoints)
+                {
+                    eps.push_back(
+                        boost::asio::ip::tcp::endpoint(
+                        i.addr.ipv4_mapped_address(), i.addr.port)
+                    );
+                }
                 
                 question_queue_tcp_endpoints_[hash_tx].first = std::time(0);
                 question_queue_tcp_endpoints_[hash_tx].second.insert(

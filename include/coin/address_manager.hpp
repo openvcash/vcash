@@ -414,11 +414,31 @@ namespace coin {
             const std::size_t size() const;
         
             /**
+             * Defines a recent endpoint.
+             */
+            typedef struct recent_endpoint_s
+            {
+                protocol::network_address_t addr;
+                std::string wallet_address;
+                std::time_t time;
+                std::uint32_t protocol_version;
+                std::string protocol_version_user_agent;
+                std::uint64_t protocol_version_services;
+                std::int32_t protocol_version_start_height;
+                
+                friend bool operator < (
+                    const recent_endpoint_s & a, const recent_endpoint_s & b
+                    )
+                {
+                    return a.addr < b.addr;
+                }
+                
+            } recent_endpoint_t;
+        
+            /**
              * The recently marked good endpoints.
              */
-            std::vector<boost::asio::ip::tcp::endpoint>
-                recent_good_endpoints()
-            ;
+            std::vector<recent_endpoint_t> recent_good_endpoints();
         
         private:
 
@@ -442,19 +462,6 @@ namespace coin {
             void swap_random(
                 const std::uint32_t & first, const std::uint32_t & second
             );
-   
-            /**
-             * Defines a recent endpoint.
-             */
-            typedef struct recent_endpoint_s
-            {
-                protocol::network_address_t addr;
-                std::time_t time;
-                std::uint32_t protocol_version;
-                std::string protocol_version_user_agent;
-                std::uint64_t protocol_version_services;
-                std::int32_t protocol_version_start_height;
-            } recent_endpoint_t;
         
             /**
              * The recently marked good endpoints.
@@ -565,7 +572,7 @@ namespace coin {
             /**
              * The recent_good_endpoints_ std::recursive_mutex.
              */
-            std::recursive_mutex mutex_recent_good_endpoints_;
+            mutable std::recursive_mutex mutex_recent_good_endpoints_;
     };
     
 } // namespace coin

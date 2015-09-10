@@ -34,6 +34,7 @@
 #include <coin/block_locator.hpp>
 #include <coin/database_stack.hpp>
 #include <coin/db_tx.hpp>
+#include <coin/incentive.hpp>
 #include <coin/key_reserved.hpp>
 #include <coin/logger.hpp>
 #include <coin/mining_manager.hpp>
@@ -2154,7 +2155,7 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getblocktemplate(
 
         if (
             stack_impl_.get_tcp_connection_manager(
-            )->tcp_connections().size() == 0
+            )->active_tcp_connections() == 0
             )
         {
             auto pt_error = create_error_object(
@@ -2479,6 +2480,58 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getblocktemplate(
          * Put height into property tree.
          */
         ret.result.put("height", index_previous->height() + 1);
+        
+        if (globals::instance().is_incentive_enabled())
+        {
+            boost::property_tree::ptree pt_incentive;
+            
+            /**
+             * Example:
+             * "incentive": {
+             *     "enforced": true,
+             *     "address": "VdPoLns3EFSqd5QghGecBvoNV6Afs3EgdW",
+             *     "amount": 3703703,
+             * }
+             */
+            
+            pt_incentive.put("enforced", false);
+            
+            /**
+             * Check this block height for incentive winners.
+             */
+            if (
+                incentive::instance().winners().count(
+                index_previous->height() + 1)
+                )
+            {
+                pt_incentive.put(
+                    "address", incentive::instance().winners()[
+                    index_previous->height() + 1],
+                    rpc_json_parser::translator<std::string> ()
+                );
+                
+                /**
+                 * Get the incentive amount.
+                 */
+                auto amount =
+                    static_cast<std::int64_t> (
+                    blk->transactions()[0].transactions_out()[0].value() *
+                    (incentive::percentage / 100.0f))
+                ;
+                
+                pt_incentive.put("amount", amount);
+            }
+            else
+            {
+                pt_incentive.put(
+                    "address", "",
+                    rpc_json_parser::translator<std::string> ()
+                );
+                pt_incentive.put("amount", 0);
+            }
+            
+            ret.result.put_child("incentive", pt_incentive);
+        }
     }
     catch (std::exception & e)
     {

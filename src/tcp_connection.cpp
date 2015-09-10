@@ -29,6 +29,11 @@
 #include <coin/checkpoint_sync.hpp>
 #include <coin/db_tx.hpp>
 #include <coin/globals.hpp>
+#include <coin/incentive.hpp>
+#include <coin/incentive_answer.hpp>
+#include <coin/incentive_manager.hpp>
+#include <coin/incentive_question.hpp>
+#include <coin/incentive_vote.hpp>
 #include <coin/logger.hpp>
 #include <coin/message.hpp>
 #include <coin/network.hpp>
@@ -1305,6 +1310,133 @@ void tcp_connection::send_ztanswer_message(const zerotime_answer & ztanswer)
     }
 }
 
+void tcp_connection::send_ianswer_message()
+{
+    if (globals::instance().is_incentive_enabled())
+    {
+        if (auto t = m_tcp_transport.lock())
+        {
+            if (incentive::instance().get_key().is_null() == false)
+            {
+                /**
+                 * Allocate the message.
+                 */
+                message msg("ianswer");
+
+                /**
+                 * Set the ianswer.
+                 */
+                msg.protocol_ianswer().ianswer =
+                    std::make_shared<incentive_answer> (
+                    incentive::instance().get_key().get_public_key())
+                ;
+                
+                log_debug("TCP connection is sending ianswer.");
+
+                /**
+                 * Encode the message.
+                 */
+                msg.encode();
+                
+                /**
+                 * Write the message.
+                 */
+                t->write(msg.data(), msg.size());
+            }
+        }
+        else
+        {
+            stop();
+        }
+    }
+}
+
+void tcp_connection::send_iquestion_message()
+{
+    if (globals::instance().is_incentive_enabled())
+    {
+        if (auto t = m_tcp_transport.lock())
+        {
+            /**
+             * Allocate the message.
+             */
+            message msg("iquestion");
+
+            /**
+             * Set the iquestion.
+             */
+            msg.protocol_iquestion().iquestion =
+                std::make_shared<incentive_question> ()
+            ;
+            
+            log_debug("TCP connection is sending iquestion.");
+
+            /**
+             * Encode the message.
+             */
+            msg.encode();
+            
+            /**
+             * Write the message.
+             */
+            t->write(msg.data(), msg.size());
+        }
+        else
+        {
+            stop();
+        }
+    }
+}
+
+void tcp_connection::send_ivote_message(const incentive_vote & ivote)
+{
+    if (globals::instance().is_incentive_enabled())
+    {
+        /**
+         * Only send a ivote message if the remote node is a peer.
+         */
+        if (
+            (m_protocol_version_services & protocol::operation_mode_peer) == 1
+            )
+        {
+            if (auto t = m_tcp_transport.lock())
+            {
+                /**
+                 * Allocate the message.
+                 */
+                message msg("ivote");
+
+                /**
+                 * Set the ivote.
+                 */
+                msg.protocol_ivote().ivote =
+                    std::make_shared<incentive_vote> (ivote)
+                ;
+                
+                log_debug(
+                    "TCP connection is sending ivote " <<
+                    msg.protocol_ivote().ivote->address().substr(0, 8) <<
+                    "."
+                );
+
+                /**
+                 * Encode the message.
+                 */
+                msg.encode();
+                
+                /**
+                 * Write the message.
+                 */
+                t->write(msg.data(), msg.size());
+            }
+            else
+            {
+                stop();
+            }
+        }
+    }
+}
+
 void tcp_connection::send_mempool_message()
 {
     if (auto t = m_tcp_transport.lock())
@@ -1379,6 +1511,13 @@ void tcp_connection::set_on_probe(
     )
 {
     m_on_probe = f;
+}
+
+void tcp_connection::set_on_ianswer(
+    const std::function< void (const incentive_answer &) > & f
+    )
+{
+    m_on_ianswer = f;
 }
 
 void tcp_connection::relay_checkpoint(const checkpoint_sync & checkpoint)
@@ -1703,7 +1842,7 @@ bool tcp_connection::handle_message(message & msg)
                          * Stop the connection after N seconds, in case we
                          * get a ztanswer it will be closed immediately.
                          */
-                        stop_after(8);
+                        stop_after(4);
                         
                         /**
                          * Send the ztquestion.
@@ -1725,11 +1864,27 @@ bool tcp_connection::handle_message(message & msg)
                             );
                         }
                         
-                        /**
-                         * We have confirmed the peer is valid, stop the
-                         * connection.
-                         */
-                        stop();
+                        if (globals::instance().is_incentive_enabled())
+                        {
+                            /**
+                             * Stop the connection after N seconds, in case we
+                             * get an ianswer it will be closed immediately.
+                             */
+                            stop_after(4);
+
+                            /**
+                             * Send the iquestion.
+                             */
+                            send_iquestion_message();
+                        }
+                        else
+                        {
+                            /**
+                             * We have confirmed the peer is valid, stop the
+                             * connection.
+                             */
+                            stop();
+                        }
 
                         return true;
                     }
@@ -2415,6 +2570,25 @@ bool tcp_connection::handle_message(message & msg)
                                     send_ztlock_message(ztlock);
                                 }
                             }
+                           else if (
+                                i.type() == inventory_vector::type_msg_ivote
+                                )
+                            {
+                                if (
+                                    incentive::instance().votes().count(
+                                    i.hash()) > 0
+                                    )
+                                {
+                                    auto ivote =
+                                        incentive::instance().votes()[i.hash()]
+                                    ;
+
+                                    /**
+                                     * Send the ivote message.
+                                     */
+                                    send_ivote_message(ivote);
+                                }
+                            }
                         }
                     }
                     
@@ -2815,7 +2989,7 @@ bool tcp_connection::handle_message(message & msg)
             msg.protocol_block().blk->print();
 #endif
             /**
-             * Set the time we received this block.
+             * Set the time we received a block.
              */
             time_last_block_received_ = std::time(0);
             
@@ -3123,6 +3297,98 @@ bool tcp_connection::handle_message(message & msg)
                      * Relay the ztvote.
                      */
                     relay_inv(inv, buffer);
+                }
+            }
+        }
+    }
+    else if (msg.header().command == "ianswer")
+    {
+        if (globals::instance().is_incentive_enabled())
+        {
+            if (utility::is_initial_block_download() == false)
+            {
+                const auto & ianswer = msg.protocol_ianswer().ianswer;
+                
+                if (ianswer && m_on_ianswer)
+                {
+                    m_on_ianswer(*ianswer);
+                }
+            }
+        }
+    }
+    else if (msg.header().command == "iquestion")
+    {
+        if (globals::instance().is_incentive_enabled())
+        {
+            if (utility::is_initial_block_download() == false)
+            {
+                const auto & iquestion = msg.protocol_iquestion().iquestion;
+                
+                if (iquestion)
+                {
+                    send_ianswer_message();
+                }
+            }
+        }
+    }
+    else if (msg.header().command == "ivote")
+    {
+        if (globals::instance().is_incentive_enabled())
+        {
+            if (utility::is_initial_block_download() == false)
+            {
+                const auto & ivote = msg.protocol_ivote().ivote;
+                
+                if (ivote)
+                {
+                    /**
+                     * Allocate the inventory_vector.
+                     */
+                    inventory_vector inv(
+                        inventory_vector::type_msg_ivote, ivote->hash_nonce()
+                    );
+
+                    if (
+                        incentive::instance().votes().count(
+                        ivote->hash_nonce()) > 0
+                        )
+                    {
+                        // ...
+                    }
+                    else
+                    {
+                        /**
+                         * Insert the incentive_vote.
+                         */
+                        incentive::instance().votes()[
+                            ivote->hash_nonce()] = *ivote
+                        ;
+                        
+                        /**
+                         * Inform the incentive_manager.
+                         */
+                        if (auto transport = m_tcp_transport.lock())
+                        {
+                            stack_impl_.get_incentive_manager()->handle_message(
+                                transport->socket().remote_endpoint(), msg
+                            );
+                        }
+
+                        /**
+                         * Allocate the data_buffer.
+                         */
+                        data_buffer buffer;
+                        
+                        /**
+                         * Encode the transaction (reuse the signature).
+                         */
+                        ivote->encode(buffer, true);
+                
+                        /**
+                         * Relay the ztvote.
+                         */
+                        relay_inv(inv, buffer);
+                    }
                 }
             }
         }

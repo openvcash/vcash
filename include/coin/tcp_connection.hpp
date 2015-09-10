@@ -41,6 +41,7 @@ namespace coin {
     class block;
     class block_index;
     class checkpoint_sync;
+    class incentive_answer;
     class message;
     class stack_impl;
     class tcp_transport;
@@ -232,6 +233,14 @@ namespace coin {
             );
         
             /**
+             * Sets the on ianswer handler (probe-only mode).
+             * @param f The std::function.
+             */
+            void set_on_ianswer(
+                const std::function< void (const incentive_answer &) > & f
+            );
+        
+            /**
              * Sets the hash of the known checkpoint.
              * @param val The sha256.
              */
@@ -332,7 +341,7 @@ namespace coin {
         
             /**
              * Sends a ztlock message.
-             * @param ztlock The transaction.
+             * @param ztlock The zerotime_lock.
              */
             void send_ztlock_message(const zerotime_lock & ztlock);
         
@@ -347,6 +356,22 @@ namespace coin {
              * @param ztanswer The zerotime_answer.
              */
             void send_ztanswer_message(const zerotime_answer & ztanswer);
+        
+            /**
+             * Sends an ianswer message.
+             */
+            void send_ianswer_message();
+        
+            /**
+             * Sends an iquestion message.
+             */
+            void send_iquestion_message();
+        
+            /**
+             * Sends a ivote message.
+             * @param ivote The incentive_vote.
+             */
+            void send_ivote_message(const incentive_vote & ivote);
         
             /**
              * Sends a mempool message.
@@ -444,6 +469,13 @@ namespace coin {
                 void (const std::uint32_t &, const std::string &,
                 const std::uint64_t &, const std::int32_t &)
             > m_on_probe;
+        
+            /**
+             * The ianswer handler (probe-only mode).
+             */
+            std::function<
+                void (const incentive_answer &)
+            > m_on_ianswer;
         
             /**
              * Our public address as advertised in the version message.

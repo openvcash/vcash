@@ -36,6 +36,9 @@ namespace coin {
 
 class alert;
 class block;
+class incentive_answer;
+class incentive_question;
+class incentive_vote;
 class transaction;
 class zerotime_answer;
 class zerotime_lock;
@@ -47,7 +50,7 @@ namespace protocol {
         /**
          * The version.
          */
-        enum { version = 60036 };
+        enum { version = 60037 };
 
         /**
          * The minimum version.
@@ -629,6 +632,7 @@ namespace protocol {
             "block",
             "ztlock",
             "ztvote",
+            "ivote",
         };
     
         /** Message Structures */
@@ -768,6 +772,30 @@ namespace protocol {
         {
             std::shared_ptr<zerotime_vote> ztvote;
         } ztvote_t;
+    
+        /**
+         * The ianswer structure.
+         */
+        typedef struct
+        {
+            std::shared_ptr<incentive_answer> ianswer;
+        } ianswer_t;
+    
+        /**
+         * The ivote structure.
+         */
+        typedef struct
+        {
+            std::shared_ptr<incentive_vote> ivote;
+        } ivote_t;
+    
+        /**
+         * The iquestion structure.
+         */
+        typedef struct
+        {
+            std::shared_ptr<incentive_question> iquestion;
+        } iquestion_t;
 
         /**
          * The maximum inventory size.

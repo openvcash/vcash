@@ -75,16 +75,8 @@ std::int64_t reward::get_proof_of_work_vanilla(
     )
 {
     std::int64_t subsidy = 0;
- 
-    /**
-     * The block height at which to pause even Proof-of-Work blocks.
-     */
-    enum { block_height_pause_even_pow = 136400 };
 
-    if (
-        height >= block_height_pause_even_pow &&
-        height <= block_height_pause_even_pow + 1000
-        )
+    if (height >= 136400 && height <= 136400 + 1000)
     {
         subsidy = 1;
     }
@@ -120,12 +112,14 @@ std::int64_t reward::get_proof_of_work_vanilla(
         }
 
         /**
-         * If the subsidy is less than one cent the miner gets one cent
-         * indefinitely.
+         * If the subsidy is less than 8 the miner gets 8 indefinitely or
+         * until the money supply limit is reached.
          */
-        if ((subsidy / 1000000.0f) <= 0.01f)
+        if ((subsidy / 1000000.0f) < 8.0f)
         {
-            return 0.01f;
+            subsidy = 8;
+            
+            subsidy *= 1000000;
         }
     }
     

@@ -44,6 +44,7 @@
 #include <coin/filesystem.hpp>
 #include <coin/globals.hpp>
 #include <coin/http_transport.hpp>
+#include <coin/incentive_manager.hpp>
 #include <coin/kernel.hpp>
 #include <coin/logger.hpp>
 #include <coin/message.hpp>
@@ -1269,6 +1270,19 @@ void stack_impl::start()
             m_zerotime_manager->start();
             
             /**
+             * Allocate the incentive_manager.
+             */
+            m_incentive_manager.reset(new incentive_manager(
+                globals::instance().io_service(),
+                globals::instance().strand(), *this)
+            );
+            
+            /**
+             * Start the incentive_manager.
+             */
+            m_incentive_manager->start();
+            
+            /**
              * Allocate the status.
              */
             std::map<std::string, std::string> status;
@@ -1556,6 +1570,14 @@ void stack_impl::stop()
     if (m_zerotime_manager)
     {
         m_zerotime_manager->stop();
+    }
+    
+    /**
+     * Stop the incentive_manager.
+     */
+    if (m_incentive_manager)
+    {
+        m_incentive_manager->stop();
     }
     
     /**
@@ -2956,6 +2978,11 @@ std::shared_ptr<tcp_connection_manager> &
 std::shared_ptr<zerotime_manager> & stack_impl::get_zerotime_manager()
 {
     return m_zerotime_manager;
+}
+
+std::shared_ptr<incentive_manager> & stack_impl::get_incentive_manager()
+{
+    return m_incentive_manager;
 }
 
 std::shared_ptr<db_env> & stack_impl::get_db_env()

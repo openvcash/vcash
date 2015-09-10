@@ -46,6 +46,7 @@ namespace coin {
     class block_index;
     class database_stack;
     class db_env;
+    class incentive_manager;
     class mining_manager;
     class nat_pmp_client;
     class rpc_manager;
@@ -257,6 +258,11 @@ namespace coin {
             std::shared_ptr<zerotime_manager> & get_zerotime_manager();
         
             /**
+             * The incentive_manager.
+             */
+            std::shared_ptr<incentive_manager> & get_incentive_manager();
+        
+            /**
              * The db_env
              */
             static std::shared_ptr<db_env> & get_db_env();
@@ -423,6 +429,11 @@ namespace coin {
              * The zerotime_manager.
              */
             std::shared_ptr<zerotime_manager> m_zerotime_manager;
+        
+            /**
+             * The incentive_manager.
+             */
+            std::shared_ptr<incentive_manager> m_incentive_manager;
         
             /**
              * The db_env

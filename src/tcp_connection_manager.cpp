@@ -120,7 +120,7 @@ void tcp_connection_manager::handle_accept(
         /**
          * We allow this many incoming connections per same IP address.
          */
-        enum { maximum_per_same_ip = 8 };
+        enum { maximum_per_same_ip = 6 };
 
         auto connections = 0;
         

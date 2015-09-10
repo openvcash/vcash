@@ -180,6 +180,21 @@ namespace coin {
              */
             protocol::ztvote_t & protocol_ztvote();
         
+            /**
+             * The protocol ianswer structure.
+             */
+            protocol::ianswer_t & protocol_ianswer();
+        
+            /**
+             * The protocol iquestion structure.
+             */
+            protocol::iquestion_t & protocol_iquestion();
+        
+            /**
+             * The protocol ivote structure.
+             */
+            protocol::ivote_t & protocol_ivote();
+        
         private:
         
             /**
@@ -267,6 +282,21 @@ namespace coin {
              */
             protocol::ztvote_t m_protocol_ztvote;
         
+            /**
+             * The protocol ianswer structure.
+             */
+            protocol::ianswer_t m_protocol_ianswer;
+        
+            /**
+             * The protocol iquestion structure.
+             */
+            protocol::iquestion_t m_protocol_iquestion;
+        
+            /**
+             * The protocol ivote structure.
+             */
+            protocol::ivote_t m_protocol_ivote;
+        
         protected:
         
             /**
@@ -343,6 +373,21 @@ namespace coin {
              * Creates an ztvote.
              */
             data_buffer create_ztvote();
+        
+            /**
+             * Creates an ianswer.
+             */
+            data_buffer create_ianswer();
+        
+            /**
+             * Creates an iquestion.
+             */
+            data_buffer create_iquestion();
+        
+            /**
+             * Creates an ivote.
+             */
+            data_buffer create_ivote();
     };
     
 } // namespace coin

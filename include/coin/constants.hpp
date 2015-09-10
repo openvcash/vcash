@@ -47,7 +47,7 @@ namespace constants {
     /**
      * The client version revision.
      */
-    enum { version_client_revision = 3 };
+    enum { version_client_revision = 4 };
     
     /**
      * The client version build.
@@ -70,7 +70,7 @@ namespace constants {
     /**
      * The version string.
      */
-    static const std::string version_string = "0.3.3";
+    static const std::string version_string = "0.3.4";
     
     /**
      * The name of the coin.

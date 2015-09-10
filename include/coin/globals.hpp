@@ -154,6 +154,14 @@ namespace coin {
             }
         
             /**
+             * If true incentive is enabled.
+             */
+            const bool is_incentive_enabled() const
+            {
+                return m_operation_mode == protocol::operation_mode_peer;
+            }
+        
+            /**
              * Sets the version nonce.
              */
             void set_version_nonce(const std::uint64_t & val)
