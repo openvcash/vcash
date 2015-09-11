@@ -82,6 +82,14 @@ namespace database {
             );
         
             /**
+             * The blocks.
+             */
+            const
+                std::array< std::shared_ptr<block>, slot::length / 8> &
+                blocks() const
+            ;
+        
+            /**
              * Returns all storage nodes from all slots in all blocks.
              */
             std::set<storage_node> storage_nodes();

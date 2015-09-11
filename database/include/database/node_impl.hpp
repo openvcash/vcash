@@ -342,6 +342,7 @@ namespace database {
         protected:
         
             friend class ping_operation;
+            friend class block;
             friend class slot;
         
             /**

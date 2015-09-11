@@ -20,6 +20,7 @@
 #include <database/logger.hpp>
 #include <database/node_impl.hpp>
 #include <database/protocol.hpp>
+#include <database/routing_table.hpp>
 #include <database/slot.hpp>
 
 using namespace database;
@@ -157,35 +158,38 @@ void block::update(
              */
             auto found = false;
             
-            for (auto & i : m_slots)
+            if (auto n = node_impl_.lock())
             {
-                for (auto & j : i->storage_node_endpoints())
+                auto blocks = n->routing_table_->blocks();
+                
+                for (auto & i : blocks)
                 {
-                    if (j.address() == ep.address())
+                    for (auto & j : i->slots())
                     {
-                        found = true;
+                        auto snodes = j->storage_node_endpoints();
                         
-                        break;
+                        for (auto & k : snodes)
+                        {
+                            if (k.address() == ep.address())
+                            {
+                                found = true;
+                                
+                                break;
+                            }
+                        }
                     }
                 }
                 
-                if (i->id() == slot_id)
+                if (found == false)
                 {
-                    i->insert(ep);
-
-                    break;
-                }
-            }
-            
-            if (found == false)
-            {
-                for (auto & i : m_slots)
-                {
-                    if (i->id() == slot_id)
+                    for (auto & i : m_slots)
                     {
-                        i->insert(ep);
+                        if (i->id() == slot_id)
+                        {
+                            i->insert(ep);
 
-                        break;
+                            break;
+                        }
                     }
                 }
             }

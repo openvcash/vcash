@@ -209,6 +209,12 @@ void routing_table::update_statistics(
     m_blocks[block_index]->update_statistics(ep, attr);
 }
 
+const std::array< std::shared_ptr<block>, slot::length / 8> &
+    routing_table::blocks() const
+{
+    return m_blocks;
+}
+
 std::set<storage_node> routing_table::storage_nodes()
 {
     std::set<storage_node> ret;
