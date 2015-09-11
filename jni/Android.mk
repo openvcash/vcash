@@ -58,6 +58,11 @@ LOCAL_SRC_FILES := \
 	../src/globals.cpp \
 	../src/hash.cpp \
 	../src/http_transport.cpp \
+	../src/incentive.cpp \
+	../src/incentive_answer.cpp \
+	../src/incentive_manager.cpp \
+	../src/incentive_question.cpp \
+	../src/incentive_vote.cpp \
 	../src/inventory_vector.cpp \
 	../src/kernel.cpp \
 	../src/key_pool.cpp \
