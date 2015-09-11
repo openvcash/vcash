@@ -95,32 +95,50 @@ void slot::insert(const boost::asio::ip::udp::endpoint & ep)
     std::lock_guard<std::recursive_mutex> l(mutex_);
     
     /**
-     * Allocate the storage node.
+     * Only allow one unique IP address per slot.
      */
-    storage_node snode;
+    auto is_duplicate = false;
     
-    /**
-     * Set the endpoint.
-     */
-    snode.endpoint = ep;
-    
-    auto it = m_storage_nodes.insert(std::make_pair(snode.endpoint, snode));
-    
-    if (it.second == true)
+    for (auto & i : m_storage_nodes)
     {
-        log_none(
-            "Slot #" << m_id << " inserted storage node = " << ep << "."
-        );
-        
-        log_none(
-            "Slot #" << m_id << " is pinging new storage node " <<
-            snode.endpoint << "."
-        );
+        if (i.first.address() == ep.address())
+        {
+            is_duplicate = true;
+            
+            break;
+        }
+    }
+    
+    if (is_duplicate == false)
+    {
+        /**
+         * Allocate the storage node.
+         */
+        storage_node snode;
         
         /**
-         * Queue the ping.
+         * Set the endpoint.
          */
-        queue_ping(it.first->second.endpoint);
+        snode.endpoint = ep;
+        
+        auto it = m_storage_nodes.insert(std::make_pair(snode.endpoint, snode));
+        
+        if (it.second == true)
+        {
+            log_none(
+                "Slot #" << m_id << " inserted storage node = " << ep << "."
+            );
+            
+            log_none(
+                "Slot #" << m_id << " is pinging new storage node " <<
+                snode.endpoint << "."
+            );
+            
+            /**
+             * Queue the ping.
+             */
+            queue_ping(it.first->second.endpoint);
+        }
     }
 }
 

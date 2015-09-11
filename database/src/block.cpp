@@ -151,13 +151,42 @@ void block::update(
                 " into slot #" << slot_id << "."
             );
             
+            /**
+             * Only allow one unique IP address per block (slots also
+             * enforce a similar rule).
+             */
+            auto found = false;
+            
             for (auto & i : m_slots)
             {
+                for (auto & j : i->storage_node_endpoints())
+                {
+                    if (j.address() == ep.address())
+                    {
+                        found = true;
+                        
+                        break;
+                    }
+                }
+                
                 if (i->id() == slot_id)
                 {
                     i->insert(ep);
 
                     break;
+                }
+            }
+            
+            if (found == false)
+            {
+                for (auto & i : m_slots)
+                {
+                    if (i->id() == slot_id)
+                    {
+                        i->insert(ep);
+
+                        break;
+                    }
                 }
             }
         }
