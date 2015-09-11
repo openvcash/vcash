@@ -709,6 +709,11 @@ bool tcp_connection_manager::is_ip_banned(const std::string & val)
          * Possible ToR node - Opens TCP connections to all network nodes.
          */
         {"93.174.95.100", -1}
+        
+        /**
+         * ??? - Opens TCP connections to all network nodes.
+         */
+        {"113.97.218.52", -1}
     };
     
     if (g_known_attack_ips.count(val) > 0)
