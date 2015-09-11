@@ -212,6 +212,8 @@ void routing_table::update_statistics(
 const std::array< std::shared_ptr<block>, slot::length / 8> &
     routing_table::blocks() const
 {
+    std::lock_guard<std::recursive_mutex> l(mutex_);
+    
     return m_blocks;
 }
 
