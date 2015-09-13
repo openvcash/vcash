@@ -30,6 +30,7 @@
 #include <coin/key.hpp>
 #include <coin/key_public.hpp>
 #include <coin/sha256.hpp>
+#include <coin/transaction_in.hpp>
 
 #include <boost/asio.hpp>
 
@@ -46,6 +47,11 @@ namespace coin {
              * The percentage.
              */
             enum { percentage = 1 };
+        
+            /**
+             * The collateral.
+             */
+            enum { collateral = 9999 };
         
             /**
              * Constructor
@@ -67,6 +73,17 @@ namespace coin {
              * The incentive key.
              */
             key & get_key();
+        
+            /**
+             * Sets the transaction_in.
+             * @param tx_in The transaction_in.
+             */
+            void set_transaction_in(const transaction_in & tx_in);
+        
+            /**
+             * The transaction_in.
+             */
+            const transaction_in & get_transaction_in() const;
         
             /**
              * The incentive_vote's.
@@ -120,6 +137,11 @@ namespace coin {
              * The incentive key.
              */
             key m_key;
+        
+            /**
+             * The transaction_in.
+             */
+            transaction_in m_transaction_in;
         
             /**
              * The incentive_vote's.

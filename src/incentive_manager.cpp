@@ -20,12 +20,14 @@
 
 #include <coin/address.hpp>
 #include <coin/database_stack.hpp>
+#include <coin/destination.hpp>
 #include <coin/globals.hpp>
 #include <coin/incentive.hpp>
 #include <coin/incentive_manager.hpp>
 #include <coin/key.hpp>
 #include <coin/logger.hpp>
 #include <coin/message.hpp>
+#include <coin/script.hpp>
 #include <coin/stack_impl.hpp>
 #include <coin/tcp_connection.hpp>
 #include <coin/tcp_connection_manager.hpp>
@@ -38,10 +40,13 @@ incentive_manager::incentive_manager(
     boost::asio::io_service & ios, boost::asio::strand & s,
     stack_impl & owner
     )
-    : io_service_(ios)
+    : m_collateral_is_valid(false)
+    , m_collateral_balance(0.0f)
+    , io_service_(ios)
     , strand_(s)
     , stack_impl_(owner)
     , timer_(ios)
+    , timer_check_inputs_(ios)
     , last_block_height_(0)
 {
     // ...
@@ -51,20 +56,26 @@ void incentive_manager::start()
 {
     if (globals::instance().is_incentive_enabled())
     {
-        log_debug("Incentive manager is starting.");
+        log_info("Incentive manager is starting.");
         
         /**
          * Start the timer.
          */
         do_tick(8);
+        
+        /**
+         * Start the check inputs timer.
+         */
+        do_tick_check_inputs(12);
     }
 }
 
 void incentive_manager::stop()
 {
-    log_debug("Incentive manager is stopping.");
+    log_info("Incentive manager is stopping.");
     
     timer_.cancel();
+    timer_check_inputs_.cancel();
 }
 
 bool incentive_manager::handle_message(
@@ -122,7 +133,7 @@ bool incentive_manager::handle_message(
                     ;
                 }
                 
-                log_debug(ss.str());
+                log_info(ss.str());
                 
                 /**
                  * The number of votes required to qualify.
@@ -134,7 +145,7 @@ bool incentive_manager::handle_message(
                  */
                 if (most_votes >= minimum_votes)
                 {
-                    log_debug(
+                    log_info(
                         "Incentive manager got winner " <<
                         winner.substr(0, 8) << " for block " <<
                         msg.protocol_ivote().ivote->block_height() + 2 << "."
@@ -170,7 +181,7 @@ bool incentive_manager::handle_message(
                     }
                 }
                 
-                log_debug(ss.str());
+                log_info(ss.str());
             }
         }
         else
@@ -184,6 +195,11 @@ bool incentive_manager::handle_message(
     }
     
     return true;
+}
+
+const double & incentive_manager::collateral_balance() const
+{
+    return m_collateral_balance;
 }
 
 void incentive_manager::do_tick(const std::uint32_t & interval)
@@ -204,11 +220,11 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
             {
                 if (incentive::instance().get_key().is_null())
                 {
-                    log_debug("Incentive manager key is null, trying wallet.");
+                    log_info("Incentive manager key is null, trying wallet.");
                     
                     if (globals::instance().wallet_main()->is_locked())
                     {
-                        log_debug(
+                        log_info(
                             "Incentive manager wallet is locked, will try "
                             "again."
                         );
@@ -230,7 +246,7 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                                 key_id, k)
                                 )
                             {
-                                log_debug(
+                                log_info(
                                     "Incentive manager is setting key to " <<
                                     addr.to_string() << "."
                                 );
@@ -246,7 +262,7 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                 }
                 else
                 {
-                    log_debug("Incentive manager key is set.");
+                    log_info("Incentive manager key is set.");
                 }
                 
                 if (incentive::instance().get_key().is_null() == false)
@@ -278,13 +294,13 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                         auto vote_block_height = block_height + 2;
                         
                         /**
-                         * Remove winners older than 25 blocks.
+                         * Remove winners older than 4 blocks.
                          */
                         auto it1 = incentive::instance().winners().begin();
                         
                         while (it1 != incentive::instance().winners().end())
                         {
-                            if (vote_block_height - it1->first > 25)
+                            if (vote_block_height - it1->first > 4)
                             {
                                 it1 =
                                     incentive::instance().winners().erase(it1)
@@ -297,7 +313,7 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                         }
                         
                         /**
-                         * Remove votes older than 25 blocks.
+                         * Remove votes older than 4 blocks.
                          */
                         auto it2 = incentive::instance().votes().begin();
                         
@@ -305,7 +321,7 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                         {
                             if (
                                 vote_block_height -
-                                it2->second.block_height() > 25
+                                it2->second.block_height() > 4
                                 )
                             {
                                 it2 = incentive::instance().votes().erase(it2);
@@ -317,7 +333,7 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                         }
                         
                         /**
-                         * Remove candidates older than one hour.
+                         * Remove candidates older than 20 mins.
                          */
                         std::lock_guard<std::mutex> l1(mutex_candidates_);
                     
@@ -325,7 +341,7 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                         
                         while (it3 != candidates_.end())
                         {
-                            if (std::time(0) - it3->second.first > 1 * 60 * 60)
+                            if (std::time(0) - it3->second.first > 20 * 60)
                             {
                                 it3 = candidates_.erase(it3);
                             }
@@ -336,7 +352,7 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                         }
                         
                         /**
-                         * Remove votes older than 25 blocks.
+                         * Remove votes older than 4 blocks.
                          */
                         std::lock_guard<std::mutex> l2(mutex_votes_);
                         
@@ -344,7 +360,7 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                         
                         while (it4 != votes_.end())
                         {
-                            if (vote_block_height - it4->first > 25)
+                            if (vote_block_height - it4->first > 4)
                             {
                                 it4 = votes_.erase(it4);
                             }
@@ -382,13 +398,13 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                         
                         if (kclosest.size() >= 2)
                         {
-                            log_debug(
+                            log_info(
                                 "kclosest0: " << vote_block_height <<
                                 ":" << kclosest[0].addr.ipv4_mapped_address(
                                 ).to_string().substr(0, 8) <<
                                 ":" << kclosest[0].addr.port
                             );
-                            log_debug(
+                            log_info(
                                 "kclosest1: " << vote_block_height <<
                                 ":" << kclosest[1].addr.ipv4_mapped_address(
                                 ).to_string().substr(0, 8) <<
@@ -397,7 +413,7 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                             
                             if ((vote_block_height & 1) == 0)
                             {
-                                log_debug(
+                                log_info(
                                     "candidate: " << vote_block_height << ":" <<
                                     kclosest[0].addr.ipv4_mapped_address(
                                     ).to_string().substr(0, 8) <<
@@ -414,7 +430,7 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                                 }
                                 else
                                 {
-                                    log_debug(
+                                    log_info(
                                         "Candidate " <<
                                         kclosest[0].addr.ipv4_mapped_address(
                                         ).to_string().substr(0, 8) <<
@@ -579,6 +595,221 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
     }));
 }
 
+void incentive_manager::do_tick_check_inputs(const std::uint32_t & interval)
+{
+    auto self(shared_from_this());
+    
+    timer_check_inputs_.expires_from_now(std::chrono::seconds(interval));
+    timer_check_inputs_.async_wait(strand_.wrap([this, self, interval]
+        (boost::system::error_code ec)
+    {
+        if (ec)
+        {
+            // ...
+        }
+        else
+        {
+            if (incentive::instance().collateral > 0)
+            {
+                if (incentive::instance().get_key().is_null() == false)
+                {
+                    /**
+                     * Check that the collateral is valid.
+                     */
+                    try
+                    {
+                        address addr(
+                            incentive::instance().get_key(
+                            ).get_public_key().get_id()
+                        );
+
+                        script script_collateral;
+                        
+                        script_collateral.set_destination(addr.get());
+
+                        transaction tx;
+                        
+                        transaction_out vout = transaction_out(
+                            incentive::collateral * constants::coin,
+                            script_collateral
+                        );
+                        tx.transactions_in().push_back(
+                            incentive::instance().get_transaction_in()
+                        );
+                        tx.transactions_out().push_back(vout);
+
+                        if (
+                            transaction_pool::instance().acceptable(
+                            tx).first == false
+                            )
+                        {
+                            log_error(
+                                "Incentive manager detected spent "
+                                "collateral, will keep looking."
+                            );
+                            
+                            m_collateral_is_valid = false;
+                        }
+                        else
+                        {
+                            log_info(
+                                "Incentive manager detected valid "
+                                "collateral."
+                            );
+                            
+                            m_collateral_is_valid = true;
+                        }
+                    }
+                    catch (std::exception & e)
+                    {
+                        log_error(
+                            "Incentive manager detected invalid collateral, "
+                            "what = " << e.what() << "."
+                        );
+                        
+                        m_collateral_is_valid = false;
+                    }
+                    
+                    /**
+                     * If the collateral is not valid let's try to find some.
+                     */
+                    if (m_collateral_is_valid == false)
+                    {
+                        /**
+                         * Get candidate coins.
+                         */
+                        auto coins = select_coins();
+                        
+                        /**
+                         * Allocate the transaction_in.
+                         */
+                        transaction_in tx_in;
+
+                        /**
+                         * Get the incentive public key.
+                         */
+                        auto public_key =
+                            incentive::instance().get_key().get_public_key()
+                        ;
+
+                        /**
+                         * Check the coins for valid collateral stopping at
+                         * the first valid input.
+                         */
+                        for (auto & i : coins)
+                        {
+                            auto * output_ptr = &i;
+                            
+                            if (output_ptr)
+                            {
+                                if (
+                                    tx_in_from_output(*output_ptr, tx_in,
+                                    public_key, incentive::instance().get_key())
+                                    )
+                                {
+                                    log_info(
+                                        "Incentive manager got tx_in = " <<
+                                        tx_in.to_string() << "."
+                                    );
+
+                                    /**
+                                     * Check if the collateral is spendable.
+                                     */
+                                    address addr(
+                                        incentive::instance().get_key(
+                                        ).get_public_key().get_id()
+                                    );
+
+                                    script script_collateral;
+                                    
+                                    script_collateral.set_destination(
+                                        addr.get()
+                                    );
+
+                                    transaction tx;
+                                    
+                                    transaction_out vout = transaction_out(
+                                        incentive::collateral * constants::coin,
+                                        script_collateral
+                                    );
+                                    tx.transactions_in().push_back(tx_in);
+                                    tx.transactions_out().push_back(vout);
+                    
+                                    if (
+                                        transaction_pool::instance(
+                                        ).acceptable(tx).first
+                                        )
+                                    {
+                                        log_info(
+                                            "Incentive manager found valid "
+                                            "collateral input " <<
+                                            tx_in.to_string() << "."
+                                        );
+
+                                        incentive::instance(
+                                            ).set_transaction_in(tx_in
+                                        );
+                                        
+                                        m_collateral_balance =
+                                           static_cast<double> (
+                                           i.get_transaction_wallet(
+                                           ).transactions_out()[i.get_i()
+                                           ].value()) / constants::coin
+                                        ;
+                                        
+                                        m_collateral_is_valid = true;
+                                        
+                                        break;
+                                    }
+                                    else
+                                    {
+                                        log_info(
+                                            "Incentive manager found invalid "
+                                            "collateral input, checking more."
+                                        );
+                                        
+                                        incentive::instance(
+                                            ).set_transaction_in(
+                                            transaction_in()
+                                        );
+                                        
+                                        m_collateral_is_valid = false;
+                                    }
+                                }
+                                else
+                                {
+                                    log_error(
+                                        "Incentive manager failed to "
+                                        "tx_in_from_output."
+                                    );
+                                    
+                                    incentive::instance().set_transaction_in(
+                                        transaction_in()
+                                    );
+                                    
+                                    m_collateral_is_valid = false;
+                                }
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    log_error(
+                        "Incentive manager failed to find collateral input, "
+                        "wallet is locked."
+                    );
+                }
+                
+                /**
+                 * Start the check inputs timer.
+                 */
+                do_tick_check_inputs(10 * 60);
+            }
+        }
+    }));
+}
+
 bool incentive_manager::vote(const std::string & wallet_address)
 {
     /**
@@ -616,7 +847,7 @@ bool incentive_manager::vote(const std::string & wallet_address)
          */
         const auto & vote_score = ivote.score();
         
-        log_debug(
+        log_info(
             "Incentve manager forming vote, "
             "calculated score = " << vote_score <<
             " for " <<
@@ -741,4 +972,96 @@ std::vector<address_manager::recent_endpoint_t> incentive_manager::k_closest(
     }
     
     return ret;
+}
+
+std::vector<output> incentive_manager::select_coins()
+{
+    std::vector<output> ret;
+    
+    std::vector<output> coins;
+    
+    globals::instance().wallet_main()->available_coins(coins, true, 0);
+
+    for (auto & i : coins)
+    {
+        if (
+            i.get_transaction_wallet().transactions_out()[
+            i.get_i()].value() >= incentive::collateral * constants::coin
+            )
+        {
+            ret.push_back(i);
+        }
+    }
+    
+    return ret;
+}
+
+bool incentive_manager::tx_in_from_output(
+    const output & out, transaction_in & tx_in, key_public & public_key,
+    key & k
+    )
+{
+    tx_in =
+        transaction_in(out.get_transaction_wallet().get_hash(), out.get_i())
+    ;
+    
+    auto script_public_key =
+        out.get_transaction_wallet().transactions_out()[
+        out.get_i()].script_public_key()
+    ;
+
+    destination::tx_t dest_tx;
+
+    if (script::extract_destination(script_public_key, dest_tx) == false)
+    {
+        log_error(
+            "Incentive manager failed to get tx_in, unable to extract "
+            "destination."
+        );
+        
+        return false;
+    }
+    
+    address addr(dest_tx);
+
+    /**
+     * The coins must be in the default wallet address.
+     */
+    if (
+        address(incentive::instance().get_key().get_public_key(
+        ).get_id()).to_string() != addr.to_string()
+        )
+    {
+        log_error(
+            "Incentive manager failed to get tx_in, address is not "
+            "the default."
+        );
+        
+        return false;
+    }
+
+    types::id_key_t key_id;
+    
+    if (addr.get_id_key(key_id) == false)
+    {
+        log_error(
+            "Incentive manager failed to get tx_in, address does not "
+            "match key."
+        );
+        
+        return false;
+    }
+
+    if (globals::instance().wallet_main()->get_key(key_id, k) == false)
+    {
+        log_error(
+            "Incentive manager failed to get tx_in, unknown private key."
+        );
+        
+        return false;
+    }
+
+    public_key = k.get_public_key();
+
+    return true;
 }

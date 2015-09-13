@@ -407,6 +407,113 @@ std::pair<bool, std::string> transaction_pool::accept(
 
     return std::make_pair(true, "");
 }
+
+std::pair<bool, std::string> transaction_pool::acceptable(transaction & tx)
+{
+    /**
+     * Check the transaction.
+     */
+    if (tx.check() == false)
+    {
+        throw std::runtime_error("check transaction failed");
+    
+        return std::make_pair(false, "check transaction failed");
+    }
+    
+    /**
+     * Coinbase is only valid in a block, not as a loose transaction.
+     */
+    if (tx.is_coin_base())
+    {
+        throw std::runtime_error("coin base as individual transaction");
+    
+        return std::make_pair(false, "coin base as individual transaction");
+    }
+    
+    /**
+     * Coinstake is only valid in a block, not as a loose transaction.
+     */
+    if (tx.is_coin_stake())
+    {
+        throw std::runtime_error("coin stake as individual transaction");
+    
+        return std::make_pair(false, "coin stake as individual transaction");
+    }
+    
+    /**
+     * Do we already have it.
+     */
+    auto hash = tx.get_hash();
+
+    std::lock_guard<std::recursive_mutex> l1(mutex_);
+        
+    if (m_transactions.count(hash) > 0)
+    {
+        return std::make_pair(false, "hash already found");
+    }
+    
+    /**
+     * Check for conflicts with in-memory transactions.
+     */
+    for (auto i = 0; i < tx.transactions_in().size(); i++)
+    {
+        auto outpoint = tx.transactions_in()[i].previous_out();
+        
+        if (m_transactions_next.count(outpoint) > 0)
+        {
+            /**
+             * Disable replacement feature (disabled in reference
+             * implementation).
+             */
+            return std::make_pair(false, "replacement transaction disabled");
+        }
+    }
+
+    db_tx txdb("r");
+    
+    /**
+     * We always check the inputs.
+     */
+    bool check_inputs = true;
+    
+    if (check_inputs)
+    {
+        transaction::previous_t inputs;
+        
+        std::map<sha256, transaction_index> unused;
+        
+        bool invalid = false;
+        
+        if (
+            tx.fetch_inputs(txdb, unused, false, false, inputs,
+            invalid) == false
+            )
+        {
+            if (invalid)
+            {
+                return std::make_pair(
+                    false, "found invalid transaction"
+                );
+            }
+            
+            return std::make_pair(false, "failed to fetch inputs");
+        }
+        
+        /**
+         * Check against previous transactions.
+         */
+        if (
+            tx.connect_inputs(txdb, inputs, unused,
+            transaction_position(1, 1, 1), stack_impl::get_block_index_best(),
+            false, false, true, false) == false
+            )
+        {
+            return std::make_pair(false, "connect inputs failed");
+        }
+    }
+    
+    return std::make_pair(true, "");
+}
         
 bool transaction_pool::remove(transaction & tx)
 {

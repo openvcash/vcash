@@ -45,7 +45,8 @@ zerotime::zerotime()
     {
         log_info(
             "ZeroTime generated new key = " <<
-            address(m_key.get_public_key().get_id()).to_string() << "."
+            address(m_key.get_public_key().get_id()
+            ).to_string().substr(0, 8) << "."
         );
         
         /**

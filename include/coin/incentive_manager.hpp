@@ -32,11 +32,15 @@
 
 #include <coin/address_manager.hpp>
 #include <coin/incentive_vote.hpp>
+#include <coin/output.hpp>
 
 namespace coin {
 
+    class key;
+    class key_public;
     class message;
     class stack_impl;
+    class transaction_in;
     
     /**
      * Implements an incentive manager.
@@ -76,6 +80,11 @@ namespace coin {
                 const boost::asio::ip::tcp::endpoint & ep, message & msg
             );
         
+            /**
+             * The collateral balance.
+             */
+            const double & collateral_balance() const;
+        
         private:
         
             /**
@@ -85,10 +94,26 @@ namespace coin {
             void do_tick(const std::uint32_t & interval);
         
             /**
+             * The find input handler.
+             * @param interval The interval.
+             */
+            void do_tick_check_inputs(const std::uint32_t & interval);
+        
+            /**
              * Votes for the wallet address for height + 2.
              * @param wallet_address The wallet address.
              */
             bool vote(const std::string & wallet_address);
+        
+            /**
+             * If true the collateral is valid.
+             */
+            bool m_collateral_is_valid;
+        
+            /**
+             * The collateral balance.
+             */
+            double m_collateral_balance;
         
         protected:
         
@@ -104,6 +129,23 @@ namespace coin {
                 const std::uint32_t & k = 20
             );
         
+            /**
+             * Selects coins that qualify as collateral (if enforced).
+             */
+            std::vector<output> select_coins();
+        
+            /**
+             * Gets a transaction_in from an output.
+             * @param out The output.
+             * @param tx_in The transaction_in (out).
+             * @param public_key The key_public.
+             * @param k The key.
+             */
+            bool tx_in_from_output(
+                const output & out, transaction_in & tx_in,
+                key_public & public_key, key & k
+            );
+
             /**
              * The boost::asio::io_service.
              */
@@ -125,6 +167,13 @@ namespace coin {
             boost::asio::basic_waitable_timer<
                 std::chrono::steady_clock
             > timer_;
+        
+            /**
+             * The check inputs timer.
+             */
+            boost::asio::basic_waitable_timer<
+                std::chrono::steady_clock
+            > timer_check_inputs_;
         
             /**
              * The last block height.

@@ -60,6 +60,14 @@ namespace coin {
             }
         
             /**
+             * The transaction_wallet.
+             */
+            const transaction_wallet & get_transaction_wallet() const
+            {
+                return *m_transaction_wallet;
+            }
+        
+            /**
              * The i.
              */
             const std::int32_t & get_i() const

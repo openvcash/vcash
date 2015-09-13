@@ -1972,12 +1972,12 @@ void stack_impl::broadcast_alert(
         /**
          * Set the maxium version.
          */
-        a.set_maximum_version(protocol::version);
+        a.set_maximum_version(protocol::version - 1);
         
         /**
          * Set the version.
          */
-        a.set_version(protocol::version);
+        a.set_version(protocol::version - 1);
         
         /**
          * Set the cancel.

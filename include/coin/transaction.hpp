@@ -267,7 +267,8 @@ namespace coin {
                 const transaction_position & position_this_tx,
                 const std::shared_ptr<block_index> & ptr_block_index,
                 const bool & connect_block, const bool & create_new_block,
-                const bool & strict_pay_to_script_hash = true
+                const bool & strict_pay_to_script_hash = true,
+                const bool & check_signature = true
             );
         
             /**

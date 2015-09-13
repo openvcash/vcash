@@ -695,6 +695,30 @@ protocol::network_address_t address_manager::select(
     const std::uint8_t & unk_bias
     )
 {
+    /**
+     * Randomly return a known good address.
+     */
+    if ((std::rand() & 1) == 0)
+    {
+        std::vector<protocol::network_address_t> recent_good_eps;
+        
+        for (auto & i : m_recent_good_endpoints)
+        {
+            recent_good_eps.push_back(i.first);
+        }
+        
+        std::random_shuffle(
+            recent_good_eps.begin(), recent_good_eps.end()
+        );
+        
+        if (recent_good_eps.size() > 1)
+        {
+            recent_good_eps.resize(1);
+
+            return recent_good_eps[0];
+        }
+    }
+
     assert(unk_bias <= 100);
     
     std::lock_guard<std::recursive_mutex> l1(mutex_random_ids_);
@@ -1238,6 +1262,32 @@ std::vector<protocol::network_address_t> address_manager::get_addr(
         
         ret.push_back(address_info_map_[random_ids_[n]].addr);
     }
+    
+    /**
+     * Add some recently known good endpoints.
+     */
+
+    std::vector<protocol::network_address_t> recent_good_eps;
+    
+    for (auto & i : m_recent_good_endpoints)
+    {
+        recent_good_eps.push_back(i.first);
+    }
+    
+    std::random_shuffle(
+        recent_good_eps.begin(), recent_good_eps.end()
+    );
+    
+    if (recent_good_eps.size() > 8)
+    {
+        recent_good_eps.resize(8);
+
+        ret.insert(
+            ret.begin(), recent_good_eps.begin(), recent_good_eps.end()
+        );
+    }
+    
+    std::random_shuffle(ret.begin(), ret.end());
     
     return ret;
 }

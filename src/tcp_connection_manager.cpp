@@ -520,6 +520,7 @@ void tcp_connection_manager::tick(const boost::system::error_code & ec)
                     )
                 {
                     // ...
+                    log_debug("**** SMAVE GROUP");
                 }
                 else
                 {

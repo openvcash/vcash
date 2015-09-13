@@ -79,7 +79,7 @@ void wallet::start()
     /**
      * Start the resend transactions timer.
      */
-    resend_transactions_timer_.expires_from_now(std::chrono::seconds(300));
+    resend_transactions_timer_.expires_from_now(std::chrono::seconds(900));
     resend_transactions_timer_.async_wait(globals::instance().strand().wrap(
         std::bind(&wallet::resend_transactions_tick, this,
         std::placeholders::_1))

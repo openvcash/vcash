@@ -35,6 +35,8 @@
 #include <coin/database_stack.hpp>
 #include <coin/db_tx.hpp>
 #include <coin/incentive.hpp>
+#include <coin/incentive_manager.hpp>
+#include <coin/incentive_vote.hpp>
 #include <coin/key_reserved.hpp>
 #include <coin/logger.hpp>
 #include <coin/mining_manager.hpp>
@@ -565,6 +567,10 @@ bool rpc_connection::handle_json_rpc_request(
     else if (request.method == "getdifficulty")
     {
         response = json_getdifficulty(request);
+    }
+    else if (request.method == "getincentiveinfo")
+    {
+        response.result = json_getincentiveinfo();
     }
     else if (request.method == "getinfo")
     {
@@ -2501,7 +2507,7 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getblocktemplate(
              */
             if (
                 incentive::instance().winners().count(
-                index_previous->height() + 1)
+                index_previous->height() + 1) > 0
                 )
             {
                 pt_incentive.put(
@@ -2545,6 +2551,139 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getblocktemplate(
         return json_rpc_response_t{
             boost::property_tree::ptree(), pt_error, request.id
         };
+    }
+    
+    return ret;
+}
+
+boost::property_tree::ptree rpc_connection::json_getincentiveinfo()
+{
+    boost::property_tree::ptree ret;
+
+    try
+    {
+        if (incentive::instance().get_key().is_null() == true)
+        {
+            ret.put(
+                "walletaddress", "",
+                rpc_json_parser::translator<std::string> ()
+            );
+        }
+        else
+        {
+            address addr(
+                incentive::instance().get_key().get_public_key().get_id()
+            );
+            
+            ret.put(
+                "walletaddress", addr.to_string(),
+                rpc_json_parser::translator<std::string> ()
+            );
+        }
+        
+        ret.put("collateralrequired", incentive::instance().collateral);
+        
+        ret.put(
+            "collateralbalance",
+            stack_impl_.get_incentive_manager()->collateral_balance()
+        );
+        
+        auto is_firewalled = true;
+        
+        auto tcp_connections =
+            stack_impl_.get_tcp_connection_manager()->tcp_connections()
+        ;
+        
+        for (auto & i : tcp_connections)
+        {
+            if (auto t = i.second.lock())
+            {
+                if (t->direction() == tcp_connection::direction_incoming)
+                {
+                    is_firewalled = false;
+                    
+                    break;
+                }
+            }
+        }
+        
+        ret.put(
+            "networkstatus", is_firewalled ? "firewalled" : "open",
+            rpc_json_parser::translator<std::string> ()
+        );
+        
+        if (
+            incentive::instance().get_key().is_null() == false &&
+            is_firewalled == false
+            )
+        {
+            if (incentive::instance().collateral > 0)
+            {
+                if (
+                    stack_impl_.get_incentive_manager(
+                    )->collateral_balance() >= incentive::instance().collateral
+                    )
+                {
+                    ret.put("votecandidate", true);
+                }
+                else
+                {
+                    ret.put("votecandidate", false);
+                }
+            }
+            else
+            {
+                ret.put("votecandidate", true);
+            }
+        }
+        else
+        {
+            ret.put("votecandidate", false);
+        }
+
+        /**
+         * Get the best block index.
+         */
+        auto index =
+            utility::find_block_index_by_height(
+            globals::instance().best_block_height()
+        );
+        
+        if (index && incentive::instance().get_key().is_null() == false)
+        {
+            /**
+             * Allocate the incentive_vote.
+             */
+            incentive_vote ivote(
+                index->height(),
+                index->get_block_hash(), "",
+                incentive::instance().get_key(
+                ).get_public_key()
+            );
+        
+            ret.put("votescore", ivote.score());
+        }
+        else
+        {
+            ret.put("votescore", -1);
+        }
+
+        /**
+         * The std::stringstream.
+         */
+        std::stringstream ss;
+        
+        /**
+         * Write property tree to json file.
+         */
+        rpc_json_parser::write_json(ss, ret, false);
+    }
+    catch (std::exception & e)
+    {
+        log_error(
+            "RPC Connection failed to create json_getincentiveinfo, what = " <<
+            e.what() << "."
+        );
     }
     
     return ret;

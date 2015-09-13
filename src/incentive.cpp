@@ -50,6 +50,16 @@ key & incentive::get_key()
     return m_key;
 }
 
+void incentive::set_transaction_in(const transaction_in & tx_in)
+{
+    m_transaction_in = tx_in;
+}
+
+const transaction_in & incentive::get_transaction_in() const
+{
+    return m_transaction_in;
+}
+
 std::map<sha256, incentive_vote> & incentive::votes()
 {
     return m_votes;

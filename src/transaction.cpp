@@ -903,7 +903,7 @@ bool transaction::connect_inputs(
     const transaction_position & position_tx_this,
     const std::shared_ptr<block_index> & ptr_block_index,
     const bool & connect_block, const bool & create_new_block,
-    const bool & strict_pay_to_script_hash
+    const bool & strict_pay_to_script_hash, const bool & check_signature
     )
 {
     if (is_coin_base() == false)
@@ -1053,8 +1053,8 @@ bool transaction::connect_inputs(
                 )
             {
                 if (
-                    script::verify_signature(tx_previous, *this, i,
-                    strict_pay_to_script_hash, 0) == false
+                    check_signature && script::verify_signature(tx_previous,
+                    *this, i, strict_pay_to_script_hash, 0) == false
                     )
                 {
                     /**
@@ -1143,56 +1143,6 @@ bool transaction::connect_inputs(
                     "Transaction connect inputs failed, " <<
                     get_hash().to_string().substr(0, 10) <<
                     " value in is less than value out."
-                );
-                
-                return false;
-            }
-
-            /**
-             * Tally transaction fees.
-             */
-            std::int64_t tx_fee = value_in - get_value_out();
-            
-            if (tx_fee < 0)
-            {
-                log_error(
-                    "Transaction connect inputs failed, " <<
-                    get_hash().to_string().substr(0, 10) <<
-                    " transaction fee is less than zero."
-                );
-                
-                return false;
-            }
-            
-            /**
-             * Enforce transaction fees for every block (ppcoin).
-             */
-            if (tx_fee < get_minimum_fee())
-            {
-                if (connect_block)
-                {
-                    log_error(
-                        "Transaction connect inputs failed, " <<
-                        get_hash().to_string().substr(0, 10) <<
-                        " not paying required fee = " <<
-                        utility::format_money(get_minimum_fee()) <<
-                        ", paid = " << utility::format_money(tx_fee) << "."
-                    );
-                    
-                    return false;
-                }
-                else
-                {
-                    return false;
-                }
-            }
-            
-            fees += tx_fee;
-            
-            if (utility::money_range(fees) == false)
-            {
-                log_error(
-                    "Transaction connect inputs failed, fees out of range."
                 );
                 
                 return false;

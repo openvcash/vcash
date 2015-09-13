@@ -429,6 +429,11 @@ namespace coin {
                 const json_rpc_request_t & request
             );
         
+           /**
+             * Encodes getincentiveinfo data into JSON format.
+             */
+            boost::property_tree::ptree json_getincentiveinfo();
+        
             /**
              * Encodes getinfo data into JSON format.
              */

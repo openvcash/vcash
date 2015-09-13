@@ -23,6 +23,8 @@
 
 #include <coin/database_stack.hpp>
 #include <coin/db_tx.hpp>
+#include <coin/incentive.hpp>
+#include <coin/incentive_manager.hpp>
 #include <coin/logger.hpp>
 #include <coin/message.hpp>
 #include <coin/stack_impl.hpp>
@@ -33,6 +35,7 @@
 #include <coin/wallet_manager.hpp>
 #include <coin/zerotime.hpp>
 #include <coin/zerotime_lock.hpp>
+#include <coin/zerotime_manager.hpp>
 
 using namespace coin;
 
@@ -431,6 +434,161 @@ void database_stack::on_broadcast(
                                     ;
                                 }
                             }
+                        }
+                    }
+                }
+            }
+        }
+        else if (msg.header().command == "ztvote")
+        {
+            if (globals::instance().is_zerotime_enabled())
+            {
+                const auto & ztvote = msg.protocol_ztvote().ztvote;
+
+                if (ztvote)
+                {
+                    /**
+                     * Allocate the inventory_vector.
+                     */
+                    inventory_vector inv(
+                        inventory_vector::type_msg_ztvote,
+                        ztvote->hash_nonce()
+                    );
+
+                    if (
+                        zerotime::instance().votes().count(
+                        ztvote->hash_nonce()) > 0
+                        )
+                    {
+                        // ...
+                    }
+                    else
+                    {
+                        /**
+                         * Insert the zerotime_vote.
+                         */
+                        zerotime::instance().votes()[
+                            ztvote->hash_nonce()] = *ztvote
+                        ;
+                        
+                        /**
+                         * Inform the zerotime_manager.
+                         */
+                        stack_impl_.get_zerotime_manager(
+                            )->handle_vote(
+                            boost::asio::ip::tcp::endpoint(
+                            boost::asio::ip::address::from_string(addr),
+                            port), *ztvote
+                        );
+
+                        /**
+                         * Allocate the data_buffer.
+                         */
+                        data_buffer buffer;
+                        
+                        /**
+                         * Encode the transaction (reuse the signature).
+                         */
+                        ztvote->encode(buffer, true);
+                
+                        /**
+                         * Allocate the message.
+                         */
+                        message msg(inv.command(), buffer);
+
+                        /**
+                         * Encode the message.
+                         */
+                        msg.encode();
+
+                        /**
+                         * Broadcast the message to "all" connected
+                         * peers.
+                         */
+                        stack_impl_.get_tcp_connection_manager(
+                            )->broadcast(msg.data(), msg.size()
+                        );
+                    }
+                }
+            }
+        }
+        else if (msg.header().command == "ivote")
+        {
+            if (globals::instance().is_incentive_enabled())
+            {
+                if (utility::is_initial_block_download() == false)
+                {
+                    const auto & ivote = msg.protocol_ivote().ivote;
+                    
+                    if (ivote)
+                    {
+                        /**
+                         * Allocate the inventory_vector.
+                         */
+                        inventory_vector inv(
+                            inventory_vector::type_msg_ivote,
+                            ivote->hash_nonce()
+                        );
+
+                        if (
+                            incentive::instance().votes().count(
+                            ivote->hash_nonce()) > 0
+                            )
+                        {
+                            // ...
+                        }
+                        else
+                        {
+                            /**
+                             * Insert the incentive_vote.
+                             */
+                            incentive::instance().votes()[
+                                ivote->hash_nonce()] = *ivote
+                            ;
+                            
+                            /**
+                             * Inform the incentive_manager.
+                             */
+                            stack_impl_.get_incentive_manager(
+                                )->handle_message(
+                                boost::asio::ip::tcp::endpoint(
+                                boost::asio::ip::address::from_string(addr),
+                                port), msg
+                            );
+
+                            /**
+                             * Allocate the data_buffer.
+                             */
+                            data_buffer buffer;
+                            
+                            /**
+                             * Encode the transaction (reuse the signature).
+                             */
+                            ivote->encode(buffer, true);
+                            
+                            log_info(
+                                "Database stack (UDP) is relaying inv "
+                                "message, command = " << inv.command() <<
+                                "."
+                            );
+                            
+                            /**
+                             * Allocate the message.
+                             */
+                            message msg(inv.command(), buffer);
+
+                            /**
+                             * Encode the message.
+                             */
+                            msg.encode();
+
+                            /**
+                             * Broadcast the message to "all" connected
+                             * peers.
+                             */
+                            stack_impl_.get_tcp_connection_manager(
+                                )->broadcast(msg.data(), msg.size()
+                            );
                         }
                     }
                 }

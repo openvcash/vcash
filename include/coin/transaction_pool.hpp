@@ -62,28 +62,35 @@ namespace coin {
             );
         
             /**
+             * Checks the transaction to see if it is acceptable.
+             * @param tx The transaction.
+             */
+            std::pair<bool, std::string> acceptable(transaction & tx);
+        
+            /**
              * Removes a transaction.
              * @param tx The transaction.
              */
             bool remove(transaction & tx);
         
             /**
-             *
+             * Clears
              */
             void clear();
         
             /**
-             *
+             * Queries hashes.
+             * @param transaction_ids The transaction_id's.
              */
             void query_hashes(std::vector<sha256> & transaction_ids);
 
             /**
-             *
+             * The size.
              */
             std::size_t size();
     
             /**
-             *
+             * If true the transaction given hash exists.
              */
             bool exists(const sha256 & hash);
 
