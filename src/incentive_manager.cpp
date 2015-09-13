@@ -56,7 +56,7 @@ void incentive_manager::start()
 {
     if (globals::instance().is_incentive_enabled())
     {
-        log_info("Incentive manager is starting.");
+        log_debug("Incentive manager is starting.");
         
         /**
          * Start the timer.
@@ -72,7 +72,7 @@ void incentive_manager::start()
 
 void incentive_manager::stop()
 {
-    log_info("Incentive manager is stopping.");
+    log_debug("Incentive manager is stopping.");
     
     timer_.cancel();
     timer_check_inputs_.cancel();
@@ -133,7 +133,7 @@ bool incentive_manager::handle_message(
                     ;
                 }
                 
-                log_info(ss.str());
+                log_debug(ss.str());
                 
                 /**
                  * The number of votes required to qualify.
@@ -145,7 +145,7 @@ bool incentive_manager::handle_message(
                  */
                 if (most_votes >= minimum_votes)
                 {
-                    log_info(
+                    log_debug(
                         "Incentive manager got winner " <<
                         winner.substr(0, 8) << " for block " <<
                         msg.protocol_ivote().ivote->block_height() + 2 << "."
@@ -181,7 +181,7 @@ bool incentive_manager::handle_message(
                     }
                 }
                 
-                log_info(ss.str());
+                log_debug(ss.str());
             }
         }
         else
@@ -220,11 +220,11 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
             {
                 if (incentive::instance().get_key().is_null())
                 {
-                    log_info("Incentive manager key is null, trying wallet.");
+                    log_debug("Incentive manager key is null, trying wallet.");
                     
                     if (globals::instance().wallet_main()->is_locked())
                     {
-                        log_info(
+                        log_debug(
                             "Incentive manager wallet is locked, will try "
                             "again."
                         );
@@ -246,7 +246,7 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                                 key_id, k)
                                 )
                             {
-                                log_info(
+                                log_debug(
                                     "Incentive manager is setting key to " <<
                                     addr.to_string() << "."
                                 );
@@ -262,7 +262,7 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                 }
                 else
                 {
-                    log_info("Incentive manager key is set.");
+                    log_debug("Incentive manager key is set.");
                 }
                 
                 if (incentive::instance().get_key().is_null() == false)
@@ -398,13 +398,13 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                         
                         if (kclosest.size() >= 2)
                         {
-                            log_info(
+                            log_debug(
                                 "kclosest0: " << vote_block_height <<
                                 ":" << kclosest[0].addr.ipv4_mapped_address(
                                 ).to_string().substr(0, 8) <<
                                 ":" << kclosest[0].addr.port
                             );
-                            log_info(
+                            log_debug(
                                 "kclosest1: " << vote_block_height <<
                                 ":" << kclosest[1].addr.ipv4_mapped_address(
                                 ).to_string().substr(0, 8) <<
@@ -413,7 +413,7 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                             
                             if ((vote_block_height & 1) == 0)
                             {
-                                log_info(
+                                log_debug(
                                     "candidate: " << vote_block_height << ":" <<
                                     kclosest[0].addr.ipv4_mapped_address(
                                     ).to_string().substr(0, 8) <<
@@ -430,7 +430,7 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                                 }
                                 else
                                 {
-                                    log_info(
+                                    log_debug(
                                         "Candidate " <<
                                         kclosest[0].addr.ipv4_mapped_address(
                                         ).to_string().substr(0, 8) <<
@@ -652,7 +652,7 @@ void incentive_manager::do_tick_check_inputs(const std::uint32_t & interval)
                         }
                         else
                         {
-                            log_info(
+                            log_debug(
                                 "Incentive manager detected valid "
                                 "collateral."
                             );
@@ -707,7 +707,7 @@ void incentive_manager::do_tick_check_inputs(const std::uint32_t & interval)
                                     public_key, incentive::instance().get_key())
                                     )
                                 {
-                                    log_info(
+                                    log_debug(
                                         "Incentive manager got tx_in = " <<
                                         tx_in.to_string() << "."
                                     );
@@ -740,7 +740,7 @@ void incentive_manager::do_tick_check_inputs(const std::uint32_t & interval)
                                         ).acceptable(tx).first
                                         )
                                     {
-                                        log_info(
+                                        log_debug(
                                             "Incentive manager found valid "
                                             "collateral input " <<
                                             tx_in.to_string() << "."
@@ -763,7 +763,7 @@ void incentive_manager::do_tick_check_inputs(const std::uint32_t & interval)
                                     }
                                     else
                                     {
-                                        log_info(
+                                        log_debug(
                                             "Incentive manager found invalid "
                                             "collateral input, checking more."
                                         );
@@ -847,7 +847,7 @@ bool incentive_manager::vote(const std::string & wallet_address)
          */
         const auto & vote_score = ivote.score();
         
-        log_info(
+        log_debug(
             "Incentve manager forming vote, "
             "calculated score = " << vote_score <<
             " for " <<
