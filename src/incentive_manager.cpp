@@ -56,7 +56,7 @@ void incentive_manager::start()
 {
     if (globals::instance().is_incentive_enabled())
     {
-        log_debug("Incentive manager is starting.");
+        log_info("Incentive manager is starting.");
         
         /**
          * Start the timer.
@@ -72,7 +72,7 @@ void incentive_manager::start()
 
 void incentive_manager::stop()
 {
-    log_debug("Incentive manager is stopping.");
+    log_info("Incentive manager is stopping.");
     
     timer_.cancel();
     timer_check_inputs_.cancel();
@@ -86,7 +86,48 @@ bool incentive_manager::handle_message(
     {
         if (msg.header().command == "ivote")
         {
-            if (msg.protocol_ivote().ivote->score() > -1)
+            auto is_vote_valid = true;
+            
+            auto index_previous = stack_impl::get_block_index_best();
+            
+            /**
+             * Get the collateral.
+             */
+            auto collateral =
+                incentive::instance().get_collateral(
+                index_previous ? index_previous->height() + 1 : 0)
+            ;
+            
+            if (collateral > 0)
+            {
+                std::lock_guard<std::mutex> l1(mutex_collaterals_);
+                
+                if (
+                    collaterals_.count(
+                    msg.protocol_ivote().ivote->address()) > 0
+                    )
+                {
+                    is_vote_valid =
+                        collaterals_[
+                        msg.protocol_ivote().ivote->address()
+                        ].second >= collateral
+                    ;
+                }
+                else
+                {
+                    is_vote_valid = false;
+                }
+            }
+        
+            /**
+             * Check that the ivote is not negative.
+             */
+            if (msg.protocol_ivote().ivote->score() < 0)
+            {
+                is_vote_valid = false;
+            }
+        
+            if (is_vote_valid)
             {
                 log_debug(
                     "Incentive manager got vote for " <<
@@ -220,11 +261,11 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
             {
                 if (incentive::instance().get_key().is_null())
                 {
-                    log_debug("Incentive manager key is null, trying wallet.");
+                    log_info("Incentive manager key is null, trying wallet.");
                     
                     if (globals::instance().wallet_main()->is_locked())
                     {
-                        log_debug(
+                        log_info(
                             "Incentive manager wallet is locked, will try "
                             "again."
                         );
@@ -246,7 +287,7 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                                 key_id, k)
                                 )
                             {
-                                log_debug(
+                                log_info(
                                     "Incentive manager is setting key to " <<
                                     addr.to_string() << "."
                                 );
@@ -259,10 +300,6 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                             log_error("Incentive manager failed to get key.");
                         }
                     }
-                }
-                else
-                {
-                    log_debug("Incentive manager key is set.");
                 }
                 
                 if (incentive::instance().get_key().is_null() == false)
@@ -370,6 +407,24 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                             }
                         }
                         
+                        std::lock_guard<std::mutex> l3(mutex_collaterals_);
+                        
+                        auto it5 = collaterals_.begin();
+                        
+                        while (it5 != collaterals_.end())
+                        {
+                            if (
+                                std::time(0) - it5->second.first > (3 * 60 * 60)
+                                )
+                            {
+                                it5 = collaterals_.erase(it5);
+                            }
+                            else
+                            {
+                                ++it5;
+                            }
+                        }
+                        
                         /**
                          * Get the recent good endpoints.
                          */
@@ -395,6 +450,181 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                          * and used for testing purposes only.
                          */
                         auto use_time_rate_limit = false;
+                        
+                        auto index_previous = stack_impl::get_block_index_best();
+                        
+                        /**
+                         * Get the collateral.
+                         */
+                        auto collateral =
+                            incentive::instance().get_collateral(
+                            index_previous ? index_previous->height() + 1 : 0)
+                        ;
+            
+                        /**
+                         * If collateral is required then check each of the
+                         * K closest.
+                         */
+                        if (collateral > 0)
+                        {
+                            auto it = kclosest.begin();
+                            
+                            while (it != kclosest.end())
+                            {
+                                const address_manager::recent_endpoint_t &
+                                    recent = *it
+                                ;
+                                
+                                auto need_to_check_collateral = false;
+
+                                if (
+                                    collaterals_.count(
+                                    recent.wallet_address) > 0
+                                    )
+                                {
+                                    if (
+                                        std::time(0) - collaterals_[
+                                        recent.wallet_address].first > 60 * 60
+                                        )
+                                    {
+                                        need_to_check_collateral = true;
+                                    }
+                                }
+                                else
+                                {
+                                    if (recent.wallet_address.size() > 0)
+                                    {
+                                        need_to_check_collateral = true;
+                                    }
+                                }
+                                
+                                if (need_to_check_collateral)
+                                {
+                                    /**
+                                     * Check that the coins are not spent by
+                                     * forming a transaction to ourselves and
+                                     * checking it's validity.
+                                     */
+                                    address addr(
+                                        incentive::instance().get_key(
+                                        ).get_public_key().get_id()
+                                    );
+
+                                    script script_collateral;
+                                    
+                                    script_collateral.set_destination(
+                                        addr.get()
+                                    );
+
+                                    transaction tx;
+                                    
+                                    auto index_previous =
+                                        stack_impl::get_block_index_best()
+                                    ;
+                                    
+                                    /**
+                                     * Get the collateral.
+                                     */
+                                    auto collateral =
+                                        incentive::instance().get_collateral(
+                                        index_previous ?
+                                        index_previous->height() + 1 : 0)
+                                    ;
+            
+                                    transaction_out vout = transaction_out(
+                                        collateral * constants::coin,
+                                        script_collateral
+                                    );
+                                    tx.transactions_in().push_back(
+                                        recent.tx_in
+                                    );
+                                    tx.transactions_out().push_back(vout);
+
+                                    try
+                                    {
+                                        if (
+                                            transaction_pool::instance(
+                                            ).acceptable(tx).first == false
+                                            )
+                                        {
+                                            log_debug(
+                                                "Incentive manager detected "
+                                                "invalid collateral for " <<
+                                                recent.wallet_address.substr(
+                                                0, 8) << ", ignoring."
+                                            );
+                                            
+                                            collaterals_[
+                                                recent.wallet_address].first =
+                                                std::time(0)
+                                            ;
+                                            collaterals_[
+                                                recent.wallet_address
+                                                ].second = 0
+                                            ;
+                                            
+                                            it = kclosest.erase(it);
+                                        }
+                                        else
+                                        {
+                                            log_debug(
+                                                "Incentive manager detected "
+                                                "valid collateral for " <<
+                                                recent.wallet_address.substr(
+                                                0, 8) << ", making candidate."
+                                            );
+                                            
+                                            collaterals_[
+                                                recent.wallet_address].first =
+                                                std::time(0)
+                                            ;
+                                            collaterals_[
+                                                recent.wallet_address].second =
+                                                static_cast<std::uint32_t> (
+                                                collateral)
+                                            ;
+                                            
+                                            ++it;
+                                        }
+                                    }
+                                    catch (std::exception & e)
+                                    {
+                                        log_info(
+                                            "Incentive manager detected "
+                                            "invalid collateral for " <<
+                                            recent.wallet_address.substr(
+                                            0, 8) << ", ignoring, what = " <<
+                                            e.what() << "."
+                                        );
+                                        
+                                        collaterals_[
+                                            recent.wallet_address].first =
+                                            std::time(0)
+                                        ;
+                                        collaterals_[
+                                            recent.wallet_address].second = 0
+                                        ;
+                                        
+                                        it = kclosest.erase(it);
+                                    }
+                                }
+                                else
+                                {
+                                    if (
+                                        collaterals_[
+                                        recent.wallet_address].second <
+                                        collateral
+                                        )
+                                    {
+                                        it = kclosest.erase(it);
+                                    }
+                                    else
+                                    {
+                                        ++it;
+                                    }
+                                }
+                            }
+                        }
                         
                         if (kclosest.size() >= 2)
                         {
@@ -609,7 +839,18 @@ void incentive_manager::do_tick_check_inputs(const std::uint32_t & interval)
         }
         else
         {
-            if (incentive::instance().collateral > 0)
+            auto index_previous = stack_impl::get_block_index_best();
+            
+            /**
+             * Get the collateral.
+             */
+            auto collateral =
+                incentive::instance().get_collateral(
+                index_previous ?
+                index_previous->height() + 1 : 0)
+            ;
+            
+            if (collateral > 0)
             {
                 if (incentive::instance().get_key().is_null() == false)
                 {
@@ -630,7 +871,7 @@ void incentive_manager::do_tick_check_inputs(const std::uint32_t & interval)
                         transaction tx;
                         
                         transaction_out vout = transaction_out(
-                            incentive::collateral * constants::coin,
+                            collateral * constants::coin,
                             script_collateral
                         );
                         tx.transactions_in().push_back(
@@ -648,11 +889,13 @@ void incentive_manager::do_tick_check_inputs(const std::uint32_t & interval)
                                 "collateral, will keep looking."
                             );
                             
+                            m_collateral_balance = 0.0f;
+                            
                             m_collateral_is_valid = false;
                         }
                         else
                         {
-                            log_debug(
+                            log_info(
                                 "Incentive manager detected valid "
                                 "collateral."
                             );
@@ -666,6 +909,8 @@ void incentive_manager::do_tick_check_inputs(const std::uint32_t & interval)
                             "Incentive manager detected invalid collateral, "
                             "what = " << e.what() << "."
                         );
+                        
+                        m_collateral_balance = 0.0f;
                         
                         m_collateral_is_valid = false;
                     }
@@ -729,7 +974,7 @@ void incentive_manager::do_tick_check_inputs(const std::uint32_t & interval)
                                     transaction tx;
                                     
                                     transaction_out vout = transaction_out(
-                                        incentive::collateral * constants::coin,
+                                        collateral * constants::coin,
                                         script_collateral
                                     );
                                     tx.transactions_in().push_back(tx_in);
@@ -740,7 +985,7 @@ void incentive_manager::do_tick_check_inputs(const std::uint32_t & interval)
                                         ).acceptable(tx).first
                                         )
                                     {
-                                        log_debug(
+                                        log_info(
                                             "Incentive manager found valid "
                                             "collateral input " <<
                                             tx_in.to_string() << "."
@@ -749,7 +994,7 @@ void incentive_manager::do_tick_check_inputs(const std::uint32_t & interval)
                                         incentive::instance(
                                             ).set_transaction_in(tx_in
                                         );
-                                        
+
                                         m_collateral_balance =
                                            static_cast<double> (
                                            i.get_transaction_wallet(
@@ -757,13 +1002,19 @@ void incentive_manager::do_tick_check_inputs(const std::uint32_t & interval)
                                            ].value()) / constants::coin
                                         ;
                                         
+                                        log_info(
+                                            "Incentive manager found "
+                                            "collateral balance " <<
+                                            m_collateral_balance << "."
+                                        );
+                                        
                                         m_collateral_is_valid = true;
                                         
                                         break;
                                     }
                                     else
                                     {
-                                        log_debug(
+                                        log_info(
                                             "Incentive manager found invalid "
                                             "collateral input, checking more."
                                         );
@@ -772,6 +1023,8 @@ void incentive_manager::do_tick_check_inputs(const std::uint32_t & interval)
                                             ).set_transaction_in(
                                             transaction_in()
                                         );
+                                        
+                                        m_collateral_balance = 0.0f;
                                         
                                         m_collateral_is_valid = false;
                                     }
@@ -786,6 +1039,8 @@ void incentive_manager::do_tick_check_inputs(const std::uint32_t & interval)
                                     incentive::instance().set_transaction_in(
                                         transaction_in()
                                     );
+                                    
+                                    m_collateral_balance = 0.0f;
                                     
                                     m_collateral_is_valid = false;
                                 }
@@ -847,7 +1102,7 @@ bool incentive_manager::vote(const std::string & wallet_address)
          */
         const auto & vote_score = ivote.score();
         
-        log_debug(
+        log_info(
             "Incentve manager forming vote, "
             "calculated score = " << vote_score <<
             " for " <<
@@ -982,13 +1237,30 @@ std::vector<output> incentive_manager::select_coins()
     
     globals::instance().wallet_main()->available_coins(coins, true, 0);
 
+    auto index_previous = stack_impl::get_block_index_best();
+    
+    /**
+     * Get the collateral.
+     */
+    auto collateral =
+        incentive::instance().get_collateral(
+        index_previous ?
+        index_previous->height() + 1 : 0)
+    ;
+    
     for (auto & i : coins)
     {
         if (
             i.get_transaction_wallet().transactions_out()[
-            i.get_i()].value() >= incentive::collateral * constants::coin
+            i.get_i()].value() >= collateral * constants::coin
             )
         {
+            log_info(
+                "Incentive manager found candidate " <<
+                i.get_transaction_wallet().transactions_out()[
+                i.get_i()].value() /  constants::coin << " for collateral."
+            );
+            
             ret.push_back(i);
         }
     }

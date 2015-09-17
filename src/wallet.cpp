@@ -951,10 +951,6 @@ void wallet::on_transaction_updated(const sha256 & val)
             
             std::int64_t credit = 0;
             
-            /**
-             * Since this is a coin base transaction we only add the first value
-             * from the first transaction out.
-             */
             for (auto & j : wtx.transactions_out())
             {
                 if (
@@ -964,7 +960,15 @@ void wallet::on_transaction_updated(const sha256 & val)
                 {
                     credit += j.value();
                     
-                    break;
+                    /**
+                     * Since this is a coin base transaction we only add the
+                     * first value from the first transaction out except when
+                     * incentives are enabled (which will have many outputs).
+                     */
+                    if (globals::instance().is_incentive_enabled() == false)
+                    {
+                        break;
+                    }
                 }
             }
             

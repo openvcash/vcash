@@ -203,13 +203,13 @@ bool db_tx::load_block_index(stack_impl & impl)
         enum { check_level = 1 };
         
         /**
-         * Check 1.5 days woth of blocks for clients and 3 days worth of blocks
+         * Check 1 days worth of blocks for clients and 4 days worth of blocks
          * for peers.
          */
 #if (defined __ANDROID__ || defined __IPHONE_OS_VERSION_MIN_REQUIRED)
-        auto check_depth = 750;
+        auto check_depth = 350;
 #else
-        auto check_depth = 1500;
+        auto check_depth = 1400;
 #endif
         if (check_depth == 0)
         {

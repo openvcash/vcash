@@ -30,9 +30,11 @@
 #include <boost/asio.hpp>
 
 #include <coin/hash.hpp>
+#include <coin/key_public.hpp>
 #include <coin/logger.hpp>
 #include <coin/protocol.hpp>
 #include <coin/time.hpp>
+#include <coin/transaction_in.hpp>
 
 namespace coin {
 
@@ -420,6 +422,8 @@ namespace coin {
             {
                 protocol::network_address_t addr;
                 std::string wallet_address;
+                key_public public_key;
+                transaction_in tx_in;
                 std::time_t time;
                 std::uint32_t protocol_version;
                 std::string protocol_version_user_agent;

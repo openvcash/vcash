@@ -48,7 +48,9 @@ namespace coin {
              * Constructor
              * @param public_key The key_public.
              */
-            incentive_answer(const key_public & public_key);
+            incentive_answer(
+                const key_public & public_key, const transaction_in & tx_in
+            );
         
             /**
              * Encodes
@@ -82,6 +84,11 @@ namespace coin {
              * The public key.
              */
             const key_public & public_key() const;
+        
+            /**
+             * The transaction_in.
+             */
+            const transaction_in & get_transaction_in() const;
         
             /**
              * The address.

@@ -205,6 +205,18 @@ namespace coin {
              * The votes mutex.
              */
             std::mutex mutex_votes_;
+
+            /**
+             * The collaterals.
+             */
+            std::map<
+                std::string, std::pair<std::time_t, std::uint32_t> >
+            collaterals_;
+        
+            /**
+             * The collaterals mutex.
+             */
+            std::mutex mutex_collaterals_;
     };
 }
 

@@ -1737,21 +1737,6 @@ void stack_impl::send_coins(
         
         bool perform_send = true;
         
-        if (
-            addr.to_string() == address(globals::instance().wallet_main(
-            )->key_public_default().get_id()).to_string()
-            )
-        {
-            log_error(
-                "Stack, send coins failed, tried to send to our own address."
-            );
-            
-            perform_send = false;
-            
-            pairs["error.code"] = "-1";
-            pairs["error.message"] = "can't to send to our own address";
-        }
-        
         if (addr.is_valid() == false)
         {
             log_error("Stack, send coins failed, invalid destination address.");

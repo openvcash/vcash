@@ -42,17 +42,7 @@ namespace coin {
     class incentive
     {
         public:
-        
-            /**
-             * The percentage.
-             */
-            enum { percentage = 1 };
-        
-            /**
-             * The collateral.
-             */
-            enum { collateral = 9999 };
-        
+
             /**
              * Constructor
              */
@@ -131,6 +121,18 @@ namespace coin {
                 const std::vector<std::uint8_t> & signature
             );
         
+            /**
+             * Calculates the collaeral based on block height.
+             * @param height The height of the block.
+             */
+            std::size_t get_collateral(const std::uint32_t & height);
+        
+            /**
+             * Calculates the percentage based on block height.
+             * @param height The height of the block.
+             */
+            std::size_t get_percentage(const std::uint32_t & height);
+
         private:
         
             /**

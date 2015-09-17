@@ -1328,8 +1328,9 @@ void tcp_connection::send_ianswer_message()
                  */
                 msg.protocol_ianswer().ianswer =
                     std::make_shared<incentive_answer> (
-                    incentive::instance().get_key().get_public_key())
-                ;
+                    incentive::instance().get_key().get_public_key(),
+                    incentive::instance().get_transaction_in()
+                );
                 
                 log_debug("TCP connection is sending ianswer.");
 

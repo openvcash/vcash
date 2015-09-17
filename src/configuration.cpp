@@ -106,11 +106,11 @@ bool configuration::load()
         );
         
         /**
-         * Enforce the minimum network.tcp.inbound.maximum.
+         * Enforce the minimum network.tcp.inbound.minimum.
          */
         if (m_network_tcp_inbound_maximum < network::tcp_inbound_minimum)
         {
-            m_network_tcp_inbound_maximum = network::tcp_inbound_minimum;
+            m_network_tcp_inbound_maximum = network::tcp_inbound_minimum * 2;
         }
         
         /**
@@ -366,7 +366,7 @@ void configuration::set_network_tcp_inbound_maximum(const std::size_t & val)
 {
     if (val < network::tcp_inbound_minimum)
     {
-        m_network_tcp_inbound_maximum = network::tcp_inbound_minimum;
+        m_network_tcp_inbound_maximum = network::tcp_inbound_minimum * 2;
     }
     else
     {

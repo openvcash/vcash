@@ -2522,7 +2522,8 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getblocktemplate(
                 auto amount =
                     static_cast<std::int64_t> (
                     blk->transactions()[0].transactions_out()[0].value() *
-                    (incentive::percentage / 100.0f))
+                    (incentive::instance().get_percentage(
+                    index_previous->height() + 1) / 100.0f))
                 ;
                 
                 pt_incentive.put("amount", amount);
@@ -2581,34 +2582,38 @@ boost::property_tree::ptree rpc_connection::json_getincentiveinfo()
             );
         }
         
-        ret.put("collateralrequired", incentive::instance().collateral);
+        auto index_previous = stack_impl::get_block_index_best();
+
+        /**
+         * Get the collateral.
+         */
+        auto collateral =
+            incentive::instance().get_collateral(
+            index_previous ?
+            index_previous->height() + 1 : 0)
+        ;
+
+        ret.put(
+            "collateralrequired",
+            collateral > 0 ? collateral + 1 : collateral
+        );
         
         ret.put(
             "collateralbalance",
             stack_impl_.get_incentive_manager()->collateral_balance()
         );
         
-        auto is_firewalled = true;
-        
-        auto tcp_connections =
-            stack_impl_.get_tcp_connection_manager()->tcp_connections()
+        /**
+         * Check if we are firewalled (have had a recent inbound
+         * TCP connection).
+         */
+        auto is_firewalled =
+            std::time(0) - stack_impl_.get_tcp_connection_manager(
+            )->time_last_inbound() > 60 * 60
         ;
         
-        for (auto & i : tcp_connections)
-        {
-            if (auto t = i.second.lock())
-            {
-                if (t->direction() == tcp_connection::direction_incoming)
-                {
-                    is_firewalled = false;
-                    
-                    break;
-                }
-            }
-        }
-        
         ret.put(
-            "networkstatus", is_firewalled ? "firewalled" : "open",
+            "networkstatus", is_firewalled ? "firewalled" : "ok",
             rpc_json_parser::translator<std::string> ()
         );
         
@@ -2617,11 +2622,11 @@ boost::property_tree::ptree rpc_connection::json_getincentiveinfo()
             is_firewalled == false
             )
         {
-            if (incentive::instance().collateral > 0)
+            if (collateral > 0)
             {
                 if (
                     stack_impl_.get_incentive_manager(
-                    )->collateral_balance() >= incentive::instance().collateral
+                    )->collateral_balance() >= collateral
                     )
                 {
                     ret.put("votecandidate", true);
@@ -2734,6 +2739,7 @@ boost::property_tree::ptree rpc_connection::json_getinfo()
             "ip", globals::instance().address_public().to_string(),
             rpc_json_parser::translator<std::string> ()
         );
+        ret.put("port", stack_impl_.get_configuration().network_port_tcp());
         ret.put("difficulty", stack_impl_.difficulty());
         ret.put(
             "keypoolsize",

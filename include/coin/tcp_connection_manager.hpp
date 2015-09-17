@@ -94,6 +94,11 @@ namespace coin {
              */
             bool is_connected();
         
+            /**
+             * The last time we have accepted an inbound connection.
+             */
+            const std::time_t & time_last_inbound() const;
+        
         private:
         
             /**
@@ -114,6 +119,11 @@ namespace coin {
             std::map<
                 boost::asio::ip::tcp::endpoint, std::weak_ptr<tcp_connection>
             > m_tcp_connections;
+        
+            /**
+             * The last time we have accepted an inbound connection.
+             */
+            std::time_t m_time_last_inbound;
         
         protected:
         

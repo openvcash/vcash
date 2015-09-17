@@ -36,9 +36,12 @@ incentive_answer::incentive_answer()
     set_null();
 }
 
-incentive_answer::incentive_answer(const key_public & public_key)
+incentive_answer::incentive_answer(
+    const key_public & public_key, const transaction_in & tx_in
+    )
     : m_version(current_version)
     , m_public_key(public_key)
+    , m_transaction_in(tx_in)
 {
     // ...
 }
@@ -128,6 +131,11 @@ void incentive_answer::set_null()
 const key_public & incentive_answer::public_key() const
 {
     return m_public_key;
+}
+
+const transaction_in & incentive_answer::get_transaction_in() const
+{
+    return m_transaction_in;
 }
 
 const std::string incentive_answer::get_address() const

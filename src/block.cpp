@@ -41,6 +41,7 @@
 #else
 #include <coin/hash_scrypt.hpp>
 #endif // USE_WHIRLPOOL
+#include <coin/incentive.hpp>
 #include <coin/kernel.hpp>
 #include <coin/key_reserved.hpp>
 #include <coin/key_store.hpp>
@@ -314,6 +315,66 @@ std::shared_ptr<block> block::create_new(
     tx_new.transactions_out()[0].script_public_key() <<
         reserved_key.get_reserved_key() << script::op_checksig
     ;
+    
+    /**
+     * Create incentive transaction.
+     */
+    if (
+        proof_of_stake == false &&
+        globals::instance().is_incentive_enabled() == true
+        )
+    {
+        auto index_previous = stack_impl::get_block_index_best();
+
+        if (
+            index_previous &&
+            incentive::instance().get_key().is_null() == false
+            )
+        {
+            if (
+                incentive::instance().winners().count(
+                index_previous->height() + 1) > 0
+                )
+            {
+                tx_new.transactions_out().resize(2);
+
+                script script_incentive;
+
+                auto wallet_address =
+                    incentive::instance().winners()[
+                    index_previous->height() + 1]
+                ;
+                
+                address addr;
+                
+                if (addr.set_string(wallet_address) == true)
+                {
+                    script_incentive.set_destination(addr.get());
+                    
+                    tx_new.transactions_out()[1].script_public_key() =
+                        script_incentive
+                    ;
+
+                    tx_new.transactions_out()[1].set_value(0);
+
+                    destination::tx_t dest;
+                    
+                    if (
+                        script::extract_destination(
+                        script_incentive, dest) == true
+                        )
+                    {
+                        address addr(dest);
+                    
+                        log_info(
+                            "Block creating new incentive transaction for " <<
+                            addr.to_string().substr(0, 8)<< "."
+                        );
+                    }
+                }
+            }
+        }
+    }
     
     /**
      * Add our (coinbase) transaction as the first transaction.
@@ -770,12 +831,43 @@ std::shared_ptr<block> block::create_new(
         log_debug("Block, create new total size = " << block_size << ".");
     }
     
-    if (ret->is_proof_of_work())
+    if (ret->is_proof_of_work() == true)
     {
-        ret->transactions()[0].transactions_out()[0].set_value(
-            reward::get_proof_of_work(index_previous->height() + 1, fees,
-            index_previous->get_block_hash())
-        );
+        if (
+            globals::instance().is_incentive_enabled() == true &&
+            incentive::instance().get_key().is_null() == false &&
+            incentive::instance().winners().count(
+            index_previous->height() + 1) > 0
+            )
+        {
+            auto value = reward::get_proof_of_work(
+                index_previous->height() + 1, fees,
+                index_previous->get_block_hash()
+            );
+            
+            auto value_incentive =
+                value * (incentive::instance().get_percentage(
+                index_previous->height() + 1) / 100.0f)
+            ;
+            
+            ret->transactions()[0].transactions_out()[0].set_value(
+                value - value_incentive
+            );
+            
+            if (tx_new.transactions_out().size() > 1)
+            {
+                ret->transactions()[0].transactions_out()[1].set_value(
+                    value_incentive
+                );
+            }
+        }
+        else
+        {
+            ret->transactions()[0].transactions_out()[0].set_value(
+                reward::get_proof_of_work(index_previous->height() + 1, fees,
+                index_previous->get_block_hash())
+            );
+        }
     }
     
     /**
@@ -783,7 +875,7 @@ std::shared_ptr<block> block::create_new(
      */
     ret->header().hash_previous_block = index_previous->get_block_hash();
     
-    if (ret->is_proof_of_stake())
+    if (ret->is_proof_of_stake() == true)
     {
         ret->header().timestamp = ret->transactions()[1].time();
     }

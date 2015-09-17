@@ -1556,7 +1556,7 @@ void address_manager::tick(const boost::system::error_code & ec)
         
         std::random_shuffle(endpoints.begin(), endpoints.end());
 
-        enum { max_probes_total = 24 };
+        enum { max_probes_total = 32 };
         
         if (endpoints.size() > max_probes_total)
         {
@@ -1761,7 +1761,9 @@ void address_manager::tick(const boost::system::error_code & ec)
                             recent.addr =
                                 protocol::network_address_t::from_endpoint(i)
                             ;
+                            recent.public_key = ianswer.public_key();
                             recent.wallet_address = ianswer.get_address();
+                            recent.tx_in = ianswer.get_transaction_in();
                             recent.time = std::time(0);
                         }
                         else
@@ -1771,7 +1773,10 @@ void address_manager::tick(const boost::system::error_code & ec)
                             recent.addr =
                                 protocol::network_address_t::from_endpoint(i)
                             ;
+                            recent.public_key = ianswer.public_key();
                             recent.wallet_address = ianswer.get_address();
+                            recent.tx_in = ianswer.get_transaction_in();
+
                             recent.time = std::time(0);
                             
                             m_recent_good_endpoints[

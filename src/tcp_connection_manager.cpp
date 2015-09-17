@@ -39,7 +39,8 @@ using namespace coin;
 tcp_connection_manager::tcp_connection_manager(
     boost::asio::io_service & ios, stack_impl & owner
     )
-    : io_service_(ios)
+    : m_time_last_inbound(0)
+    , io_service_(ios)
     , resolver_(ios)
     , strand_(ios)
     , stack_impl_(owner)
@@ -112,6 +113,22 @@ void tcp_connection_manager::handle_accept(
 {
     std::lock_guard<std::recursive_mutex> l1(mutex_tcp_connections_);
     
+    try
+    {
+        if (
+            transport->socket().remote_endpoint().address(
+            ).is_loopback() == false && transport->socket().remote_endpoint(
+            ).address().is_multicast() == false
+            )
+        {
+            m_time_last_inbound = std::time(0);
+        }
+    }
+    catch (...)
+    {
+        // ...
+    }
+
     /**
      * Only peers accept incoming connections.
      */
@@ -307,6 +324,11 @@ bool tcp_connection_manager::is_connected()
     }
     
     return tcp_connections > 0;
+}
+
+const std::time_t & tcp_connection_manager::time_last_inbound() const
+{
+    return m_time_last_inbound;
 }
 
 bool tcp_connection_manager::connect(const boost::asio::ip::tcp::endpoint & ep)
