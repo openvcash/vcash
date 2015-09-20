@@ -2500,7 +2500,7 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getblocktemplate(
              * }
              */
             
-            pt_incentive.put("enforced", false);
+            pt_incentive.put("enforced", true);
             
             /**
              * Check this block height for incentive winners.
