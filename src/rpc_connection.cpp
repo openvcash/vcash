@@ -2496,7 +2496,7 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getblocktemplate(
              * "incentive": {
              *     "enforced": true,
              *     "address": "VdPoLns3EFSqd5QghGecBvoNV6Afs3EgdW",
-             *     "amount": 3703703,
+             *     "amount": 617284,
              * }
              */
             
