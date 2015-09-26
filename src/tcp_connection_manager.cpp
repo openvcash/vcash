@@ -728,11 +728,6 @@ bool tcp_connection_manager::is_ip_banned(const std::string & val)
         {"144.76.238.2", -1},
         
         /**
-         * Possible ToR node - Opens TCP connections to all network nodes.
-         */
-        {"93.174.95.100", -1},
-        
-        /**
          * ??? - Opens TCP connections to all network nodes.
          */
         {"113.97.218.52", -1}
