@@ -31,8 +31,6 @@
  */
 #define COIN_USE_GUI 1
 
-#error "Do not deploy until Sept. 30, it will not work."
-
 namespace coin {
 namespace constants {
 
