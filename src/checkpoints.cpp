@@ -74,6 +74,9 @@ checkpoints::checkpoints()
     m_checkpoints[193123] = sha256(
         "c30086972070db8ed6a41ee40c5513466b0fd2659807519085a3bdabd6e28dda"
     );
+    m_checkpoints[210000] = sha256(
+        "bf7966ccf7cba4c151cc6e990b320a1a097a886c15e2cc026c3f69690b375b67"
+    );
     
     m_checkpoints_test_net[0] = block::get_hash_genesis_test_net();
 }
@@ -214,11 +217,11 @@ bool checkpoints::validate_sync_checkpoint(const sha256 & hash_checkpoint)
         globals::instance().block_indexes()[m_hash_sync_checkpoint]
     ;
     
-    auto index_checkpointRecv =
+    auto index_checkpoint_recv =
         globals::instance().block_indexes()[hash_checkpoint]
     ;
 
-    if (index_checkpointRecv->height() <= index_sync_checkpoint->height())
+    if (index_checkpoint_recv->height() <= index_sync_checkpoint->height())
     {
         /**
          * Received an older checkpoint, trace back from current checkpoint
@@ -227,7 +230,7 @@ bool checkpoints::validate_sync_checkpoint(const sha256 & hash_checkpoint)
         */
         auto pindex = index_sync_checkpoint;
         
-        while (pindex->height() > index_checkpointRecv->height())
+        while (pindex->height() > index_checkpoint_recv->height())
         {
             if (!(pindex = pindex->block_index_previous()))
             {
@@ -265,7 +268,7 @@ bool checkpoints::validate_sync_checkpoint(const sha256 & hash_checkpoint)
      * checkpoint. Trace back to the same height of current checkpoint
      * to verify.
      */
-    auto index = index_checkpointRecv;
+    auto index = index_checkpoint_recv;
     
     while (index->height() > index_sync_checkpoint->height())
     {

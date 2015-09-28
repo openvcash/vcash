@@ -577,6 +577,11 @@ namespace coin {
              * The recent_good_endpoints_ std::recursive_mutex.
              */
             mutable std::recursive_mutex mutex_recent_good_endpoints_;
+        
+            /**
+             * The number of ticks that have occured.
+             */
+            std::size_t ticks_;
     };
     
 } // namespace coin

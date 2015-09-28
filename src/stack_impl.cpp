@@ -201,8 +201,8 @@ void stack_impl::start()
      * Allocate the status manager.
      */
     m_status_manager.reset(
-        new status_manager(globals::instance().io_service(),
-        globals::instance().strand(), *this)
+        new status_manager(/*globals::instance().io_service(),
+        globals::instance().strand(), */*this)
     );
     
     /**
@@ -2730,7 +2730,7 @@ bool stack_impl::process_block(
             
             if (bn_new_block > bn_required)
             {
-                log_debug(
+                log_error(
                     "Stack failed to process block, block with too little " <<
                     (blk->is_proof_of_stake() ?
                     "proof-of-stake" : "proof-of-work") << "."
@@ -3113,16 +3113,22 @@ std::uint64_t stack_impl::network_hash_per_second()
 
 void stack_impl::on_error(const std::map<std::string, std::string> & pairs)
 {
+    std::lock_guard<std::recursive_mutex> l1(mutex_callback_);
+    
     stack_.on_error(pairs);
 }
 
 void stack_impl::on_status(const std::map<std::string, std::string> & pairs)
 {
+    std::lock_guard<std::recursive_mutex> l1(mutex_callback_);
+    
     stack_.on_status(pairs);
 }
 
 void stack_impl::on_alert(const std::map<std::string, std::string> & pairs)
 {
+    std::lock_guard<std::recursive_mutex> l1(mutex_callback_);
+    
     stack_.on_alert(pairs);
 }
 

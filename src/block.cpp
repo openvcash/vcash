@@ -1515,6 +1515,309 @@ bool block::check_block(
     }
 
     /**
+     * Incentive block checking.
+     */
+    if (globals::instance().is_incentive_enabled() == true)
+    {
+        if (is_proof_of_work() == true)
+        {
+            if (utility::is_initial_block_download() == false)
+            {
+                if (m_transactions.size() > 0)
+                {
+                    auto index_previous = stack_impl::get_block_index_best();
+                    
+                    /**
+                     * The incentive enforcement block number.
+                     */
+                    enum { incentive_enforcement = 220000 };
+
+                    if (
+                        index_previous &&
+                        index_previous->height() + 1 >= incentive_enforcement
+                        )
+                    {
+                        if (
+                            incentive::instance().winners().count(
+                            index_previous->height() + 1) > 0
+                            )
+                        {
+                            /**
+                             * There must be at least two outputs.
+                             */
+                            if (
+                                m_transactions[0].transactions_out().size() > 1
+                                )
+                            {
+                                /**
+                                 * Get the value.
+                                 */
+                                auto value = reward::get_proof_of_work(
+                                    index_previous->height() + 1, 0,
+                                    index_previous->get_block_hash()
+                                );
+                                
+                                /**
+                                 * Get the incentive value.
+                                 */
+                                std::int64_t value_incentive =
+                                    value * (incentive::instance(
+                                    ).get_percentage(
+                                    index_previous->height() + 1) / 100.0f
+                                );
+
+                                /**
+                                 * Get their incentive value.
+                                 */
+                                auto their_incentive_value =
+                                    m_transactions[0].transactions_out()[
+                                    1].value()
+                                ;
+
+                                if (their_incentive_value >= value_incentive)
+                                {
+                                    log_info(
+                                        "Block got incentive reward "
+                                        "(VALID VALUE)."
+                                    );
+                                    
+                                    /**
+                                     * Get the winner for this height.
+                                     */
+                                    auto winner =
+                                        incentive::instance().winners()[
+                                        index_previous->height() + 1
+                                    ];
+                                    
+                                    if (winner.size() > 0)
+                                    {
+                                       /**
+                                        * Check winners against address.
+                                        */
+                                        auto script_public_key =
+                                            m_transactions[0
+                                            ].transactions_out()[
+                                            1].script_public_key()
+                                        ;
+                                        
+                                        destination::tx_t dest_tx;
+
+                                        if (
+                                            script::extract_destination(
+                                            script_public_key, dest_tx) == true
+                                            )
+                                        {
+                                            auto addr = address(
+                                                dest_tx).to_string()
+                                            ;
+     
+                                            if (winner == addr)
+                                            {
+                                                log_info(
+                                                    "Block got incentive reward"
+                                                    " (VALID WINNER) " <<
+                                                    winner << ":" << addr << "."
+                                                );
+                                            }
+                                            else
+                                            {
+                                                if (
+                                                    incentive::instance(
+                                                    ).runners_up().count(
+                                                    index_previous->height() + 1
+                                                    ) > 0
+                                                    )
+                                                {
+                                                    /**
+                                                     * Get the runners up.
+                                                     */
+                                                    auto runners_up =
+                                                        incentive::instance(
+                                                        ).runners_up()[
+                                                        index_previous->height()
+                                                        + 1]
+                                                    ;
+                                                    
+                                                    if (runners_up.size() > 0)
+                                                    {
+                                                        auto found = false;
+                                                        
+                                                        for (
+                                                            auto & i :
+                                                            runners_up
+                                                            )
+                                                        {
+                                                            if (i == addr)
+                                                            {
+                                                                log_info(
+                                                                    "Block got "
+                                                                    "incentive "
+                                                                    "reward "
+                                                                    "(VALID "
+                                                                    "RUNNERSUP) "
+                                                                    << i << ":"
+                                                                    << addr <<
+                                                                    "."
+                                                                );
+                                                                
+                                                                found = true;
+                                                                
+                                                                break;
+                                                            }
+                                                        }
+                                                        
+                                                        if (found == false)
+                                                        {
+                                                            log_error(
+                                                                "Block got "
+                                                                "incentive "
+                                                                "reward "
+                                                                "(INVALID "
+                                                                "WINNER/"
+                                                                "NORUNNERSUP) "
+                                                                << winner << ":"
+                                                                << addr << "."
+                                                            );
+
+                                                            /**
+                                                             * Increment the
+                                                             * Denial-of-Service
+                                                             * score for the
+                                                             * connection.
+                                                             */
+                                                            if (connection)
+                                                            {
+                                                                connection->set_dos_score(
+                                                                    connection->dos_score(
+                                                                    ) + 1
+                                                                );
+                                                            }
+                                                            
+                                                            /**
+                                                             * There was no
+                                                             * matching winner
+                                                             * that we know
+                                                             * of in the block,
+                                                             * reject and
+                                                             * increase the
+                                                             * peers ban score.
+                                                             */
+                                                            return false;
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        /**
+                                                         * We have no winner or
+                                                         * runners up, therefore
+                                                         * are a new node to the
+                                                         * system, follow the
+                                                         * longest chain.
+                                                         */
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        else
+                                        {
+                                            /**
+                                             * Increment the Denial-of-Service
+                                             * score for the connection.
+                                             */
+                                            if (connection)
+                                            {
+                                                connection->set_dos_score(
+                                                    connection->dos_score() + 5
+                                                );
+                                            }
+                                            
+                                            /**
+                                             * We failed to extract the
+                                             * destination address found in the
+                                             * block, reject and increase the
+                                             * peers ban score.
+                                             */
+                                            return false;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        /**
+                                         * We have no winners, follow the
+                                         * longest chain.
+                                         */
+                                        log_info(
+                                            "Block got incentive reward "
+                                            "(LONGESTCHAIN)."
+                                        );
+                                    }
+                                }
+                                else
+                                {
+                                    log_info(
+                                        "Got incentive reward(RAPED) NOT "
+                                        "ENOUGH." << static_cast<double> (
+                                        m_transactions[0].transactions_out()[
+                                        0].value()) / constants::coin << ":" <<
+                                        static_cast<double> (value) /
+                                        constants::coin
+                                    );
+                                    
+                                    /**
+                                     * Set the Denial-of-Service score for the
+                                     * connection.
+                                     */
+                                    if (connection)
+                                    {
+                                        connection->set_dos_score(
+                                            connection->dos_score() + 20
+                                        );
+                                    }
+                                    
+                                    /**
+                                     * There was not enough incentive value
+                                     * found in the block, reject and increase
+                                     * the peers ban score.
+                                     */
+                                    return false;
+                                }
+                            }
+                            else
+                            {
+                                log_info("Got incentive reward(RAPED) EMPTY.");
+                                
+                                /**
+                                 * Set the Denial-of-Service score for the
+                                 * connection.
+                                 */
+                                if (connection)
+                                {
+                                    connection->set_dos_score(
+                                        connection->dos_score() + 20
+                                    );
+                                }
+                                
+                                /**
+                                 * There was no incentive transaction found in
+                                 * the block, reject and increase the peers ban
+                                 * score.
+                                 */
+                                return false;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        /**
+                         * Follow the longest chain.
+                         */
+                    }
+                }
+            }
+        }
+    }
+
+    /**
      * Check the transactions.
      */
     for (auto & i : m_transactions)

@@ -59,6 +59,7 @@ address_manager::address_manager(
     , buckets_tried_(std::vector< std::vector<std::uint32_t> >(
         64, std::vector<std::uint32_t>(0))
     )
+    , ticks_(0)
 {
     /**
      * Allocate the key.
@@ -1517,7 +1518,7 @@ void address_manager::tick(const boost::system::error_code & ec)
             ;
         }
         
-        log_info("Address manager recent good endpoints:\n" << ss.str());
+        log_debug("Address manager recent good endpoints:\n" << ss.str());
         
         std::vector<boost::asio::ip::tcp::endpoint> endpoints;
         
@@ -1742,7 +1743,7 @@ void address_manager::tick(const boost::system::error_code & ec)
                         const incentive_answer & ianswer
                         )
                     {
-                        log_info("Address manager got ianswer.");
+                        log_debug("Address manager got ianswer.");
                         
                         std::lock_guard<std::recursive_mutex> l1(
                             mutex_recent_good_endpoints_
@@ -1809,18 +1810,36 @@ void address_manager::tick(const boost::system::error_code & ec)
         /**
          * The number of minimum good endpoints to maintain.
          */
-        enum { min_good_endpoints = 20 };
+        enum { min_good_endpoints = 48 };
+        
+        auto interval = 8;
+        
+        if (ticks_ < 20)
+        {
+            interval =
+                m_recent_good_endpoints.size() < min_good_endpoints ?
+                8 : (1 * 60)
+            ;
+        }
+        else
+        {
+            interval =
+                m_recent_good_endpoints.size() < min_good_endpoints ?
+                (5 * 60) : (10 * 60)
+            ;
+        }
         
         /**
          * Start the timer.
          */
-        timer_.expires_from_now(
-            std::chrono::seconds(
-            m_recent_good_endpoints.size() <
-            min_good_endpoints ? 8 : (10 * 60))
-        );
+        timer_.expires_from_now(std::chrono::seconds(interval));
         timer_.async_wait(strand_.wrap(
             std::bind(&address_manager::tick, this, std::placeholders::_1))
         );
+        
+        /**
+         * Increment the number of ticks.
+         */
+        ticks_++;
     }
 }

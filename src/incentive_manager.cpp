@@ -150,6 +150,11 @@ bool incentive_manager::handle_message(
                 
                 ss << "votes:\n";
                 
+                /**
+                 * The number of votes required to qualify.
+                 */
+                enum { minimum_votes = 8 };
+                
                 auto index = 0;
                 
                 std::size_t most_votes = 0;
@@ -167,19 +172,41 @@ bool incentive_manager::handle_message(
                         winner = i.first;
                     }
                     
+                    /**
+                     * We maintain a list of all runner's up.
+                     */
+                    if (i.second.size() >= minimum_votes)
+                    {
+                        /**
+                         * Insert this winner as a runner up.
+                         */
+                        incentive::instance().runners_up()[
+                            msg.protocol_ivote().ivote->block_height() + 2
+                        ].insert(i.first);
+                    }
+                    
                     ss <<
                         "\t" << index << ". " <<
                         i.first.substr(0, 8) << ":" <<
                         i.second.size() << "\n"
                     ;
                 }
+
+                if (
+                    incentive::instance().runners_up().count(
+                    msg.protocol_ivote().ivote->block_height() + 2) > 0
+                    )
+                {
+                    log_debug(
+                        "Incentive manager got runner up " <<
+                        msg.protocol_ivote().ivote->block_height() + 2 <<
+                        ":" << incentive::instance().runners_up()[
+                        msg.protocol_ivote(
+                        ).ivote->block_height() + 2].size() << "."
+                    );
+                }
                 
                 log_debug(ss.str());
-                
-                /**
-                 * The number of votes required to qualify.
-                 */
-                enum { minimum_votes = 8 };
 
                 /**
                  * Check if they won.
@@ -370,17 +397,20 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                         }
                         
                         /**
-                         * Remove candidates older than 20 mins.
+                         * Remove runners up older than 4 blocks.
                          */
-                        std::lock_guard<std::mutex> l1(mutex_candidates_);
-                    
-                        auto it3 = candidates_.begin();
+                        auto it3 = incentive::instance().runners_up().begin();
                         
-                        while (it3 != candidates_.end())
+                        while (it3 != incentive::instance().runners_up().end())
                         {
-                            if (std::time(0) - it3->second.first > 20 * 60)
+                            if (
+                                vote_block_height - it3->first > 4
+                                )
                             {
-                                it3 = candidates_.erase(it3);
+                                it3 =
+                                    incentive::instance().runners_up(
+                                    ).erase(it3)
+                                ;
                             }
                             else
                             {
@@ -389,17 +419,17 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                         }
                         
                         /**
-                         * Remove votes older than 4 blocks.
+                         * Remove candidates older than 20 mins.
                          */
-                        std::lock_guard<std::mutex> l2(mutex_votes_);
+                        std::lock_guard<std::mutex> l1(mutex_candidates_);
+                    
+                        auto it4 = candidates_.begin();
                         
-                        auto it4 = votes_.begin();
-                        
-                        while (it4 != votes_.end())
+                        while (it4 != candidates_.end())
                         {
-                            if (vote_block_height - it4->first > 4)
+                            if (std::time(0) - it4->second.first > 20 * 60)
                             {
-                                it4 = votes_.erase(it4);
+                                it4 = candidates_.erase(it4);
                             }
                             else
                             {
@@ -407,21 +437,43 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                             }
                         }
                         
-                        std::lock_guard<std::mutex> l3(mutex_collaterals_);
+                        /**
+                         * Remove votes older than 4 blocks.
+                         */
+                        std::lock_guard<std::mutex> l2(mutex_votes_);
                         
-                        auto it5 = collaterals_.begin();
+                        auto it5 = votes_.begin();
                         
-                        while (it5 != collaterals_.end())
+                        while (it5 != votes_.end())
                         {
-                            if (
-                                std::time(0) - it5->second.first > (3 * 60 * 60)
-                                )
+                            if (vote_block_height - it5->first > 4)
                             {
-                                it5 = collaterals_.erase(it5);
+                                it5 = votes_.erase(it5);
                             }
                             else
                             {
                                 ++it5;
+                            }
+                        }
+                        
+                        /**
+                         * Remove collaterals older than 3 hours.
+                         */
+                        std::lock_guard<std::mutex> l3(mutex_collaterals_);
+                        
+                        auto it6 = collaterals_.begin();
+                        
+                        while (it6 != collaterals_.end())
+                        {
+                            if (
+                                std::time(0) - it6->second.first > (3 * 60 * 60)
+                                )
+                            {
+                                it6 = collaterals_.erase(it6);
+                            }
+                            else
+                            {
+                                ++it6;
                             }
                         }
                         
@@ -451,7 +503,9 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                          */
                         auto use_time_rate_limit = false;
                         
-                        auto index_previous = stack_impl::get_block_index_best();
+                        auto index_previous =
+                            stack_impl::get_block_index_best()
+                        ;
                         
                         /**
                          * Get the collateral.
@@ -547,7 +601,7 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                                             ).acceptable(tx).first == false
                                             )
                                         {
-                                            log_debug(
+                                            log_info(
                                                 "Incentive manager detected "
                                                 "invalid collateral for " <<
                                                 recent.wallet_address.substr(
@@ -567,7 +621,7 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                                         }
                                         else
                                         {
-                                            log_debug(
+                                            log_info(
                                                 "Incentive manager detected "
                                                 "valid collateral for " <<
                                                 recent.wallet_address.substr(

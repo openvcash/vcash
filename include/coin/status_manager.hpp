@@ -25,6 +25,7 @@
 #include <map>
 #include <mutex>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include <boost/asio.hpp>
@@ -47,7 +48,7 @@ namespace coin {
              * @param owner The stack_impl.
              */
             status_manager(
-                boost::asio::io_service & ios, boost::asio::strand & s,
+                /*boost::asio::io_service & ios, boost::asio::strand & s,*/
                 stack_impl & owner
             );
         
@@ -83,15 +84,25 @@ namespace coin {
             void do_tick(const std::uint32_t & interval);
 
             /**
+             * The boost::asio::io_service loop.
+             */
+            void loop();
+        
+            /**
              * The boost::asio::io_service.
              */
-            boost::asio::io_service & io_service_;
+            boost::asio::io_service io_service_;
         
             /**
              * The boost::asio::strand.
              */
-            boost::asio::strand & strand_;
+            boost::asio::strand strand_;
         
+            /**
+             * The boost::asio::io_service::work.
+             */
+            std::shared_ptr<boost::asio::io_service::work> work_;
+            
             /**
              * The stack_impl.
              */
@@ -113,6 +124,11 @@ namespace coin {
              * The pairs.
              */
             std::vector< std::map<std::string, std::string> > pairs_;
+        
+            /**
+             * The std::thread.
+             */
+            std::thread thread_;
     };
 
 } // namespace coin

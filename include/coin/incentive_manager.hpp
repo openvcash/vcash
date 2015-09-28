@@ -126,7 +126,7 @@ namespace coin {
             std::vector<address_manager::recent_endpoint_t> k_closest(
                 const std::vector<address_manager::recent_endpoint_t> & nodes,
                 const std::uint32_t & block_height,
-                const std::uint32_t & k = 20
+                const std::uint32_t & k = 32
             );
         
             /**

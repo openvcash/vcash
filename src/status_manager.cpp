@@ -18,24 +18,36 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <coin/globals.hpp>
 #include <coin/stack_impl.hpp>
 #include <coin/status_manager.hpp>
 
 using namespace coin;
 
 status_manager::status_manager(
-    boost::asio::io_service & ios, boost::asio::strand & s, stack_impl & owner
+    /*boost::asio::io_service & ios, boost::asio::strand & s, */stack_impl & owner
     )
-    : io_service_(ios)
-    , strand_(s)
+//    : io_service_(ios)
+//    , strand_(s)
+    : strand_(io_service_)
     , stack_impl_(owner)
-    , timer_(ios)
+    , timer_(io_service_)
 {
     // ...
 }
 
 void status_manager::start()
 {
+    /**
+     * Allocate the boost::asio::io_service::work.
+     */
+    work_.reset(new boost::asio::io_service::work(io_service_));
+    
+    /**
+     * Allocate the std::thread.
+     */
+    thread_ = std::thread(&status_manager::loop, this);
+    
     /**
      * Start the timer.
      */
@@ -46,13 +58,34 @@ void status_manager::stop()
 {
     timer_.cancel();
     pairs_.clear();
+    
+    /**
+     * Reset the work.
+     */
+    work_.reset();
+    
+    try
+    {
+        if (thread_.joinable())
+        {
+            thread_.join();
+        }
+    }
+    catch (std::exception & e)
+    {
+        // ...
+    }
 }
 
 void status_manager::insert(const std::map<std::string, std::string> & pairs)
 {
     std::lock_guard<std::mutex> l1(mutex_);
 
-    pairs_.push_back(pairs);
+    io_service_.post(strand_.wrap(
+        [this, pairs]()
+    {
+        pairs_.push_back(pairs);
+    }));
 }
 
 void status_manager::do_tick(const std::uint32_t & interval)
@@ -112,4 +145,24 @@ void status_manager::do_tick(const std::uint32_t & interval)
             }
         }
     }));
+}
+
+void status_manager::loop()
+{
+    while (work_)
+    {
+        try
+        {
+            io_service_.run();
+            
+            if (work_ == 0)
+            {
+                break;
+            }
+        }
+        catch (const boost::system::system_error & e)
+        {
+            // ...
+        }
+    }
 }

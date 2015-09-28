@@ -86,6 +86,11 @@ namespace coin {
             std::map<std::uint32_t, std::string> & winners();
         
             /**
+             * The runners up.
+             */
+            std::map<std::uint32_t, std::set<std::string> > & runners_up();
+        
+            /**
              * Calculates the score of a incentive_vote's.
              * @param ivote The incentive_vote's.
              */
@@ -154,6 +159,11 @@ namespace coin {
              * The winners.
              */
             std::map<std::uint32_t, std::string> m_winners;
+        
+            /**
+             * The runners up.
+             */
+            std::map<std::uint32_t, std::set<std::string> > m_runners_up;
         
         protected:
         

@@ -528,7 +528,7 @@ namespace coin {
             /**
              * The std::recursive_mutex.
              */
-            std::recursive_mutex mutex_;
+            std::recursive_mutex mutex_callback_;
         
             /**
              * The wallet flush timer.

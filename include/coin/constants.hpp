@@ -31,6 +31,8 @@
  */
 #define COIN_USE_GUI 1
 
+#error "Do not deploy until Sept. 30, it will not work."
+
 namespace coin {
 namespace constants {
 
@@ -47,7 +49,7 @@ namespace constants {
     /**
      * The client version revision.
      */
-    enum { version_client_revision = 6 };
+    enum { version_client_revision = 7 };
     
     /**
      * The client version build.
@@ -70,7 +72,7 @@ namespace constants {
     /**
      * The version string.
      */
-    static const std::string version_string = "0.3.6";
+    static const std::string version_string = "0.3.7";
     
     /**
      * The name of the coin.
