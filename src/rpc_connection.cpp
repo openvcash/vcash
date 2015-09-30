@@ -1853,7 +1853,9 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getblock(
                     "merkleroot", blk.header().hash_merkle_root.to_string(),
                     rpc_json_parser::translator<std::string> ()
                 );
-                ret.result.put("mint", index->mint() / constants::coin);
+                ret.result.put(
+                    "mint", static_cast<double> (index->mint()) / constants::coin
+                );
                 ret.result.put("time", blk.header().timestamp);
                 ret.result.put("nonce", blk.header().nonce);
                 ret.result.put(
