@@ -1533,8 +1533,8 @@ bool block::check_block(
                     enum { incentive_enforcement = 220000 };
 
                     if (
-                        index_previous &&
-                        index_previous->height() + 1 >= incentive_enforcement
+                        index_previous
+                        && index_previous->height() + 1 >= incentive_enforcement
                         )
                     {
                         if (
@@ -1666,13 +1666,22 @@ bool block::check_block(
                                                             }
                                                         }
                                                         
+                                                        /**
+                                                         * If we have no
+                                                         * matching winner
+                                                         * and no runners up we
+                                                         * we will accept the
+                                                         * questionable reward
+                                                         * but increase the
+                                                         * node's ban score.
+                                                         */
                                                         if (found == false)
                                                         {
                                                             log_error(
                                                                 "Block got "
                                                                 "incentive "
                                                                 "reward "
-                                                                "(INVALID "
+                                                                "(QUESTIONABLE "
                                                                 "WINNER/"
                                                                 "NORUNNERSUP) "
                                                                 << winner << ":"
@@ -1689,20 +1698,16 @@ bool block::check_block(
                                                             {
                                                                 connection->set_dos_score(
                                                                     connection->dos_score(
-                                                                    ) + 1
+                                                                    ) + 10
                                                                 );
                                                             }
                                                             
                                                             /**
-                                                             * There was no
-                                                             * matching winner
-                                                             * that we know
-                                                             * of in the block,
-                                                             * reject and
-                                                             * increase the
-                                                             * peers ban score.
+                                                             * We accept the
+                                                             * block as valid
+                                                             * since we lack
+                                                             * consensus.
                                                              */
-                                                            return false;
                                                         }
                                                     }
                                                     else
@@ -1804,6 +1809,12 @@ bool block::check_block(
                                  */
                                 return false;
                             }
+                        }
+                        else
+                        {
+                            /**
+                             * Follow the longest chain.
+                             */
                         }
                     }
                     else

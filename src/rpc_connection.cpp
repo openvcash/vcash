@@ -1854,7 +1854,8 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getblock(
                     rpc_json_parser::translator<std::string> ()
                 );
                 ret.result.put(
-                    "mint", static_cast<double> (index->mint()) / constants::coin
+                    "mint", static_cast<double> (index->mint()) /
+                    constants::coin
                 );
                 ret.result.put("time", blk.header().timestamp);
                 ret.result.put("nonce", blk.header().nonce);
