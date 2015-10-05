@@ -1533,8 +1533,8 @@ bool block::check_block(
                     enum { incentive_enforcement = 220000 };
 
                     if (
-                        index_previous
-                        && index_previous->height() + 1 >= incentive_enforcement
+                        index_previous &&
+                        index_previous->height() + 1 >= incentive_enforcement
                         )
                     {
                         if (
@@ -1732,7 +1732,8 @@ bool block::check_block(
                                             if (connection)
                                             {
                                                 connection->set_dos_score(
-                                                    connection->dos_score() + 5
+                                                    connection->dos_score()
+                                                    + 100
                                                 );
                                             }
                                             
@@ -1775,7 +1776,7 @@ bool block::check_block(
                                     if (connection)
                                     {
                                         connection->set_dos_score(
-                                            connection->dos_score() + 20
+                                            connection->dos_score() + 100
                                         );
                                     }
                                     
@@ -1798,7 +1799,7 @@ bool block::check_block(
                                 if (connection)
                                 {
                                     connection->set_dos_score(
-                                        connection->dos_score() + 20
+                                        connection->dos_score() + 100
                                     );
                                 }
                                 
