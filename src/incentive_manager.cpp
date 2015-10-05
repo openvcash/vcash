@@ -206,7 +206,7 @@ bool incentive_manager::handle_message(
                     );
                 }
                 
-                log_debug(ss.str());
+                log_info(ss.str());
 
                 /**
                  * Check if they won.
