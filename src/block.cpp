@@ -52,6 +52,7 @@
 #include <coin/stack_impl.hpp>
 #include <coin/tcp_connection.hpp>
 #include <coin/tcp_connection_manager.hpp>
+#include <coin/tcp_transport.hpp>
 #include <coin/time.hpp>
 #include <coin/transaction_in.hpp>
 #include <coin/transaction_out.hpp>
@@ -342,7 +343,7 @@ std::shared_ptr<block> block::create_new(
 
                 auto wallet_address =
                     incentive::instance().winners()[
-                    index_previous->height() + 1]
+                    index_previous->height() + 1].second
                 ;
                 
                 address addr;
@@ -1587,7 +1588,7 @@ bool block::check_block(
                                     auto winner =
                                         incentive::instance().winners()[
                                         index_previous->height() + 1
-                                    ];
+                                    ].second;
                                     
                                     if (winner.size() > 0)
                                     {
@@ -1790,7 +1791,24 @@ bool block::check_block(
                             }
                             else
                             {
-                                log_info("Got incentive reward(RAPED) EMPTY.");
+                                if (
+                                    auto t = connection->get_tcp_transport(
+                                    ).lock()
+                                    )
+                                {
+                                    log_info(
+                                        "Got incentive reward(RAPED) EMPTY "
+                                        "from " << t->socket(
+                                        ).remote_endpoint() << "."
+                                    );
+                                }
+                                else
+                                {
+                                    log_info(
+                                        "Got incentive reward(RAPED) EMPTY "
+                                        "from ???."
+                                    );
+                                }
                                 
                                 /**
                                  * Set the Denial-of-Service score for the

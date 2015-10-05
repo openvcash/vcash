@@ -83,7 +83,9 @@ namespace coin {
             /**
              * The winners.
              */
-            std::map<std::uint32_t, std::string> & winners();
+            std::map<std::uint32_t, std::pair<std::time_t, std::string> > &
+                winners()
+            ;
         
             /**
              * The runners up.
@@ -158,7 +160,9 @@ namespace coin {
             /**
              * The winners.
              */
-            std::map<std::uint32_t, std::string> m_winners;
+            std::map<
+                std::uint32_t, std::pair<std::time_t, std::string> > m_winners
+            ;
         
             /**
              * The runners up.

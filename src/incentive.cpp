@@ -65,7 +65,8 @@ std::map<sha256, incentive_vote> & incentive::votes()
     return m_votes;
 }
 
-std::map<std::uint32_t, std::string> & incentive::winners()
+std::map<std::uint32_t, std::pair<std::time_t, std::string> > &
+    incentive::winners()
 {
     return m_winners;
 }

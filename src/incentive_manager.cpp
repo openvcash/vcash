@@ -206,7 +206,7 @@ bool incentive_manager::handle_message(
                     );
                 }
                 
-                log_debug(ss.str());
+                log_info(ss.str());
 
                 /**
                  * Check if they won.
@@ -224,7 +224,12 @@ bool incentive_manager::handle_message(
                      * could change.
                      */
                     incentive::instance().winners()[
-                        msg.protocol_ivote().ivote->block_height() + 2] = winner
+                        msg.protocol_ivote().ivote->block_height() + 2].first =
+                        std::time(0)
+                    ;
+                    incentive::instance().winners()[
+                        msg.protocol_ivote().ivote->block_height() + 2].second =
+                        winner
                     ;
                 }
 
@@ -358,13 +363,13 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                         auto vote_block_height = block_height + 2;
                         
                         /**
-                         * Remove winners older than 4 blocks.
+                         * Remove winners older than N mins.
                          */
                         auto it1 = incentive::instance().winners().begin();
                         
                         while (it1 != incentive::instance().winners().end())
                         {
-                            if (vote_block_height - it1->first > 4)
+                            if (std::time(0) - it1->second.first > 10 * 60)
                             {
                                 it1 =
                                     incentive::instance().winners().erase(it1)

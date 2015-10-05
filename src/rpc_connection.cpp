@@ -2515,7 +2515,7 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getblocktemplate(
             {
                 pt_incentive.put(
                     "address", incentive::instance().winners()[
-                    index_previous->height() + 1],
+                    index_previous->height() + 1].second,
                     rpc_json_parser::translator<std::string> ()
                 );
                 
