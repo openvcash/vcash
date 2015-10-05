@@ -1671,7 +1671,7 @@ void address_manager::tick(const boost::system::error_code & ec)
                         const std::int32_t & protocol_version_start_height
                         )
                     {
-                        log_info(
+                        log_debug(
                             "Address manager probed " << i << ":" <<
                             protocol_version << ":" <<
                             protocol_version_user_agent << ":" <<
