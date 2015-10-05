@@ -1796,13 +1796,14 @@ bool block::check_block(
                                  * Set the Denial-of-Service score for the
                                  * connection.
                                  */
+#if 0 /* Until pools are done testing. */
                                 if (connection)
                                 {
                                     connection->set_dos_score(
                                         connection->dos_score() + 1
                                     );
                                 }
-                                
+#endif
                                 /**
                                  * There was no incentive transaction found in
                                  * the block, reject and increase the peers ban
