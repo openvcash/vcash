@@ -43,14 +43,9 @@ namespace coin {
         
             /**
              * Constructor
-             * @param ios The boost::asio::io_service.
-             * @param s The boost::asio::strand.
              * @param owner The stack_impl.
              */
-            status_manager(
-                /*boost::asio::io_service & ios, boost::asio::strand & s,*/
-                stack_impl & owner
-            );
+            status_manager(stack_impl & owner);
         
             /**
              * Starts

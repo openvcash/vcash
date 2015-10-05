@@ -1119,4 +1119,4 @@ namespace coin {
     
 } // namespace coin
 
-#endif // COIN_SCRIPT_HPP
+#endif // COIN_SCRYPT_HPP
