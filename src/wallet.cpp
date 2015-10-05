@@ -33,6 +33,7 @@
 #include <coin/crypter.hpp>
 #include <coin/db_env.hpp>
 #include <coin/hash.hpp>
+#include <coin/incentive.hpp>
 #include <coin/kernel.hpp>
 #include <coin/key_reserved.hpp>
 #include <coin/key_pool.hpp>
@@ -2775,6 +2776,32 @@ bool wallet::create_coin_stake(
         )
     {
         return false;
+    }
+    
+    /**
+     * Do not allow stake on a collateral deposit.
+     */
+    if (globals::instance().is_incentive_enabled())
+    {
+        auto it1 = coins.begin();
+        
+        for (; it1 != coins.end(); ++it1)
+        {
+            for (auto & i : it1->first.transactions_in())
+            {
+                if (i == incentive::instance().get_transaction_in())
+                {
+                    log_info(
+                        "Wallet, create coin stake is removing collateral "
+                        "transaction."
+                    );
+                    
+                    coins.erase(it1);
+                
+                    break;
+                }
+            }
+        }
     }
     
     if (coins.empty())

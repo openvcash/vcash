@@ -1518,7 +1518,7 @@ void address_manager::tick(const boost::system::error_code & ec)
             ;
         }
         
-        log_debug("Address manager recent good endpoints:\n" << ss.str());
+        log_info("Address manager recent good endpoints:\n" << ss.str());
         
         std::vector<boost::asio::ip::tcp::endpoint> endpoints;
         

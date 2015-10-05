@@ -24,11 +24,7 @@
 
 using namespace coin;
 
-status_manager::status_manager(
-    /*boost::asio::io_service & ios, boost::asio::strand & s, */stack_impl & owner
-    )
-//    : io_service_(ios)
-//    , strand_(s)
+status_manager::status_manager(stack_impl & owner)
     : strand_(io_service_)
     , stack_impl_(owner)
     , timer_(io_service_)

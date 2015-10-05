@@ -200,10 +200,7 @@ void stack_impl::start()
     /**
      * Allocate the status manager.
      */
-    m_status_manager.reset(
-        new status_manager(/*globals::instance().io_service(),
-        globals::instance().strand(), */*this)
-    );
+    m_status_manager.reset(new status_manager(*this));
     
     /**
      * Start the status manager.
@@ -3025,7 +3022,7 @@ std::shared_ptr<block_index> stack_impl::insert_block_index(
         
         globals::instance().block_indexes()[hash_block] = ret;
     }
-    
+
     return ret;
 }
 

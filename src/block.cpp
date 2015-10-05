@@ -1698,7 +1698,7 @@ bool block::check_block(
                                                             {
                                                                 connection->set_dos_score(
                                                                     connection->dos_score(
-                                                                    ) + 3
+                                                                    ) + 1
                                                                 );
                                                             }
                                                             
@@ -1733,7 +1733,7 @@ bool block::check_block(
                                             {
                                                 connection->set_dos_score(
                                                     connection->dos_score()
-                                                    + 3
+                                                    + 5
                                                 );
                                             }
                                             
@@ -1776,7 +1776,7 @@ bool block::check_block(
                                     if (connection)
                                     {
                                         connection->set_dos_score(
-                                            connection->dos_score() + 3
+                                            connection->dos_score() + 1
                                         );
                                     }
                                     
@@ -1799,7 +1799,7 @@ bool block::check_block(
                                 if (connection)
                                 {
                                     connection->set_dos_score(
-                                        connection->dos_score() + 3
+                                        connection->dos_score() + 1
                                     );
                                 }
                                 
