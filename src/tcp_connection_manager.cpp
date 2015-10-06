@@ -213,15 +213,60 @@ void tcp_connection_manager::handle_accept(
             stack_impl_.get_configuration().network_tcp_inbound_maximum()
             )
         {
-            log_error(
-                "TCP connection manager is dropping connection from " <<
-                transport->socket().remote_endpoint() << ", limit reached."
-            );
-            
             /**
-             * Stop the transport.
+             * Allow 16 (short term) connection slots beyond our maximum.
              */
-            transport->stop();
+            if (
+                active_tcp_connections() >=
+                stack_impl_.get_configuration(
+                ).network_tcp_inbound_maximum() + 16
+                )
+            {
+                log_info(
+                    "TCP connection manager is dropping "
+                    "connection from " <<
+                    transport->socket().remote_endpoint() <<
+                    ", limit reached."
+                );
+                
+                /**
+                 * Stop the transport.
+                 */
+                transport->stop();
+            }
+            else
+            {
+                log_info(
+                    "TCP connection manager allowing (short term) connection "
+                    "from " << transport->socket().remote_endpoint() << ", "
+                    "limit reached."
+                );
+                
+                /**
+                 * Allocate the tcp_connection.
+                 */
+                auto connection = std::make_shared<tcp_connection> (
+                    io_service_, stack_impl_, tcp_connection::direction_incoming,
+                    transport
+                );
+
+                /**
+                 * Retain the connection.
+                 */
+                m_tcp_connections[transport->socket().remote_endpoint()] =
+                    connection
+                ;
+                
+                /**
+                 * Start the tcp_connection.
+                 */
+                connection->start();
+                
+                /**
+                 * Stop the connection (after 8 seconds).
+                 */
+                connection->stop_after(8);
+            }
         }
         else
         {

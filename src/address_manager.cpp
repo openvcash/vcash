@@ -1531,17 +1531,17 @@ void address_manager::tick(const boost::system::error_code & ec)
                 boost::asio::ip::address::from_string(i.first), i.second)
             );
         }
-        
+
         std::random_shuffle(endpoints.begin(), endpoints.end());
         
-        enum { max_probes_new = 64 };
+        enum { max_probes_new = 128 };
         
         if (endpoints.size() > max_probes_new)
         {
             endpoints.resize(max_probes_new);
         }
 
-        auto addrs = get_addr(max_probes_new);
+        auto addrs = get_addr(12);
         
         for (auto & i : addrs)
         {
@@ -1557,7 +1557,7 @@ void address_manager::tick(const boost::system::error_code & ec)
         
         std::random_shuffle(endpoints.begin(), endpoints.end());
 
-        enum { max_probes_total = 32 };
+        enum { max_probes_total = 128 + 12 };
         
         if (endpoints.size() > max_probes_total)
         {
@@ -1605,7 +1605,7 @@ void address_manager::tick(const boost::system::error_code & ec)
             
             if (probed_endpoints_.count(i) > 0)
             {
-                if (std::time(0) - probed_endpoints_[i] > (20 * 60))
+                if (std::time(0) - probed_endpoints_[i] > (30 * 60))
                 {
                     should_probe = true;
                 }
@@ -1671,7 +1671,7 @@ void address_manager::tick(const boost::system::error_code & ec)
                         const std::int32_t & protocol_version_start_height
                         )
                     {
-                        log_debug(
+                        log_info(
                             "Address manager probed " << i << ":" <<
                             protocol_version << ":" <<
                             protocol_version_user_agent << ":" <<
@@ -1810,23 +1810,46 @@ void address_manager::tick(const boost::system::error_code & ec)
         /**
          * The number of minimum good endpoints to maintain.
          */
-        enum { min_good_endpoints = 48 };
+        enum { min_good_endpoints = 64 };
         
         auto interval = 8;
         
-        if (ticks_ < 20)
+        if (
+            globals::instance().operation_mode() ==
+            protocol::operation_mode_peer
+            )
         {
-            interval =
-                m_recent_good_endpoints.size() < min_good_endpoints ?
-                8 : (1 * 60)
-            ;
+            if (ticks_ < 20)
+            {
+                interval =
+                    m_recent_good_endpoints.size() < min_good_endpoints ?
+                    8 : (1 * 60)
+                ;
+            }
+            else
+            {
+                interval =
+                    m_recent_good_endpoints.size() < min_good_endpoints ?
+                    (5 * 60) : (8 * 60)
+                ;
+            }
         }
         else
         {
-            interval =
-                m_recent_good_endpoints.size() < min_good_endpoints ?
-                (5 * 60) : (10 * 60)
-            ;
+            if (ticks_ < 20)
+            {
+                interval =
+                    m_recent_good_endpoints.size() < min_good_endpoints ?
+                    8 : (5 * 60)
+                ;
+            }
+            else
+            {
+                interval =
+                    m_recent_good_endpoints.size() < min_good_endpoints ?
+                    (10 * 60) : (12 * 60)
+                ;
+            }
         }
         
         /**
