@@ -142,11 +142,11 @@ namespace coin {
              * @param val The ip address.
              */
             bool is_ip_banned(const std::string & val);
-
+        
             /**
              * The minimum number of tcp connections to maintain.
              */
-            enum { minimum_tcp_connections = 12 };
+            std::size_t minimum_tcp_connections();
         
             /**
              * The boost::asio::io_service.

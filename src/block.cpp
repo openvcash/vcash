@@ -1791,16 +1791,30 @@ bool block::check_block(
                             }
                             else
                             {
-                                if (
-                                    auto t = connection->get_tcp_transport(
-                                    ).lock()
-                                    )
+                                if (connection)
                                 {
-                                    log_info(
-                                        "Got incentive reward(RAPED) EMPTY "
-                                        "from " << t->socket(
-                                        ).remote_endpoint() << "."
-                                    );
+                                    try
+                                    {
+                                        if (
+                                            auto t =
+                                            connection->get_tcp_transport(
+                                            ).lock()
+                                            )
+                                        {
+                                            log_info(
+                                                "Got incentive reward(RAPED) "
+                                                "EMPTY from " << t->socket(
+                                                ).remote_endpoint() << "."
+                                            );
+                                        }
+                                    }
+                                    catch (std::exception & e)
+                                    {
+                                        log_info(
+                                            "Got incentive reward(RAPED) EMPTY "
+                                            "what = " << e.what() << "."
+                                        );
+                                    }
                                 }
                                 else
                                 {

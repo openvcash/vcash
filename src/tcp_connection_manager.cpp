@@ -457,13 +457,13 @@ void tcp_connection_manager::tick(const boost::system::error_code & ec)
          * nodes then drop the excess connections once synchronised.
          */
         auto is_initial_block_download = utility::is_initial_block_download();
-        
+
         if (is_initial_block_download == false)
         {
             /**
              * Enforce the minimum_tcp_connections (outgoing).
              */
-            if (outgoing_tcp_connections > minimum_tcp_connections)
+            if (outgoing_tcp_connections > minimum_tcp_connections())
             {
                 auto it = m_tcp_connections.begin();
                 
@@ -487,12 +487,12 @@ void tcp_connection_manager::tick(const boost::system::error_code & ec)
          */
         if (
             tcp_connections < (is_initial_block_download ?
-            minimum_tcp_connections * 2 : minimum_tcp_connections)
+            minimum_tcp_connections() * 1.2 : minimum_tcp_connections())
             )
         {
             for (
                 auto i = 0; i < (is_initial_block_download ?
-                minimum_tcp_connections * 2 : minimum_tcp_connections) -
+                minimum_tcp_connections() * 1.2 : minimum_tcp_connections()) -
                 tcp_connections; i++
                 )
             {
@@ -700,6 +700,14 @@ void tcp_connection_manager::do_resolve(
             }
         )
     );
+}
+
+std::size_t tcp_connection_manager::minimum_tcp_connections()
+{
+    return
+        globals::instance().operation_mode() ==
+        protocol::operation_mode_peer ? 16 : 8
+    ;
 }
 
 bool tcp_connection_manager::is_ip_banned(const std::string & val)
