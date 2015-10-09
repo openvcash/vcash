@@ -24,6 +24,7 @@
 
 #include <coin/alert.hpp>
 #include <coin/block.hpp>
+#include <coin/block_locator.hpp>
 #include <coin/checkpoint_sync.hpp>
 #include <coin/constants.hpp>
 #include <coin/endian.hpp>
@@ -126,6 +127,20 @@ void message::encode()
              * Create the getblocks.
              */
             m_payload = create_getblocks();
+        }
+        else if (m_header.command == "getheaders")
+        {
+            /**
+             * Create the getheaders.
+             */
+            m_payload = create_getheaders();
+        }
+        else if (m_header.command == "headers")
+        {
+            /**
+             * Create the headers.
+             */
+            m_payload = create_headers();
         }
         else if (m_header.command == "checkpoint")
         {
@@ -543,6 +558,29 @@ void message::decode()
                 m_protocol_block.blk.reset();
             }
         }
+        else if (m_header.command == "getheaders")
+        {
+            /**
+             * Allocate the block_locator.
+             */
+            m_protocol_getheaders.locator = std::make_shared<block_locator> ();
+            
+            /**
+             * Decode the block_locator.
+             */
+            m_protocol_getheaders.locator->decode(*this);
+
+            /**
+             * Read the hash stop.
+             */
+            m_protocol_getheaders.hash_stop = read_sha256();
+        }
+        else if (m_header.command == "headers")
+        {
+            /**
+             * :TODO: Implement for headers-first initial download.
+             */
+        }
         else if (m_header.command == "checkpoint")
         {
             /**
@@ -882,6 +920,16 @@ protocol::getblocks_t & message::protocol_getblocks()
 protocol::block_t & message::protocol_block()
 {
     return m_protocol_block;
+}
+
+protocol::getheaders_t & message::protocol_getheaders()
+{
+    return m_protocol_getheaders;
+}
+
+protocol::headers_t & message::protocol_headers()
+{
+    return m_protocol_headers;
 }
 
 protocol::checkpoint_t & message::protocol_checkpoint()
@@ -1264,6 +1312,45 @@ data_buffer message::create_getblocks()
     }
     
     ret.write_sha256(m_protocol_getblocks.hash_stop);
+    
+    return ret;
+}
+
+data_buffer message::create_getheaders()
+{
+    data_buffer ret;
+    
+    assert(m_protocol_getheaders.locator);
+    
+    /**
+     * Encode the locator.
+     */
+    m_protocol_getheaders.locator->encode(ret);
+    
+    /**
+     * Encode the hash stop.
+     */
+    ret.write_sha256(m_protocol_getheaders.hash_stop);
+    
+    return ret;
+}
+
+data_buffer message::create_headers()
+{
+    data_buffer ret;
+    
+    /**
+     * Encode the number of block headers.
+     */
+    ret.write_var_int(m_protocol_headers.headers.size());
+    
+    for (auto & i : m_protocol_headers.headers)
+    {
+        /**
+         * Encode only the block header.
+         */
+        i.encode(ret, true);
+    }
     
     return ret;
 }

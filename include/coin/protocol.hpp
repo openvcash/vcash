@@ -36,6 +36,7 @@ namespace coin {
 
 class alert;
 class block;
+class block_locator;
 class incentive_answer;
 class incentive_question;
 class incentive_vote;
@@ -715,6 +716,23 @@ namespace protocol {
         {
             std::shared_ptr<block> blk;
         } block_t;
+    
+        /**
+         * The getheaders structure.
+         */
+        typedef struct
+        {
+            std::shared_ptr<block_locator> locator;
+            sha256 hash_stop;
+        } getheaders_t;
+    
+        /**
+         * The headers structure.
+         */
+        typedef struct
+        {
+            std::vector<block> headers;
+        } headers_t;
     
         /**
          * The checkpoint structure.

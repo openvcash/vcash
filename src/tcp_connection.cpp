@@ -1160,6 +1160,41 @@ void tcp_connection::send_getdata_message()
     }
 }
 
+void tcp_connection::send_headers_message(const std::vector<block> & headers)
+{
+    if (auto t = m_tcp_transport.lock())
+    {
+        /**
+         * Allocate the message.
+         */
+        message msg("headers");
+
+        /**
+         * Set the headers.
+         */
+        msg.protocol_headers().headers = headers;
+        
+        log_debug(
+            "TCP connection is sending headers " <<
+            msg.protocol_headers().headers.size() << "."
+        );
+
+        /**
+         * Encode the message.
+         */
+        msg.encode();
+        
+        /**
+         * Write the message.
+         */
+        t->write(msg.data(), msg.size());
+    }
+    else
+    {
+        stop();
+    }
+}
+
 void tcp_connection::send_tx_message(const transaction & tx)
 {
     if (auto t = m_tcp_transport.lock())
@@ -2826,11 +2861,62 @@ bool tcp_connection::handle_message(message & msg)
     }
     else if (msg.header().command == "getheaders")
     {
-        log_debug("got getheaders");
+        log_debug("Got getheaders");
+        
+        const auto & locator = msg.protocol_getheaders().locator;
+        
+        std::shared_ptr<block_index> index;
+        
+        if (locator && locator->is_null())
+        {
+            auto it = globals::instance().block_indexes().find(
+                msg.protocol_getheaders().hash_stop
+            );
+            
+            if (it == globals::instance().block_indexes().end())
+            {
+                return true;
+            }
+            
+            index = it->second;
+        }
+        else
+        {
+            index = locator->get_block_index();
+            
+            if (index)
+            {
+                index = index->block_index_next();
+            }
+        }
+
+        std::vector<block> headers;
+        
+        std::int16_t limit = 2000;
+        
+        log_debug(
+            "TCP connection getheaders " << (index ? index->height() : -1) <<
+            " to " <<
+            msg.protocol_getheaders().hash_stop.to_string().substr(0, 8) << "."
+        );
+
+        for (; index; index = index->block_index_next())
+        {
+            headers.push_back(index->get_block_header());
+            
+            if (
+                --limit <= 0 ||
+                index->get_block_hash() == msg.protocol_getheaders().hash_stop
+                )
+            {
+                break;
+            }
+        }
         
         /**
-         * :JC: If there is high enough demand I will implement this.
+         * Send headers message.
          */
+        send_headers_message(headers);
     }
     else if (msg.header().command == "tx")
     {

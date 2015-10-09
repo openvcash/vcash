@@ -334,6 +334,12 @@ namespace coin {
             void send_getdata_message();
         
             /**
+             * Sends a headers message.
+             * @param headers The block headers.
+             */
+            void send_headers_message(const std::vector<block> & headers);
+        
+            /**
              * Sends a tx message.
              * @param tx The transaction.
              */

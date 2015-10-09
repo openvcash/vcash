@@ -146,6 +146,16 @@ namespace coin {
             protocol::block_t & protocol_block();
         
             /**
+             * The protocol getheaders structure.
+             */
+            protocol::getheaders_t & protocol_getheaders();
+        
+            /**
+             * The protocol headers structure.
+             */
+            protocol::headers_t & protocol_headers();
+        
+            /**
              * The protocol checkpoint structure.
              */
             protocol::checkpoint_t & protocol_checkpoint();
@@ -248,6 +258,16 @@ namespace coin {
             protocol::block_t m_protocol_block;
         
             /**
+             * The protocol getheaders structure.
+             */
+            protocol::getheaders_t m_protocol_getheaders;
+        
+            /**
+             * The protocol headers structure.
+             */
+            protocol::headers_t m_protocol_headers;
+        
+            /**
              * The protocol checkpoint structure.
              */
             protocol::checkpoint_t m_protocol_checkpoint;
@@ -333,6 +353,16 @@ namespace coin {
              * Creates a getblocks.
              */
             data_buffer create_getblocks();
+        
+            /**
+             * Creates getheaders.
+             */
+            data_buffer create_getheaders();
+        
+            /**
+             * Creates headers.
+             */
+            data_buffer create_headers();
         
             /**
              * Creates a checkpoint.
