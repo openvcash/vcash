@@ -27,6 +27,7 @@
 #include <coin/incentive_manager.hpp>
 #include <coin/logger.hpp>
 #include <coin/message.hpp>
+#include <coin/network.hpp>
 #include <coin/stack_impl.hpp>
 #include <coin/status_manager.hpp>
 #include <coin/time.hpp>
@@ -77,7 +78,7 @@ void database_stack::start(const std::uint16_t & port, const bool & is_client)
         contacts.push_back(std::make_pair("p06.vanillacoin.net", 52461));
         contacts.push_back(std::make_pair("p07.vanillacoin.net", 51902));
         contacts.push_back(std::make_pair("p08.vanillacoin.net", 44111));
-
+        
         /**
          * Set the port.
          */
@@ -99,7 +100,7 @@ void database_stack::start(const std::uint16_t & port, const bool & is_client)
         /**
          * Join the database::stack.
          */
-        database::stack::join(contacts);
+        join(contacts);
     }
 #endif // USE_DATABASE_STACK
 
@@ -113,6 +114,15 @@ void database_stack::start(const std::uint16_t & port, const bool & is_client)
         std::bind(&database_stack::tick, self,
         std::placeholders::_1))
     );
+}
+
+void database_stack::join(
+    const std::vector< std::pair<std::string, std::uint16_t> > & contacts
+    )
+{
+#if (defined USE_DATABASE_STACK && USE_DATABASE_STACK)
+    database::stack::join(contacts);
+#endif // USE_DATABASE_STACK
 }
 
 void database_stack::stop()
@@ -191,169 +201,285 @@ void database_stack::on_broadcast(
     const char * buf, const std::size_t & len
     )
 {
-    /**
-     * Packets closer than one second apart from a single endpoint are
-     * dropped for rate limiting purposes.
-     */
-    std::lock_guard<std::mutex> l1(mutex_packet_times_);
-    
-    if (packet_times_.count(addr) > 0)
-    {
-        if (std::time(0) - packet_times_[addr] < 2)
-        {
-            log_debug(
-                "Database stack (UDP) is dropping packet received too soon."
-            );
-            
-            return;
-        }
-    }
-
-    /**
-     * Set the time this packet arrived from the address.
-     */
-    packet_times_[addr] = std::time(0);
-    
-    enum { max_udp_length = 2048 };
-    
-    log_debug("Database stack (UDP) got len = " << len << ".");
-    
-    if (len <= max_udp_length)
+    if (network::instance().is_address_banned(addr) == false)
     {
         /**
-         * Allocate the message.
+         * Packets closer than 8 seconds apart from a single endpoint are
+         * dropped for rate limiting purposes.
          */
-        message msg(buf, len);
-
-        try
-        {
-            /**
-             * Decode the message.
-             */
-            msg.decode();
-            
-            log_debug(
-                "Database stack (UDP) got " << msg.header().command <<
-                " from " << addr << ":" << port << "."
-            );
-            
-            return;
-        }
-        catch (std::exception & e)
-        {
-            log_debug(
-                "Database stack (UDP) failed to decode message, "
-                "what = " << e.what() << "."
-            );
-            
-            return;
-        }
+        std::lock_guard<std::mutex> l1(mutex_packet_times_);
         
-        if (msg.header().command == "tx")
+        if (packet_times_.count(addr) > 0)
         {
-            const auto & tx = msg.protocol_tx().tx;
-            
-            if (tx)
+            if (std::time(0) - packet_times_[addr] < 8)
             {
-                db_tx txdb("r");
+                log_info(
+                    "Database stack (UDP) is dropping packet received too "
+                    "soon."
+                );
                 
-                bool missing_inputs = false;
-                
-                /**
-                 * Allocate the data_buffer.
-                 */
-                data_buffer buffer;
-                
-                /**
-                 * Encode the transaction.
-                 */
-                tx->encode(buffer);
-                
-                if (
-                    tx->accept_to_transaction_pool(txdb, &missing_inputs).first
-                    )
-                {
-                    /**
-                     * Inform the wallet_manager.
-                     */
-                    wallet_manager::instance().sync_with_wallets(*tx, 0, true);
-                    
-                    /**
-                     * Allocate the inventory_vector.
-                     */
-                    inventory_vector inv(
-                        inventory_vector::type_msg_tx, tx->get_hash()
-                    );
-
-                    log_info(
-                        "Database stack (UDP) is relaying inv message, "
-                        "command = " << inv.command() << "."
-                    );
-                    
-                    /**
-                     * Allocate the message.
-                     */
-                    message msg(inv.command(), buffer);
-
-                    /**
-                     * Encode the message.
-                     */
-                    msg.encode();
-
-                    /**
-                     * Broadcast the message to "all" connected peers.
-                     */
-                    stack_impl_.get_tcp_connection_manager()->broadcast(
-                        msg.data(), msg.size()
-                    );
-                }
-                else if (missing_inputs)
-                {
-                    utility::add_orphan_tx(buffer);
-                }
+                return;
             }
         }
-        else if (msg.header().command == "ztlock")
+
+        /**
+         * Set the time this packet arrived from the address.
+         */
+        packet_times_[addr] = std::time(0);
+        
+        enum { max_udp_length = 2048 };
+        
+        log_debug("Database stack (UDP) got len = " << len << ".");
+        
+        if (len <= max_udp_length)
         {
-            if (globals::instance().is_zerotime_enabled())
+            /**
+             * Allocate the message.
+             */
+            message msg(buf, len);
+
+            try
             {
-                const auto & ztlock = msg.protocol_ztlock().ztlock;
-
-                if (ztlock)
+                /**
+                 * Decode the message.
+                 */
+                msg.decode();
+                
+                log_debug(
+                    "Database stack (UDP) got " << msg.header().command <<
+                    " from " << addr << ":" << port << "."
+                );
+            }
+            catch (std::exception & e)
+            {
+                log_debug(
+                    "Database stack (UDP) failed to decode message, "
+                    "what = " << e.what() << "."
+                );
+                
+                return;
+            }
+            
+            if (msg.header().command == "tx")
+            {
+                const auto & tx = msg.protocol_tx().tx;
+                
+                if (tx)
                 {
+                    db_tx txdb("r");
+                    
+                    bool missing_inputs = false;
+                    
                     /**
-                     * Allocate the inventory_vector.
+                     * Allocate the data_buffer.
                      */
-                    inventory_vector inv(
-                        inventory_vector::type_msg_ztlock, ztlock->hash_tx()
-                    );
-
+                    data_buffer buffer;
+                    
                     /**
-                     * Check that the zerotime lock is not expired.
+                     * Encode the transaction.
                      */
-                    if (time::instance().get_adjusted() < ztlock->expiration())
+                    tx->encode(buffer);
+                    
+                    if (
+                        tx->accept_to_transaction_pool(txdb,
+                        &missing_inputs).first
+                        )
                     {
                         /**
-                         * Check that the transaction hash exists in the
-                         * transaction pool before accepting a zerotime_lock.
+                         * Inform the wallet_manager.
                          */
-                        auto hash_not_found =
-                            transaction_pool::instance().transactions().count(
-                            ztlock->hash_tx()) == 0
-                        ;
-                    
-                        if (hash_not_found)
+                        wallet_manager::instance().sync_with_wallets(
+                            *tx, 0, true
+                        );
+                        
+                        /**
+                         * Allocate the inventory_vector.
+                         */
+                        inventory_vector inv(
+                            inventory_vector::type_msg_tx, tx->get_hash()
+                        );
+
+                        log_info(
+                            "Database stack (UDP) is relaying inv message, "
+                            "command = " << inv.command() << "."
+                        );
+                        
+                        /**
+                         * Allocate the message.
+                         */
+                        message msg(inv.command(), buffer);
+
+                        /**
+                         * Encode the message.
+                         */
+                        msg.encode();
+
+                        /**
+                         * Broadcast the message to "all" connected peers.
+                         */
+                        stack_impl_.get_tcp_connection_manager()->broadcast(
+                            msg.data(), msg.size()
+                        );
+                    }
+                    else if (missing_inputs)
+                    {
+                        utility::add_orphan_tx(buffer);
+                    }
+                }
+            }
+            else if (msg.header().command == "ztlock")
+            {
+                if (globals::instance().is_zerotime_enabled())
+                {
+                    const auto & ztlock = msg.protocol_ztlock().ztlock;
+
+                    if (ztlock)
+                    {
+                        /**
+                         * Allocate the inventory_vector.
+                         */
+                        inventory_vector inv(
+                            inventory_vector::type_msg_ztlock,
+                            ztlock->hash_tx()
+                        );
+
+                        /**
+                         * Check that the zerotime lock is not expired.
+                         */
+                        if (
+                            time::instance().get_adjusted() <
+                            ztlock->expiration()
+                            )
                         {
-                            log_info(
-                                "Database stack (UDP) got ZeroTime "
-                                "(hash not found), dropping " <<
-                                ztlock->hash_tx().to_string().substr(0, 8) <<
-                                "."
-                            );
+                            /**
+                             * Check that the transaction hash exists in the
+                             * transaction pool before accepting a zerotime_lock.
+                             */
+                            auto hash_not_found =
+                                transaction_pool::instance().transactions(
+                                ).count(ztlock->hash_tx()) == 0
+                            ;
+                        
+                            if (hash_not_found)
+                            {
+                                log_info(
+                                    "Database stack (UDP) got ZeroTime "
+                                    "(hash not found), dropping " <<
+                                    ztlock->hash_tx().to_string(
+                                    ).substr(0, 8) << "."
+                                );
+                            }
+                            else if (
+                                zerotime::instance().locks().count(
+                                ztlock->hash_tx()) > 0
+                                )
+                            {
+                                // ...
+                            }
+                            else
+                            {
+                                /**
+                                 * Prevent a peer from sending a conflicting
+                                 * lock.
+                                 */
+                                if (
+                                    zerotime::instance().has_lock_conflict(
+                                    ztlock->transactions_in(),
+                                    ztlock->hash_tx())
+                                    )
+                                {
+                                    log_info(
+                                        "TCP connection got ZeroTime "
+                                        "(lock conflict), dropping " <<
+                                        ztlock->hash_tx().to_string().substr(
+                                        0, 8) << "."
+                                    );
+                                }
+                                else
+                                {
+                                    /**
+                                     * Alllocate the buffer for relaying.
+                                     */
+                                    data_buffer buffer;
+                                
+                                    /**
+                                     * Encode the zerotime_lock.
+                                     */
+                                    ztlock->encode(buffer);
+                                    
+                                    log_info(
+                                        "Database stack (UDP) is relaying inv "
+                                        "message, command = " <<
+                                        inv.command() << "."
+                                    );
+                                    
+                                    /**
+                                     * Allocate the message.
+                                     */
+                                    message msg(inv.command(), buffer);
+
+                                    /**
+                                     * Encode the message.
+                                     */
+                                    msg.encode();
+
+                                    /**
+                                     * Broadcast the message to "all" connected
+                                     * peers.
+                                     */
+                                    stack_impl_.get_tcp_connection_manager(
+                                        )->broadcast(msg.data(), msg.size()
+                                    );
+                            
+                                    log_info(
+                                        "Database stack (UDP) is adding "
+                                        "ZeroTime lock " <<
+                                        ztlock->hash_tx().to_string() << "."
+                                    );
+                                    
+                                    /**
+                                     * Insert the zerotime_lock.
+                                     */
+                                    zerotime::instance().locks().insert(
+                                        std::make_pair(ztlock->hash_tx(),
+                                        *ztlock)
+                                    );
+                                    
+                                    /**
+                                     * Lock the inputs.
+                                     */
+                                    for (auto & i : ztlock->transactions_in())
+                                    {
+                                        zerotime::instance().locked_inputs()[
+                                            i.previous_out()] =
+                                            ztlock->hash_tx()
+                                        ;
+                                    }
+                                }
+                            }
                         }
-                        else if (
-                            zerotime::instance().locks().count(
-                            ztlock->hash_tx()) > 0
+                    }
+                }
+            }
+            else if (msg.header().command == "ztvote")
+            {
+                if (globals::instance().is_zerotime_enabled())
+                {
+                    const auto & ztvote = msg.protocol_ztvote().ztvote;
+
+                    if (ztvote)
+                    {
+                        /**
+                         * Allocate the inventory_vector.
+                         */
+                        inventory_vector inv(
+                            inventory_vector::type_msg_ztvote,
+                            ztvote->hash_nonce()
+                        );
+
+                        if (
+                            zerotime::instance().votes().count(
+                            ztvote->hash_nonce()) > 0
                             )
                         {
                             // ...
@@ -361,31 +487,106 @@ void database_stack::on_broadcast(
                         else
                         {
                             /**
-                             * Prevent a peer from sending a conflicting lock.
+                             * Insert the zerotime_vote.
                              */
+                            zerotime::instance().votes()[
+                                ztvote->hash_nonce()] = *ztvote
+                            ;
+                            
+                            /**
+                             * Inform the zerotime_manager.
+                             */
+                            stack_impl_.get_zerotime_manager(
+                                )->handle_vote(
+                                boost::asio::ip::tcp::endpoint(
+                                boost::asio::ip::address::from_string(addr),
+                                port), *ztvote
+                            );
+
+                            /**
+                             * Allocate the data_buffer.
+                             */
+                            data_buffer buffer;
+                            
+                            /**
+                             * Encode the transaction (reuse the signature).
+                             */
+                            ztvote->encode(buffer, true);
+                    
+                            /**
+                             * Allocate the message.
+                             */
+                            message msg(inv.command(), buffer);
+
+                            /**
+                             * Encode the message.
+                             */
+                            msg.encode();
+
+                            /**
+                             * Broadcast the message to "all" connected
+                             * peers.
+                             */
+                            stack_impl_.get_tcp_connection_manager(
+                                )->broadcast(msg.data(), msg.size()
+                            );
+                        }
+                    }
+                }
+            }
+            else if (msg.header().command == "ivote")
+            {
+                if (globals::instance().is_incentive_enabled())
+                {
+                    if (utility::is_initial_block_download() == false)
+                    {
+                        const auto & ivote = msg.protocol_ivote().ivote;
+                        
+                        if (ivote)
+                        {
+                            /**
+                             * Allocate the inventory_vector.
+                             */
+                            inventory_vector inv(
+                                inventory_vector::type_msg_ivote,
+                                ivote->hash_nonce()
+                            );
+
                             if (
-                                zerotime::instance().has_lock_conflict(
-                                ztlock->transactions_in(), ztlock->hash_tx())
+                                incentive::instance().votes().count(
+                                ivote->hash_nonce()) > 0
                                 )
                             {
-                                log_info(
-                                    "TCP connection got ZeroTime "
-                                    "(lock conflict), dropping " <<
-                                    ztlock->hash_tx().to_string().substr(
-                                    0, 8) << "."
-                                );
+                                // ...
                             }
                             else
                             {
                                 /**
-                                 * Alllocate the buffer for relaying.
+                                 * Insert the incentive_vote.
+                                 */
+                                incentive::instance().votes()[
+                                    ivote->hash_nonce()] = *ivote
+                                ;
+                                
+                                /**
+                                 * Inform the incentive_manager.
+                                 */
+                                stack_impl_.get_incentive_manager(
+                                    )->handle_message(
+                                    boost::asio::ip::tcp::endpoint(
+                                    boost::asio::ip::address::from_string(addr),
+                                    port), msg
+                                );
+
+                                /**
+                                 * Allocate the data_buffer.
                                  */
                                 data_buffer buffer;
-                            
+                                
                                 /**
-                                 * Encode the zerotime_lock.
+                                 * Encode the transaction (reuse the signature).
                                  */
-                                ztlock->encode(buffer);
+                                ivote->encode(buffer, true);
                                 
                                 log_info(
                                     "Database stack (UDP) is relaying inv "
@@ -410,185 +611,7 @@ void database_stack::on_broadcast(
                                 stack_impl_.get_tcp_connection_manager(
                                     )->broadcast(msg.data(), msg.size()
                                 );
-                        
-                                log_info(
-                                    "Database stack (UDP) is adding ZeroTime "
-                                    "lock " << ztlock->hash_tx().to_string() <<
-                                    "."
-                                );
-                                
-                                /**
-                                 * Insert the zerotime_lock.
-                                 */
-                                zerotime::instance().locks().insert(
-                                    std::make_pair(ztlock->hash_tx(), *ztlock)
-                                );
-                                
-                                /**
-                                 * Lock the inputs.
-                                 */
-                                for (auto & i : ztlock->transactions_in())
-                                {
-                                    zerotime::instance().locked_inputs()[
-                                        i.previous_out()] = ztlock->hash_tx()
-                                    ;
-                                }
                             }
-                        }
-                    }
-                }
-            }
-        }
-        else if (msg.header().command == "ztvote")
-        {
-            if (globals::instance().is_zerotime_enabled())
-            {
-                const auto & ztvote = msg.protocol_ztvote().ztvote;
-
-                if (ztvote)
-                {
-                    /**
-                     * Allocate the inventory_vector.
-                     */
-                    inventory_vector inv(
-                        inventory_vector::type_msg_ztvote,
-                        ztvote->hash_nonce()
-                    );
-
-                    if (
-                        zerotime::instance().votes().count(
-                        ztvote->hash_nonce()) > 0
-                        )
-                    {
-                        // ...
-                    }
-                    else
-                    {
-                        /**
-                         * Insert the zerotime_vote.
-                         */
-                        zerotime::instance().votes()[
-                            ztvote->hash_nonce()] = *ztvote
-                        ;
-                        
-                        /**
-                         * Inform the zerotime_manager.
-                         */
-                        stack_impl_.get_zerotime_manager(
-                            )->handle_vote(
-                            boost::asio::ip::tcp::endpoint(
-                            boost::asio::ip::address::from_string(addr),
-                            port), *ztvote
-                        );
-
-                        /**
-                         * Allocate the data_buffer.
-                         */
-                        data_buffer buffer;
-                        
-                        /**
-                         * Encode the transaction (reuse the signature).
-                         */
-                        ztvote->encode(buffer, true);
-                
-                        /**
-                         * Allocate the message.
-                         */
-                        message msg(inv.command(), buffer);
-
-                        /**
-                         * Encode the message.
-                         */
-                        msg.encode();
-
-                        /**
-                         * Broadcast the message to "all" connected
-                         * peers.
-                         */
-                        stack_impl_.get_tcp_connection_manager(
-                            )->broadcast(msg.data(), msg.size()
-                        );
-                    }
-                }
-            }
-        }
-        else if (msg.header().command == "ivote")
-        {
-            if (globals::instance().is_incentive_enabled())
-            {
-                if (utility::is_initial_block_download() == false)
-                {
-                    const auto & ivote = msg.protocol_ivote().ivote;
-                    
-                    if (ivote)
-                    {
-                        /**
-                         * Allocate the inventory_vector.
-                         */
-                        inventory_vector inv(
-                            inventory_vector::type_msg_ivote,
-                            ivote->hash_nonce()
-                        );
-
-                        if (
-                            incentive::instance().votes().count(
-                            ivote->hash_nonce()) > 0
-                            )
-                        {
-                            // ...
-                        }
-                        else
-                        {
-                            /**
-                             * Insert the incentive_vote.
-                             */
-                            incentive::instance().votes()[
-                                ivote->hash_nonce()] = *ivote
-                            ;
-                            
-                            /**
-                             * Inform the incentive_manager.
-                             */
-                            stack_impl_.get_incentive_manager(
-                                )->handle_message(
-                                boost::asio::ip::tcp::endpoint(
-                                boost::asio::ip::address::from_string(addr),
-                                port), msg
-                            );
-
-                            /**
-                             * Allocate the data_buffer.
-                             */
-                            data_buffer buffer;
-                            
-                            /**
-                             * Encode the transaction (reuse the signature).
-                             */
-                            ivote->encode(buffer, true);
-                            
-                            log_info(
-                                "Database stack (UDP) is relaying inv "
-                                "message, command = " << inv.command() <<
-                                "."
-                            );
-                            
-                            /**
-                             * Allocate the message.
-                             */
-                            message msg(inv.command(), buffer);
-
-                            /**
-                             * Encode the message.
-                             */
-                            msg.encode();
-
-                            /**
-                             * Broadcast the message to "all" connected
-                             * peers.
-                             */
-                            stack_impl_.get_tcp_connection_manager(
-                                )->broadcast(msg.data(), msg.size()
-                            );
                         }
                     }
                 }

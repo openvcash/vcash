@@ -1547,7 +1547,7 @@ void node_impl::handle_public_key_ping_message(
              */
             m_public_endpoint = ep.value;
             
-            log_info(
+            log_debug(
                 "Node discovered public endpoint = " << m_public_endpoint <<
                 "."
             );

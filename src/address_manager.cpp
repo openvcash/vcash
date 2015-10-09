@@ -1510,7 +1510,8 @@ void address_manager::tick(const boost::system::error_code & ec)
         {
             ss <<
                 "\t" << ++index << ". " << i.first.ipv4_mapped_address() <<
-                ":" << i.first.port << ":" << std::time(0) - i.second.time <<
+                ":" << i.first.port << ":" <<
+                (std::time(0) + 300) - i.second.time <<
                 ":" << i.second.protocol_version << ":" <<
                 i.second.protocol_version_user_agent << ":" <<
                 i.second.protocol_version_services << ":" <<
@@ -1534,7 +1535,7 @@ void address_manager::tick(const boost::system::error_code & ec)
 
         std::random_shuffle(endpoints.begin(), endpoints.end());
         
-        enum { max_probes_new = 128 };
+        enum { max_probes_new = 64 };
         
         if (endpoints.size() > max_probes_new)
         {
@@ -1557,7 +1558,7 @@ void address_manager::tick(const boost::system::error_code & ec)
         
         std::random_shuffle(endpoints.begin(), endpoints.end());
 
-        enum { max_probes_total = 128 + 12 };
+        enum { max_probes_total = 64 + 12 };
         
         if (endpoints.size() > max_probes_total)
         {
@@ -1696,7 +1697,9 @@ void address_manager::tick(const boost::system::error_code & ec)
                             recent.addr =
                                 protocol::network_address_t::from_endpoint(i)
                             ;
-                            recent.time = std::time(0);
+                            recent.time =
+                                std::time(0) + std::rand() % (5 * 60)
+                            ;
                             recent.protocol_version = protocol_version;
                             recent.protocol_version_user_agent =
                                 protocol_version_user_agent
@@ -1716,7 +1719,9 @@ void address_manager::tick(const boost::system::error_code & ec)
                                 protocol::network_address_t::from_endpoint(i)
                             ;
 
-                            recent.time = std::time(0);
+                            recent.time =
+                                std::time(0) + std::rand() % (5 * 60)
+                            ;
                             recent.protocol_version = protocol_version;
                             recent.protocol_version_user_agent =
                                 protocol_version_user_agent
@@ -1765,7 +1770,9 @@ void address_manager::tick(const boost::system::error_code & ec)
                             recent.public_key = ianswer.public_key();
                             recent.wallet_address = ianswer.get_address();
                             recent.tx_in = ianswer.get_transaction_in();
-                            recent.time = std::time(0);
+                            recent.time =
+                                std::time(0) + std::rand() % (5 * 60)
+                            ;
                         }
                         else
                         {
@@ -1778,7 +1785,9 @@ void address_manager::tick(const boost::system::error_code & ec)
                             recent.wallet_address = ianswer.get_address();
                             recent.tx_in = ianswer.get_transaction_in();
 
-                            recent.time = std::time(0);
+                            recent.time =
+                                std::time(0) + std::rand() % (5 * 60)
+                            ;
                             
                             m_recent_good_endpoints[
                                 protocol::network_address_t::from_endpoint(i)
@@ -1810,7 +1819,7 @@ void address_manager::tick(const boost::system::error_code & ec)
         /**
          * The number of minimum good endpoints to maintain.
          */
-        enum { min_good_endpoints = 64 };
+        enum { min_good_endpoints = 36 };
         
         auto interval = 8;
         
@@ -1821,10 +1830,7 @@ void address_manager::tick(const boost::system::error_code & ec)
         {
             if (ticks_ < 20)
             {
-                interval =
-                    m_recent_good_endpoints.size() < min_good_endpoints ?
-                    8 : (1 * 60)
-                ;
+                interval = 8;
             }
             else
             {

@@ -79,6 +79,15 @@ namespace coin {
             void stop();
         
             /**
+             * Joins the overlay.
+			 * @param contacts The bootstrap contacts.
+             */
+            void join(
+                const std::vector< std::pair<std::string, std::uint16_t> > &
+                contacts
+            );
+        
+            /**
              * Performs a broadcast operation.
              * @param buffer The buffer.
              */

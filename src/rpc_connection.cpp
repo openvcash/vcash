@@ -648,6 +648,10 @@ bool rpc_connection::handle_json_rpc_request(
     {
         response = json_walletlock(request);
     }
+    else if (request.method == "walletpassphrasechange")
+    {
+        response = json_walletpassphrasechange(request);
+    }
     else if (request.method == "validateaddress")
     {
         response = json_validateaddress(request);
@@ -4651,6 +4655,22 @@ rpc_connection::json_rpc_response_t rpc_connection::json_sendtoaddress(
             }
             else
             {
+                address addr(address_dest);
+                
+                if (addr.is_valid() == false)
+                {
+                    auto pt_error = create_error_object(
+                        error_code_invalid_address_or_key, "invalid address"
+                    );
+                    
+                    /**
+                     * error_code_invalid_address_or_key
+                     */
+                    return json_rpc_response_t{
+                        boost::property_tree::ptree(), pt_error, request.id
+                    };
+                }
+                
                 /**
                  * Do not use ZeroTime over RPC.
                  */
@@ -4658,8 +4678,8 @@ rpc_connection::json_rpc_response_t rpc_connection::json_sendtoaddress(
                 
                 auto result =
                     globals::instance().wallet_main(
-                    )->send_money_to_destination(
-                    address(address_dest).get(), amount, wtx, use_zerotime
+                    )->send_money_to_destination(addr.get(), amount, wtx,
+                    use_zerotime
                 );
                 
                 if (result.first)
@@ -5118,6 +5138,83 @@ rpc_connection::json_rpc_response_t rpc_connection::json_walletlock(
             };
         }
     }
+    
+    return ret;
+}
+
+rpc_connection::json_rpc_response_t
+    rpc_connection::json_walletpassphrasechange(
+    const json_rpc_request_t & request
+    )
+{
+	json_rpc_response_t ret;
+    
+    if (request.params.size() != 2)
+    {
+        auto pt_error = create_error_object(
+            error_code_invalid_params, "invalid parameter count"
+        );
+        
+        /**
+         * error_code_invalid_params
+         */
+        return json_rpc_response_t{
+            boost::property_tree::ptree(), pt_error, request.id
+        };
+    }
+    else if (globals::instance().wallet_main()->is_crypted() == false)
+    {
+        auto pt_error = create_error_object(
+            error_code_wallet_wrong_enc_state, "wallet is not encrypted"
+        );
+        
+        /**
+         * error_code_wallet_wrong_enc_state
+         */
+        return json_rpc_response_t{
+            boost::property_tree::ptree(), pt_error, request.id
+        };
+    }
+    else
+    {
+        std::string passphrase_old, passphrase_new;
+        
+        auto index = 0;
+        
+        for (auto & i : request.params)
+        {
+            if (index == 0)
+            {
+                passphrase_old = i.second.get<std::string> ("");
+            }
+            else if (index == 1)
+            {
+                passphrase_new = i.second.get<std::string> ("");
+            }
+            
+            index++;
+        }
+        
+        if (
+            globals::instance().wallet_main()->change_passphrase(
+            passphrase_old, passphrase_new) == false
+            )
+        {
+            auto pt_error = create_error_object(
+                error_code_wallet_passphrase_incorrect, "incorrect passphrase"
+            );
+            
+            /**
+             * error_code_wallet_passphrase_incorrect
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
+        }
+        
+        ret.result.put("", "null");
+    }
+    
     return ret;
 }
 

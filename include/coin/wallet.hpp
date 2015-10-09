@@ -130,6 +130,16 @@ namespace coin {
             bool unlock(const std::string & passphrase);
         
             /**
+             * Changes the passphrase.
+             * @param passphrase_old The old passphrase.
+             * @param passphrase_new The new passphrase.
+             */
+            bool change_passphrase(
+                const std::string & passphrase_old,
+                const std::string & passphrase_new
+            );
+        
+            /**
              * Check whether we are allowed to upgrade (or already support) to
              * the named feature.
              */

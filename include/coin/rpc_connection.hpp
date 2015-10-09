@@ -592,6 +592,14 @@ namespace coin {
             );
         
             /**
+             * Changes the wallet passphrase.
+             * @param request The json_rpc_request_t.
+             */
+            json_rpc_response_t json_walletpassphrasechange(
+                const json_rpc_request_t & request
+            );
+        
+            /**
              * Encodes a transaction_wallet into a boost::property_tree::ptree.
              * @param wtx The transaction_wallet.
              */

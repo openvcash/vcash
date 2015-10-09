@@ -221,6 +221,136 @@ bool wallet::unlock(const std::string & passphrase)
     return false;
 }
 
+bool wallet::change_passphrase(
+    const std::string & passphrase_old, const std::string & passphrase_new
+    )
+{
+    std::lock_guard<std::recursive_mutex> l1(mutex_);
+    
+    auto was_locked = is_locked();
+    
+    lock();
+    
+    /**
+     * The master key.
+     */
+    types::keying_material_t master_key;
+
+    /**
+     * Allocate the crypter.
+     */
+    crypter c;
+    
+    for (auto & i : m_master_keys)
+    {
+        if (
+            c.set_key_from_passphrase(passphrase_old, i.second.salt(),
+            i.second.derive_iterations(), i.second.derivation_method()) == false
+            )
+        {
+            return false;
+        }
+        
+        if (c.decrypt(i.second.crypted_key(), master_key) == false)
+        {
+            return false;
+        }
+        
+        if (key_store_crypto::unlock(master_key) == true)
+        {
+            /**
+             * Get the milliseconds since epoch.
+             */
+            auto time_start = std::chrono::duration_cast<
+                std::chrono::milliseconds> (
+                std::chrono::system_clock::now().time_since_epoch()
+            ).count();
+            
+            /**
+             * Set the key from the passphrase.
+             */
+            c.set_key_from_passphrase(
+                passphrase_new, i.second.salt(), 25000,
+                i.second.derivation_method()
+            );
+
+            /**
+             * Set the derive iterations.
+             */
+            i.second.set_derive_iterations(
+                2500000 / (static_cast<double> ((std::chrono::duration_cast<
+                std::chrono::milliseconds> (std::chrono::system_clock::now(
+                ).time_since_epoch()).count() - time_start)))
+            );
+
+            /**
+             * Set the start time.
+             */
+            time_start = std::chrono::duration_cast<
+                std::chrono::milliseconds> (
+                std::chrono::system_clock::now().time_since_epoch()
+            ).count();
+            
+            /**
+             * Set the key from the passphrase.
+             */
+            c.set_key_from_passphrase(
+                passphrase_new, i.second.salt(),
+                i.second.derive_iterations(),
+                i.second.derivation_method()
+            );
+
+            if (i.second.derive_iterations() < 25000)
+            {
+                i.second.set_derive_iterations(25000);
+            }
+            
+            log_debug(
+                "Wallet is encrypting with " <<
+                i.second.derive_iterations() << " derive iterations."
+            );
+
+            /**
+             * Set the key from the passphrase.
+             */
+            if (
+                c.set_key_from_passphrase(passphrase_new,
+                i.second.salt(), i.second.derive_iterations(),
+                i.second.derivation_method()) == false
+                )
+            {
+                return false;
+            }
+            
+            /**
+             * Encrypt the master key.
+             */
+            if (c.encrypt(master_key, i.second.crypted_key()) == false)
+            {
+                return false;
+            }
+
+            if (m_is_file_backed)
+            {
+                m_db_wallet_encryption = std::make_shared<db_wallet> (
+                    "wallet.dat"
+                );
+                
+                m_db_wallet_encryption->write_master_key(i.first, i.second);
+            }
+        
+            if (was_locked == true)
+            {
+                lock();
+            }
+            
+            return true;
+        }
+    }
+
+    return false;
+}
+
 bool wallet::can_support_feature(const feature_t & value)
 {
     std::lock_guard<std::recursive_mutex> l1(mutex_);

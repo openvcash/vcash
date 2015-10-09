@@ -1352,6 +1352,40 @@ void stack_impl::start()
                     globals::instance().operation_mode() ==
                     protocol::operation_mode_client
                 );
+                
+                /**
+                 * Get some addresses from the address_manager.
+                 */
+                auto addrs = m_address_manager->get_addr(64);
+                
+                /**
+                 * Allocate the UDP contacts.
+                 */
+                std::vector< std::pair<std::string, std::uint16_t> >
+                    udp_contacts
+                ;
+                
+                for (auto & i : addrs)
+                {
+                    /**
+                     * Add the UDP contact.
+                     */
+                    udp_contacts.push_back(
+                        std::make_pair(i.ipv4_mapped_address().to_string(),
+                        i.port)
+                    );
+                }
+                
+                /**
+                 * Add to the database_stack.
+                 */
+                if (m_configuration.network_udp_enable() == true)
+                {
+                    if (m_database_stack)
+                    {
+                        m_database_stack->join(udp_contacts);
+                    }
+                }
             }
             
             /**
@@ -1502,7 +1536,10 @@ void stack_impl::stop()
      */
     if (m_configuration.network_udp_enable() == true)
     {
-        m_database_stack->stop();
+        if (m_database_stack)
+        {
+            m_database_stack->stop();
+        }
     }
     
     /**
@@ -4071,7 +4108,9 @@ void stack_impl::do_check_peers(const std::uint32_t & interval)
                     {
                         std::vector<std::string> parts;
                         
-                        std::string endpoint = pair.second.get<std::string> ("");
+                        std::string endpoint =
+                            pair.second.get<std::string> ("")
+                        ;
                         
                         boost::split(
                             parts, endpoint, boost::is_any_of(":")
@@ -4082,7 +4121,8 @@ void stack_impl::do_check_peers(const std::uint32_t & interval)
                         auto port = parts[1];
 
                         log_debug(
-                            "Stack got peer endpoint = " << ip << ":" << port << "."
+                            "Stack got peer endpoint = " << ip << ":" <<
+                            port << "."
                         );
                         
                         /**
@@ -4101,8 +4141,9 @@ void stack_impl::do_check_peers(const std::uint32_t & interval)
                         if (m_address_manager->add(
                             addr, protocol::network_address_t::from_endpoint(
                             boost::asio::ip::tcp::endpoint(
-                            boost::asio::ip::address::from_string("127.0.0.1"), 0))
-                        ))
+                            boost::asio::ip::address::from_string(
+                            "127.0.0.1"), 0)))
+                            )
                         {
                             log_debug(
                                 "Stack added bootstrap peer " << ip << ":" <<
