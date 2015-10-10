@@ -36,6 +36,16 @@ namespace database {
         public:
         
             /**
+             * The version.
+             */
+            enum { version = 10001 };
+        
+            /**
+             * The minimum version.
+             */
+            enum { version_minimum = 10001 };
+        
+            /**
              * The attribute types.
              */
             enum attribute_types
@@ -46,7 +56,7 @@ namespace database {
                 attribute_type_public_key = 18,
                 attribute_type_storage_query = 32,
                 attribute_type_broadcast_buffer = 36,
-                attribute_type_reserved_128 = 128,
+                attribute_type_version = 128,
                 attribute_type_stats_udp_bps_outbound = 132,
                 attribute_type_stats_udp_bps_inbound = 133,
                 attribute_type_stats_storage_entries = 134,

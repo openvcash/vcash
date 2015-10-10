@@ -42,6 +42,15 @@ message::message(const protocol::message_code_t & code)
     m_header.code = code;
     m_header.flags = 0;
     m_header.transaction_id = ++g_transaction_id;
+#if 0 /* :TODO: Enable in next deployment. */
+    message::attribute_uint32 attr1;
+    
+    attr1.type = message::attribute_type_version;
+    attr1.length = 0;
+    attr1.value = version;
+    
+    m_uint32_attributes.push_back(attr1);
+#endif
 }
 
 message::message(
@@ -53,6 +62,15 @@ message::message(
     m_header.code = code;
     m_header.flags = 0;
     m_header.transaction_id = tid;
+#if 0 /* :TODO: Enable in next deployment. */
+    message::attribute_uint32 attr1;
+    
+    attr1.type = message::attribute_type_version;
+    attr1.length = 0;
+    attr1.value = version;
+    
+    m_uint32_attributes.push_back(attr1);
+#endif
 }
 
 message::message(const char * buf, const std::size_t & len)
@@ -302,6 +320,26 @@ bool message::decode()
                     );
                     
                     m_binary_attributes.push_back(attr);
+                }
+                break;
+                case attribute_type_version:
+                {
+                    log_none("Message got attribute_type_version.");
+                    
+                    attribute_uint32 attr;
+                    
+                    attr.type = attribute_type;
+                    attr.length = attribute_length;
+                    attr.value = byte_buffer_.read_uint32();
+
+                    m_uint32_attributes.push_back(attr);
+                    
+                    if (attr.value < version_minimum)
+                    {
+                        log_debug("Message got too low version.");
+                        
+                        return false;
+                    }
                 }
                 break;
                 case attribute_type_public_key:
