@@ -344,143 +344,136 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                     ;
                 
                     /**
-                     *  Get the block index.
+                     * Get the block height to vote for.
                      */
-                    auto index =
-                        utility::find_block_index_by_height(block_height)
-                    ;
+                    auto vote_block_height = block_height + 2;
+                    
+                    /**
+                     * Remove winners older than N mins.
+                     */
+                    auto it1 = incentive::instance().winners().begin();
+                    
+                    while (it1 != incentive::instance().winners().end())
+                    {
+                        if (std::time(0) - it1->second.first > 20 * 60)
+                        {
+                            it1 =
+                                incentive::instance().winners().erase(it1)
+                            ;
+                        }
+                        else
+                        {
+                            ++it1;
+                        }
+                    }
+                    
+                    /**
+                     * Remove votes older than 4 blocks.
+                     */
+                    auto it2 = incentive::instance().votes().begin();
+                    
+                    while (it2 != incentive::instance().votes().end())
+                    {
+                        if (
+                            vote_block_height -
+                            it2->second.block_height() > 4
+                            )
+                        {
+                            it2 = incentive::instance().votes().erase(it2);
+                        }
+                        else
+                        {
+                            ++it2;
+                        }
+                    }
+                    
+                    /**
+                     * Remove runners up older than 4 blocks.
+                     */
+                    auto it3 = incentive::instance().runners_up().begin();
+                    
+                    while (it3 != incentive::instance().runners_up().end())
+                    {
+                        if (
+                            vote_block_height - it3->first > 4
+                            )
+                        {
+                            it3 =
+                                incentive::instance().runners_up(
+                                ).erase(it3)
+                            ;
+                        }
+                        else
+                        {
+                            ++it3;
+                        }
+                    }
+                    
+                    /**
+                     * Remove candidates older than 20 mins.
+                     */
+                    std::lock_guard<std::mutex> l1(mutex_candidates_);
                 
+                    auto it4 = candidates_.begin();
+                    
+                    while (it4 != candidates_.end())
+                    {
+                        if (std::time(0) - it4->second.first > 20 * 60)
+                        {
+                            it4 = candidates_.erase(it4);
+                        }
+                        else
+                        {
+                            ++it4;
+                        }
+                    }
+                    
+                    /**
+                     * Remove votes older than 4 blocks.
+                     */
+                    std::lock_guard<std::mutex> l2(mutex_votes_);
+                    
+                    auto it5 = votes_.begin();
+                    
+                    while (it5 != votes_.end())
+                    {
+                        if (vote_block_height - it5->first > 4)
+                        {
+                            it5 = votes_.erase(it5);
+                        }
+                        else
+                        {
+                            ++it5;
+                        }
+                    }
+                    
+                    /**
+                     * Remove collaterals older than 3 hours.
+                     */
+                    std::lock_guard<std::mutex> l3(mutex_collaterals_);
+                    
+                    auto it6 = collaterals_.begin();
+                    
+                    while (it6 != collaterals_.end())
+                    {
+                        if (
+                            std::time(0) - it6->second.first > (3 * 60 * 60)
+                            )
+                        {
+                            it6 = collaterals_.erase(it6);
+                        }
+                        else
+                        {
+                            ++it6;
+                        }
+                    }
+                    
                     /**
                      * Check if the block height has changed.
                      */
                     if (block_height > last_block_height_)
                     {
                         last_block_height_ = block_height;
-                        
-                        /**
-                         * Get the block height to vote for.
-                         */
-                        auto vote_block_height = block_height + 2;
-                        
-                        /**
-                         * Remove winners older than N mins.
-                         */
-                        auto it1 = incentive::instance().winners().begin();
-                        
-                        while (it1 != incentive::instance().winners().end())
-                        {
-                            if (std::time(0) - it1->second.first > 10 * 60)
-                            {
-                                it1 =
-                                    incentive::instance().winners().erase(it1)
-                                ;
-                            }
-                            else
-                            {
-                                ++it1;
-                            }
-                        }
-                        
-                        /**
-                         * Remove votes older than 4 blocks.
-                         */
-                        auto it2 = incentive::instance().votes().begin();
-                        
-                        while (it2 != incentive::instance().votes().end())
-                        {
-                            if (
-                                vote_block_height -
-                                it2->second.block_height() > 4
-                                )
-                            {
-                                it2 = incentive::instance().votes().erase(it2);
-                            }
-                            else
-                            {
-                                ++it2;
-                            }
-                        }
-                        
-                        /**
-                         * Remove runners up older than 4 blocks.
-                         */
-                        auto it3 = incentive::instance().runners_up().begin();
-                        
-                        while (it3 != incentive::instance().runners_up().end())
-                        {
-                            if (
-                                vote_block_height - it3->first > 4
-                                )
-                            {
-                                it3 =
-                                    incentive::instance().runners_up(
-                                    ).erase(it3)
-                                ;
-                            }
-                            else
-                            {
-                                ++it3;
-                            }
-                        }
-                        
-                        /**
-                         * Remove candidates older than 20 mins.
-                         */
-                        std::lock_guard<std::mutex> l1(mutex_candidates_);
-                    
-                        auto it4 = candidates_.begin();
-                        
-                        while (it4 != candidates_.end())
-                        {
-                            if (std::time(0) - it4->second.first > 20 * 60)
-                            {
-                                it4 = candidates_.erase(it4);
-                            }
-                            else
-                            {
-                                ++it4;
-                            }
-                        }
-                        
-                        /**
-                         * Remove votes older than 4 blocks.
-                         */
-                        std::lock_guard<std::mutex> l2(mutex_votes_);
-                        
-                        auto it5 = votes_.begin();
-                        
-                        while (it5 != votes_.end())
-                        {
-                            if (vote_block_height - it5->first > 4)
-                            {
-                                it5 = votes_.erase(it5);
-                            }
-                            else
-                            {
-                                ++it5;
-                            }
-                        }
-                        
-                        /**
-                         * Remove collaterals older than 3 hours.
-                         */
-                        std::lock_guard<std::mutex> l3(mutex_collaterals_);
-                        
-                        auto it6 = collaterals_.begin();
-                        
-                        while (it6 != collaterals_.end())
-                        {
-                            if (
-                                std::time(0) - it6->second.first > (3 * 60 * 60)
-                                )
-                            {
-                                it6 = collaterals_.erase(it6);
-                            }
-                            else
-                            {
-                                ++it6;
-                            }
-                        }
                         
                         /**
                          * Get the recent good endpoints.
@@ -878,7 +871,7 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                 /**
                  * Start the timer.
                  */
-                do_tick(8);
+                do_tick(4);
             }
         }
     }));

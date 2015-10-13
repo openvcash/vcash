@@ -749,9 +749,17 @@ void tcp_connection_manager::do_resolve(
 
 std::size_t tcp_connection_manager::minimum_tcp_connections()
 {
+    /**
+     * Check if we are firewalled (have had a recent inbound
+     * TCP connection).
+     */
+    auto is_firewalled =
+        std::time(0) - m_time_last_inbound > 60 * 60
+    ;
+    
     return
         globals::instance().operation_mode() ==
-        protocol::operation_mode_peer ? 16 : 8
+        protocol::operation_mode_peer ? (is_firewalled ? 8 : 12) : 6
     ;
 }
 

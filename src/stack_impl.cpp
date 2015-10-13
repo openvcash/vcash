@@ -936,7 +936,7 @@ void stack_impl::start()
                          */
                         m_status_manager->insert(status);
 
-                        log_debug(
+                        log_info(
                             "Stack, wallet is rescanning last " <<
                             stack_impl::get_block_index_best()->height() -
                             index_rescan->height() <<
@@ -1347,44 +1347,41 @@ void stack_impl::start()
              */
             if (m_configuration.network_udp_enable() == true)
             {
-                m_database_stack->start(
-                    tcp_port,
-                    globals::instance().operation_mode() ==
-                    protocol::operation_mode_client
-                );
-                
-                /**
-                 * Get some addresses from the address_manager.
-                 */
-                auto addrs = m_address_manager->get_addr(64);
-                
-                /**
-                 * Allocate the UDP contacts.
-                 */
-                std::vector< std::pair<std::string, std::uint16_t> >
-                    udp_contacts
-                ;
-                
-                for (auto & i : addrs)
+                if (m_database_stack)
                 {
-                    /**
-                     * Add the UDP contact.
-                     */
-                    udp_contacts.push_back(
-                        std::make_pair(i.ipv4_mapped_address().to_string(),
-                        i.port)
+                    m_database_stack->start(
+                        tcp_port,
+                        globals::instance().operation_mode() ==
+                        protocol::operation_mode_client
                     );
-                }
-                
-                /**
-                 * Add to the database_stack.
-                 */
-                if (m_configuration.network_udp_enable() == true)
-                {
-                    if (m_database_stack)
+                    
+                    /**
+                     * Get some addresses from the address_manager.
+                     */
+                    auto addrs = m_address_manager->get_addr(64);
+                    
+                    /**
+                     * Allocate the UDP contacts.
+                     */
+                    std::vector< std::pair<std::string, std::uint16_t> >
+                        udp_contacts
+                    ;
+                    
+                    for (auto & i : addrs)
                     {
-                        m_database_stack->join(udp_contacts);
+                        /**
+                         * Add the UDP contact.
+                         */
+                        udp_contacts.push_back(
+                            std::make_pair(i.ipv4_mapped_address().to_string(),
+                            i.port)
+                        );
                     }
+                    
+                    /**
+                     * Add to the database_stack.
+                     */
+                    m_database_stack->join(udp_contacts);
                 }
             }
             
@@ -2242,6 +2239,52 @@ void stack_impl::wallet_unlock(const std::string & passphrase)
     }));
 }
 
+void stack_impl::wallet_change_passphrase(
+    const std::string & passphrase_old, const std::string & password_new
+    )
+{
+    globals::instance().io_service().post(
+        globals::instance().strand().wrap([this, passphrase_old, password_new]()
+    {
+        /**
+         * Allocate the pairs.
+         */
+        std::map<std::string, std::string> pairs;
+        
+        /**
+         * Set the pairs type.
+         */
+        pairs["type"] = "wallet";
+        
+        /**
+         * Set the pairs value (action in this case).
+         */
+        pairs["value"] = "change_passphrase";
+        
+        if (
+            globals::instance().wallet_main()->change_passphrase(
+            passphrase_old, password_new)
+            )
+        {
+            pairs["error.code"] = "0";
+            pairs["error.message"] = "success";
+        }
+        else
+        {
+            pairs["error.code"] = "-1";
+            pairs["error.message"] = "failed to change wallet passphrase";
+        }
+        
+        /**
+         * Callback
+         */
+        if (m_status_manager)
+        {
+            m_status_manager->insert(pairs);
+        }
+    }));
+}
+
 bool stack_impl::wallet_is_crypted(const std::uint32_t & wallet_id)
 {
     if (wallet_id == 0)
@@ -2260,6 +2303,12 @@ bool stack_impl::wallet_is_locked(const std::uint32_t & wallet_id)
     }
     
     return false;
+}
+
+
+void stack_impl::wallet_zerotime_lock(const std::string & tx_id)
+{
+    globals::instance().wallet_main()->zerotime_lock(sha256(tx_id));
 }
 
 void stack_impl::rpc_send(const std::string & command_line)

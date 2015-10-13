@@ -47,7 +47,7 @@ namespace constants {
     /**
      * The client version revision.
      */
-    enum { version_client_revision = 7 };
+    enum { version_client_revision = 8 };
     
     /**
      * The client version build.
@@ -70,7 +70,7 @@ namespace constants {
     /**
      * The version string.
      */
-    static const std::string version_string = "0.3.7";
+    static const std::string version_string = "0.3.8";
     
     /**
      * The name of the coin.
@@ -193,17 +193,6 @@ namespace constants {
      * The proof-of-work cutoff block.
      */
     enum { pow_cutoff_block = 2147483647 - 1 };
-    
-    /**
-     * The minimum version in which to exchange addresses with.
-     */
-    enum { min_addr_version = 60002 };
-    
-    /**
-     * Support for the "mempool" command, enhanced "getdata" behavior
-     * starts with this version.
-     */
-    enum { mempool_getdata_version = 60002 };
 
 } // namespace constants
 } // namespace coin

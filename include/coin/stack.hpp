@@ -109,6 +109,16 @@ namespace coin {
             void wallet_unlock(const std::string & passphrase);
         
             /**
+             * Changes the wallet passphrase.
+             * @param passphrase_old The old passphrase.
+             * @param password_new The new passphrase.
+             */
+            void wallet_change_passphrase(
+                const std::string & passphrase_old,
+                const std::string & password_new
+            );
+        
+            /**
              * If true the wallet is crypted.
              * @param wallet_id The wallet id.
              */
@@ -119,6 +129,12 @@ namespace coin {
              * @param wallet_id The wallet id.
              */
             bool wallet_is_locked(const std::uint32_t & wallet_id = 0);
+        
+            /**
+             * Performs a ZeroTime lock on the transaction.
+             * @param tx_id The transaction id.
+             */
+            void wallet_zerotime_lock(const std::string & tx_id);
         
             /**
              * Sends an RPC command line.

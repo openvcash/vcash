@@ -2000,8 +2000,7 @@ bool tcp_connection::handle_message(message & msg)
                  */
                 if (
                     m_direction == direction_outgoing &&
-                    utility::is_initial_block_download() == false &&
-                    m_protocol_version >= constants::mempool_getdata_version
+                    utility::is_initial_block_download() == false
                     )
                 {
                     send_mempool_message();
@@ -2088,10 +2087,7 @@ bool tcp_connection::handle_message(message & msg)
     }
     else if (msg.header().command == "addr")
     {
-        if (
-            msg.protocol_addr().count > 1000 ||
-            m_protocol_version < constants::min_addr_version
-            )
+        if (msg.protocol_addr().count > 1000)
         {
             /**
              * Set the Denial-of-Service score for the connection.
@@ -2174,14 +2170,6 @@ bool tcp_connection::handle_message(message & msg)
                         {
                             if (auto t = i2.second.lock())
                             {
-                                if (
-                                    t->protocol_version() <
-                                    constants::min_addr_version
-                                    )
-                                {
-                                    continue;
-                                }
-                            
                                 std::uint32_t ptr_uint32;
                                 
                                 auto ptr_transport = t.get();

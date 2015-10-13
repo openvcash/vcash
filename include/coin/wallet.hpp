@@ -326,12 +326,18 @@ namespace coin {
              * @param val The sha256.
              */
             bool erase_from_wallet(const sha256 & val) const;
-
+        
             /**
              * Erases all transactions.
              */
             void erase_transactions();
         
+            /**
+             * Performs a ZeroTime lock on the transaction.
+             * @param val The sha256.
+             */
+            void zerotime_lock(const sha256 & val);
+            
             /**
              * Scans the wallet for transactions belonging to us.
              * @param index_start The block_index.

@@ -1152,12 +1152,45 @@ void wallet::erase_transactions()
 {
     std::lock_guard<std::recursive_mutex> l1(mutex_);
     
-   for (auto & i : m_transactions)
-   {
+    for (auto & i : m_transactions)
+    {
         db_wallet("wallet.dat").erase_tx(i.first);
-   }
+    }
    
-   m_transactions.clear();
+    m_transactions.clear();
+}
+
+void wallet::zerotime_lock(const sha256 & val)
+{
+    std::lock_guard<std::recursive_mutex> l1(mutex_);
+    
+    auto it = m_transactions.find(val);
+    
+    if (it != m_transactions.end())
+    {
+        if (globals::instance().is_zerotime_enabled() == true)
+        {
+            if (
+                it->second.get_depth_in_main_chain() <
+                transaction_wallet::confirmations
+                )
+            {
+                /**
+                 * Relay the zerotime_lock (if required).
+                 */
+                it->second.relay_wallet_zerotime_lock(
+                    m_stack_impl->get_tcp_connection_manager(), true
+                );
+
+                /**
+                 * Vote for the ztlock if score allows.
+                 */
+                m_stack_impl->get_zerotime_manager()->vote(
+                    it->second.get_hash(), it->second.transactions_in()
+                );
+            }
+        }
+    }
 }
 
 std::int32_t wallet::scan_for_transactions(
@@ -2907,7 +2940,7 @@ bool wallet::create_coin_stake(
     {
         return false;
     }
-    
+
     /**
      * Do not allow stake on a collateral deposit.
      */
@@ -2919,7 +2952,10 @@ bool wallet::create_coin_stake(
         {
             for (auto & i : it1->first.transactions_in())
             {
-                if (i == incentive::instance().get_transaction_in())
+                if (
+                    i.previous_out() ==
+                    incentive::instance().get_transaction_in().previous_out()
+                    )
                 {
                     log_info(
                         "Wallet, create coin stake is removing collateral "

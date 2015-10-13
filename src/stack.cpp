@@ -201,6 +201,16 @@ void stack::wallet_unlock(const std::string & passphrase)
     }
 }
 
+void stack::wallet_change_passphrase(
+    const std::string & passphrase_old, const std::string & password_new
+    )
+{
+    if (stack_impl_)
+    {
+        stack_impl_->wallet_change_passphrase(passphrase_old, password_new);
+    }
+}
+
 bool stack::wallet_is_crypted(const std::uint32_t & wallet_id)
 {
     if (stack_impl_)
@@ -227,6 +237,18 @@ bool stack::wallet_is_locked(const std::uint32_t & wallet_id)
     }
     
     return false;
+}
+
+void stack::wallet_zerotime_lock(const std::string & tx_id)
+{
+    if (stack_impl_)
+    {
+        stack_impl_->wallet_zerotime_lock(tx_id);
+    }
+    else
+    {
+        throw std::runtime_error("Stack is not allocated");
+    }
 }
 
 void stack::on_error(const std::map<std::string, std::string> & pairs)

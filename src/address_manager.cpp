@@ -1519,7 +1519,7 @@ void address_manager::tick(const boost::system::error_code & ec)
             ;
         }
         
-        log_info("Address manager recent good endpoints:\n" << ss.str());
+        log_debug("Address manager recent good endpoints:\n" << ss.str());
         
         std::vector<boost::asio::ip::tcp::endpoint> endpoints;
         
@@ -1558,7 +1558,7 @@ void address_manager::tick(const boost::system::error_code & ec)
         
         std::random_shuffle(endpoints.begin(), endpoints.end());
 
-        enum { max_probes_total = 64 + 12 };
+        enum { max_probes_total = 24 };
         
         if (endpoints.size() > max_probes_total)
         {
