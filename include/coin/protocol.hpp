@@ -32,6 +32,8 @@
 #include <coin/inventory_vector.hpp>
 #include <coin/sha256.hpp>
 
+#error "Do not deploy RC1, a deadlock was found"
+
 namespace coin {
 
 class alert;
