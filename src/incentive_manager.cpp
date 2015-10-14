@@ -286,7 +286,7 @@ bool incentive_manager::handle_message(
             }
             else
             {
-                log_info("Incentive manager is dropping invalid vote.");
+                log_debug("Incentive manager is dropping invalid vote.");
             }
         }
         else
