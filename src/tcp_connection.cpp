@@ -3432,37 +3432,76 @@ bool tcp_connection::handle_message(message & msg)
                     }
                     else
                     {
+                        #warning :TODO: DROP VOTES THAT ARE OLD
                         /**
-                         * Insert the incentive_vote.
+                         * Get the best block_index.
                          */
-                        incentive::instance().votes()[
-                            ivote->hash_nonce()] = *ivote
+                        auto index_previous =
+                            stack_impl::get_block_index_best()
                         ;
                         
                         /**
-                         * Inform the incentive_manager.
+                         * Get the next block height
                          */
-                        if (auto transport = m_tcp_transport.lock())
-                        {
-                            stack_impl_.get_incentive_manager()->handle_message(
-                                transport->socket().remote_endpoint(), msg
-                            );
-                        }
+                        auto height =
+                            index_previous ?
+                            index_previous->height() + 1 : 0
+                        ;
 
                         /**
-                         * Allocate the data_buffer.
+                         * Check that the block height is close to
+                         * ours (within four blocks).
                          */
-                        data_buffer buffer;
-                        
-                        /**
-                         * Encode the transaction (reuse the signature).
-                         */
-                        ivote->encode(buffer, true);
-                
-                        /**
-                         * Relay the ztvote.
-                         */
-                        relay_inv(inv, buffer);
+                        if (
+                            ivote->block_height() + 2 < height &&
+                            static_cast<std::int32_t> (height) -
+                            ivote->block_height() > 4
+                            )
+                        {
+                            log_debug(
+                                "TCP connection is dropping old vote " <<
+                                msg.protocol_ivote(
+                                ).ivote->block_height() + 2 <<
+                                ", diff = " << static_cast<std::int32_t> (
+                                height) - msg.protocol_ivote(
+                                ).ivote->block_height() + 2 << "."
+                            );
+                        }
+                        else
+                        {
+                            /**
+                             * Insert the incentive_vote.
+                             */
+                            incentive::instance().votes()[
+                                ivote->hash_nonce()] = *ivote
+                            ;
+                            
+                            /**
+                             * Inform the incentive_manager.
+                             */
+                            if (auto transport = m_tcp_transport.lock())
+                            {
+                                stack_impl_.get_incentive_manager(
+                                    )->handle_message(transport->socket(
+                                    ).remote_endpoint(), msg
+                                );
+                            }
+
+                            /**
+                             * Allocate the data_buffer.
+                             */
+                            data_buffer buffer;
+                            
+                            /**
+                             * Encode the transaction (reuse the signature).
+                             */
+                            ivote->encode(buffer, true);
+                    
+                            /**
+                             * Relay the ztvote.
+                             */
+                            relay_inv(inv, buffer);
+                        }
                     }
                 }
             }

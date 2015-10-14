@@ -2940,7 +2940,7 @@ bool wallet::create_coin_stake(
     {
         return false;
     }
-
+#if 0
     /**
      * Do not allow stake on a collateral deposit.
      */
@@ -2969,7 +2969,7 @@ bool wallet::create_coin_stake(
             }
         }
     }
-    
+#endif
     if (coins.empty())
     {
         return false;

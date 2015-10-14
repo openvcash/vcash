@@ -88,15 +88,20 @@ bool incentive_manager::handle_message(
         {
             auto is_vote_valid = true;
             
+            /**
+             * Get the best block_index.
+             */
             auto index_previous = stack_impl::get_block_index_best();
+            
+            /**
+             * Get the next block height
+             */
+            auto height = index_previous ? index_previous->height() + 1 : 0;
             
             /**
              * Get the collateral.
              */
-            auto collateral =
-                incentive::instance().get_collateral(
-                index_previous ? index_previous->height() + 1 : 0)
-            ;
+            auto collateral = incentive::instance().get_collateral(height);
             
             if (collateral > 0)
             {
@@ -126,13 +131,36 @@ bool incentive_manager::handle_message(
             {
                 is_vote_valid = false;
             }
+
+            /**
+             * Check that the block height is close to ours (within four
+             * blocks).
+             * @note This (if) should never be reached since it is performed
+             * by TCP and UDP however let's be safe since origins may change.
+             */
+            if (
+                msg.protocol_ivote().ivote->block_height() + 2 < height &&
+                static_cast<std::int32_t> (height) -
+                msg.protocol_ivote().ivote->block_height() > 4
+                )
+            {
+                is_vote_valid = false;
+                
+                log_debug(
+                    "Incentive manager is dropping old vote " <<
+                    msg.protocol_ivote().ivote->block_height() + 2 <<
+                    ", diff = " << static_cast<std::int32_t> (height) -
+                    msg.protocol_ivote().ivote->block_height() + 2 << "."
+                );
+            }
         
             if (is_vote_valid)
             {
                 log_debug(
                     "Incentive manager got vote for " <<
                     msg.protocol_ivote().ivote->block_height() + 2 << ":" <<
-                    msg.protocol_ivote().ivote->address().substr(0, 8) << "."
+                    msg.protocol_ivote().ivote->address().substr(0, 8) <<
+                    ", score = " << msg.protocol_ivote().ivote->score() << "."
                 );
                 
                 std::lock_guard<std::mutex> l1(mutex_votes_);
@@ -255,6 +283,10 @@ bool incentive_manager::handle_message(
                 }
                 
                 log_debug(ss.str());
+            }
+            else
+            {
+                log_info("Incentive manager is dropping invalid vote.");
             }
         }
         else

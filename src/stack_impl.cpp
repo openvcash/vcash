@@ -1358,7 +1358,7 @@ void stack_impl::start()
                     /**
                      * Get some addresses from the address_manager.
                      */
-                    auto addrs = m_address_manager->get_addr(64);
+                    auto addrs = m_address_manager->get_addr(96);
                     
                     /**
                      * Allocate the UDP contacts.
