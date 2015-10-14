@@ -3432,7 +3432,6 @@ bool tcp_connection::handle_message(message & msg)
                     }
                     else
                     {
-                        #warning :TODO: DROP VOTES THAT ARE OLD
                         /**
                          * Get the best block_index.
                          */
