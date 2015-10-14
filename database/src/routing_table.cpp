@@ -482,6 +482,41 @@ std::set<boost::asio::ip::udp::endpoint>
     return ret;
 }
 
+std::set<boost::asio::ip::udp::endpoint>
+    routing_table::random_storage_node_from_each_block()
+{
+    std::set<boost::asio::ip::udp::endpoint> ret;
+    
+    for (auto & i : m_blocks)
+    {
+        for (auto & j : i->slots())
+        {
+            auto snodes = j->storage_nodes();
+            
+            if (snodes.size() > 0)
+            {
+                auto index = snodes.size() == 1 ? 0 :
+                    std::rand() % (snodes.size() - 1)
+                ;
+
+                /**
+                 * Take a random storage node from this slot.
+                 */
+                ret.insert(snodes[index].endpoint);
+                
+                break;
+            }
+        }
+    }
+    
+    if (ret.size() > slot::length / 8)
+    {
+        assert("invalid number of storage nodes");
+    }
+    
+    return ret;
+}
+
 std::set<std::uint16_t> routing_table::slot_ids_for_query(
     const std::string & query_string
     )

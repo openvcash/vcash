@@ -424,9 +424,9 @@ std::uint16_t node_impl::broadcast(const std::vector<std::uint8_t> & buffer)
     io_service_.post(strand_.wrap(std::bind([this, ret, buffer]
     {
         /**
-         * Get a random storage node from each slot in the system.
+         * Get a random storage node from each block in the system.
          */
-        auto snodes = routing_table_->random_storage_node_from_each_slot();
+        auto snodes = routing_table_->random_storage_node_from_each_block();
 
         if (snodes.size() == 0)
         {

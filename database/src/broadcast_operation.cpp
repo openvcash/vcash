@@ -49,7 +49,12 @@ std::shared_ptr<message> broadcast_operation::next_message(
     
     if (state() == state_started)
     {
-        ret.reset(new message(protocol::message_code_broadcast));
+        /**
+         * Allocate the message using the pre-defined transaction id.
+         */
+        ret.reset(
+            new message(protocol::message_code_broadcast, transaction_id())
+        );
 
         /**
          * Add the attribute_type_binary.
@@ -92,7 +97,7 @@ void broadcast_operation::on_response(message & msg, const bool & done)
              */
             if (broadcast_responses_ >= storage_nodes().size())
             {
-                log_debug(
+                log_info(
                     "Broadcast operation probed " << probed_.size() <<
                     " storage nodes, value broadcasted to " <<
                     broadcast_responses_ << " storage nodes, stopping."
