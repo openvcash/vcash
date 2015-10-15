@@ -137,7 +137,7 @@ bool incentive_manager::handle_message(
             {
                 is_vote_valid = false;
                 
-                log_debug(
+                log_info(
                     "Incentive manager is dropping vote, invalid collateral "
                     "for " <<
                     msg.protocol_ivote().ivote->address().substr(0, 8) << "."
@@ -470,7 +470,7 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                 }
                 
                 /**
-                 * Remove candidates older than 20 mins.
+                 * Remove candidates older than N mins.
                  */
                 std::lock_guard<std::mutex> l1(mutex_candidates_);
             
@@ -661,7 +661,7 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                                             ).acceptable(tx).first == false
                                             )
                                         {
-                                            log_debug(
+                                            log_info(
                                                 "Incentive manager detected "
                                                 "invalid collateral for " <<
                                                 recent.wallet_address.substr(
@@ -681,7 +681,7 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                                         }
                                         else
                                         {
-                                            log_debug(
+                                            log_info(
                                                 "Incentive manager detected "
                                                 "valid collateral for " <<
                                                 recent.wallet_address.substr(
@@ -703,7 +703,7 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                                     }
                                     catch (std::exception & e)
                                     {
-                                        log_debug(
+                                        log_info(
                                             "Incentive manager detected "
                                             "invalid collateral for " <<
                                             recent.wallet_address.substr(

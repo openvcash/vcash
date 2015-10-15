@@ -3457,7 +3457,7 @@ bool tcp_connection::handle_message(message & msg)
                             (ivote->block_height() + 2) > 0
                             )
                         {
-                            log_info(
+                            log_debug(
                                 "TCP connection is dropping old vote " <<
                                 ivote->block_height() + 2 <<
                                 ", diff = " << static_cast<std::int32_t> (

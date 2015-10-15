@@ -667,7 +667,7 @@ void database_stack::on_broadcast(
                                         (ivote->block_height() + 2) > 0
                                         )
                                     {
-                                        log_info(
+                                        log_debug(
                                             "Database stack (UDP) is "
                                             "dropping old vote " <<
                                             ivote->block_height() + 2 <<
