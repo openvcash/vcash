@@ -85,6 +85,12 @@ namespace coin {
              */
             const double & collateral_balance() const;
         
+            /**
+             * Validates the collateral for a incentive_vote.
+             * @param ivote The incentive_vote.
+             */
+            bool validate_collateral(const incentive_vote & ivote);
+        
         private:
         
             /**

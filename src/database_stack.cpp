@@ -201,8 +201,6 @@ void database_stack::on_broadcast(
     const char * buf, const std::size_t & len
     )
 {
-    return;
-    
     /**
      * Allocate the boost::asio::ip::tcp::endpoint.
      */
@@ -619,6 +617,32 @@ void database_stack::on_broadcast(
                                 else
                                 {
                                     /**
+                                     * Check the vote score.
+                                     */
+                                    if (ivote->score() < 0)
+                                    {
+                                        log_debug(
+                                            "Database stack (UDP) is dropping "
+                                            "invalid ivote, score = " <<
+                                            ivote->score() << "."
+                                        );
+                                    
+                                        return;
+                                    }
+                                    else if (
+                                        stack_impl_.get_incentive_manager(
+                                        )->validate_collateral(*ivote) == false
+                                        )
+                                    {
+                                        log_debug(
+                                            "Database stack (UDP) is dropping "
+                                            "ivote invalid collateral."
+                                        );
+                                        
+                                        return;
+                                    }
+                                    
+                                    /**
                                      * Get the best block_index.
                                      */
                                     auto index_previous =
@@ -635,24 +659,22 @@ void database_stack::on_broadcast(
             
                                     /**
                                      * Check that the block height is close to
-                                     * ours (within four blocks).
+                                     * ours (within one blocks).
                                      */
                                     if (
                                         ivote->block_height() + 2 < height &&
                                         static_cast<std::int32_t> (height) -
-                                        ivote->block_height() > 4
+                                        (ivote->block_height() + 2) > 0
                                         )
                                     {
-                                        log_debug(
+                                        log_info(
                                             "Database stack (UDP) is "
                                             "dropping old vote " <<
-                                            msg.protocol_ivote(
-                                            ).ivote->block_height() + 2 <<
+                                            ivote->block_height() + 2 <<
                                             ", diff = " <<
                                             static_cast<std::int32_t> (
-                                            height) - msg.protocol_ivote(
-                                            ).ivote->block_height() + 2 <<
-                                            "."
+                                            height) -
+                                            (ivote->block_height() + 2) << "."
                                         );
                                         
                                         return;

@@ -247,8 +247,9 @@ void zerotime_manager::probe_for_answers(
                 
                 /**
                  * Start the timer.
+                 * @note Use a 4x delay to allow the ztlock to propagate.
                  */
-                do_tick_probe(interval_probe);
+                do_tick_probe(interval_probe * 4);
             }
             else
             {

@@ -3196,7 +3196,7 @@ bool tcp_connection::handle_message(message & msg)
                             }
                             
                             /**
-                             * Vote for the ztlock if score allows.
+                             * Vote for the ztlock.
                              */
                             stack_impl_.get_zerotime_manager()->vote(
                                 ztlock->hash_tx(), ztlock->transactions_in()
@@ -3449,57 +3449,75 @@ bool tcp_connection::handle_message(message & msg)
 
                         /**
                          * Check that the block height is close to
-                         * ours (within four blocks).
+                         * ours (within one blocks).
                          */
                         if (
                             ivote->block_height() + 2 < height &&
                             static_cast<std::int32_t> (height) -
-                            ivote->block_height() > 4
+                            (ivote->block_height() + 2) > 0
                             )
                         {
-                            log_debug(
+                            log_info(
                                 "TCP connection is dropping old vote " <<
-                                msg.protocol_ivote(
-                                ).ivote->block_height() + 2 <<
+                                ivote->block_height() + 2 <<
                                 ", diff = " << static_cast<std::int32_t> (
-                                height) - msg.protocol_ivote(
-                                ).ivote->block_height() + 2 << "."
+                                height) - (ivote->block_height() + 2) << "."
                             );
                         }
                         else
                         {
-                            /**
-                             * Insert the incentive_vote.
-                             */
-                            incentive::instance().votes()[
-                                ivote->hash_nonce()] = *ivote
-                            ;
-                            
-                            /**
-                             * Inform the incentive_manager.
-                             */
-                            if (auto transport = m_tcp_transport.lock())
+                            if (ivote->score() < 0)
                             {
-                                stack_impl_.get_incentive_manager(
-                                    )->handle_message(transport->socket(
-                                    ).remote_endpoint(), msg
+                                log_debug(
+                                    "TCP connection is dropping invalid ivote, "
+                                    "score = " << ivote->score() << "."
                                 );
                             }
+                            else if (
+                                stack_impl_.get_incentive_manager(
+                                )->validate_collateral(*ivote) == false
+                                )
+                            {
+                                log_debug(
+                                    "TCP connection is dropping ivote invalid "
+                                    "collateral."
+                                );
+                            }
+                            else
+                            {
+                                /**
+                                 * Insert the incentive_vote.
+                                 */
+                                incentive::instance().votes()[
+                                    ivote->hash_nonce()] = *ivote
+                                ;
+                                
+                                /**
+                                 * Inform the incentive_manager.
+                                 */
+                                if (auto transport = m_tcp_transport.lock())
+                                {
+                                    stack_impl_.get_incentive_manager(
+                                        )->handle_message(transport->socket(
+                                        ).remote_endpoint(), msg
+                                    );
+                                }
 
-                            /**
-                             * Allocate the data_buffer.
-                             */
-                            data_buffer buffer;
-                            
-                            /**
-                             * Encode the transaction (reuse the signature).
-                             */
-                            ivote->encode(buffer, true);
-                    
-                            /**
-                             * Relay the ztvote.
-                             */
-                            relay_inv(inv, buffer);
+                                /**
+                                 * Allocate the data_buffer.
+                                 */
+                                data_buffer buffer;
+                                
+                                /**
+                                 * Encode the transaction (reuse the signature).
+                                 */
+                                ivote->encode(buffer, true);
+                        
+                                /**
+                                 * Relay the ztvote.
+                                 */
+                                relay_inv(inv, buffer);
+                            }
                         }
                     }
                 }
