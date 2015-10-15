@@ -137,7 +137,7 @@ bool incentive_manager::handle_message(
             {
                 is_vote_valid = false;
                 
-                log_info(
+                log_debug(
                     "Incentive manager is dropping vote, invalid collateral "
                     "for " <<
                     msg.protocol_ivote().ivote->address().substr(0, 8) << "."
@@ -272,7 +272,7 @@ bool incentive_manager::handle_message(
                     }
                 }
                 
-                log_info(ss.str());
+                log_debug(ss.str());
             }
             else
             {
@@ -661,7 +661,7 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                                             ).acceptable(tx).first == false
                                             )
                                         {
-                                            log_info(
+                                            log_debug(
                                                 "Incentive manager detected "
                                                 "invalid collateral for " <<
                                                 recent.wallet_address.substr(
@@ -681,7 +681,7 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                                         }
                                         else
                                         {
-                                            log_info(
+                                            log_debug(
                                                 "Incentive manager detected "
                                                 "valid collateral for " <<
                                                 recent.wallet_address.substr(
@@ -703,7 +703,7 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                                     }
                                     catch (std::exception & e)
                                     {
-                                        log_info(
+                                        log_debug(
                                             "Incentive manager detected "
                                             "invalid collateral for " <<
                                             recent.wallet_address.substr(
