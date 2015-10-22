@@ -511,6 +511,12 @@ namespace coin {
             void lock_file_or_exit();
         
             /**
+             * Imports a blockchain file from disk.
+             * @param path The path.
+             */
+            bool import_blockchain_file(const std::string & path);
+        
+            /**
              * Removes old blocks from disk if we are operating as a client.
              */
             void remove_old_blocks_if_client();

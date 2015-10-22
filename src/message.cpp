@@ -839,6 +839,18 @@ bool message::verify_header_magic()
     return m_header.magic == header_magic();
 }
 
+std::vector<std::uint8_t> message::header_magic_bytes()
+{
+    std::vector<std::uint8_t> ret = { 0xce, 0xa9, 0xcf, 0x80 };
+    
+    if (constants::test_net == true)
+    {
+        ret = { 0x02, 0x04, 0x06, 0x08 };
+    }
+
+    return ret;
+}
+
 const std::uint32_t message::header_magic()
 {
     static std::uint32_t ret = 0;

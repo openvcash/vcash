@@ -469,7 +469,8 @@ void database_stack::on_broadcast(
                                              * connected peers.
                                              */
                                             stack_impl_.get_tcp_connection_manager(
-                                                )->broadcast(msg.data(), msg.size()
+                                                )->broadcast(
+                                                msg.data(), msg.size()
                                             );
                                         }
                                     

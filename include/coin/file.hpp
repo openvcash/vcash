@@ -63,6 +63,15 @@ namespace coin {
             bool read(char * buf, const std::size_t & len);
 
             /**
+             * Reads len bytes from the file.
+             * @param buf The buffer.
+             * @param len The length.
+             */
+            bool read(
+                char * buf, std::size_t & len
+            );
+        
+            /**
              * Writes len bytes of buf to the file.
              * @param buf The buffer.
              * @param len The length.

@@ -2332,15 +2332,18 @@ bool block::accept_block(
          */
         if (globals::instance().hash_best_chain() == hash_block)
         {
-            auto connections = connection_manager->tcp_connections();
-            
-            for (auto & i : connections)
+            if (connection_manager)
             {
-                if (auto connection = i.second.lock())
+                auto connections = connection_manager->tcp_connections();
+                
+                for (auto & i : connections)
                 {
-                    connection->send_inv_message(
-                        inventory_vector::type_msg_block, hash_block
-                    );
+                    if (auto connection = i.second.lock())
+                    {
+                        connection->send_inv_message(
+                            inventory_vector::type_msg_block, hash_block
+                        );
+                    }
                 }
             }
         }

@@ -82,6 +82,22 @@ bool file::read(char * buf, const std::size_t & len)
     return false;
 }
 
+bool file::read(char * buf, std::size_t & len)
+{
+    if (m_file)
+    {
+        len = fread(buf, 1, len, m_file);
+        
+        return true;
+    }
+    else
+    {
+        // ...
+    }
+    
+    return false;
+}
+
 void file::write(const char * buf, const std::size_t & len)
 {
     if (m_file)

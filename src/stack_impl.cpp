@@ -949,6 +949,7 @@ void stack_impl::start()
                         );
                     }
                 });
+
 #if 1
                 /**
                  * Use a single std::thread to run the asio::io_service to
@@ -1065,6 +1066,31 @@ void stack_impl::start()
          * Callback
          */
         on_error(error);
+    }
+    
+    /**
+     * Check if we ned to import the blockchain.dat file from disk.
+     */
+    if (m_configuration.args()["import-blockchain"] == "1")
+    {
+        globals::instance().io_service().post(
+            globals::instance().strand().wrap([this]()
+        {
+            /**
+             * Import blockchain.dat from disk.
+             */
+            auto path = filesystem::data_path() + "blockchain.dat";
+        
+            if (import_blockchain_file(path) == true)
+            {
+                log_info("Stack imported blockchain file.");
+            }
+            else
+            {
+                log_error("Stack failed to import blockchain file.");
+            }
+
+        }));
     }
 
     globals::instance().io_service().post(
@@ -2005,7 +2031,7 @@ void stack_impl::broadcast_alert(
          */
         a.set_relay_until(
             static_cast<std::int32_t> (
-            time::instance().get_adjusted() + 365 * 24 * 60 * 60)
+            time::instance().get_adjusted() + 7 * 24 * 60 * 60)
         );
     
         /**
@@ -2013,7 +2039,7 @@ void stack_impl::broadcast_alert(
          */
         a.set_expiration(
             static_cast<std::int32_t> (
-            time::instance().get_adjusted() + 365 * 24 * 60 * 60)
+            time::instance().get_adjusted() + 7 * 24 * 60 * 60)
         );
         
         /**
@@ -4023,6 +4049,177 @@ void stack_impl::lock_file_or_exit()
         }
     }
 #endif // _MSC_VER
+}
+
+bool stack_impl::import_blockchain_file(const std::string & path)
+{
+    file f;
+
+    std::uint32_t blocks_loaded = 0;
+    
+    if (f.open(path.c_str(), "rb") == true)
+    {
+        try
+        {
+            std::int32_t offset = 0;
+            
+            while (
+                offset != std::numeric_limits<std::uint32_t>::max() &&
+                globals::instance().state() == globals::state_started
+                )
+            {
+                char buf[65536];
+                
+                do
+                {
+                    f.seek_set(offset);
+                
+                    std::size_t bytes_read = sizeof(buf);
+                
+                    if (f.read(buf, bytes_read) == true)
+                    {
+                        if (bytes_read <= 8)
+                        {
+                            offset = std::numeric_limits<std::uint32_t>::max();
+                            
+                            break;
+                        }
+
+                        void * magic_ptr = std::memchr(
+                            buf, message::header_magic_bytes()[0],
+                            bytes_read + 1 - message::header_magic_length
+                        );
+                        
+                        if (magic_ptr)
+                        {
+                            if (
+                                std::memcmp(magic_ptr,
+                                &message::header_magic_bytes()[0],
+                                message::header_magic_length) == 0
+                                )
+                            {
+                                offset +=
+                                    reinterpret_cast<std::uint8_t *> (
+                                    magic_ptr) - reinterpret_cast<
+                                    std::uint8_t *> (buf) +
+                                    message::header_magic_length;
+                                
+                                break;
+                            }
+                            
+                            offset +=
+                                reinterpret_cast<std::uint8_t *> (
+                                magic_ptr) - reinterpret_cast<
+                                std::uint8_t *> (buf) + 1
+                            ;
+                        }
+                        else
+                        {
+                            offset +=
+                                sizeof(buf) - message::header_magic_length + 1
+                            ;
+                        }
+                        
+                    }
+                    else
+                    {
+                        offset = std::numeric_limits<std::uint32_t>::max();
+                        
+                        break;
+                    }
+                
+                } while (globals::instance().state() == globals::state_started);
+                
+                if (offset == std::numeric_limits<std::uint32_t>::max())
+                {
+                    break;
+                }
+                
+                f.seek_set(offset);
+                
+                std::uint32_t len = 0;
+                
+                if (
+                    f.read(
+                    reinterpret_cast<char *> (&len), sizeof(len)) == true
+                    )
+                {
+                    if (len > 0 && len < constants::max_block_size)
+                    {
+                        data_buffer buffer(len);
+                        
+                        if (f.read(buffer.data(), buffer.size()) == true)
+                        {
+                            std::shared_ptr<block> blk(new block());
+                            
+                            if (blk->decode(buffer) == true)
+                            {
+                                if (process_block(0, blk) == true)
+                                {
+                                    blocks_loaded++;
+                                    
+                                    offset +=
+                                        message::header_magic_length + len
+                                    ;
+                                    
+                                    if (blocks_loaded % 1 == 0)
+                                    {
+                                        /**
+                                         * Allocate the status.
+                                         */
+                                        std::map<std::string, std::string>
+                                            status
+                                        ;
+                                        
+                                        /**
+                                         * Set the status type.
+                                         */
+                                        status["type"] = "database";
+                                    
+                                        /**
+                                         * Set the status value.
+                                         */
+                                        status["value"] =
+                                            "Importing blockchain..."
+                                        ;
+                                        
+                                        /**
+                                         * Set the status value.
+                                         */
+                                        status["blockchain.import"] =
+                                            "Imported " +
+                                            std::to_string(blocks_loaded) +
+                                            " blocks..."
+                                        ;
+
+                                        /**
+                                         * Callback
+                                         */
+                                        m_status_manager->insert(status);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    break;
+                }
+            }
+        }
+        catch (std::exception & e)
+        {
+            log_error(
+                "Stack failed importing blockchain file, what = " <<
+                e.what() << "."
+            );
+        }
+    }
+    
+    log_info("Stack imported " << blocks_loaded << " from blockchain file.");
+    
+    return blocks_loaded != 0;
 }
 
 void stack_impl::remove_old_blocks_if_client()

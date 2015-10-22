@@ -36,6 +36,11 @@ namespace coin {
         public:
         
             /**
+             * The header magic length.
+             */
+            enum { header_magic_length = 4 };
+        
+            /**
              * Constructor
              * @param buf The buffer.
              * @param len The length.
@@ -72,6 +77,11 @@ namespace coin {
              */
             bool verify_header_magic();
 
+            /**
+             * The header magic.
+             */
+            static std::vector<std::uint8_t> header_magic_bytes();
+        
             /**
              * The header magic number.
              */
