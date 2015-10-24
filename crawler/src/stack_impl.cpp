@@ -73,7 +73,7 @@ void stack_impl::start(const std::map<std::string, std::string> & args)
     /**
      * Start the database_stack.
      */
-    m_database_stack->start(40098, false);
+    m_database_stack->start(0, false);
     
     /**
      * Allocate the probe_manager.

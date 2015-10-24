@@ -68,7 +68,7 @@ namespace crawler {
                 : m_version("0")
                 , m_protocol(0)
                 , m_height(0)
-                , m_time_last_seen(std::time(0))
+                , m_time_last_seen(std::time(0) - 10 * 60)
                 , m_udp_endpoint(ep)
                 , m_uptime(uptime)
                 , m_last_update(last_update)

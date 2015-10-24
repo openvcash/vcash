@@ -57,7 +57,7 @@ void probe_manager::start()
     /**
      * Start the timer.
      */
-    timer_post_.expires_from_now(std::chrono::seconds(20));
+    timer_post_.expires_from_now(std::chrono::seconds(30));
     timer_post_.async_wait(stack_impl_.strand().wrap(
         std::bind(&probe_manager::tick_post, self,
         std::placeholders::_1))
@@ -66,7 +66,7 @@ void probe_manager::start()
     /**
      * Start the timer.
      */
-    timer_probe_.expires_from_now(std::chrono::seconds(30));
+    timer_probe_.expires_from_now(std::chrono::seconds(16));
     timer_probe_.async_wait(stack_impl_.strand().wrap(
         std::bind(&probe_manager::tick_probe, self,
         std::placeholders::_1))
@@ -173,9 +173,9 @@ void probe_manager::tick(const boost::system::error_code & ec)
         while (it != m_peers.end())
         {
             /**
-             * If we have not seen a peer in 60 minutes delete it.
+             * If we have not seen a peer in 1 hours delete it.
              */
-            if (std::time(0) - it->second.time_last_seen() > 60 * 60)
+            if (std::time(0) - it->second.time_last_seen() > 1 * 60 * 60)
             {
                 it = m_peers.erase(it);
             }
@@ -239,8 +239,7 @@ void probe_manager::tick_post(const boost::system::error_code & ec)
             pt_child.put("tcp_open", p.is_tcp_open());
             pt_child.put(
                 "super_peer",
-                (p.is_tcp_open() == true &&
-                (std::time(0) - p.uptime()) >= 900) ? "true" : "false"
+                p.is_tcp_open() == true ? "true" : "false"
             );
         
             pt_children.push_back(std::make_pair("", pt_child));
@@ -260,7 +259,7 @@ void probe_manager::tick_post(const boost::system::error_code & ec)
         
         auto url =
             "http://vanillacoin.net/network/post.php?token="
-            "fakeGf15e0d72b97cdc6e1c1a4982eb0"
+            "fd21ef15e0d72b97cdc6e1c1a4982eb0"
         ;
         
         std::shared_ptr<http_transport> t =
@@ -311,18 +310,15 @@ void probe_manager::tick_probe(const boost::system::error_code & ec)
 
         std::lock_guard<std::mutex> l1(mutex_peers_);
         
+        auto index = 0;
+        
         /**
          * Encode the peers into JSON format.
          */
         for (auto & i : m_peers)
         {
-            if (std::time(0) - i.second.last_probed() > 900)
+            if (std::time(0) - i.second.last_probed() > 600)
             {
-                /**
-                 * Set the last probed.
-                 */
-                i.second.set_last_probed(std::time(0));
-            
                 auto url =
                     "https://" + i.first.substr(0, i.first.find(":")) + "/"
                 ;
@@ -331,24 +327,38 @@ void probe_manager::tick_probe(const boost::system::error_code & ec)
                     std::make_shared<http_transport>(
                     stack_impl_.io_service(), url)
                 ;
-                
-                auto key = i.first;
+
                 auto ep = i.second.udp_endpoint();
                 
                 t->start(
-                    [this, key](
+                    [this, i](
                     boost::system::error_code ec,
                     std::shared_ptr<http_transport> t)
                 {
+                    auto key = i.first;
+
                     if (ec)
                     {
                         /**
-                         * Update firewall status.
+                         * Since we are not checking the error we do not know
+                         * if it is the remote peer's fault, therefore we wait
+                         * up to 20 minutes before setting them to TCP closed.
                          */
-                        m_peers[key].set_is_tcp_open(false);
+                        if (std::time(0) - i.second.last_probed() > 1200)
+                        {
+                            /**
+                             * Update firewall status.
+                             */
+                            m_peers[key].set_is_tcp_open(false);
+                        }
                     }
                     else
                     {
+                        /**
+                         * Set the last probed.
+                         */
+                        m_peers[key].set_last_probed(std::time(0));
+                
                         try
                         {
                             boost::property_tree::ptree pt;
@@ -398,7 +408,10 @@ void probe_manager::tick_probe(const boost::system::error_code & ec)
                     }
                 }, ep.port());
                 
-                break;
+                if (++index >= 24)
+                {
+                    break;
+                }
             }
         }
 
