@@ -42,7 +42,10 @@ message::message(const protocol::message_code_t & code)
     m_header.code = code;
     m_header.flags = 0;
     m_header.transaction_id = ++g_transaction_id;
-#if 0 /* :TODO: Enable in next deployment. */
+    
+    /**
+     * Always add the version attribute.
+     */
     message::attribute_uint32 attr1;
     
     attr1.type = message::attribute_type_version;
@@ -50,7 +53,6 @@ message::message(const protocol::message_code_t & code)
     attr1.value = version;
     
     m_uint32_attributes.push_back(attr1);
-#endif
 }
 
 message::message(
@@ -62,7 +64,10 @@ message::message(
     m_header.code = code;
     m_header.flags = 0;
     m_header.transaction_id = tid;
-#if 0 /* :TODO: Enable in next deployment. */
+
+    /**
+     * Always add the version attribute.
+     */
     message::attribute_uint32 attr1;
     
     attr1.type = message::attribute_type_version;
@@ -70,7 +75,6 @@ message::message(
     attr1.value = version;
     
     m_uint32_attributes.push_back(attr1);
-#endif
 }
 
 message::message(const char * buf, const std::size_t & len)
