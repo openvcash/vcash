@@ -75,7 +75,7 @@ void status_manager::stop()
 
 void status_manager::insert(const std::map<std::string, std::string> & pairs)
 {
-#if (defined __linux__)
+#if (defined __linux__ && !defined __ANDROID__)
     /**
      * Ignore status updates on linux (until there is a UI).
      */
