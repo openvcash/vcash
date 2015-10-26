@@ -52,6 +52,25 @@ transaction_wallet::transaction_wallet()
     initialize(0);
 }
 
+transaction_wallet::transaction_wallet(const wallet * ptr_wallet)
+    : transaction_merkle()
+    , m_time_received_is_tx_time(0)
+    , m_time_received(0)
+    , m_time_smart(0)
+    , m_is_from_me(false)
+    , m_order_position(-1)
+    , wallet_(ptr_wallet)
+    , credit_is_cached_(false)
+    , credit_cached_(0)
+    , debit_is_cached_(false)
+    , debit_cached_(0)
+    , available_credit_is_cached_(false)
+    , available_credit_cached_(0)
+    , change_is_cached_(false)
+{
+    initialize(ptr_wallet);
+}
+
 transaction_wallet::transaction_wallet(
     const wallet * ptr_wallet, const transaction & tx_in
     )
@@ -515,7 +534,7 @@ std::pair<bool, std::string> transaction_wallet::accept_wallet_transaction()
 
 bool transaction_wallet::update_spent(const std::vector<char> & spent_new) const
 {
-    bool ret = false;
+    auto ret = false;
     
     for (auto i = 0; i < spent_new.size(); i++)
     {

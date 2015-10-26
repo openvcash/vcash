@@ -259,7 +259,8 @@ void stack_impl::start()
          */
         load_block_index([this] (const bool & success)
         {
-            if (success)
+            #warning :TODO: It must be ok for load_block_index to fail and us continue becuase of pruned blk files, but the index files MUST be unlinked in a way as to not write old data.
+            if (true/*success*/)
             {
                 log_info("Stack loaded block index.");
                 
@@ -1069,7 +1070,7 @@ void stack_impl::start()
     }
     
     /**
-     * Check if we ned to import the blockchain.dat file from disk.
+     * Check if we need to import the blockchain.dat file from disk.
      */
     if (m_configuration.args()["import-blockchain"] == "1")
     {
@@ -1717,6 +1718,23 @@ void stack_impl::stop()
     }
     
     /**
+     * Reset globals.
+     */
+    globals::instance().block_indexes().clear();
+    globals::instance().proofs_of_stake().clear();
+    globals::instance().set_wallet_main(std::shared_ptr<wallet> ());
+    globals::instance().orphan_blocks().clear();
+    globals::instance().orphan_transactions().clear();
+    globals::instance().orphan_blocks_by_previous().clear();
+    globals::instance().orphan_transactions_by_previous().clear();
+    globals::instance().stake_seen_orphan().clear();
+    globals::instance().relay_invs().clear();
+    globals::instance().relay_inv_expirations().clear();
+    g_block_index_genesis = std::shared_ptr<block_index> ();;
+    g_seen_stake.clear();
+    g_block_index_best = std::shared_ptr<block_index> ();
+    
+    /**
      * Reset
      */
     m_address_manager.reset();
@@ -1852,7 +1870,7 @@ void stack_impl::send_coins(
             /**
              * Allocate the transaction_wallet.
              */
-            transaction_wallet wtx;
+            transaction_wallet wtx(globals::instance().wallet_main().get());
             
             /**
              * Check if ZeroTime should be used.
@@ -3004,7 +3022,7 @@ bool stack_impl::process_block(
                 );
             }
             
-            globals::instance().orphan_transactions_by_previous().erase(
+            globals::instance().orphan_blocks_by_previous().erase(
                 hash_previous
             );
         }
@@ -3536,6 +3554,16 @@ void stack_impl::on_status_wallet()
 
 void stack_impl::on_status_blockchain()
 {
+    log_info("block_indexes: " << globals::instance().block_indexes().size());
+    log_info("proofs_of_stake: " << globals::instance().proofs_of_stake().size());
+    log_info("orphan_blocks: " << globals::instance().orphan_blocks().size());
+    log_info("orphan_blocks_by_previous: " << globals::instance().orphan_blocks_by_previous().size());
+    log_info("orphan_transactions: " << globals::instance().orphan_transactions().size());
+    log_info("orphan_transactions_by_previous: " << globals::instance().orphan_transactions_by_previous().size());
+    log_info("stake_seen_orphan: " << globals::instance().stake_seen_orphan().size());
+    log_info("relay_invs: " << globals::instance().relay_invs().size());
+    log_info("relay_inv_expirations: " << globals::instance().relay_inv_expirations().size());
+    
     if (globals::instance().money_supply() > 0)
     {
         /**
@@ -4187,9 +4215,7 @@ bool stack_impl::import_blockchain_file(const std::string & path)
                                          * Set the status value.
                                          */
                                         status["blockchain.import"] =
-                                            "Imported " +
-                                            std::to_string(blocks_loaded) +
-                                            " blocks..."
+                                            std::to_string(blocks_loaded)
                                         ;
 
                                         /**

@@ -291,7 +291,7 @@ namespace coin {
             std::uint32_t get_stake_entropy_bit() const;
 
             /**
-             * IF true the stake modifier has been generated.
+             * If true the stake modifier has been generated.
              */
             bool generated_stake_modifier() const;
 

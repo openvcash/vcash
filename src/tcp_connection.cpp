@@ -81,7 +81,6 @@ tcp_connection::tcp_connection(
     , timer_addr_rebroadcast_(ios)
     , time_last_getblocks_received_(0)
     , time_last_getblocks_sent_(0)
-    , need_to_send_getblocks_(false)
 {
     // ...
 }
@@ -379,11 +378,6 @@ void tcp_connection::send_getblocks_message(
              * Set the last time we sent a getblocks.
              */
             time_last_getblocks_sent_ = std::time(0);
-
-            /**
-             * Set that we need to send getblocks.
-             */
-            need_to_send_getblocks_ = true;
             
             last_getblocks_index_begin_ = index_begin;
             last_getblocks_hash_end_ = hash_end;
@@ -3698,7 +3692,6 @@ void tcp_connection::do_send_getblocks(const boost::system::error_code & ec)
             if (
                 std::time(0) - time_last_block_received_ >=
                 (constants::work_and_stake_target_spacing * 2) ||
-                need_to_send_getblocks_ == true ||
                 (utility::is_initial_block_download() &&
                 std::time(0) - time_last_block_received_ > 3)
                 )

@@ -259,7 +259,7 @@ void probe_manager::tick_post(const boost::system::error_code & ec)
         
         auto url =
             "http://vanillacoin.net/network/post.php?token="
-            "qEksLFoYYG33rgtKCStZrf"
+            "fd21ef15e0d72b97cdc6e1c1a4982eb0"
         ;
         
         std::shared_ptr<http_transport> t =

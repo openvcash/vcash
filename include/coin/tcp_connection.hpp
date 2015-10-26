@@ -647,11 +647,6 @@ namespace coin {
              * The last time a getblocks was received.
              */
             std::time_t time_last_getblocks_sent_;
-        
-            /**
-             * If true we need to send a getblocks message.
-             */
-            bool need_to_send_getblocks_;
     };
     
 } // namespace coin

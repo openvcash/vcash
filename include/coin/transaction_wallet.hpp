@@ -48,6 +48,11 @@ namespace coin {
             /**
              * Constructor
              */
+            transaction_wallet(const wallet * ptr_wallet);
+        
+            /**
+             * Constructor
+             */
             transaction_wallet(
                 const wallet * ptr_wallet, const transaction & tx_in
             );

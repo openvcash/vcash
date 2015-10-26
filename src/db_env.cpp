@@ -129,6 +129,10 @@ void db_env::close_DbEnv()
         std::string data_path = filesystem::data_path();
         
         DbEnv(0).remove(data_path.c_str(), 0);
+        
+        std::lock_guard<std::recursive_mutex> l2(mutex_file_use_counts_);
+        
+        m_file_use_counts.clear();
     }
 }
 
