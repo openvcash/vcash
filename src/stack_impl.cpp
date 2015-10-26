@@ -259,8 +259,7 @@ void stack_impl::start()
          */
         load_block_index([this] (const bool & success)
         {
-            #warning :TODO: It must be ok for load_block_index to fail and us continue becuase of pruned blk files, but the index files MUST be unlinked in a way as to not write old data.
-            if (true/*success*/)
+            if (success)
             {
                 log_info("Stack loaded block index.");
                 
