@@ -2791,7 +2791,7 @@ bool tcp_connection::handle_message(message & msg)
             }
             else
             {
-                log_info(
+                log_debug(
                     "TCP connection (operation mode client or initial download)"
                     " is dropping getblocks message."
                 );
