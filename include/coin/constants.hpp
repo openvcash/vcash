@@ -26,8 +26,6 @@
 
 #include <coin/big_number.hpp>
 
-#error "0.3.9 should not be deployed yet"
-
 /**
  * Enables GUI related function calls.
  */
