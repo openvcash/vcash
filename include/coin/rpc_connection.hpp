@@ -576,6 +576,14 @@ namespace coin {
             );
         
             /**
+             * Performs a walletdenominate operation.
+             * @param request The json_rpc_request_t.
+             */
+            json_rpc_response_t json_walletdenominate(
+                const json_rpc_request_t & request
+            );
+        
+            /**
              * Unlocks the wallet.
              * @param request The json_rpc_request_t.
              */

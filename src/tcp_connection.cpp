@@ -3316,7 +3316,13 @@ bool tcp_connection::handle_message(message & msg)
         {
             const auto & ztvote = msg.protocol_ztvote().ztvote;
 
-            if (ztvote)
+            /**
+             * Check that the vote has a valid score before proceeding.
+             */
+            if (
+                ztvote && ztvote->score() > -1 &&
+                ztvote->score() <= std::numeric_limits<std::int16_t>::max() / 6
+                )
             {
                 /**
                  * Allocate the inventory_vector.
@@ -3408,7 +3414,14 @@ bool tcp_connection::handle_message(message & msg)
             {
                 const auto & ivote = msg.protocol_ivote().ivote;
                 
-                if (ivote)
+                /**
+                 * Check that the vote has a valid score before proceeding.
+                 */
+                if (
+                    ivote && ivote->score() > -1 &&
+                    ivote->score() <=
+                    std::numeric_limits<std::int16_t>::max() / 2
+                    )
                 {
                     /**
                      * Allocate the inventory_vector.

@@ -116,7 +116,7 @@ void zerotime_manager::vote(
                  */
                 const auto & vote_score = ztvote.score();
                 
-                log_debug(
+                log_info(
                     "ZeroTime manager forming vote, calculated score = " <<
                     vote_score << " for " <<
                     ztvote.hash_nonce().to_string().substr(0, 8) << "."
@@ -126,7 +126,10 @@ void zerotime_manager::vote(
                  * If our vote score is at least zero we can vote otherwise
                  * peers will reject it.
                  */
-                if (vote_score > -1)
+                if (
+                    vote_score > -1 &&
+                    vote_score <= std::numeric_limits<std::int16_t>::max() / 6
+                    )
                 {
                     /**
                      * Allocate the inventory_vector.
@@ -247,9 +250,9 @@ void zerotime_manager::probe_for_answers(
                 
                 /**
                  * Start the timer.
-                 * @note Use a 4x delay to allow the ztlock to propagate.
+                 * @note Use a 5x delay to allow the ztlock to propagate.
                  */
-                do_tick_probe(interval_probe * 4);
+                do_tick_probe(interval_probe * 5);
             }
             else
             {
@@ -333,17 +336,20 @@ void zerotime_manager::handle_vote(
         const auto & hash_tx = ztvote.hash_tx();
         const auto & vote_score = ztvote.score();
         
-        log_debug(
-            "ZeroTime manager got vote, calculated score = " <<
-            vote_score << " for " <<
-            ztvote.hash_nonce().to_string().substr(0, 8) << "."
-        );
-        
         /**
          * The vote score must be at least zero.
          */
-        if (vote_score > -1)
+        if (
+            vote_score > -1 &&
+            vote_score <= std::numeric_limits<std::int16_t>::max() / 6
+            )
         {
+            log_info(
+                "ZeroTime manager got valid vote, calculated score = " <<
+                vote_score << " for " <<
+                ztvote.hash_nonce().to_string().substr(0, 8) << "."
+            );
+        
             /**
              * Get a copy of the votes.
              */
@@ -362,6 +368,8 @@ void zerotime_manager::handle_vote(
             {
                 if (
                     it->second.score() > -1 &&
+                    it->second.score() <=
+                    std::numeric_limits<std::int16_t>::max() / 6 &&
                     it->second.hash_tx() == hash_tx
                     )
                 {
@@ -394,14 +402,15 @@ void zerotime_manager::handle_vote(
                 zerotime::k_test_network : zerotime::k) * 100.0f)
             ;
             
-            log_debug(
-                "ZeroTime manager has " << percentage << "% votes for " <<
+            log_info(
+                "ZeroTime manager has " << percentage << "% (" <<
+                vote_scores.size() << ") votes for " <<
                 hash_tx.to_string().substr(0, 8) << "."
             );
             
             if (percentage >= safe_percentage && percentage <= 100)
             {
-                log_debug(
+                log_info(
                     "ZeroTime manager got enough votes for " <<
                     hash_tx.to_string().substr(0, 8) << "."
                 );

@@ -259,6 +259,9 @@ void stack_impl::start()
          */
         load_block_index([this] (const bool & success)
         {
+            /**
+             * When pruning is enabled this must always succeed.
+             */
             if (success)
             {
                 log_info("Stack loaded block index.");
@@ -689,6 +692,14 @@ void stack_impl::start()
                          * Allocate the info.
                          */
                         std::map<std::string, std::string> status;
+                        
+                        /**
+                         * Add the transaction_wallet values to the status.
+                         */
+                        for (auto & i : i.second.values())
+                        {
+                            status[i.first] = i.second;
+                        }
                         
                         /**
                          * Set the type.
@@ -3553,15 +3564,35 @@ void stack_impl::on_status_wallet()
 
 void stack_impl::on_status_blockchain()
 {
-    log_debug("block_indexes: " << globals::instance().block_indexes().size());
-    log_debug("proofs_of_stake: " << globals::instance().proofs_of_stake().size());
-    log_debug("orphan_blocks: " << globals::instance().orphan_blocks().size());
-    log_debug("orphan_blocks_by_previous: " << globals::instance().orphan_blocks_by_previous().size());
-    log_debug("orphan_transactions: " << globals::instance().orphan_transactions().size());
-    log_debug("orphan_transactions_by_previous: " << globals::instance().orphan_transactions_by_previous().size());
-    log_debug("stake_seen_orphan: " << globals::instance().stake_seen_orphan().size());
+    log_debug(
+        "block_indexes: " << globals::instance().block_indexes().size()
+    );
+    log_debug(
+        "proofs_of_stake: " << globals::instance().proofs_of_stake().size()
+    );
+    log_debug(
+        "orphan_blocks: " << globals::instance().orphan_blocks().size()
+    );
+    log_debug(
+        "orphan_blocks_by_previous: " <<
+        globals::instance().orphan_blocks_by_previous().size()
+    );
+    log_debug(
+        "orphan_transactions: " <<
+        globals::instance().orphan_transactions().size()
+    );
+    log_debug(
+        "orphan_transactions_by_previous: " <<
+        globals::instance().orphan_transactions_by_previous().size()
+    );
+    log_debug(
+        "stake_seen_orphan: " << globals::instance().stake_seen_orphan().size()
+    );
     log_debug("relay_invs: " << globals::instance().relay_invs().size());
-    log_debug("relay_inv_expirations: " << globals::instance().relay_inv_expirations().size());
+    log_debug(
+        "relay_inv_expirations: " <<
+        globals::instance().relay_inv_expirations().size()
+        );
     
     if (globals::instance().money_supply() > 0)
     {

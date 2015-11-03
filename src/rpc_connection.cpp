@@ -640,6 +640,10 @@ bool rpc_connection::handle_json_rpc_request(
     {
         response = json_sendtoaddress(request);
     }
+    else if (request.method == "walletdenominate")
+    {
+        response = json_walletdenominate(request);
+    }
     else if (request.method == "walletpassphrase")
     {
         response = json_walletpassphrase(request);
@@ -4458,7 +4462,7 @@ rpc_connection::json_rpc_response_t rpc_connection::json_sendmany(
                 /**
                  * Do not use ZeroTime over RPC.
                  */
-                bool use_zerotime = false;
+                auto use_zerotime = false;
                 
                 /**
                  * Commit the transaction.
@@ -4674,7 +4678,7 @@ rpc_connection::json_rpc_response_t rpc_connection::json_sendtoaddress(
                 /**
                  * Do not use ZeroTime over RPC.
                  */
-                bool use_zerotime = false;
+                auto use_zerotime = false;
                 
                 auto result =
                     globals::instance().wallet_main(
@@ -4967,6 +4971,146 @@ rpc_connection::json_rpc_response_t rpc_connection::json_validateaddress(
     {
         log_error(
             "RPC Connection failed to create json_validateaddress, what = " <<
+            e.what() << "."
+        );
+        
+        auto pt_error = create_error_object(
+            error_code_internal_error, e.what()
+        );
+        
+        /**
+         * error_code_internal_error
+         */
+        return json_rpc_response_t{
+            boost::property_tree::ptree(), pt_error, request.id
+        };
+    }
+    
+    return ret;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_walletdenominate(
+    const json_rpc_request_t & request
+    )
+{
+    rpc_connection::json_rpc_response_t ret;
+
+    try
+    {
+        if (request.params.size() != 1)
+        {
+            auto pt_error = create_error_object(
+                error_code_invalid_params, "invalid parameter count"
+            );
+            
+            /**
+             * error_code_invalid_params
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
+        }
+        else if (globals::instance().wallet_main()->is_locked())
+        {
+            auto pt_error = create_error_object(
+                error_code_wallet_unlock_needed, "wallet is locked"
+            );
+            
+            /**
+             * error_code_wallet_unlock_needed
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
+        }
+        else
+        {
+            /**
+             * Get the value.
+             */
+            auto value = request.params.front().second.get<double> ("");
+            
+            /**
+             * Round the amount.
+             */
+            auto amount = static_cast<std::int64_t> (
+                (value * constants::coin) > 0 ?
+                (value * constants::coin) + 0.5 :
+                (value * constants::coin) - 0.5
+            );
+            
+            if (utility::money_range(amount) == false)
+            {
+                auto pt_error = create_error_object(
+                    error_code_type_error, "invalid amount(money range)"
+                );
+                
+                /**
+                 * error_code_type_error
+                 */
+                return json_rpc_response_t{
+                    boost::property_tree::ptree(), pt_error, request.id
+                };
+            }
+            
+            if (amount > globals::instance().wallet_main()->get_balance())
+            {
+                auto pt_error = create_error_object(
+                    error_code_wallet_insufficient_funds,
+                    "insufficient funds"
+                );
+                
+                /**
+                 * error_code_wallet_insufficient_funds
+                 */
+                return json_rpc_response_t{
+                    boost::property_tree::ptree(), pt_error,
+                    request.id
+                };
+            }
+            else if (amount < (10000.0 * constants::coin))
+            {
+                auto success = globals::instance().wallet_main(
+                    )->chainblender_denominate(amount
+                );
+                
+                if (success)
+                {
+                    ret.result.put("", "null");
+                }
+                else
+                {
+                    auto pt_error = create_error_object(
+                        error_code_type_error, "failed"
+                    );
+                    
+                    /**
+                     * error_code_type_error
+                     */
+                    return json_rpc_response_t{
+                        boost::property_tree::ptree(), pt_error, request.id
+                    };
+                }
+            }
+            else
+            {
+                auto pt_error = create_error_object(
+                    error_code_type_error, "invalid amount(too much)"
+                );
+                
+                /**
+                 * error_code_type_error
+                 */
+                return json_rpc_response_t{
+                    boost::property_tree::ptree(), pt_error, request.id
+                };
+            }
+        }
+    }
+    catch (std::exception & e)
+    {
+        log_error(
+            "RPC Connection failed to create json_walletdenominate, what = " <<
             e.what() << "."
         );
         

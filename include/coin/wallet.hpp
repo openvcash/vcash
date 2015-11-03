@@ -89,7 +89,7 @@ namespace coin {
             /**
              * The configuration (default) keypool size.
              */
-            enum { configuration_keypool_size = 100 };
+            enum { configuration_keypool_size = 256 };
         
             /**
              * Constructor
@@ -337,7 +337,13 @@ namespace coin {
              * @param val The sha256.
              */
             void zerotime_lock(const sha256 & val);
-            
+        
+            /**
+             * Performs a chain blender denominate operation using the value.
+             * @param val The value.
+             */
+            bool chainblender_denominate(const std::int64_t & val);
+        
             /**
              * Scans the wallet for transactions belonging to us.
              * @param index_start The block_index.
@@ -506,6 +512,8 @@ namespace coin {
              * @param spend_time The spend time.
              * @param coins_out The coins out.
              * @param value_out The value out.
+             * @param filter The filter (inputs with matching values will be
+             * excluded from output).
              * @param control The coin_control.
              */
             bool select_coins(
@@ -513,6 +521,8 @@ namespace coin {
                 const std::uint32_t & spend_time,
                 std::set< std::pair<transaction_wallet,
                 std::uint32_t> > & coins_out, std::int64_t & value_out,
+                const std::set<std::int64_t> & filter =
+                std::set<std::int64_t> (),
                 const std::shared_ptr<coin_control> & control = 0
             ) const;
 
@@ -522,12 +532,16 @@ namespace coin {
              * @param tx_new The transaction_wallet.
              * @param reserved_key The key_reserved.
              * @param fee_out The fee.
+             * @param filter The filter (inputs with matching values will be
+             * excluded from the transaction).
              * @param control The coin_control.
              */
             bool create_transaction(
                 const std::vector< std::pair<script, std::int64_t> > & scripts,
                 transaction_wallet & tx_new, key_reserved & reserved_key,
                 std::int64_t & fee_out,
+                const std::set<std::int64_t> & filter =
+                std::set<std::int64_t> (),
                 const std::shared_ptr<coin_control> & control = 0
             );
       
@@ -538,12 +552,16 @@ namespace coin {
              * @param tx_new The transaction_wallet.
              * @param reserved_key The key_reserved.
              * @param fee_out The fee (out).
+             * @param filter The filter (inputs with matching values will be
+             * excluded from the transaction).
              * @param control The coin_control.
              */
             bool create_transaction(
                 const script & script_pub_key, const std::int64_t & value,
                 transaction_wallet & tx_new, key_reserved & reserved_key,
                 std::int64_t & fee_out,
+                const std::set<std::int64_t> & filter =
+                std::set<std::int64_t> (),
                 const std::shared_ptr<coin_control> & control = 0
             );
         
@@ -608,11 +626,15 @@ namespace coin {
              * @param coins The output's.
              * @param only_confirmed If true only confirmed outputs will
              * be returned.
+             * @param filter The filter (inputs with matching values will be
+             * excluded from outputs).
              * @param control The coin_control.
              */
             void available_coins(
                 std::vector<output> & coins, const bool & only_confirmed,
-                const std::shared_ptr<coin_control> & control
+                const std::set<std::int64_t> & filter =
+                std::set<std::int64_t> (),
+                const std::shared_ptr<coin_control> & control = 0
             ) const;
 
             /**

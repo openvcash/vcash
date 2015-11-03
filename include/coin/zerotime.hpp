@@ -47,12 +47,12 @@ namespace coin {
             /**
              * K for the test network.
              */
-            enum { k_test_network = 24 };
+            enum { k_test_network = 6 };
         
             /**
              * K
              */
-            enum { k = 24 };
+            enum { k = 12 };
         
             /**
              * The depth.

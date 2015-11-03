@@ -34,6 +34,7 @@
 #include <coin/db_env.hpp>
 #include <coin/hash.hpp>
 #include <coin/incentive.hpp>
+#include <coin/incentive_manager.hpp>
 #include <coin/kernel.hpp>
 #include <coin/key_reserved.hpp>
 #include <coin/key_pool.hpp>
@@ -979,6 +980,14 @@ void wallet::on_transaction_updated(const sha256 & val)
         std::map<std::string, std::string> status;
         
         /**
+         * Add the transaction_wallet values to the status.
+         */
+        for (auto & i : wtx.values())
+        {
+            status[i.first] = i.second;
+        }
+        
+        /**
          * Set the type.
          */
         status["type"] = "wallet.transaction";
@@ -1191,6 +1200,172 @@ void wallet::zerotime_lock(const sha256 & val)
             }
         }
     }
+}
+
+bool wallet::chainblender_denominate(const std::int64_t & val)
+{
+    std::lock_guard<std::recursive_mutex> l1(mutex_);
+    
+    auto ret = false;
+    
+    if (is_locked() == false)
+    {
+        /**
+         * Allocate a key_reserved.
+         */
+        key_reserved reserved_key(*this);
+        
+        /**
+         * Allocate an out to ourself.
+         */
+        script script_change;
+        
+        /**
+         * Reserve a new key/pair.
+         */
+        script_change.set_destination(
+            reserved_key.get_reserved_key().get_id()
+        );
+        
+        /**
+         * Allocate the wallet transaction.
+         */
+        transaction_wallet wtx;
+        
+        /**
+         * Get the amount remaining.
+         */
+        auto remaining = val;
+        
+        /**
+         * Allocate the transactions to send.
+         */
+        std::vector< std::pair<script, std::int64_t> > to_send;
+        
+        /**
+         * Create the denominations.
+         */
+        std::set<std::int64_t> denominations =
+        {
+            static_cast<std::int64_t> (1000.0 * constants::coin) + 1000000,
+            static_cast<std::int64_t> (100.0 * constants::coin) + 100000,
+            static_cast<std::int64_t> (10.0 * constants::coin) + 10000,
+            static_cast<std::int64_t> (1.0 * constants::coin) + 1000,
+            static_cast<std::int64_t> (0.1 * constants::coin) + 100,
+            static_cast<std::int64_t> (0.01 * constants::coin) + 10,
+        };
+
+        /**
+         * Work backwards over the denominations.
+         */
+        auto it = denominations.rbegin();
+        
+        for (; it != denominations.rend(); ++it)
+        {
+            const auto & denomination = *it;
+            
+            auto outputs = 0;
+
+            while (
+                remaining - denomination >= 0 && outputs <= 8
+                )
+            {
+                /**
+                 * Allocate another out to ourself.
+                 */
+                script script_change_new;
+                
+                /**
+                 * Reserve a new key/pair.
+                 */
+                script_change_new.set_destination(
+                    reserved_key.get_reserved_key().get_id()
+                );
+        
+                reserved_key.keep_key();
+                
+                outputs++;
+                
+                to_send.push_back(
+                    std::make_pair(script_change_new, denomination)
+                );
+                
+                remaining -= denomination;
+                
+                log_info(
+                    "Wallet chainblender denominate remaining = " <<
+                    remaining << "."
+                );
+            }
+            
+            if (remaining <= 0)
+            {
+                break;
+            }
+        }
+        
+        log_info(
+            "Wallet chainblender denominate remaining = " << remaining << "."
+        );
+        
+        std::int64_t required_fee = 0;
+        
+        /**
+         * Create the transaction.
+         */
+        auto success = create_transaction(
+            to_send, wtx, reserved_key, required_fee, denominations
+        );
+        
+        if (success)
+        {
+            /**
+             * Set that the transaction_wallet is chainblender denominated.
+             */
+            wtx.values()["denominated"] = "1";
+            
+            /**
+             * Do not use ZeroTime for denominate operations.
+             */
+            auto use_zerotime = false;
+            
+            /**
+             * Commit the transaction.
+             */
+            auto ret_pair = commit_transaction(
+                wtx, reserved_key, use_zerotime
+            );
+            
+            if (ret_pair.first == true)
+            {
+                log_info(
+                    "Wallet chainblender created denominated transaction " <<
+                    wtx.get_hash().to_string().substr(0, 8) << "."
+                );
+                
+                ret = true;
+            }
+            else
+            {
+                log_error(
+                    "Wallet chainblender denominate (commit_transaction) "
+                    "failed, error = " << ret_pair.second << "."
+                );
+            }
+        }
+        else
+        {
+            log_error(
+                "Wallet chainblender denominate (create_transaction) failed."
+            );
+        }
+    }
+    else
+    {
+        log_error("Wallet chainblender denominate failed, wallet is locked.");
+    }
+
+    return ret;
 }
 
 std::int32_t wallet::scan_for_transactions(
@@ -1829,6 +2004,14 @@ bool wallet::add_to_wallet(const transaction_wallet & wtx_in)
         std::map<std::string, std::string> status;
         
         /**
+         * Add the transaction_wallet values to the status.
+         */
+        for (auto & i : wtx.values())
+        {
+            status[i.first] = i.second;
+        }
+        
+        /**
          * Set the type.
          */
         status["type"] = "wallet.transaction";
@@ -2293,12 +2476,13 @@ bool wallet::select_coins(
     const std::uint32_t & spend_time,
     std::set< std::pair<transaction_wallet,
     std::uint32_t> > & coins_out, std::int64_t & value_out,
+    const std::set<std::int64_t> & filter,
     const std::shared_ptr<coin_control> & control
     ) const
 {
     std::vector<output> coins;
     
-    available_coins(coins, true, control);
+    available_coins(coins, true, filter, control);
 
     if (control && control->has_selected())
     {
@@ -2329,7 +2513,8 @@ bool wallet::select_coins(
 bool wallet::create_transaction(
     const std::vector< std::pair<script, std::int64_t> > & scripts,
     transaction_wallet & tx_new, key_reserved & reserved_key,
-    std::int64_t & fee_out, const std::shared_ptr<coin_control> & control
+    std::int64_t & fee_out, const std::set<std::int64_t> & filter,
+    const std::shared_ptr<coin_control> & control
     )
 {
     std::int64_t value = 0;
@@ -2397,7 +2582,7 @@ bool wallet::create_transaction(
         
         if (
             select_coins(total_value, tx_new.time(),
-            coins, value_in, control) == false
+            coins, value_in, filter, control) == false
             )
         {
             log_debug(
@@ -2591,14 +2776,17 @@ bool wallet::create_transaction(
 bool wallet::create_transaction(
     const script & script_pub_key, const std::int64_t & value,
     transaction_wallet & tx_new, key_reserved & reserved_key,
-    std::int64_t & fee_out, const std::shared_ptr<coin_control> & control
+    std::int64_t & fee_out, const std::set<std::int64_t> & filter,
+    const std::shared_ptr<coin_control> & control
     )
 {
     std::vector< std::pair<script, std::int64_t> > scripts;
     
     scripts.push_back(std::make_pair(script_pub_key, value));
 
-    return create_transaction(scripts, tx_new, reserved_key, fee_out, control);
+    return create_transaction(
+        scripts, tx_new, reserved_key, fee_out, filter, control
+    );
 }
 
 bool wallet::get_transaction(
@@ -2646,34 +2834,42 @@ std::pair<bool, std::string> wallet::commit_transaction(
      * Add transaction to wallet.
      */
     add_to_wallet(wtx_new);
-
+    
     /**
      * Mark old coins as spent.
      */
     for (auto & i : wtx_new.transactions_in())
     {
-        transaction_wallet & tx = m_transactions[i.previous_out().get_hash()];
+        transaction_wallet & wtx = m_transactions[i.previous_out().get_hash()];
         
         /**
          * Bind the wallet.
          */
-        tx.bind_wallet(*this);
+        wtx.bind_wallet(*this);
         
         /**
          * Mark spent.
          */
-        tx.mark_spent(i.previous_out().n());
+        wtx.mark_spent(i.previous_out().n());
         
         /**
          * Write the transaction to disk.
          */
-        tx.write_to_disk();
+        wtx.write_to_disk();
         
         /**
          * Allocate the status.
          */
         std::map<std::string, std::string> status;
         
+        /**
+         * Add the transaction_wallet values to the status.
+         */
+        for (auto & i : wtx.values())
+        {
+            status[i.first] = i.second;
+        }
+    
         /**
          * Set the status type.
          */
@@ -2687,63 +2883,63 @@ std::pair<bool, std::string> wallet::commit_transaction(
         /**
          * Set the wallet.transaction.hash.
          */
-        status["wallet.transaction.hash"] = tx.get_hash().to_string();
+        status["wallet.transaction.hash"] = wtx.get_hash().to_string();
 
         /**
          * Set the wallet.transaction.in_main_chain.
          */
         status["wallet.transaction.in_main_chain"] = std::to_string(
-            tx.is_in_main_chain()
+            wtx.is_in_main_chain()
         );
         
         /**
          * Set the wallet.transaction.is_from_me.
          */
         status["wallet.transaction.is_from_me"] =
-            std::to_string(tx.is_from_me())
+            std::to_string(wtx.is_from_me())
         ;
         
         /**
          * Set the wallet.transaction.confirmations.
          */
         status["wallet.transaction.confirmations"] =
-            std::to_string(tx.get_depth_in_main_chain())
+            std::to_string(wtx.get_depth_in_main_chain())
         ;
         
         /**
          * Set the wallet.transaction.confirmed.
          */
         status["wallet.transaction.confirmed"] =
-            std::to_string(tx.is_confirmed())
+            std::to_string(wtx.is_confirmed())
         ;
         
         /**
          * Set the wallet.transaction.credit.
          */
         status["wallet.transaction.credit"] = std::to_string(
-            tx.get_credit(true)
+            wtx.get_credit(true)
         );
 
         /**
          * Set the wallet.transaction.debit.
          */
         status["wallet.transaction.debit"] =
-            std::to_string(tx.get_debit())
+            std::to_string(wtx.get_debit())
         ;
         
         /**
          * Set the wallet.transaction.net.
          */
         status["wallet.transaction.net"] =
-            std::to_string(tx.get_credit(true) - tx.get_debit())
+            std::to_string(wtx.get_credit(true) - wtx.get_debit())
         ;
 
         /**
          * Set the wallet.transaction.time.
          */
-        status["wallet.transaction.time"] = std::to_string(tx.time());
+        status["wallet.transaction.time"] = std::to_string(wtx.time());
 
-        if (tx.is_coin_stake())
+        if (wtx.is_coin_stake())
         {
             /**
              * Set the wallet.transaction.coin_stake.
@@ -2754,10 +2950,10 @@ std::pair<bool, std::string> wallet::commit_transaction(
              * Set the wallet.transaction.credit.
              */
             status["wallet.transaction.credit"] =
-                std::to_string(-tx.get_debit())
+                std::to_string(-wtx.get_debit())
             ;
         }
-        else if (tx.is_coin_base())
+        else if (wtx.is_coin_base())
         {
             /**
              * Set the wallet.transaction.coin_base.
@@ -2770,7 +2966,7 @@ std::pair<bool, std::string> wallet::commit_transaction(
              * Since this is a coin base transaction we only add the first value
              * from the first transaction out.
              */
-            for (auto & j : tx.transactions_out())
+            for (auto & j : wtx.transactions_out())
             {
                 if (
                     globals::instance().wallet_main(
@@ -2911,6 +3107,24 @@ bool wallet::create_coin_stake(
     std::int64_t reserve_balance = 0;
 
     /**
+     * Create a reserve balance equal to that of the collateral deposit.
+     */
+    if (m_stack_impl && globals::instance().is_incentive_enabled())
+    {
+        /**
+         * Set the reserve balance from the collateral balance.
+         */
+        reserve_balance =
+            m_stack_impl->get_incentive_manager()->collateral_balance()
+        ;
+        
+        log_info(
+            "Wallet, create coin stake has reserve balance of " <<
+            reserve_balance << "."
+        );
+    }
+
+    /**
      * -reservebalance
      */
     if (0)
@@ -2940,36 +3154,7 @@ bool wallet::create_coin_stake(
     {
         return false;
     }
-#if 0
-    /**
-     * Do not allow stake on a collateral deposit.
-     */
-    if (globals::instance().is_incentive_enabled())
-    {
-        auto it1 = coins.begin();
-        
-        for (; it1 != coins.end(); ++it1)
-        {
-            for (auto & i : it1->first.transactions_in())
-            {
-                if (
-                    i.previous_out() ==
-                    incentive::instance().get_transaction_in().previous_out()
-                    )
-                {
-                    log_info(
-                        "Wallet, create coin stake is removing collateral "
-                        "transaction."
-                    );
-                    
-                    coins.erase(it1);
-                
-                    break;
-                }
-            }
-        }
-    }
-#endif
+
     if (coins.empty())
     {
         return false;
@@ -3478,6 +3663,7 @@ std::pair<bool, std::string> wallet::send_money_to_destination(
 
 void wallet::available_coins(
     std::vector<output> & coins, const bool & only_confirmed,
+    const std::set<std::int64_t> & filter,
     const std::shared_ptr<coin_control> & control
     ) const
 {
@@ -3509,6 +3695,23 @@ void wallet::available_coins(
         
         for (auto j = 0; j < coin.transactions_out().size(); j++)
         {
+            auto found_in_filter = false;
+            
+            for (auto & k : filter)
+            {
+                if (k == coin.transactions_out()[j].value())
+                {
+                    found_in_filter = true;
+                    
+                    break;
+                }
+            }
+            
+            if (found_in_filter)
+            {
+                continue;
+            }
+        
             if (
                 coin.is_spent(j) == false &&
                 is_mine(coin.transactions_out()[j]) &&

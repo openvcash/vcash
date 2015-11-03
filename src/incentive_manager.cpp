@@ -551,6 +551,33 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                         auto kclosest = k_closest(
                             recent_good_endpoints, vote_block_height
                         );
+                        
+                        /**
+                         * Erase all nodes with protocol versions less than
+                         * ours (minus one) so that they no longer receive
+                         * incentive rewards to encourage an up-to-date
+                         * network backbone.
+                         */
+                        auto it = kclosest.begin();
+                        
+                        while (it != kclosest.end())
+                        {
+                            const address_manager::recent_endpoint_t &
+                                recent = *it
+                            ;
+                            
+                            if (
+                                recent.protocol_version <
+                                (protocol::version - 1)
+                                )
+                            {
+                                it = kclosest.erase(it);
+                            }
+                            else
+                            {
+                                ++it;
+                            }
+                        }
 
                         /**
                          * The winner.
@@ -661,7 +688,7 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                                             ).acceptable(tx).first == false
                                             )
                                         {
-                                            log_debug(
+                                            log_info(
                                                 "Incentive manager detected "
                                                 "invalid collateral for " <<
                                                 recent.wallet_address.substr(
@@ -738,6 +765,11 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                                     }
                                 }
                             }
+                            
+                            log_info(
+                                "Incentive manager has " <<
+                                collaterals_.size() << " collateralised nodes."
+                            );
                         }
                         
                         if (kclosest.size() >= 2)
@@ -1227,7 +1259,10 @@ bool incentive_manager::vote(const std::string & wallet_address)
          * If our vote score is at least zero we
          * can vote otherwise peers will reject it.
          */
-        if (vote_score > -1)
+        if (
+            vote_score > -1 &&
+            vote_score <= std::numeric_limits<std::int16_t>::max() / 2
+            )
         {
             if (utility::is_initial_block_download() == false)
             {
@@ -1349,7 +1384,7 @@ std::vector<output> incentive_manager::select_coins()
     
     std::vector<output> coins;
     
-    globals::instance().wallet_main()->available_coins(coins, true, 0);
+    globals::instance().wallet_main()->available_coins(coins, true);
 
     auto index_previous = stack_impl::get_block_index_best();
     
