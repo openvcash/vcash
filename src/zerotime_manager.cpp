@@ -402,7 +402,7 @@ void zerotime_manager::handle_vote(
                 zerotime::k_test_network : zerotime::k) * 100.0f)
             ;
             
-            log_info(
+            log_debug(
                 "ZeroTime manager has " << percentage << "% (" <<
                 vote_scores.size() << ") votes for " <<
                 hash_tx.to_string().substr(0, 8) << "."
@@ -410,7 +410,7 @@ void zerotime_manager::handle_vote(
             
             if (percentage >= safe_percentage && percentage <= 100)
             {
-                log_info(
+                log_debug(
                     "ZeroTime manager got enough votes for " <<
                     hash_tx.to_string().substr(0, 8) << "."
                 );
