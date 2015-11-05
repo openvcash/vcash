@@ -696,9 +696,9 @@ void stack_impl::start()
                         /**
                          * Add the transaction_wallet values to the status.
                          */
-                        for (auto & i : i.second.values())
+                        for (auto & j : i.second.values())
                         {
-                            status[i.first] = i.second;
+                            status[j.first] = j.second;
                         }
                         
                         /**
