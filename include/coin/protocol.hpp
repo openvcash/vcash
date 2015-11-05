@@ -32,6 +32,8 @@
 #include <coin/inventory_vector.hpp>
 #include <coin/sha256.hpp>
 
+#error "Bug discovered in Linux g++, please wait until patched"
+
 namespace coin {
 
 class alert;
