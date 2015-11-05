@@ -32,8 +32,6 @@
 #include <coin/inventory_vector.hpp>
 #include <coin/sha256.hpp>
 
-#error "Do not deploy 60041(0.4.0) yet."
-
 namespace coin {
 
 class alert;
