@@ -344,7 +344,7 @@ void zerotime_manager::handle_vote(
             vote_score <= std::numeric_limits<std::int16_t>::max() / 6
             )
         {
-            log_info(
+            log_debug(
                 "ZeroTime manager got valid vote, calculated score = " <<
                 vote_score << " for " <<
                 ztvote.hash_nonce().to_string().substr(0, 8) << "."
@@ -415,7 +415,7 @@ void zerotime_manager::handle_vote(
                     hash_tx.to_string().substr(0, 8) << "."
                 );
 
-                bool loop = true;
+                auto loop = true;
                 
                 /**
                  * Resolve conflicts on the inputs (this loop may not be
@@ -432,7 +432,7 @@ void zerotime_manager::handle_vote(
                             );
                             
                             /**
-                             * Do not continue to procces votes if we have a
+                             * Do not continue to process votes if we have a
                              * safe percentage.
                              */
                             if (safe_percentages_.count(hash_tx) == 0)
@@ -834,14 +834,14 @@ void zerotime_manager::do_tick_probe(const std::uint32_t & interval)
     }));
 }
 
-std::vector<std::uint32_t> zerotime_manager::k_closest(
+std::vector<std::int16_t> zerotime_manager::k_closest(
     const std::vector<std::int16_t> & vote_scores,
     const std::uint32_t & block_height, const std::uint32_t & k
     )
 {
-    std::vector<std::uint32_t> ret;
+    std::vector<std::int16_t> ret;
     
-    std::map<std::uint32_t, std::uint32_t> entries;
+    std::map<std::uint32_t, std::int16_t> entries;
     
     /**
      * Sort all votes by distance.

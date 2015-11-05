@@ -248,6 +248,67 @@ void zerotime::clear_expired_input_locks()
     }
 }
 
+std::int16_t zerotime::calculate_score(const key_public & public_key)
+{
+	std::int16_t ret = -1;
+    
+    /**
+     * Get the best block index.
+     */
+    auto index = utility::find_block_index_by_height(
+        globals::instance().best_block_height()
+    );
+    
+    if (index)
+    {
+        const auto & hash_block = index->get_block_hash();
+
+        if (public_key.is_valid())
+        {
+            /**
+             * Hash the hash public key.
+             */
+            auto digest1 = hash::sha256d(
+                public_key.get_hash().digest(),
+                sha256::digest_length
+            );
+            
+            /**
+             * Hash the hash of the block.
+             */
+            auto digest2 = hash::sha256d(
+                hash_block.digest(), sha256::digest_length
+            );
+            
+            auto hash2 = sha256::from_digest(&digest2[0]);
+
+            auto digest3 = hash::sha256d(
+                &digest2[0], &digest2[0] + digest2.size(),
+                &digest1[0], &digest1[0] + digest1.size()
+            );
+            
+            auto hash3 = sha256::from_digest(&digest3[0]);
+            
+            if (hash3 > hash2)
+            {
+                ret =
+                    static_cast<std::int16_t> (
+                    (hash3 - hash2).to_uint64())
+                ;
+            }
+            else
+            {
+                ret =
+                    static_cast<std::int16_t> (
+                    (hash2 - hash3).to_uint64())
+                ;
+            }
+        }
+    }
+    
+    return ret;
+}
+
 std::int16_t zerotime::calculate_score(const zerotime_vote & ztvote)
 {
 	std::int16_t ret = -1;
