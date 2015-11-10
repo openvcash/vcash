@@ -89,7 +89,7 @@ namespace coin {
             /**
              * The configuration (default) keypool size.
              */
-            enum { configuration_keypool_size = 256 };
+            enum { configuration_keypool_size = 100 };
         
             /**
              * Constructor
