@@ -927,9 +927,8 @@ db_wallet::error_t wallet::load_wallet(bool & first_run)
                 globals::instance().strand().wrap(
                 [this]()
             {
-                if (db::rewrite("\x04pool"))
+                if (db::rewrite("wallet.dat", "\x04pool"))
                 {
-
                     m_key_pool.clear();
                     
                     /**
@@ -978,7 +977,7 @@ void wallet::on_transaction_updated(const sha256 & val)
          * Allocate the info.
          */
         std::map<std::string, std::string> status;
-        
+
         /**
          * Add the transaction_wallet values to the status.
          */
@@ -986,7 +985,7 @@ void wallet::on_transaction_updated(const sha256 & val)
         {
             status[i.first] = i.second;
         }
-        
+
         /**
          * Set the type.
          */
@@ -1247,12 +1246,10 @@ bool wallet::chainblender_denominate(const std::int64_t & val)
          */
         std::set<std::int64_t> denominations =
         {
-            static_cast<std::int64_t> (1000.0 * constants::coin) + 1000000,
             static_cast<std::int64_t> (100.0 * constants::coin) + 100000,
             static_cast<std::int64_t> (10.0 * constants::coin) + 10000,
             static_cast<std::int64_t> (1.0 * constants::coin) + 1000,
             static_cast<std::int64_t> (0.1 * constants::coin) + 100,
-            static_cast<std::int64_t> (0.01 * constants::coin) + 10,
         };
 
         /**
@@ -1319,11 +1316,12 @@ bool wallet::chainblender_denominate(const std::int64_t & val)
         
         if (success)
         {
+
             /**
              * Set that the transaction_wallet is chainblender denominated.
              */
             wtx.values()["denominated"] = "1";
-            
+
             /**
              * Do not use ZeroTime for denominate operations.
              */
@@ -2002,7 +2000,7 @@ bool wallet::add_to_wallet(const transaction_wallet & wtx_in)
          * Allocate the info.
          */
         std::map<std::string, std::string> status;
-        
+
         /**
          * Add the transaction_wallet values to the status.
          */
@@ -2010,7 +2008,7 @@ bool wallet::add_to_wallet(const transaction_wallet & wtx_in)
         {
             status[i.first] = i.second;
         }
-        
+
         /**
          * Set the type.
          */
@@ -2861,15 +2859,15 @@ std::pair<bool, std::string> wallet::commit_transaction(
          * Allocate the status.
          */
         std::map<std::string, std::string> status;
-        
+
         /**
          * Add the transaction_wallet values to the status.
          */
-        for (auto & i : wtx.values())
+        for (auto & j : wtx.values())
         {
-            status[i.first] = i.second;
+            status[j.first] = j.second;
         }
-    
+
         /**
          * Set the status type.
          */
