@@ -2368,7 +2368,7 @@ bool block::read_from_disk(
     
     if (f)
     {
-        bool block_header_only = false;
+        auto block_header_only = false;
         
         if (read_transactions == false)
         {
