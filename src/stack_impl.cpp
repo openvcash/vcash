@@ -22,6 +22,7 @@
 #include <sys/file.h>
 #endif // _MSC_VER
 
+#include <cstdio>
 #include <fstream>
 #include <iostream>
 #include <random>
@@ -102,6 +103,11 @@ void stack_impl::start()
      * Make sure only a single instance per directory is allowed.
      */
     lock_file_or_exit();
+    
+    /**
+     * Backup the last wallet file deleting the oldest.
+     */
+    backup_last_wallet_file();
 
     /**
      * Set the state to starting.
@@ -570,7 +576,8 @@ void stack_impl::start()
                                  * Backup the new wallet.
                                  */
                                 db_wallet::backup(
-                                    *globals::instance().wallet_main()
+                                    *globals::instance().wallet_main(),
+                                    filesystem::data_path() + "backups/"
                                 );
                             }));
                         }
@@ -692,7 +699,7 @@ void stack_impl::start()
                          * Allocate the info.
                          */
                         std::map<std::string, std::string> status;
-                        
+
                         /**
                          * Add the transaction_wallet values to the status.
                          */
@@ -700,7 +707,7 @@ void stack_impl::start()
                         {
                             status[j.first] = j.second;
                         }
-                        
+
                         /**
                          * Set the type.
                          */
@@ -3664,6 +3671,23 @@ void stack_impl::create_directories()
         throw std::runtime_error("failed to create path " + path);
     }
     
+    /**
+     * Create backups directory.
+     */
+    result = filesystem::create_path(path + "backups/");
+    
+    if (result == 0 || result == filesystem::error_already_exists)
+    {
+        log_none("Stack, " + path + "backups/ already exists.");
+    }
+    else
+    {
+        // ...
+    }
+    
+    /**
+     * Create blockchain directory.
+     */
     if (
         globals::instance().operation_mode() == protocol::operation_mode_client
         )
@@ -4053,7 +4077,7 @@ void stack_impl::load_wallet(
     const db_wallet::error_t & err)> & f
     )
 {
-    bool first_run = true;
+    auto first_run = true;
 
     globals::instance().set_wallet_main(std::make_shared<wallet> (*this));
     
@@ -4064,6 +4088,73 @@ void stack_impl::load_wallet(
     if (f)
     {
         f(first_run, ret);
+    }
+}
+
+void stack_impl::backup_last_wallet_file()
+{
+    auto path_backups = filesystem::data_path() + "backups/";
+    
+    auto contents = filesystem::path_contents(path_backups);
+    
+    if (contents.size() > 0)
+    {
+        std::map<std::time_t, std::string> wallets_sorted_by_time;
+        
+        for (auto & i : contents)
+        {
+            if (
+                i.find("wallet") == std::string::npos &&
+                i.find(".dat") == std::string::npos
+                )
+            {
+                continue;
+            }
+            
+            std::vector<std::string> parts;
+            
+            boost::split(parts, i, boost::is_any_of("."));
+            
+            if (parts.size() == 3)
+            {
+                wallets_sorted_by_time[std::atoll(parts[1].c_str())] = i;
+            }
+        }
+        
+        /**
+         * Keep at least 8 (automatic) backup wallet files. If you use RPC
+         * "backupwallet" more than 8 will accumulate and this is desired.
+         */
+        enum { minimum_to_keep = 8 };
+
+        if (wallets_sorted_by_time.size() >= minimum_to_keep)
+        {
+            auto path_to_remove = wallets_sorted_by_time.begin()->second;
+            
+            if (file::remove(path_backups + "/" + path_to_remove))
+            {
+                log_info(
+                    "Stack removed old wallet backup " << path_to_remove << "."
+                );
+            }
+        }
+        
+        /**
+         * Backup the wallet.
+         */
+        if (std::ifstream(filesystem::data_path() + "wallet.dat").good())
+        {
+            if (
+                filesystem::copy_file(filesystem::data_path() + "wallet.dat",
+                path_backups +  "wallet." +
+                std::to_string(std::time(0)) + ".dat") == true
+                )
+            {
+                log_info(
+                    "Stack backed up wallet to " << path_backups << "."
+                );
+            }
+        }
     }
 }
 

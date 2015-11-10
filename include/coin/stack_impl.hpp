@@ -506,6 +506,12 @@ namespace coin {
             );
         
             /**
+             * Creates a backup of the last wallet file.
+             * @note This deletes the oldest backup from disk.
+             */
+            void backup_last_wallet_file();
+        
+            /**
              * Trys to lock the lock file or exits.
              */
             void lock_file_or_exit();

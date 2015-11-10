@@ -930,7 +930,10 @@ rpc_connection::json_rpc_response_t rpc_connection::json_backupwallet(
         }
         else
         {
-            if (db_wallet::backup(*globals::instance().wallet_main()) == true)
+            if (
+                db_wallet::backup(*globals::instance().wallet_main(),
+                filesystem::data_path() + "backups/") == true
+                )
             {
                 ret.result.put("", "null");
             }
@@ -5068,7 +5071,7 @@ rpc_connection::json_rpc_response_t rpc_connection::json_walletdenominate(
                     request.id
                 };
             }
-            else if (amount < (10000.0 * constants::coin))
+            else if (amount < (1000.0 * constants::coin))
             {
                 auto success = globals::instance().wallet_main(
                     )->chainblender_denominate(amount
