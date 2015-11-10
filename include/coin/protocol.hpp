@@ -32,8 +32,6 @@
 #include <coin/inventory_vector.hpp>
 #include <coin/sha256.hpp>
 
-#error "Bug discovered in Linux g++, please wait until patched"
-
 namespace coin {
 
 class alert;
@@ -47,6 +45,8 @@ class zerotime_answer;
 class zerotime_lock;
 class zerotime_question;
 class zerotime_vote;
+
+#warning "0.4.0 is in QA, please do not deploy yet"
 
 namespace protocol {
 
