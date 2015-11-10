@@ -32,6 +32,8 @@
 #include <coin/inventory_vector.hpp>
 #include <coin/sha256.hpp>
 
+#error "0.4.0 is in QA, please do not deploy yet"
+
 namespace coin {
 
 class alert;
@@ -45,8 +47,6 @@ class zerotime_answer;
 class zerotime_lock;
 class zerotime_question;
 class zerotime_vote;
-
-#warning "0.4.0 is in QA, please do not deploy yet"
 
 namespace protocol {
 
