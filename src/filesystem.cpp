@@ -32,16 +32,123 @@
 using namespace coin;
 
 #if (defined _MSC_VER)
+#include <io.h>
 #include "Shlobj.h"
 #define ERRNO GetLastError()
 static int _mkdir(const char * path)
 {
     std::wstring directory(path, path + strlen(path));
 
-    return SHCreateDirectoryEx(NULL, directory.c_str(), NULL );
+    return SHCreateDirectoryEx(0, directory.c_str(), 0);
 }
 #define CREATE_DIRECTORY(P) _mkdir(P)
+
+typedef ptrdiff_t handle_type;
+
+struct dirent
+{
+    char * d_name;
+};
+
+struct DIR
+{
+    handle_type handle;
+    struct _finddata_t info;
+    struct dirent result;
+    char * name;
+};
+
+DIR * opendir(const char *name)
+{
+    DIR * dir = 0;
+
+    if (name && name[0])
+    {
+        auto base_length = strlen(name);
+        
+        const auto * all = strchr("/\\", name[base_length - 1]) ? "*" : "/*";
+
+        if (
+            (dir = (DIR *)malloc(sizeof *dir)) != 0 &&
+            (dir->name = (char *)malloc(base_length + strlen(all) + 1)) != 0
+            )
+        {
+            strcat(strcpy(dir->name, name), all);
+
+            if (
+                (dir->handle =
+                (handle_type)_findfirst(dir->name, &dir->info)) != -1
+                )
+            {
+                dir->result.d_name = 0;
+            }
+            else
+            {
+                free(dir->name);
+                free(dir), dir = 0;
+            }
+        }
+        else
+        {
+            free(dir), dir = 0;
+            
+            errno = ENOMEM;
+        }
+    }
+    else
+    {
+        errno = EINVAL;
+    }
+
+    return dir;
+}
+
+int closedir(DIR * dir)
+{
+    auto ret = -1;
+
+    if (dir)
+    {
+        if (dir->handle != -1)
+        {
+            ret = _findclose(dir->handle);
+        }
+
+        free(dir->name);
+        free(dir);
+    }
+
+    if (result == -1)
+    {
+        errno = EBADF;
+    }
+
+    return ret;
+}
+
+struct dirent * readdir(DIR * dir)
+{
+    struct dirent * ret = 0;
+
+    if (dir && dir->handle != -1)
+    {
+        if (!dir->ret.d_name || _findnext(dir->handle, &dir->info) != -1)
+        {
+            ret = &dir->result;
+            
+            ret->d_name = dir->info.name;
+        }
+    }
+    else
+    {
+        errno = EBADF;
+    }
+
+    return ret;
+}
+
 #else
+#include <dirent.h>
 #include <sys/stat.h>
 #define ERRNO errno
 #define ERROR_ALREADY_EXISTS EEXIST
@@ -115,6 +222,27 @@ bool filesystem::copy_file(const std::string & src, const std::string & dest)
     }
     
     return true;
+}
+
+std::vector<std::string> filesystem::path_contents(const std::string & path)
+{
+    std::vector<std::string> ret;
+
+    DIR * dir = 0;
+    
+    struct dirent * ent;
+    
+    if ((dir = opendir(path.c_str())) != 0)
+    {
+        while ((ent = readdir(dir)) != 0)
+        {
+            ret.push_back(ent->d_name);
+        }
+        
+        closedir(dir);
+    }
+
+    return ret;
 }
 
 std::string filesystem::data_path()

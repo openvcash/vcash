@@ -22,6 +22,7 @@
 #define COIN_FILESYSTEM_HPP
 
 #include <string>
+#include <vector>
 
 namespace coin {
 
@@ -35,7 +36,7 @@ namespace coin {
             static int error_already_exists;
         
             /**
-             * Creates the last folder of the given path.
+             * Creates the last directory of the given path.
              * @param path The path.
              */
             static int create_path(const std::string & path);
@@ -47,6 +48,14 @@ namespace coin {
              */
             static bool copy_file(
                 const std::string & src, const std::string & dest
+            );
+        
+            /**
+             * Gets the directory contents at the specified path.
+             * @param path The path.
+             */
+            static std::vector<std::string> path_contents(
+                const std::string & path
             );
         
             /** 
