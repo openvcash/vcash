@@ -118,7 +118,7 @@ int closedir(DIR * dir)
         free(dir);
     }
 
-    if (result == -1)
+    if (ret == -1)
     {
         errno = EBADF;
     }
@@ -132,7 +132,7 @@ struct dirent * readdir(DIR * dir)
 
     if (dir && dir->handle != -1)
     {
-        if (!dir->ret.d_name || _findnext(dir->handle, &dir->info) != -1)
+        if (!dir->result.d_name || _findnext(dir->handle, &dir->info) != -1)
         {
             ret = &dir->result;
             
