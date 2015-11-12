@@ -4118,7 +4118,16 @@ void stack_impl::backup_last_wallet_file()
             
             if (parts.size() == 3)
             {
+                /**
+                 * Android does not implement std::atoll.
+                 */
+#if (defined __ANDROID__)
+                wallets_sorted_by_time[
+                    boost::lexical_cast<std::int64_t> (parts[1].c_str())
+                ] = i;
+#else
                 wallets_sorted_by_time[std::atoll(parts[1].c_str())] = i;
+#endif // __ANDROID__
             }
         }
         
