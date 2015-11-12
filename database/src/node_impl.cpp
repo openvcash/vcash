@@ -213,6 +213,7 @@ void node_impl::stop()
     {
         m_ecdhe.reset();
     }
+    
     /**
      * Stop the key_pool.
      */
@@ -1581,63 +1582,66 @@ void node_impl::handle_public_key_ping_message(
          */
         if (public_key.size() > 0)
         {
-            /**
-             * Derive the shared secret bytes from the remote public key.
-             */
-            auto bytes = m_ecdhe->derive_secret_key(public_key);
+            if (m_ecdhe)
+            {
+                /**
+                 * Derive the shared secret bytes from the remote public key.
+                 */
+                auto bytes = m_ecdhe->derive_secret_key(public_key);
 
-            /**
-             * Hash the shared secret bytes.
-             */
-            whirlpool w(&bytes[0], bytes.size());
+                /**
+                 * Hash the shared secret bytes.
+                 */
+                whirlpool w(&bytes[0], bytes.size());
+                
+                /**
+                 * Set the hash to the first 32 bytes of the hexidecimal
+                 * representation of the digest.
+                 */
+                auto shared_secret = w.to_string().substr(
+                    0, whirlpool::digest_length / 2
+                );
+                
+                log_debug(
+                    "Node calculated shared secret " << shared_secret <<
+                    " for " << ep << "."
+                );
             
-            /**
-             * Set the hash to the first 32 bytes of the hexidecimal
-             * representation of the digest.
-             */
-            auto shared_secret = w.to_string().substr(
-                0, whirlpool::digest_length / 2
-            );
-            
-            log_debug(
-                "Node calculated shared secret " << shared_secret <<
-                " for " << ep << "."
-            );
-        
-            /**
-             * Insert the shared secret into the key_pool.
-             */
-            m_key_pool->insert(ep, shared_secret);
-            
-            /**
-             * Send a protocol::message_code_public_key_pong to advertise
-             * out public key to the remote node.
-             */
-            
-            /**
-             * Allocate the protocol::message_code_public_key_pong.
-             */
-            std::shared_ptr<message> response(
-                new message(protocol::message_code_public_key_pong,
-                msg.header_transaction_id())
-            );
-            
-            /**
-             * Add our public key as a message::attribute_string of
-             * type message::attribute_type_public_key.
-             */
-            message::attribute_string attr1;
-            
-            attr1.type = message::attribute_type_public_key;
-            attr1.length = m_ecdhe->public_key().size();
-            attr1.value = m_ecdhe->public_key();
-            
-            response->string_attributes().push_back(attr1);
-            
-            /**
-             * Send the response.
-             */
-            send_message(ep, response);
+                /**
+                 * Insert the shared secret into the key_pool.
+                 */
+                m_key_pool->insert(ep, shared_secret);
+                
+                /**
+                 * Send a protocol::message_code_public_key_pong to advertise
+                 * out public key to the remote node.
+                 */
+                
+                /**
+                 * Allocate the protocol::message_code_public_key_pong.
+                 */
+                std::shared_ptr<message> response(
+                    new message(protocol::message_code_public_key_pong,
+                    msg.header_transaction_id())
+                );
+                
+                /**
+                 * Add our public key as a message::attribute_string of
+                 * type message::attribute_type_public_key.
+                 */
+                message::attribute_string attr1;
+                
+                attr1.type = message::attribute_type_public_key;
+                attr1.length = m_ecdhe->public_key().size();
+                attr1.value = m_ecdhe->public_key();
+                
+                response->string_attributes().push_back(attr1);
+                
+                /**
+                 * Send the response.
+                 */
+                send_message(ep, response);
+            }
         }
         else
         {
