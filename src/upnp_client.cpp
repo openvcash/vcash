@@ -146,9 +146,9 @@ void upnp_client::do_add_mapping(
     const protocol_t & protocol, const std::uint16_t & port
     )
 {
+#if (defined USE_UPNP && USE_UPNP)
 	log_info("UPnP client is adding mapping.");
 
-#if (defined USE_UPNP && USE_UPNP)
     if (discovery_did_succeed_)
     {
         std::string proto = protocol == protocol_udp ? "UDP" : "TCP";

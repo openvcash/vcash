@@ -22,7 +22,7 @@
 #define COIN_UPNP_CLIENT_HPP
 
 #if (defined _MSC_VER)
-#define USE_UPNP 1
+#define USE_UPNP 0
 #define _WIN32 1
 #define STATICLIB 1
 #endif // _MSC_VER
