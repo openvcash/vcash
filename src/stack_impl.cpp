@@ -23,6 +23,7 @@
 #endif // _MSC_VER
 
 #include <cstdio>
+#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <random>
