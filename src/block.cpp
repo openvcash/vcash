@@ -3326,6 +3326,19 @@ std::shared_ptr<file> block::file_append(std::uint32_t & index)
 bool block::check_proof_of_work(const sha256 & hash, const std::uint32_t & bits)
 {
     /**
+     * The genesis block does not use Proof-of-Work, instead a
+     * hard-coded hash of it is used.
+     */
+    if (constants::test_net == true && hash == get_hash_genesis_test_net())
+    {
+        return true;
+    }
+    else if (hash == get_hash_genesis())
+    {
+        return true;
+    }
+    
+    /**
      * Allocate the target
      */
     big_number target;
