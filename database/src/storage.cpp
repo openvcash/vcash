@@ -1,9 +1,7 @@
 /*
- * Copyright (c) 2008-2014 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2008-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of coinpp.
- *
- * coinpp is free software: you can redistribute it and/or modify
+ * This is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -226,8 +224,6 @@ const std::vector< std::shared_ptr<entry> > storage::find(
             
             for (auto & k : i->pairs())
             {
-                //log_debug(j.first << ":" << k.first);
-                
                 if (utility::string::starts_with(k.first, "_"))
                 {
                     continue;
@@ -236,10 +232,10 @@ const std::vector< std::shared_ptr<entry> > storage::find(
                 if (boost::iequals(j.first, k.first))
                 {
                     log_debug(j.second << ":" << k.second);
-
+                    
                     if (boost::iequals(j.second, k.second))
                     {
-
+                        // ...
                     }
                     else
                     {
@@ -258,7 +254,7 @@ const std::vector< std::shared_ptr<entry> > storage::find(
         
         if (matches)
         {
-            log_debug("Insert result= " << i->query_string());
+            log_debug("Insert result = " << i->query_string());
             
             ret.push_back(i);
         }
@@ -318,8 +314,7 @@ const std::vector< std::shared_ptr<entry> > & storage::entries() const
 int storage::run_test()
 {
     std::vector<std::string> pairs1;
-    
-    boost::split(pairs1, "fruit=apple&color=red", boost::is_any_of("&"));
+    boost::split(pairs1, "username=john&age=36", boost::is_any_of("&"));
 
     std::cerr << pairs1.size() << std::endl;
     
