@@ -58,6 +58,13 @@ globals::globals()
     *m_coinbase_flags << std::vector<std::uint8_t>(p2sh, p2sh + strlen(p2sh));
 }
 
+globals & globals::instance()
+{
+    static globals g_globals;
+    
+    return g_globals;
+}
+
 void globals::set_operation_mode(const protocol::operation_mode_t & val)
 {
     m_operation_mode = val;

@@ -275,7 +275,7 @@ void database_stack::on_broadcast(
                 }
                 catch (std::exception & e)
                 {
-                    log_debug(
+                    log_error(
                         "Database stack (UDP) failed to decode message, "
                         "what = " << e.what() << "."
                     );

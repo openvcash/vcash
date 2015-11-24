@@ -89,6 +89,14 @@ namespace coin {
             );
         
             /**
+             * Sets the next block index.
+             * @param val The value.
+             */
+            void set_block_index_next(
+                const std::shared_ptr<block_index> & val
+            );
+        
+            /**
              * The previous block index.
              */
             std::shared_ptr<block_index> & block_index_previous();

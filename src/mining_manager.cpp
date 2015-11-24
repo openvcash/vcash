@@ -50,7 +50,7 @@ mining_manager::mining_manager(
     , m_hashes_per_second(0.0f)
     , m_hps_timer_start(0)
     , io_service_(ios)
-    , strand_(ios)
+    , strand_(globals::instance().strand())
     , stack_impl_(owner)
     , timer_pos_(ios)
 {
@@ -175,7 +175,7 @@ void mining_manager::stop_proof_of_work()
         /**
          * Post the operation onto the boost::asio::io_service.
          */
-        io_service_.post(globals::instance().strand().wrap(
+        io_service_.post(strand_.wrap(
             [this]()
         {
             /**
@@ -558,8 +558,7 @@ void mining_manager::loop(const bool & is_proof_of_stake)
                     /**
                      * Post the operation onto the boost::asio::io_service.
                      */
-                    io_service_.post(globals::instance().strand().wrap(
-                        [this]()
+                    io_service_.post(strand_.wrap([this]()
                     {
                         /**
                          * Allocate the pairs.
@@ -834,8 +833,7 @@ void mining_manager::check_work(
     /**
      * Post the operation onto the boost::asio::io_service.
      */
-    io_service_.post(globals::instance().strand().wrap(
-        [this, blk]()
+    io_service_.post(strand_.wrap([this, blk]()
     {
         /**
          * Process the block.

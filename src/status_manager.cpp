@@ -25,25 +25,16 @@
 using namespace coin;
 
 status_manager::status_manager(stack_impl & owner)
-    : strand_(io_service_)
+    : io_service_(globals::instance().io_service())
+    , strand_(globals::instance().strand())
     , stack_impl_(owner)
-    , timer_(io_service_)
+    , timer_(globals::instance().io_service())
 {
     // ...
 }
 
 void status_manager::start()
 {
-    /**
-     * Allocate the boost::asio::io_service::work.
-     */
-    work_.reset(new boost::asio::io_service::work(io_service_));
-    
-    /**
-     * Allocate the std::thread.
-     */
-    thread_ = std::thread(&status_manager::loop, this);
-    
     /**
      * Start the timer.
      */
@@ -54,23 +45,6 @@ void status_manager::stop()
 {
     timer_.cancel();
     pairs_.clear();
-    
-    /**
-     * Reset the work.
-     */
-    work_.reset();
-    
-    try
-    {
-        if (thread_.joinable())
-        {
-            thread_.join();
-        }
-    }
-    catch (std::exception & e)
-    {
-        // ...
-    }
 }
 
 void status_manager::insert(const std::map<std::string, std::string> & pairs)
@@ -147,24 +121,4 @@ void status_manager::do_tick(const std::uint32_t & interval)
             }
         }
     }));
-}
-
-void status_manager::loop()
-{
-    while (work_)
-    {
-        try
-        {
-            io_service_.run();
-            
-            if (work_ == 0)
-            {
-                break;
-            }
-        }
-        catch (const boost::system::system_error & e)
-        {
-            // ...
-        }
-    }
 }

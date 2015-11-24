@@ -22,6 +22,7 @@
 #define COIN_DB_HPP
 
 #include <cstdint>
+#include <mutex>
 #include <string>
 
 #include <db_cxx.h>
@@ -878,6 +879,11 @@ namespace coin {
              * @param version The version.
              */
             bool write_version(const std::int32_t & version);
+        
+            /**
+             * The std::mutex.
+             */
+            std::mutex mutex_;
     };
 }
 

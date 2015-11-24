@@ -223,6 +223,11 @@ namespace coin {
              * The collaterals mutex.
              */
             std::mutex mutex_collaterals_;
+        
+            /**
+             * The handle_message mutex.
+             */
+            std::mutex mutex_handle_message_;
     };
 }
 

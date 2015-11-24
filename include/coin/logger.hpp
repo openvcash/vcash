@@ -33,6 +33,7 @@
 #include <iostream>
 #include <fstream>
 #include <memory>
+#include <mutex>
 #include <sstream>
 
 #include <mutex>
@@ -91,6 +92,8 @@ namespace coin {
              */
 			void log(std::stringstream & val)
 			{
+                std::lock_guard<std::recursive_mutex> l1(mutex_);
+                
 			    static const bool use_file = true;
 
 			    if (use_file)
@@ -172,6 +175,11 @@ namespace coin {
              * The std::ofstream.
              */
             std::ofstream ofstream_;
+        
+            /**
+             * The std::recursive_mutex.
+             */
+            std::recursive_mutex mutex_;
     };
     
     #define log_xx(severity, strm) \

@@ -1093,7 +1093,9 @@ bool db_tx::reorganize(
     {
         if (i->block_index_previous())
         {
-            i->block_index_previous()->block_index_next() = 0;
+            i->block_index_previous()->set_block_index_next(
+                std::shared_ptr<block_index> ()
+            );
         }
     }
     
@@ -1104,7 +1106,7 @@ bool db_tx::reorganize(
     {
         if (i->block_index_previous())
         {
-            i->block_index_previous()->block_index_next() = i;
+            i->block_index_previous()->set_block_index_next(i);
         }
     }
     

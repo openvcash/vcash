@@ -58,6 +58,7 @@ wallet::wallet()
     , m_master_key_max_id(0)
     , m_is_file_backed(true)
     , resend_transactions_timer_(globals::instance().io_service())
+    , zerotime_lock_queue_timer_(globals::instance().io_service())
     , time_last_resend_(0)
 {
     // ...
@@ -71,6 +72,7 @@ wallet::wallet(stack_impl & impl)
     , m_master_key_max_id(0)
     , m_is_file_backed(true)
     , resend_transactions_timer_(globals::instance().io_service())
+    , zerotime_lock_queue_timer_(globals::instance().io_service())
     , time_last_resend_(0)
 {
     // ...
@@ -129,6 +131,7 @@ void wallet::start()
 void wallet::stop()
 {
     resend_transactions_timer_.cancel();
+    zerotime_lock_queue_timer_.cancel();
 }
 
 void wallet::flush()
@@ -701,6 +704,42 @@ void wallet::reserve_key_from_key_pool(
     log_none("Wallet reserved key " << index << " from pool.");
 }
 
+std::set<types::id_key_t> wallet::reserve_keys()
+{
+    std::set<types::id_key_t> ret;
+ 
+    std::lock_guard<std::recursive_mutex> l1(mutex_);
+    
+    db_wallet wallet_db("wallet.dat");
+    
+    for (auto & i : m_key_pool)
+    {
+        key_pool keypool;
+
+        if (wallet_db.read_pool(i, keypool) == false)
+        {
+            throw std::runtime_error(
+                "wallet::reserve_key_from_key_pool() : read failed"
+            );
+        }
+        
+        auto key_id = keypool.get_key_public().get_id();
+        
+        if (have_key(key_id) == false)
+        {
+            throw std::runtime_error(
+                "wallet::reserve_key_from_key_pool() : unknown key in key pool"
+            );
+        }
+        
+        assert(keypool.get_key_public().is_valid());
+        
+        ret.insert(key_id);
+    }
+
+    return ret;
+}
+
 void wallet::keep_key(const std::int64_t & index)
 {
     std::lock_guard<std::recursive_mutex> l1(mutex_);
@@ -1178,6 +1217,8 @@ void wallet::zerotime_lock(const sha256 & val)
     {
         if (globals::instance().is_zerotime_enabled() == true)
         {
+            log_info("Wallet is performing zerotime lock.");
+            
             if (
                 it->second.get_depth_in_main_chain() <
                 transaction_wallet::confirmations
@@ -1308,10 +1349,16 @@ bool wallet::chainblender_denominate(const std::int64_t & val)
         std::int64_t required_fee = 0;
         
         /**
+         * Do not use ZeroTime.
+         */
+        auto use_zerotime = false;
+        
+        /**
          * Create the transaction.
          */
         auto success = create_transaction(
-            to_send, wtx, reserved_key, required_fee, denominations
+            to_send, wtx, reserved_key, required_fee, denominations, 0,
+            use_zerotime
         );
         
         if (success)
@@ -2475,12 +2522,13 @@ bool wallet::select_coins(
     std::set< std::pair<transaction_wallet,
     std::uint32_t> > & coins_out, std::int64_t & value_out,
     const std::set<std::int64_t> & filter,
-    const std::shared_ptr<coin_control> & control
+    const std::shared_ptr<coin_control> & control,
+    const bool & use_zerotime
     ) const
 {
     std::vector<output> coins;
     
-    available_coins(coins, true, filter, control);
+    available_coins(coins, true, filter, control, use_zerotime);
 
     if (control && control->has_selected())
     {
@@ -2512,7 +2560,7 @@ bool wallet::create_transaction(
     const std::vector< std::pair<script, std::int64_t> > & scripts,
     transaction_wallet & tx_new, key_reserved & reserved_key,
     std::int64_t & fee_out, const std::set<std::int64_t> & filter,
-    const std::shared_ptr<coin_control> & control
+    const std::shared_ptr<coin_control> & control, const bool & use_zerotime
     )
 {
     std::int64_t value = 0;
@@ -2580,7 +2628,7 @@ bool wallet::create_transaction(
         
         if (
             select_coins(total_value, tx_new.time(),
-            coins, value_in, filter, control) == false
+            coins, value_in, filter, control, use_zerotime) == false
             )
         {
             log_debug(
@@ -2775,7 +2823,7 @@ bool wallet::create_transaction(
     const script & script_pub_key, const std::int64_t & value,
     transaction_wallet & tx_new, key_reserved & reserved_key,
     std::int64_t & fee_out, const std::set<std::int64_t> & filter,
-    const std::shared_ptr<coin_control> & control
+    const std::shared_ptr<coin_control> & control, const bool & use_zerotime
     )
 {
     std::vector< std::pair<script, std::int64_t> > scripts;
@@ -2783,7 +2831,7 @@ bool wallet::create_transaction(
     scripts.push_back(std::make_pair(script_pub_key, value));
 
     return create_transaction(
-        scripts, tx_new, reserved_key, fee_out, filter, control
+        scripts, tx_new, reserved_key, fee_out, filter, control, use_zerotime
     );
 }
 
@@ -3036,24 +3084,29 @@ std::pair<bool, std::string> wallet::commit_transaction(
         wtx_new.relay_wallet_transaction(
             m_stack_impl->get_tcp_connection_manager(), true
         );
-
-        if (globals::instance().is_zerotime_enabled() && use_zerotime)
+    
+        if (
+            globals::instance().is_zerotime_enabled() && use_zerotime == true
+            )
         {
-            /**
-             * Relay the zerotime_lock (if required).
-             */
-            wtx_new.relay_wallet_zerotime_lock(
-                m_stack_impl->get_tcp_connection_manager(), true
+            auto hash_tx = wtx_new.get_hash();
+            
+            std::lock_guard<std::recursive_mutex> l2(
+                mutex_zerotime_lock_queue_
             );
-
-            /**
-             * Vote for the ztlock if score allows.
-             */
-            m_stack_impl->get_zerotime_manager()->vote(
-                wtx_new.get_hash(), wtx_new.transactions_in()
+            
+            zerotime_lock_queue_.push_back(hash_tx);
+            
+            zerotime_lock_queue_timer_.expires_from_now(
+                std::chrono::seconds(3)
+            );
+            zerotime_lock_queue_timer_.async_wait(
+                globals::instance().strand().wrap(std::bind(
+                &wallet::zerotime_lock_queue_tick, this,
+                std::placeholders::_1))
             );
         }
-        
+    
         return std::make_pair(true, "");
     }
     
@@ -3145,9 +3198,14 @@ bool wallet::create_coin_stake(
     
     std::int64_t value_in = 0;
     
+    /**
+     * Do not filter any denominations.
+     */
+    std::set<std::int64_t> filter;
+
     if (
         select_coins(balance - reserve_balance, tx_new.time(), coins,
-        value_in) == false
+        value_in, filter, 0) == false
         )
     {
         return false;
@@ -3576,10 +3634,15 @@ std::pair<bool, std::string> wallet::send_money(
         );
     }
     
+    /**
+     * Do not filter any coin denominations.
+     */
+    std::set<std::int64_t> filter;
+    
     if (
         create_transaction(script_pub_key, value,
         *const_cast<transaction_wallet *> (&wtx_new), *reserve_key,
-        fee_required) == false
+        fee_required, filter, 0, use_zerotime) == false
         )
     {
         if (value + fee_required > get_balance())
@@ -3598,7 +3661,24 @@ std::pair<bool, std::string> wallet::send_money(
         {
             log_error("Wallet, send money failed, create transaction failed.");
             
-            return std::make_pair(false, "failed to create transaction");
+            /**
+             * If ZeroTime was used we either have no coins left with at least
+             * a single on-chain confirmation or were unable to find enough
+             * coins for this transaction that have at least a single on-chain
+             * confirmation.
+             */
+            if (use_zerotime == true)
+            {
+                return std::make_pair(
+                    false, "failed to create ZeroTime transaction, "
+                    "you may need to wait a minute and try again or send "
+                    "as a regular transaction"
+                );
+            }
+            else
+            {
+                return std::make_pair(false, "failed to create transaction");
+            }
         }
     }
 
@@ -3662,7 +3742,8 @@ std::pair<bool, std::string> wallet::send_money_to_destination(
 void wallet::available_coins(
     std::vector<output> & coins, const bool & only_confirmed,
     const std::set<std::int64_t> & filter,
-    const std::shared_ptr<coin_control> & control
+    const std::shared_ptr<coin_control> & control,
+    const bool & use_zerotime
     ) const
 {
     coins.clear();
@@ -3687,6 +3768,14 @@ void wallet::available_coins(
         }
         
         if (coin.is_coin_stake() && coin.get_blocks_to_maturity() > 0)
+        {
+            continue;
+        }
+
+        /**
+         * Do not spend "off-chain" coins, require one block confirmation.
+         */
+        if (use_zerotime && coin.get_depth_in_main_chain(false) == 0)
         {
             continue;
         }
@@ -4290,6 +4379,44 @@ void wallet::resend_transactions_tick(const boost::system::error_code & ec)
             std::bind(&wallet::resend_transactions_tick, this,
             std::placeholders::_1))
         );
+    }
+}
+
+void wallet::zerotime_lock_queue_tick(const boost::system::error_code & ec)
+{
+    if (ec)
+    {
+        // ...
+    }
+    else
+    {
+        if (globals::instance().is_zerotime_enabled() == true)
+        {
+            std::lock_guard<std::recursive_mutex> l1(
+                mutex_zerotime_lock_queue_
+            );
+        
+            if (zerotime_lock_queue_.size() > 0)
+            {
+                const auto & hash_tx = zerotime_lock_queue_.front();
+                
+                zerotime_lock(hash_tx);
+            
+                zerotime_lock_queue_.pop_front();
+            
+                if (zerotime_lock_queue_.size() > 0)
+                {
+                    zerotime_lock_queue_timer_.expires_from_now(
+                        std::chrono::seconds(3)
+                    );
+                    zerotime_lock_queue_timer_.async_wait(
+                        globals::instance().strand().wrap(std::bind(
+                        &wallet::zerotime_lock_queue_tick, this,
+                        std::placeholders::_1))
+                    );
+                }
+            }
+        }
     }
 }
 

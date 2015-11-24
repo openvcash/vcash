@@ -313,6 +313,12 @@ namespace coin {
             void send_addr_message(const protocol::network_address_t & addr);
         
             /**
+             * Sends an address message.
+             * @param addr The address.
+             */
+            void do_send_addr_message(const protocol::network_address_t & addr);
+        
+            /**
              * Sends a getaddr message.
              */
             void send_getaddr_message();
@@ -551,7 +557,7 @@ namespace coin {
             /**
              * The boost::asio::strand.
              */
-            boost::asio::strand strand_;
+            boost::asio::strand & strand_;
         
             /**
              * The stack_impl.
@@ -647,6 +653,11 @@ namespace coin {
              * The last time a getblocks was received.
              */
             std::time_t time_last_getblocks_sent_;
+            
+            /**
+             * The seen_network_addresses mutex.
+             */
+            std::recursive_mutex mutex_seen_network_addresses_;
     };
     
 } // namespace coin

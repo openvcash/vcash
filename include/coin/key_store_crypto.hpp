@@ -115,6 +115,11 @@ namespace coin {
             ) const;
         
             /**
+             * The crypted keys.
+             */
+            const crypted_key_map_t & crypted_keys() const;
+        
+            /**
              * Adds a crypted key.
              * @param public_key The key_public.
              * @param crypted_secret The crypted secret.

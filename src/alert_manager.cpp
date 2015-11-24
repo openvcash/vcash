@@ -19,6 +19,7 @@
  */
 
 #include <coin/alert_manager.hpp>
+#include <coin/globals.hpp>
 #include <coin/stack_impl.hpp>
 
 using namespace coin;
@@ -27,7 +28,7 @@ alert_manager::alert_manager(
     boost::asio::io_service & ios, stack_impl & owner
     )
     : io_service_(ios)
-    , strand_(ios)
+    , strand_(globals::instance().strand())
     , stack_impl_(owner)
 {
     // ...

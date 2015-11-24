@@ -197,7 +197,7 @@ sha256 utility::get_orphan_root(const std::shared_ptr<block> & blk)
      * Work back to the first block in the orphan chain.
      */
     while (
-        globals::instance().orphan_blocks().count(
+        ptr && globals::instance().orphan_blocks().count(
         ptr->header().hash_previous_block) > 0
         )
     {
@@ -206,7 +206,7 @@ sha256 utility::get_orphan_root(const std::shared_ptr<block> & blk)
         ].get();
     }
     
-    return ptr->get_hash();
+    return ptr == 0 ? sha256() : ptr->get_hash();
 }
 
 sha256 utility::wanted_by_orphan(const std::shared_ptr<block> & blk)
@@ -217,7 +217,7 @@ sha256 utility::wanted_by_orphan(const std::shared_ptr<block> & blk)
      * Work back to the first block in the orphan chain.
      */
     while (
-        globals::instance().orphan_blocks().count(
+        ptr && globals::instance().orphan_blocks().count(
         ptr->header().hash_previous_block) > 0
         )
     {
@@ -226,7 +226,7 @@ sha256 utility::wanted_by_orphan(const std::shared_ptr<block> & blk)
         ].get();
     }
     
-    return ptr->header().hash_previous_block;
+    return ptr == 0 ? sha256() : ptr->header().hash_previous_block;
 }
 
 bool utility::add_orphan_tx(const data_buffer & buffer)

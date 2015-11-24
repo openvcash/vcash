@@ -73,7 +73,7 @@ bool db_env::open(const std::string & data_path)
         auto cache = 25;
         
         std::lock_guard<std::recursive_mutex> l1(m_mutex_DbEnv);
-        
+
         m_DbEnv.set_lg_dir(log_path.c_str());
         m_DbEnv.set_cachesize(cache / 1024, (cache % 1024) * 1048576, 1);
         m_DbEnv.set_lg_bsize(1048576);
@@ -248,72 +248,68 @@ void db_env::flush()
 {
     if (state_ == state_opened)
     {
-        globals::instance().io_service().post(globals::instance().strand().wrap(
-            [this]()
+        std::lock_guard<std::recursive_mutex> l1(mutex_file_use_counts_);
+        
+        auto it = m_file_use_counts.begin();
+        
+        while (it != m_file_use_counts.end())
         {
-            std::lock_guard<std::recursive_mutex> l1(mutex_file_use_counts_);
+            auto file_name = it->first;
             
-            auto it = m_file_use_counts.begin();
+            auto reference_count = it->second;
             
-            while (it != m_file_use_counts.end())
+            log_debug(
+                "Db Env " << file_name << ", reference count = " <<
+                reference_count << "."
+            );
+
+            if (reference_count == 0)
             {
-                auto file_name = it->first;
+                /**
+                 * Move the log data to the dat file.
+                 */
+                close_Db(file_name);
+
+                log_debug("Db Env checkpoint " << file_name << ".");
                 
-                auto reference_count = it->second;
+                std::lock_guard<std::recursive_mutex> l2(m_mutex_DbEnv);
                 
-                log_debug(
-                    "Db Env " << file_name << ", reference count = " <<
-                    reference_count << "."
-                );
-
-                if (reference_count == 0)
+                m_DbEnv.txn_checkpoint(0, 0, 0);
+                
+                static bool detach_db = true;
+                
+                if (
+                    utility::is_chain_file(file_name) == false || detach_db
+                    )
                 {
-                    /**
-                     * Move the log data to the dat file.
-                     */
-                    close_Db(file_name);
+                    log_debug("Db Env detach " << file_name << ".");
 
-                    log_debug("Db Env checkpoint " << file_name << ".");
-                    
-                    std::lock_guard<std::recursive_mutex> l2(m_mutex_DbEnv);
-                    
-                    m_DbEnv.txn_checkpoint(0, 0, 0);
-                    
-                    static bool detach_db = true;
-                    
-                    if (
-                        utility::is_chain_file(file_name) == false || detach_db
-                        )
-                    {
-                        log_debug("Db Env detach " << file_name << ".");
-
-                        m_DbEnv.lsn_reset(file_name.c_str(), 0);
-                    }
-
-                    log_debug("Db Env closed " << file_name << ".");
-                    
-                    m_file_use_counts.erase(it++);
+                    m_DbEnv.lsn_reset(file_name.c_str(), 0);
                 }
-                else
-                {
-                    it++;
-                }
+
+                log_info("Database environment closed " << file_name << ".");
+                
+                m_file_use_counts.erase(it++);
             }
-            
-            if (globals::instance().state() > globals::state_started)
+            else
             {
-                if (m_file_use_counts.empty())
-                {
-                    char ** list;
-                    
-                    std::lock_guard<std::recursive_mutex> l3(m_mutex_DbEnv);
-                    
-                    m_DbEnv.log_archive(&list, DB_ARCH_REMOVE);
-                    
-                    close_DbEnv();
-                }
+                it++;
             }
-        }));
+        }
+        
+        if (globals::instance().state() > globals::state_started)
+        {
+            if (m_file_use_counts.empty())
+            {
+                char ** list;
+                
+                std::lock_guard<std::recursive_mutex> l3(m_mutex_DbEnv);
+                
+                m_DbEnv.log_archive(&list, DB_ARCH_REMOVE);
+                
+                close_DbEnv();
+            }
+        }
     }
 }
 

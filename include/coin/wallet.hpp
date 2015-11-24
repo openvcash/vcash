@@ -22,6 +22,7 @@
 #define COIN_WALLET_HPP
 
 #include <cstdint>
+#include <deque>
 #include <list>
 #include <map>
 #include <mutex>
@@ -221,6 +222,11 @@ namespace coin {
             void reserve_key_from_key_pool(
                 std::int64_t & index, key_pool & keypool
             );
+        
+            /**
+             * Gets the reserve keys.
+             */
+            std::set<types::id_key_t> reserve_keys();
         
             /**
              * Removes a key from the key_pool.
@@ -515,15 +521,16 @@ namespace coin {
              * @param filter The filter (inputs with matching values will be
              * excluded from output).
              * @param control The coin_control.
+             * @param use_zerotime If true ZeroTime will be used.
              */
             bool select_coins(
                 const std::int64_t & target_value,
                 const std::uint32_t & spend_time,
                 std::set< std::pair<transaction_wallet,
                 std::uint32_t> > & coins_out, std::int64_t & value_out,
-                const std::set<std::int64_t> & filter =
-                std::set<std::int64_t> (),
-                const std::shared_ptr<coin_control> & control = 0
+                const std::set<std::int64_t> & filter,
+                const std::shared_ptr<coin_control> & control,
+                const bool & use_zerotime = false
             ) const;
 
             /**
@@ -535,14 +542,15 @@ namespace coin {
              * @param filter The filter (inputs with matching values will be
              * excluded from the transaction).
              * @param control The coin_control.
+             * @param use_zerotime If true ZeroTime will be used.
              */
             bool create_transaction(
                 const std::vector< std::pair<script, std::int64_t> > & scripts,
                 transaction_wallet & tx_new, key_reserved & reserved_key,
                 std::int64_t & fee_out,
-                const std::set<std::int64_t> & filter =
-                std::set<std::int64_t> (),
-                const std::shared_ptr<coin_control> & control = 0
+                const std::set<std::int64_t> & filter,
+                const std::shared_ptr<coin_control> & control,
+                const bool & use_zerotime
             );
       
             /**
@@ -555,14 +563,15 @@ namespace coin {
              * @param filter The filter (inputs with matching values will be
              * excluded from the transaction).
              * @param control The coin_control.
+             * @param use_zerotime If true ZeroTime will be used.
              */
             bool create_transaction(
                 const script & script_pub_key, const std::int64_t & value,
                 transaction_wallet & tx_new, key_reserved & reserved_key,
                 std::int64_t & fee_out,
-                const std::set<std::int64_t> & filter =
-                std::set<std::int64_t> (),
-                const std::shared_ptr<coin_control> & control = 0
+                const std::set<std::int64_t> & filter,
+                const std::shared_ptr<coin_control> & control,
+                const bool & use_zerotime
             );
         
             /**
@@ -629,12 +638,13 @@ namespace coin {
              * @param filter The filter (inputs with matching values will be
              * excluded from outputs).
              * @param control The coin_control.
+             * @param use_zerotime If true ZeroTime will be used.
              */
             void available_coins(
                 std::vector<output> & coins, const bool & only_confirmed,
-                const std::set<std::int64_t> & filter =
-                std::set<std::int64_t> (),
-                const std::shared_ptr<coin_control> & control = 0
+                const std::set<std::int64_t> & filter,
+                const std::shared_ptr<coin_control> & control,
+                const bool & use_zerotime
             ) const;
 
             /**
@@ -772,6 +782,12 @@ namespace coin {
             void resend_transactions_tick(const boost::system::error_code & ec);
         
             /**
+             * Processes the zerotime lock queue.
+             * @param ec The boost::system::error_code.
+             */
+            void zerotime_lock_queue_tick(const boost::system::error_code & ec);
+        
+            /**
              * Encrypts the wallet.
              * @param passphrase The passphrase.
              */
@@ -862,6 +878,23 @@ namespace coin {
              * The time of the last resend operation.
              */
             std::time_t time_last_resend_;
+        
+            /**
+             * The mutex_zerotime_lock_queue.
+             */
+            std::recursive_mutex mutex_zerotime_lock_queue_;
+        
+            /**
+             * The zerotime lock queue timer.
+             */
+            boost::asio::basic_waitable_timer<
+                std::chrono::steady_clock
+            > zerotime_lock_queue_timer_;
+        
+            /**
+             * The zerotime lock queue.
+             */
+            std::deque<sha256> zerotime_lock_queue_;
     };
     
 } // namespace coin

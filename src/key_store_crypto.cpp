@@ -281,6 +281,12 @@ bool key_store_crypto::get_public_key(
     return false;
 }
 
+const key_store_crypto::crypted_key_map_t &
+    key_store_crypto::crypted_keys() const
+{
+    return m_crypted_keys;
+}
+
 bool key_store_crypto::add_crypted_key(
     const key_public & public_key,
     const std::vector<std::uint8_t> & crypted_secret

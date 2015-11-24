@@ -128,6 +128,13 @@ void block_index::set_block_index_previous(
     m_block_index_previous = val;
 }
 
+void block_index::set_block_index_next(
+    const std::shared_ptr<block_index> & val
+    )
+{
+    m_block_index_next = val;
+}
+
 std::shared_ptr<block_index> & block_index::block_index_previous()
 {
     return m_block_index_previous;

@@ -191,6 +191,8 @@ void http_transport::start(
         
 void http_transport::stop()
 {
+    timeout_timer_.cancel();
+    
     if (ssl_socket_)
     {
         io_service_.post([this]() { ssl_socket_->lowest_layer().close(); });

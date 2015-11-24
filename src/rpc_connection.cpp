@@ -32,6 +32,7 @@
 #include <coin/block.hpp>
 #include <coin/block_index.hpp>
 #include <coin/block_locator.hpp>
+#include <coin/key_store_crypto.hpp>
 #include <coin/database_stack.hpp>
 #include <coin/db_tx.hpp>
 #include <coin/incentive.hpp>
@@ -527,6 +528,10 @@ bool rpc_connection::handle_json_rpc_request(
     else if (request.method == "dumpprivkey")
     {
         response = json_dumpprivkey(request);
+    }
+    else if (request.method == "dumpwallet")
+    {
+        response = json_dumpwallet(request);
     }
     else if (request.method == "encryptwallet")
     {
@@ -1341,7 +1346,7 @@ rpc_connection::json_rpc_response_t rpc_connection::json_dumpprivkey(
             
             key::secret_t s;
             
-            bool compressed = false;
+            auto compressed = false;
             
             if (
                 globals::instance().wallet_main()->get_secret(
@@ -1378,6 +1383,173 @@ rpc_connection::json_rpc_response_t rpc_connection::json_dumpprivkey(
                 boost::property_tree::ptree(), pt_error, request.id
             };
         }
+    }
+    catch (std::exception & e)
+    {
+        auto pt_error = create_error_object(
+            error_code_internal_error, e.what()
+        );
+        
+        /**
+         * error_code_internal_error
+         */
+        return json_rpc_response_t{
+            boost::property_tree::ptree(), pt_error, request.id
+        };
+    }
+    
+    return ret;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_dumpwallet(
+    const json_rpc_request_t & request
+    )
+{
+    json_rpc_response_t ret;
+    
+    /**
+     * Set the id from the request.
+     */
+    ret.id = request.id;
+    
+    try
+    {
+        if (globals::instance().wallet_unlocked_mint_only())
+        {
+            auto pt_error = create_error_object(
+                error_code_wallet_unlock_needed,
+                "wallet is unlocked for minting only"
+            );
+            
+            /**
+             * error_code_wallet_unlock_needed
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
+        }
+        
+        /**
+         * Get the reserve keys.
+         */
+        auto reserve_keys = globals::instance().wallet_main()->reserve_keys();
+
+        /**
+         * Format: key, address, type
+         */
+        std::ofstream ofs(filesystem::data_path() + "wallet.csv");
+        
+        /**
+         * Columns
+         */
+        ofs << "Key, Address, Type" << std::endl;
+        
+        if (globals::instance().wallet_main()->is_crypted() == true)
+        {
+            /**
+             * Iterate all keys.
+             */
+            for (auto & i : globals::instance().wallet_main()->crypted_keys())
+            {
+                const auto & key_id = i.first;
+                
+                key k;
+                
+                if (
+                    globals::instance().wallet_main()->get_key(
+                    key_id, k) == true
+                    )
+                {
+                    auto compressed = false;
+                    
+                    auto s = k.get_secret(compressed);
+ 
+                    if (
+                        globals::instance().wallet_main()->address_book().count(
+                        key_id) > 0
+                        )
+                    {
+                        ofs <<
+                            secret(s, k.is_compressed()).to_string() << ", " <<
+                            address(key_id).to_string() << ", label" <<
+                            std::endl
+                        ;
+                    }
+                    else if (reserve_keys.count(key_id) > 0)
+                    {
+                        ofs <<
+                            secret(s, k.is_compressed()).to_string() << ", " <<
+                            address(key_id).to_string() << ", reserve" <<
+                            std::endl
+                        ;
+                    }
+                    else
+                    {
+                        ofs <<
+                            secret(s, k.is_compressed()).to_string() << ", " <<
+                            address(key_id).to_string() << ", change" <<
+                            std::endl
+                        ;
+                    }
+                }
+            }
+        }
+        else
+        {
+            /**
+             * Iterate all keys.
+             */
+            for (auto & i : globals::instance().wallet_main()->keys())
+            {
+                const auto & key_id = i.first;
+                
+                key k;
+                
+                if (
+                    globals::instance().wallet_main()->get_key(
+                    key_id, k) == true
+                    )
+                {
+                    auto compressed = false;
+                    
+                    auto s = k.get_secret(compressed);
+                    
+                    if (
+                        globals::instance().wallet_main()->address_book().count(
+                        key_id) > 0
+                        )
+                    {
+                        ofs <<
+                            secret(s, k.is_compressed()).to_string() << ", " <<
+                            address(key_id).to_string() << ", label" <<
+                            std::endl
+                        ;
+                    }
+                    else if (reserve_keys.count(key_id) > 0)
+                    {
+                        ofs <<
+                            secret(s, k.is_compressed()).to_string() << ", " <<
+                            address(key_id).to_string() << ", reserve" <<
+                            std::endl
+                        ;
+                    }
+                    else
+                    {
+                        ofs <<
+                            secret(s, k.is_compressed()).to_string() << ", " <<
+                            address(key_id).to_string() << ", change" <<
+                            std::endl
+                        ;
+                    }
+                }
+            }
+        }
+        
+        ofs << std::endl;
+        
+        ofs.close();
+        
+        ret.result.put("", "null");
     }
     catch (std::exception & e)
     {
@@ -2918,6 +3090,14 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getnewaddress(
         }
         
         /**
+         * If the wallet is not locked, top up the key pool.
+         */
+        if (globals::instance().wallet_main()->is_locked() == false)
+        {
+            globals::instance().wallet_main()->top_up_key_pool();
+        }
+        
+        /**
          * Allocate the public key.
          */
         key_public pub_key;
@@ -4433,11 +4613,21 @@ rpc_connection::json_rpc_response_t rpc_connection::json_sendmany(
                 std::int64_t required_fee = 0;
                 
                 /**
+                 * Do not use ZeroTime over RPC.
+                 */
+                auto use_zerotime = false;
+                
+                /**
+                 * Do not filter any coin denominations.
+                 */
+                std::set<std::int64_t> filter;
+                
+                /**
                  * Create the transaction.
                  */
-                bool success =
+                auto success =
                     globals::instance().wallet_main()->create_transaction(
-                    to_send, wtx, k, required_fee
+                    to_send, wtx, k, required_fee, filter, 0, use_zerotime
                 );
                 
                 if (success == false)
@@ -4461,11 +4651,6 @@ rpc_connection::json_rpc_response_t rpc_connection::json_sendmany(
                         };
                     }
                 }
-                
-                /**
-                 * Do not use ZeroTime over RPC.
-                 */
-                auto use_zerotime = false;
                 
                 /**
                  * Commit the transaction.
@@ -5181,6 +5366,11 @@ rpc_connection::json_rpc_response_t rpc_connection::json_walletpassphrase(
                     passphrase) == true
                     )
                 {
+                    /**
+                     * Top up the key pool.
+                     */
+                    globals::instance().wallet_main()->top_up_key_pool();
+        
                     ret.result.put("", "null");
                 }
                 else

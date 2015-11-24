@@ -78,12 +78,7 @@ namespace coin {
             /**
              * The singleton accessor.
              */
-            static globals & instance()
-            {
-                static globals g_globals;
-                
-                return g_globals;
-            }
+            static globals & instance();
         
             /**
              * The boost::asio::io_service.
@@ -166,8 +161,6 @@ namespace coin {
              */
             void set_version_nonce(const std::uint64_t & val)
             {
-                std::lock_guard<std::mutex> l1(mutex_);
-                
                 assert(val != 0);
                 
                 m_version_nonce = val;
@@ -178,8 +171,6 @@ namespace coin {
              */
             const std::uint64_t & version_nonce() const
             {
-                std::lock_guard<std::mutex> l1(mutex_);
-                
                 assert(m_version_nonce != 0);
                 
                 return m_version_nonce;
@@ -246,7 +237,7 @@ namespace coin {
             {
                 std::lock_guard<std::mutex> l1(mutex_);
                 
-                m_block_index_fbbh_last = 0;
+                m_block_index_fbbh_last = value;
             }
         
             /**
@@ -264,8 +255,6 @@ namespace coin {
              */
             void set_time_best_received(const std::int64_t & value)
             {
-                std::lock_guard<std::mutex> l1(mutex_);
-                
                 m_time_best_received = value;
             }
         
@@ -274,8 +263,6 @@ namespace coin {
              */
             const std::int64_t & time_best_received() const
             {
-                std::lock_guard<std::mutex> l1(mutex_);
-                
                 return m_time_best_received;
             }
         
@@ -286,8 +273,6 @@ namespace coin {
              */
             void set_transactions_updated(const std::int32_t & value)
             {
-                std::lock_guard<std::mutex> l1(mutex_);
-                
                 m_transactions_updated = value;
             }
         
@@ -296,8 +281,6 @@ namespace coin {
              */
             const std::uint32_t & transactions_updated() const
             {
-                std::lock_guard<std::mutex> l1(mutex_);
-                
                 return m_transactions_updated;
             }
         
@@ -758,7 +741,7 @@ namespace coin {
         protected:
         
             /**
-             * The std::mutex.
+             * The std::mutex (for containers only).
              */
             mutable std::mutex mutex_;
     };

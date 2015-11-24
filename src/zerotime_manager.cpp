@@ -250,9 +250,8 @@ void zerotime_manager::probe_for_answers(
                 
                 /**
                  * Start the timer.
-                 * @note Use a 5x delay to allow the ztlock to propagate.
                  */
-                do_tick_probe(interval_probe * 5);
+                do_tick_probe(interval_probe);
             }
             else
             {
@@ -280,12 +279,12 @@ void zerotime_manager::handle_answer(
             zerotime_answers_tcp_[ztanswer.hash_tx()].first = std::time(0);
             zerotime_answers_tcp_[ztanswer.hash_tx()].second[ep] = ztanswer;
             
-            log_debug(
+            log_info(
                 "ZeroTime manager got correct answer " <<
                 ztanswer.hash_tx().to_string().substr(0, 8) << ", so far = " <<
                 zerotime_answers_tcp_[ztanswer.hash_tx()].second.size() << "."
             );
-            
+
             /**
              * Check the number of answers.
              */
@@ -448,7 +447,7 @@ void zerotime_manager::handle_vote(
                                  * percentage.
                                  */
                                 safe_percentages_[hash_tx] = std::time(0);
-                                
+
                                 /**
                                  * If we have a lock conflict resolve it and wait
                                  * for block event inclusion of the transaction,

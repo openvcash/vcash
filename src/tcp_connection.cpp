@@ -70,7 +70,7 @@ tcp_connection::tcp_connection(
     , m_probe_only(false)
     , m_state(state_none)
     , io_service_(ios)
-    , strand_(ios)
+    , strand_(globals::instance().strand())
     , stack_impl_(owner)
     , timer_ping_(ios)
     , timer_ping_timeout_(ios)
@@ -152,8 +152,6 @@ void tcp_connection::start()
 void tcp_connection::start(const boost::asio::ip::tcp::endpoint & ep)
 {
     m_state = state_starting;
-    
-    auto self(shared_from_this());
 
     if (m_direction == direction_incoming)
     {
@@ -163,11 +161,13 @@ void tcp_connection::start(const boost::asio::ip::tcp::endpoint & ep)
     {
         if (auto transport = m_tcp_transport.lock())
         {
+            auto self(shared_from_this());
+            
             /**
              * Set the transport on read handler.
              */
             transport->set_on_read(
-                [this](std::shared_ptr<tcp_transport> t,
+                [this, self](std::shared_ptr<tcp_transport> t,
                 const char * buf, const std::size_t & len)
             {
                 on_read(buf, len);
@@ -308,6 +308,10 @@ void tcp_connection::send_addr_message(const bool & local_address_only)
 
         if (local_address_only == false)
         {
+            std::lock_guard<std::recursive_mutex> l1(
+                mutex_seen_network_addresses_
+            );
+            
             auto addr_list = stack_impl_.get_address_manager()->get_addr();
             
             for (auto & i : addr_list)
@@ -420,7 +424,7 @@ void tcp_connection::send_getblocks_message(
         }
         else
         {
-            log_debug(
+            log_none(
                 "TCP connection tried to send getblocks message too soon."
             );
         }
@@ -694,6 +698,8 @@ const sha256 & tcp_connection::hash_checkpoint_known() const
 std::set<protocol::network_address_t> &
     tcp_connection::seen_network_addresses()
 {
+    std::lock_guard<std::recursive_mutex> l1(mutex_seen_network_addresses_);
+    
     return m_seen_network_addresses;
 }
 
@@ -755,120 +761,150 @@ bool tcp_connection::is_transport_valid()
 
 void tcp_connection::on_read(const char * buf, const std::size_t & len)
 {
-    auto buffer = std::string(buf, len);
-    
-    /**
-     * Check if it is an HTTP message.
-     */
-    if (buffer.find("HTTP/1.") == std::string::npos)
+    if (globals::instance().state() == globals::state_started)
     {
-        std::lock_guard<std::mutex> l1(mutex_read_queue_);
+        auto buffer = std::string(buf, len);
         
         /**
-         * Append to the read queue.
+         * Check if it is an HTTP message.
          */
-        read_queue_.insert(read_queue_.end(), buf, buf + len);
-        
-        while (read_queue_.size() >= message::header_length)
+        if (buffer.find("HTTP/1.") == std::string::npos)
         {
-            /**
-             * Allocate a packet from the entire read queue.
-             */
-            std::string packet(read_queue_.begin(), read_queue_.end());
-            
-            /**
-             * Allocate the message.
-             * @note Packets can be combined, after decoding the message it's
-             * buffer will be resized to the actual length.
-             */
-            message msg(packet.data(), packet.size());
-        
-            try
-            {
-                /**
-                 * Decode the message.
-                 */
-                msg.decode();
-            }
-            catch (std::exception & e)
-            {
-                log_none(
-                    "TCP connection failed to decode message, "
-                    "what = " << e.what() << "."
-                );
+            std::lock_guard<std::mutex> l1(mutex_read_queue_);
 
-                break;
-            }
-            
             /**
-             * Erase the full/partial packet.
+             * Append to the read queue.
              */
-            read_queue_.erase(
-                read_queue_.begin(), read_queue_.begin() +
-                message::header_length + msg.header().length
-            );
-            
-            try
+            read_queue_.insert(read_queue_.end(), buf, buf + len);
+
+            while (
+                globals::instance().state() == globals::state_started &&
+                read_queue_.size() >= message::header_length
+                )
             {
                 /**
-                 * Handle the message.
+                 * Allocate a packet from the entire read queue.
                  */
-                handle_message(msg);
-            }
-            catch (std::exception & e)
-            {
-                log_error(
-                    "TCP connection failed to handle message, "
-                    "what = " << e.what() << "."
+                std::string packet(read_queue_.begin(), read_queue_.end());
+                
+                /**
+                 * Allocate the message.
+                 * @note Packets can be combined, after decoding the message
+                 * it's buffer will be resized to the actual length.
+                 */
+                message msg(packet.data(), packet.size());
+            
+                try
+                {
+                    /**
+                     * Decode the message.
+                     */
+                    msg.decode();
+                }
+                catch (std::exception & e)
+                {
+                    log_none(
+                        "TCP connection failed to decode message, "
+                        "what = " << e.what() << "."
+                    );
+
+                    break;
+                }
+                
+                /**
+                 * Erase the full/partial packet.
+                 */
+                read_queue_.erase(
+                    read_queue_.begin(), read_queue_.begin() +
+                    message::header_length + msg.header().length
                 );
+                
+                try
+                {
+                    /**
+                     * Handle the message.
+                     */
+                    handle_message(msg);
+                }
+                catch (std::exception & e)
+                {
+                    log_debug(
+                        "TCP connection failed to handle message, "
+                        "what = " << e.what() << "."
+                    );
+                    
+                    /**
+                     * If we failed to parse a message with a read queue
+                     * twice the size of constants::max_block_size then
+                     * the stream must be corrupted, clear the read queue
+                     * and stop the connection.
+                     */
+                    if (read_queue_.size() > constants::max_block_size * 2)
+                    {
+                        log_error(
+                            "TCP connection read queue too large (" <<
+                            read_queue_.size() << "), calling stop."
+                        );
+                        
+                        /**
+                         * Clear the read queue.
+                         */
+                        read_queue_.clear();
+                        
+                        /**
+                         * Call stop
+                         */
+                        stop();
+                    }
+                }
             }
         }
-    }
-    else
-    {
-        log_debug("TCP connection got HTTP message.");
-        
-        if (auto transport = m_tcp_transport.lock())
+        else
         {
-            /**
-             * Allocate the response.
-             */
-            std::string response;
-         
-            /**
-             * Allocate the body.
-             */
-            std::string body =
-                "{\"version\":\"" +
-                constants::version_string + "\"""," +
-                "\"protocol\":\"" +
-                std::to_string(protocol::version) + "\"""," +
-                "\"height\":\"" +
-                std::to_string(stack_impl::get_block_index_best()->height()) +
-                "\"""}"
-            ;
+            log_debug("TCP connection got HTTP message.");
             
-            /**
-             * Formulate the response.
-             */
-            response += "HTTP/1.1 200 OK\r\n";
-            response += "Connection: close\r\n";
-            response += "Content-Type: text/plain; charset=utf-8\r\n";
-            response += "Content-Length: " +
-                std::to_string(body.size()) + "\r\n"
-            ;
-            response += "\r\n";
-            response += body;
-        
-            /**
-             * Set the transport to close after it sends the response.
-             */
-            transport->set_close_after_writes(true);
+            if (auto transport = m_tcp_transport.lock())
+            {
+                /**
+                 * Allocate the response.
+                 */
+                std::string response;
+             
+                /**
+                 * Allocate the body.
+                 */
+                std::string body =
+                    "{\"version\":\"" +
+                    constants::version_string + "\"""," +
+                    "\"protocol\":\"" +
+                    std::to_string(protocol::version) + "\"""," +
+                    "\"height\":\"" +
+                    std::to_string(
+                    stack_impl::get_block_index_best()->height()) + "\"""}"
+                ;
+                
+                /**
+                 * Formulate the response.
+                 */
+                response += "HTTP/1.1 200 OK\r\n";
+                response += "Connection: close\r\n";
+                response += "Content-Type: text/plain; charset=utf-8\r\n";
+                response += "Content-Length: " +
+                    std::to_string(body.size()) + "\r\n"
+                ;
+                response += "\r\n";
+                response += body;
             
-            /**
-             * Write the response.
-             */
-            transport->write(response.data(), response.size());
+                /**
+                 * Set the transport to close after it sends the response.
+                 */
+                transport->set_close_after_writes(true);
+                
+                /**
+                 * Write the response.
+                 */
+                transport->write(response.data(), response.size());
+            }
         }
     }
 }
@@ -969,6 +1005,23 @@ void tcp_connection::send_version_message()
 
 void tcp_connection::send_addr_message(const protocol::network_address_t & addr)
 {
+    auto self(shared_from_this());
+    
+    /**
+     * Post the operation onto the boost::asio::io_service.
+     */
+    io_service_.post(strand_.wrap([this, self, addr]()
+    {
+        do_send_addr_message(addr);
+    }));
+}
+
+void tcp_connection::do_send_addr_message(
+    const protocol::network_address_t & addr
+    )
+{
+    std::lock_guard<std::recursive_mutex> l1(mutex_seen_network_addresses_);
+    
     if (m_seen_network_addresses.count(addr) == 0)
     {
         /**
@@ -2104,6 +2157,10 @@ bool tcp_connection::handle_message(message & msg)
         
             auto addr_list = msg.protocol_addr().addr_list;
             
+            std::lock_guard<std::recursive_mutex> l1(
+                mutex_seen_network_addresses_
+            );
+            
             for (auto & i : addr_list)
             {
                 if (i.timestamp <= 100000000 || i.timestamp > now + 10 * 60)
@@ -2156,11 +2213,12 @@ bool tcp_connection::handle_message(message & msg)
                             sha256, std::shared_ptr<tcp_connection>
                         > mixes;
                         
-                        for (
-                            auto & i2 :
+                        auto tcp_connections =
                             stack_impl_.get_tcp_connection_manager(
                             )->tcp_connections()
-                            )
+                        ;
+                        
+                        for (auto & i2 : tcp_connections)
                         {
                             if (auto t = i2.second.lock())
                             {
@@ -3200,7 +3258,7 @@ bool tcp_connection::handle_message(message & msg)
                 }
                 else
                 {
-                    log_debug(
+                    log_info(
                         "TCP connection got expired ZeroTime lock, dropping."
                     );
                 }
@@ -3420,7 +3478,7 @@ bool tcp_connection::handle_message(message & msg)
                 if (
                     ivote && ivote->score() > -1 &&
                     ivote->score() <=
-                    std::numeric_limits<std::int16_t>::max() / 2
+                    std::numeric_limits<std::int16_t>::max() / 4
                     )
                 {
                     /**
@@ -3758,10 +3816,12 @@ void tcp_connection::do_rebroadcast_addr_messages(
                     (std::time(0) - g_last_addr_rebroadcast > 8 * 60 * 60)
                     )
                 {
-                    for (
-                        auto & i : stack_impl_.get_tcp_connection_manager(
+                    auto tcp_connections =
+                        stack_impl_.get_tcp_connection_manager(
                         )->tcp_connections()
-                        )
+                    ;
+                    
+                    for (auto & i : tcp_connections)
                     {
                         if (g_last_addr_rebroadcast > 0)
                         {

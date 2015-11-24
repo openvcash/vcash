@@ -42,12 +42,12 @@ namespace coin {
             /**
              * The minimum expire interval.
              */
-            enum { interval_min_expire = 20 * 60 };
+            enum { interval_min_expire = 30 * 60 };
         
             /**
              * The maximum expire interval.
              */
-            enum { interval_max_expire = 60 * 60 };
+            enum { interval_max_expire = 1 * 60 * 60 };
             
             /**
              * Constructor

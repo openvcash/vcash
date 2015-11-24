@@ -141,6 +141,16 @@ void rpc_manager::handle_accept(
             auto connection = std::make_shared<rpc_connection> (
                 io_service_, strand_, stack_impl_, transport
             );
+            
+            /**
+             * Set the read timeout.
+             */
+            transport->set_read_timeout(60);
+            
+            /**
+             * Set the write timeout.
+             */
+            transport->set_write_timeout(60);
 
             /**
              * Retain the connection.
@@ -204,7 +214,7 @@ void rpc_manager::tick(const boost::system::error_code & ec)
             }
         }
         
-        timer_.expires_from_now(std::chrono::seconds(3));
+        timer_.expires_from_now(std::chrono::seconds(8));
         timer_.async_wait(strand_.wrap(
             std::bind(&rpc_manager::tick, self,
             std::placeholders::_1))

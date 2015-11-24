@@ -363,6 +363,7 @@ bool db::rewrite(const std::string & file_name, const char * key_skip)
                         
                         break;
                     }
+                    
                     if (
                         key_skip && std::strncmp(key.data(), key_skip,
                         std::min(key.size(), std::strlen(key_skip))) == 0

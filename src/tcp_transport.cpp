@@ -18,6 +18,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stdexcept>
 #include <sstream>
 
 #if (defined USE_TLS && USE_TLS)
@@ -148,8 +149,7 @@ boost::system::error_code use_certificate_chain(SSL_CTX * ctx, char * buf)
 		
     if (ctx->extra_certs != 0)
     {
-        sk_X509_pop_free(ctx->extra_certs, X509_free);
-        ctx->extra_certs = 0;
+        sk_X509_pop_free(ctx->extra_certs, X509_free), ctx->extra_certs = 0;
     }
 
     while (
@@ -487,7 +487,7 @@ void tcp_transport::start()
     if (m_socket)
     {
         m_socket->async_handshake(boost::asio::ssl::stream_base::server,
-            [this, self](boost::system::error_code ec)
+            strand_.wrap([this, self](boost::system::error_code ec)
         {
             if (ec)
             {
@@ -502,7 +502,7 @@ void tcp_transport::start()
                 
                 do_read();
             }
-        });
+        }));
     }
 #else
     m_state = state_connected;
@@ -608,7 +608,7 @@ void tcp_transport::write(const char * buf, const std::size_t & len)
         io_service_.post(strand_.wrap(
             [this, self, buffer]()
         {
-            bool write_in_progress = write_queue_.size() > 0;
+            auto write_in_progress = write_queue_.size() > 0;
             
             write_queue_.push_back(buffer);
           
@@ -692,7 +692,7 @@ void tcp_transport::do_connect(const boost::asio::ip::tcp::endpoint & ep)
     m_state = state_connecting;
 
     m_socket->lowest_layer().async_connect(ep,
-        [this, self](boost::system::error_code ec)
+        strand_.wrap([this, self](boost::system::error_code ec)
     {
         if (ec)
         {
@@ -710,7 +710,7 @@ void tcp_transport::do_connect(const boost::asio::ip::tcp::endpoint & ep)
         {
 #if (defined USE_TLS && USE_TLS)
             m_socket->async_handshake(boost::asio::ssl::stream_base::client,
-                [this, self](boost::system::error_code ec)
+                strand_.wrap([this, self](boost::system::error_code ec)
             {
                 if (ec)
                 {
@@ -745,7 +745,7 @@ void tcp_transport::do_connect(const boost::asio::ip::tcp::endpoint & ep)
                     
                     do_read();
                 }
-            });
+            }));
 #else
             connect_timeout_timer_.cancel();
             
@@ -766,7 +766,7 @@ void tcp_transport::do_connect(const boost::asio::ip::tcp::endpoint & ep)
             do_read();
 #endif // USE_TLS
         }
-    });
+    }));
 #if (defined __IPHONE_OS_VERSION_MAX_ALLOWED)
     set_voip();
 #endif // __IPHONE_OS_VERSION_MAX_ALLOWED
@@ -781,7 +781,7 @@ void tcp_transport::do_connect(
     m_state = state_connecting;
     
     boost::asio::async_connect(m_socket->lowest_layer(), endpoint_iterator,
-        [this, self](boost::system::error_code ec,
+        strand_.wrap([this, self](boost::system::error_code ec,
         boost::asio::ip::tcp::resolver::iterator)
     {
         if (ec)
@@ -803,7 +803,7 @@ void tcp_transport::do_connect(
         {
 #if (defined USE_TLS && USE_TLS)
             m_socket->async_handshake(boost::asio::ssl::stream_base::client,
-                [this, self](boost::system::error_code ec)
+                strand_.wrap([this, self](boost::system::error_code ec)
             {
                 if (ec)
                 {
@@ -841,7 +841,7 @@ void tcp_transport::do_connect(
                     
                     do_read();
                 }
-            });
+            }));
 #else
             connect_timeout_timer_.cancel();
             
@@ -862,7 +862,7 @@ void tcp_transport::do_connect(
             do_read();
 #endif // USE_TLS
         }
-    });
+    }));
 #if (defined __IPHONE_OS_VERSION_MAX_ALLOWED)
     set_voip();
 #endif // __IPHONE_OS_VERSION_MAX_ALLOWED
@@ -899,7 +899,8 @@ void tcp_transport::do_read()
         }
         
         m_socket->async_read_some(boost::asio::buffer(read_buffer_),
-            [this, self](boost::system::error_code ec, std::size_t len)
+            strand_.wrap([this, self](boost::system::error_code ec,
+            std::size_t len)
         {
             if (ec)
             {
@@ -927,12 +928,22 @@ void tcp_transport::do_read()
                  */
                 if (m_on_read)
                 {
-                    m_on_read(self, read_buffer_, len);
+                    try
+                    {
+                        m_on_read(self, read_buffer_, len);
+                    }
+                    catch (std::exception & e)
+                    {
+                        log_error(
+                            "TCP transport on_read callback failed, what = " <<
+                            e.what() << "."
+                        );
+                    }
                 }
                 
                 do_read();
             }
-        });
+        }));
     }
 }
 
@@ -967,7 +978,7 @@ void tcp_transport::do_write(const char * buf, const std::size_t & len)
         }
 
         boost::asio::async_write(*m_socket, boost::asio::buffer(buf, len),
-            [this, self](boost::system::error_code ec,
+            strand_.wrap([this, self](boost::system::error_code ec,
             std::size_t bytes_transferred)
         {
             if (ec)
@@ -1009,7 +1020,7 @@ void tcp_transport::do_write(const char * buf, const std::size_t & len)
                     );
                 }
             }
-        });
+        }));
     }
 }
 

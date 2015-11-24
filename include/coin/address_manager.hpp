@@ -513,7 +513,7 @@ namespace coin {
              * The address_info_t map.
              */
             std::map<std::uint32_t, address_info_t> address_info_map_;
-
+        
             /**
              * The protocol::network_address_t map.
              */
@@ -525,11 +525,6 @@ namespace coin {
              * The randomly ordered id's.
              */
             std::vector<std::uint32_t> random_ids_;
-        
-            /**
-             * The random_ids_ std::recursive_mutex.
-             */
-            mutable std::recursive_mutex mutex_random_ids_;
 
             /**
              * The last used id.
@@ -550,22 +545,12 @@ namespace coin {
              * The new buckets.
              */
             std::vector< std::set<std::uint32_t> > buckets_new_;
-        
-            /**
-             * The buckets_new_ std::recursive_mutex.
-             */
-            std::recursive_mutex mutex_buckets_new_;
-        
+
             /**
              * The tried buckets.
              */
             std::vector< std::vector<std::uint32_t> > buckets_tried_;
-        
-            /**
-             * The buckets_tried_ std::recursive_mutex.
-             */
-            std::recursive_mutex mutex_buckets_tried_;
-        
+
             /**
              * The probed endpoints.
              */
@@ -574,14 +559,14 @@ namespace coin {
             ;
         
             /**
-             * The recent_good_endpoints_ std::recursive_mutex.
-             */
-            mutable std::recursive_mutex mutex_recent_good_endpoints_;
-        
-            /**
              * The number of ticks that have occured.
              */
             std::size_t ticks_;
+        
+            /**
+             * The mutex.
+             */
+            mutable std::recursive_mutex mutex_;
     };
     
 } // namespace coin

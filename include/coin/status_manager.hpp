@@ -86,17 +86,12 @@ namespace coin {
             /**
              * The boost::asio::io_service.
              */
-            boost::asio::io_service io_service_;
+            boost::asio::io_service & io_service_;
         
             /**
              * The boost::asio::strand.
              */
-            boost::asio::strand strand_;
-        
-            /**
-             * The boost::asio::io_service::work.
-             */
-            std::shared_ptr<boost::asio::io_service::work> work_;
+            boost::asio::strand & strand_;
             
             /**
              * The stack_impl.
@@ -119,11 +114,6 @@ namespace coin {
              * The pairs.
              */
             std::vector< std::map<std::string, std::string> > pairs_;
-        
-            /**
-             * The std::thread.
-             */
-            std::thread thread_;
     };
 
 } // namespace coin

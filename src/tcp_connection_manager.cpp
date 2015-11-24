@@ -42,7 +42,7 @@ tcp_connection_manager::tcp_connection_manager(
     : m_time_last_inbound(0)
     , io_service_(ios)
     , resolver_(ios)
-    , strand_(ios)
+    , strand_(globals::instance().strand())
     , stack_impl_(owner)
     , timer_(ios)
 {
@@ -532,12 +532,12 @@ void tcp_connection_manager::tick(const boost::system::error_code & ec)
          */
         if (
             tcp_connections < (is_initial_block_download ?
-            minimum_tcp_connections() * 1.2 : minimum_tcp_connections())
+            minimum_tcp_connections() * 1.1 : minimum_tcp_connections())
             )
         {
             for (
                 auto i = 0; i < (is_initial_block_download ?
-                minimum_tcp_connections() * 1.2 : minimum_tcp_connections()) -
+                minimum_tcp_connections() * 1.1 : minimum_tcp_connections()) -
                 tcp_connections; i++
                 )
             {
@@ -783,11 +783,6 @@ bool tcp_connection_manager::is_ip_banned(const std::string & val)
      */
     static const std::map<std::string, std::int32_t> g_known_attack_ips =
     {
-        /**
-         * bbqpool.net - Opens TCP connections to all network nodes.
-         */
-        {"144.76.238.2", -1},
-        
         /**
          * ??? - Opens TCP connections to all network nodes.
          */
