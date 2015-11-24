@@ -88,8 +88,9 @@ void broadcast_operation::on_response(message & msg, const bool & done)
             broadcast_responses_++;
             
             log_debug(
-                "broadcast_responses_ = " << broadcast_responses_ <<
-                ", ep = " << msg.source_endpoint()
+                "Broadcast operation " << transaction_id() << " got" <<
+                " response from " << msg.source_endpoint() << ", total = " <<
+                broadcast_responses_ << "."
             );
 
             /**
