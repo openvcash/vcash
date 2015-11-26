@@ -2033,6 +2033,13 @@ bool block::accept_block(
     const std::shared_ptr<tcp_connection_manager> & connection_manager
     )
 {
+    if (globals::instance().state() != globals::state_started)
+    {
+        log_debug("Block, not accepting because state != state_started.");
+    
+        return false;
+    }
+    
     auto hash_block = get_hash();
  
     /**
