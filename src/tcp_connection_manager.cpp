@@ -132,7 +132,10 @@ void tcp_connection_manager::handle_accept(
     /**
      * Only peers accept incoming connections.
      */
-    if (globals::instance().operation_mode() == protocol::operation_mode_peer)
+    if (
+        globals::instance().state() == globals::state_started &&
+        globals::instance().operation_mode() == protocol::operation_mode_peer
+        )
     {
         /**
          * We allow this many incoming connections per same IP address.
@@ -378,68 +381,73 @@ const std::time_t & tcp_connection_manager::time_last_inbound() const
 
 bool tcp_connection_manager::connect(const boost::asio::ip::tcp::endpoint & ep)
 {
-    std::lock_guard<std::recursive_mutex> l1(mutex_tcp_connections_);
-    
-    if (network::instance().is_address_banned(ep.address().to_string()))
+    if (globals::instance().state() == globals::state_started)
     {
-        log_info(
-            "TCP connection manager tried to connect to a banned address " <<
-            ep << "."
-        );
+        std::lock_guard<std::recursive_mutex> l1(mutex_tcp_connections_);
         
-        return false;
-    }
-    else if (is_ip_banned(ep.address().to_string()))
-    {
-        log_debug(
-            "TCP connection manager tried to connect to a bad address " <<
-            ep << "."
-        );
-        
-        return false;
-    }
-    else if (m_tcp_connections.find(ep) == m_tcp_connections.end())
-    {
-        log_none("TCP connection manager is connecting to " << ep << ".");
-        
-        /**
-         * Inform the address_manager.
-         */
-        stack_impl_.get_address_manager()->on_connection_attempt(
-            protocol::network_address_t::from_endpoint(ep)
-        );
-        
-        /**
-         * Allocate tcp_transport.
-         */
-        auto transport = std::make_shared<tcp_transport>(io_service_, strand_);
-        
-        /**
-         * Allocate the tcp_connection.
-         */
-        auto connection = std::make_shared<tcp_connection> (
-            io_service_, stack_impl_, tcp_connection::direction_outgoing,
-            transport
-        );
-        
-        /**
-         * Retain the connection.
-         */
-        m_tcp_connections[ep] = connection;
-        
-        /**
-         * Start the tcp_connection.
-         */
-        connection->start(ep);
-        
-        return true;
-    }
-    else
-    {
-        log_none(
-            "TCP connection manager attempted connection to existing "
-            "endpoint = " << ep << "."
-        );
+        if (network::instance().is_address_banned(ep.address().to_string()))
+        {
+            log_info(
+                "TCP connection manager tried to connect to a banned "
+                "address " << ep << "."
+            );
+            
+            return false;
+        }
+        else if (is_ip_banned(ep.address().to_string()))
+        {
+            log_debug(
+                "TCP connection manager tried to connect to a bad address " <<
+                ep << "."
+            );
+            
+            return false;
+        }
+        else if (m_tcp_connections.find(ep) == m_tcp_connections.end())
+        {
+            log_none("TCP connection manager is connecting to " << ep << ".");
+            
+            /**
+             * Inform the address_manager.
+             */
+            stack_impl_.get_address_manager()->on_connection_attempt(
+                protocol::network_address_t::from_endpoint(ep)
+            );
+            
+            /**
+             * Allocate tcp_transport.
+             */
+            auto transport = std::make_shared<tcp_transport>(
+                io_service_, strand_
+            );
+            
+            /**
+             * Allocate the tcp_connection.
+             */
+            auto connection = std::make_shared<tcp_connection> (
+                io_service_, stack_impl_, tcp_connection::direction_outgoing,
+                transport
+            );
+            
+            /**
+             * Retain the connection.
+             */
+            m_tcp_connections[ep] = connection;
+            
+            /**
+             * Start the tcp_connection.
+             */
+            connection->start(ep);
+            
+            return true;
+        }
+        else
+        {
+            log_none(
+                "TCP connection manager attempted connection to existing "
+                "endpoint = " << ep << "."
+            );
+        }
     }
     
     return false;
