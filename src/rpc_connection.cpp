@@ -122,9 +122,9 @@ void rpc_connection::on_read(const char * buf, const std::size_t & len)
     /**
      * RPC requests are handled first come first serve (one at a time).
      */
-    static std::mutex g_mutex;
+    static std::recursive_mutex g_mutex;
     
-    std::lock_guard<std::mutex> l1(g_mutex);
+    std::lock_guard<std::recursive_mutex> l1(g_mutex);
     
     if (buffer_.size() > 0)
     {
