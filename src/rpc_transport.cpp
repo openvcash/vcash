@@ -129,6 +129,8 @@ void rpc_transport::start(
 
 void rpc_transport::start()
 {
+    auto self(shared_from_this());
+    
     m_state = state_connected;
         
     do_read();

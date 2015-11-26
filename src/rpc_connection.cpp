@@ -517,7 +517,6 @@ bool rpc_connection::handle_json_rpc_request(
 {
     if (globals::instance().state() == globals::state_started)
     {
-        
         log_debug(
             "RPC connection got JSON-RPC request, id = " << request.id <<
             ", method = " << request.method
