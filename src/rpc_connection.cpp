@@ -508,6 +508,13 @@ bool rpc_connection::handle_json_rpc_request(
     const json_rpc_request_t & request, json_rpc_response_t & response
     )
 {
+    /**
+     * RPC requests are handled first come first serve (one at a time).
+     */
+    static std::mutex g_mutex;
+    
+    std::lock_guard<std::mutex> l1(g_mutex);
+    
     log_debug(
         "RPC connection got JSON-RPC request, id = " << request.id <<
         ", method = " << request.method
