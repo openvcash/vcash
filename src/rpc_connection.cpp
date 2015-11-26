@@ -119,6 +119,13 @@ bool rpc_connection::is_transport_valid()
 
 void rpc_connection::on_read(const char * buf, const std::size_t & len)
 {
+    /**
+     * RPC requests are handled first come first serve (one at a time).
+     */
+    static std::mutex g_mutex;
+    
+    std::lock_guard<std::mutex> l1(g_mutex);
+    
     if (buffer_.size() > 0)
     {
         buffer_ += std::string(buf, len);
@@ -508,183 +515,182 @@ bool rpc_connection::handle_json_rpc_request(
     const json_rpc_request_t & request, json_rpc_response_t & response
     )
 {
-    /**
-     * RPC requests are handled first come first serve (one at a time).
-     */
-    static std::mutex g_mutex;
-    
-    std::lock_guard<std::mutex> l1(g_mutex);
-    
-    log_debug(
-        "RPC connection got JSON-RPC request, id = " << request.id <<
-        ", method = " << request.method
-    );
-
-    if (request.method == "checkwallet")
+    if (globals::instance().state() == globals::state_started)
     {
-        response = json_checkwallet(request);
-    }
-    else if (request.method == "databasefind")
-    {
-        response = json_databasefind(request);
-    }
-    else if (request.method == "databasestore")
-    {
-        response = json_databasestore(request);
-    }
-    else if (request.method == "dumpprivkey")
-    {
-        response = json_dumpprivkey(request);
-    }
-    else if (request.method == "dumpwallet")
-    {
-        response = json_dumpwallet(request);
-    }
-    else if (request.method == "encryptwallet")
-    {
-        response = json_encryptwallet(request);
-    }
-    else if (request.method == "getaccount")
-    {
-        response = json_getaccount(request);
-    }
-    else if (request.method == "getaccountaddress")
-    {
-        response = json_getaccountaddress(request);
-    }
-    else if (request.method == "backupwallet")
-    {
-        response = json_backupwallet(request);
-    }
-    else if (request.method == "getbalance")
-    {
-        response = json_getbalance(request);
-    }
-    else if (request.method == "getblock")
-    {
-        response = json_getblock(request);
-    }
-    else if (request.method == "getblockcount")
-    {
-        response = json_getblockcount(request);
-    }
-    else if (request.method == "getblockhash")
-    {
-        response = json_getblockhash(request);
-    }
-    else if (request.method == "getblocktemplate")
-    {
-        response = json_getblocktemplate(request);
-    }
-    else if (request.method == "getdifficulty")
-    {
-        response = json_getdifficulty(request);
-    }
-    else if (request.method == "getincentiveinfo")
-    {
-        response.result = json_getincentiveinfo();
-    }
-    else if (request.method == "getinfo")
-    {
-        response.result = json_getinfo();
-    }
-    else if (request.method == "listsinceblock")
-    {
-        response = json_listsinceblock(request);
-    }
-    else if (request.method == "getmininginfo")
-    {
-        response = json_getmininginfo(request);
-    }
-    else if (request.method == "getnetworkhashps")
-    {
-        response = json_getnetworkhashps(request);
-    }
-    else if (request.method == "getnewaddress")
-    {
-        response = json_getnewaddress(request);
-    }
-    else if (request.method == "getpeerinfo")
-    {
-        response = json_getpeerinfo(request);
-    }
-    else if (request.method == "getrawtransaction")
-    {
-        response = json_getrawtransaction(request);
-    }
-    else if (request.method == "gettransaction")
-    {
-        response = json_gettransaction(request);
-    }
-    else if (request.method == "settxfee")
-    {
-        response = json_settxfee(request);
-    }
-    else if (request.method == "importprivkey")
-    {
-        response = json_importprivkey(request);
-    }
-    else if (request.method == "listtransactions")
-    {
-        response = json_listtransactions(request);
-    }
-    else if (request.method == "listreceivedbyaddress")
-    {
-        response = json_listreceivedbyaddress(request);
-    }
-    else if (request.method == "listreceivedbyaccount")
-    {
-        response = json_listreceivedbyaccount(request);
-    }
-    else if (request.method == "repairwallet")
-    {
-        response = json_repairwallet(request);
-    }
-    else if (request.method == "submitblock")
-    {
-        response = json_submitblock(request);
-    }
-    else if (request.method == "sendmany")
-    {
-        response = json_sendmany(request);
-    }
-    else if (request.method == "sendtoaddress")
-    {
-        response = json_sendtoaddress(request);
-    }
-    else if (request.method == "walletdenominate")
-    {
-        response = json_walletdenominate(request);
-    }
-    else if (request.method == "walletpassphrase")
-    {
-        response = json_walletpassphrase(request);
-    }
-    else if (request.method == "walletlock")
-    {
-        response = json_walletlock(request);
-    }
-    else if (request.method == "walletpassphrasechange")
-    {
-        response = json_walletpassphrasechange(request);
-    }
-    else if (request.method == "validateaddress")
-    {
-        response = json_validateaddress(request);
-    }
-    else
-    {
-        response.error = create_error_object(
-            error_code_method_not_found, "method not found"
+        
+        log_debug(
+            "RPC connection got JSON-RPC request, id = " << request.id <<
+            ", method = " << request.method
         );
+
+        if (request.method == "checkwallet")
+        {
+            response = json_checkwallet(request);
+        }
+        else if (request.method == "databasefind")
+        {
+            response = json_databasefind(request);
+        }
+        else if (request.method == "databasestore")
+        {
+            response = json_databasestore(request);
+        }
+        else if (request.method == "dumpprivkey")
+        {
+            response = json_dumpprivkey(request);
+        }
+        else if (request.method == "dumpwallet")
+        {
+            response = json_dumpwallet(request);
+        }
+        else if (request.method == "encryptwallet")
+        {
+            response = json_encryptwallet(request);
+        }
+        else if (request.method == "getaccount")
+        {
+            response = json_getaccount(request);
+        }
+        else if (request.method == "getaccountaddress")
+        {
+            response = json_getaccountaddress(request);
+        }
+        else if (request.method == "backupwallet")
+        {
+            response = json_backupwallet(request);
+        }
+        else if (request.method == "getbalance")
+        {
+            response = json_getbalance(request);
+        }
+        else if (request.method == "getblock")
+        {
+            response = json_getblock(request);
+        }
+        else if (request.method == "getblockcount")
+        {
+            response = json_getblockcount(request);
+        }
+        else if (request.method == "getblockhash")
+        {
+            response = json_getblockhash(request);
+        }
+        else if (request.method == "getblocktemplate")
+        {
+            response = json_getblocktemplate(request);
+        }
+        else if (request.method == "getdifficulty")
+        {
+            response = json_getdifficulty(request);
+        }
+        else if (request.method == "getincentiveinfo")
+        {
+            response.result = json_getincentiveinfo();
+        }
+        else if (request.method == "getinfo")
+        {
+            response.result = json_getinfo();
+        }
+        else if (request.method == "listsinceblock")
+        {
+            response = json_listsinceblock(request);
+        }
+        else if (request.method == "getmininginfo")
+        {
+            response = json_getmininginfo(request);
+        }
+        else if (request.method == "getnetworkhashps")
+        {
+            response = json_getnetworkhashps(request);
+        }
+        else if (request.method == "getnewaddress")
+        {
+            response = json_getnewaddress(request);
+        }
+        else if (request.method == "getpeerinfo")
+        {
+            response = json_getpeerinfo(request);
+        }
+        else if (request.method == "getrawtransaction")
+        {
+            response = json_getrawtransaction(request);
+        }
+        else if (request.method == "gettransaction")
+        {
+            response = json_gettransaction(request);
+        }
+        else if (request.method == "settxfee")
+        {
+            response = json_settxfee(request);
+        }
+        else if (request.method == "importprivkey")
+        {
+            response = json_importprivkey(request);
+        }
+        else if (request.method == "listtransactions")
+        {
+            response = json_listtransactions(request);
+        }
+        else if (request.method == "listreceivedbyaddress")
+        {
+            response = json_listreceivedbyaddress(request);
+        }
+        else if (request.method == "listreceivedbyaccount")
+        {
+            response = json_listreceivedbyaccount(request);
+        }
+        else if (request.method == "repairwallet")
+        {
+            response = json_repairwallet(request);
+        }
+        else if (request.method == "submitblock")
+        {
+            response = json_submitblock(request);
+        }
+        else if (request.method == "sendmany")
+        {
+            response = json_sendmany(request);
+        }
+        else if (request.method == "sendtoaddress")
+        {
+            response = json_sendtoaddress(request);
+        }
+        else if (request.method == "walletdenominate")
+        {
+            response = json_walletdenominate(request);
+        }
+        else if (request.method == "walletpassphrase")
+        {
+            response = json_walletpassphrase(request);
+        }
+        else if (request.method == "walletlock")
+        {
+            response = json_walletlock(request);
+        }
+        else if (request.method == "walletpassphrasechange")
+        {
+            response = json_walletpassphrasechange(request);
+        }
+        else if (request.method == "validateaddress")
+        {
+            response = json_validateaddress(request);
+        }
+        else
+        {
+            response.error = create_error_object(
+                error_code_method_not_found, "method not found"
+            );
+        }
+        
+        /**
+         * Set the id from the request.
+         */
+        response.id = request.id;
+        
+        return true;
     }
     
-    /**
-     * Set the id from the request.
-     */
-    response.id = request.id;
-    
-    return true;
+    return false;
 }
 
 bool rpc_connection::send_json_rpc_response(
