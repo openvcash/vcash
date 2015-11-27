@@ -3178,53 +3178,61 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getpeerinfo(
             stack_impl_.get_tcp_connection_manager()->tcp_connections()
         ;
         
-        for (auto & i : tcp_connections)
+        if (tcp_connections.size() > 0)
         {
-            if (auto j = i.second.lock())
+            for (auto & i : tcp_connections)
             {
-                if (auto k = j->get_tcp_transport().lock())
+                if (auto j = i.second.lock())
                 {
-                    try
+                    if (auto k = j->get_tcp_transport().lock())
                     {
-                        boost::property_tree::ptree pt_child;
-                        
-                        pt_child.put(
-                            "addr", k->socket().remote_endpoint().address(
-                            ).to_string() + ":" + std::to_string(
-                            j->protocol_version_addr_src().port),
-                            rpc_json_parser::translator<std::string> ()
-                        );
-                        pt_child.put(
-                            "services", j->protocol_version_services()
-                        );
-                        pt_child.put("lastsend", k->time_last_write());
-                        pt_child.put("lastrecv", k->time_last_read());
-                        pt_child.put(
-                            "conntime", j->protocol_version_timestamp()
-                        );
-                        pt_child.put("version", j->protocol_version());
-                        pt_child.put(
-                            "subver", j->protocol_version_user_agent(),
-                            rpc_json_parser::translator<std::string> ()
-                        );
-                        pt_child.put(
-                            "inbound",
-                            j->direction() == tcp_connection::direction_incoming
-                        );
-                        pt_child.put("releasetime", -1);
-                        pt_child.put(
-                            "startingheight", j->protocol_version_start_height()
-                        );
-                        pt_child.put("banscore", j->dos_score());
+                        try
+                        {
+                            boost::property_tree::ptree pt_child;
+                            
+                            pt_child.put(
+                                "addr", k->socket().remote_endpoint().address(
+                                ).to_string() + ":" + std::to_string(
+                                j->protocol_version_addr_src().port),
+                                rpc_json_parser::translator<std::string> ()
+                            );
+                            pt_child.put(
+                                "services", j->protocol_version_services()
+                            );
+                            pt_child.put("lastsend", k->time_last_write());
+                            pt_child.put("lastrecv", k->time_last_read());
+                            pt_child.put(
+                                "conntime", j->protocol_version_timestamp()
+                            );
+                            pt_child.put("version", j->protocol_version());
+                            pt_child.put(
+                                "subver", j->protocol_version_user_agent(),
+                                rpc_json_parser::translator<std::string> ()
+                            );
+                            pt_child.put(
+                                "inbound",
+                                j->direction() == tcp_connection::direction_incoming
+                            );
+                            pt_child.put("releasetime", -1);
+                            pt_child.put(
+                                "startingheight",
+                                j->protocol_version_start_height()
+                            );
+                            pt_child.put("banscore", j->dos_score());
 
-                        ret.result.push_back(std::make_pair("", pt_child));
-                    }
-                    catch (...)
-                    {
-                        // ...
+                            ret.result.push_back(std::make_pair("", pt_child));
+                        }
+                        catch (...)
+                        {
+                            // ...
+                        }
                     }
                 }
             }
+        }
+        else
+        {
+            ret.result.put("", "null");
         }
     }
     catch (std::exception & e)
