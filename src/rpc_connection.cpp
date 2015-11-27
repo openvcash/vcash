@@ -602,6 +602,10 @@ bool rpc_connection::handle_json_rpc_request(
         {
             response = json_getnetworkhashps(request);
         }
+        else if (request.method == "getnetworkinfo")
+        {
+            response = json_getnetworkinfo(request);
+        }
         else if (request.method == "getnewaddress")
         {
             response = json_getnewaddress(request);
@@ -3048,6 +3052,120 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getnetworkhashps(
     try
     {
         ret.result.put("", stack_impl_.network_hash_per_second());
+    }
+    catch (std::exception & e)
+    {
+        auto pt_error = create_error_object(
+            error_code_internal_error, e.what()
+        );
+        
+        /**
+         * error_code_internal_error
+         */
+        return json_rpc_response_t{
+            boost::property_tree::ptree(), pt_error, request.id
+        };
+    }
+    
+    return ret;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_getnetworkinfo(
+    const json_rpc_request_t & request
+    )
+{
+    json_rpc_response_t ret;
+    
+    /**
+     * Set the id from the request.
+     */
+    ret.id = request.id;
+    
+    try
+    {
+        std::vector<std::string> routing_table;
+        
+#if (defined USE_DATABASE_STACK && USE_DATABASE_STACK)
+        auto snodes = stack_impl_.get_database_stack()->endpoints();
+        
+        ret.result.put("udp.connections", snodes.size());
+        
+        for (auto & i : snodes)
+        {
+            routing_table.push_back(
+                i.first + ":" + std::to_string(i.second)
+            );
+        }
+#else
+        ret.result.put("udp.connections", 0);
+#endif // USE_DATABASE_STACK
+        auto eps = stack_impl_.get_address_manager()->recent_good_endpoints();
+        
+        for (auto & i : eps)
+        {
+            routing_table.push_back(
+                i.addr.ipv4_mapped_address().to_string() + ":" +
+                std::to_string(i.addr.port)
+            );
+        }
+    
+        try
+        {
+            if (routing_table.size() > 0)
+            {
+                /**
+                 * Remove duplicates.
+                 */
+                std::sort(routing_table.begin(), routing_table.end());
+                routing_table.erase(
+                    std::unique(routing_table.begin(), routing_table.end()),
+                    routing_table.end()
+                );
+            
+                boost::property_tree::ptree pt_children;
+                
+                for (auto & i : routing_table)
+                {
+                    boost::property_tree::ptree pt_child;
+                    
+                    pt_child.put(
+                        "", i, rpc_json_parser::translator<std::string> ()
+                    );
+
+                    pt_children.push_back(std::make_pair("", pt_child));
+                }
+                
+                ret.result.put_child("endpoints", pt_children);
+            }
+            else
+            {
+                ret.result.put("endpoints", "null");
+            }
+        
+            ret.result.put(
+                "tcp.connections",
+                stack_impl_.get_tcp_connection_manager(
+                )->active_tcp_connections()
+            );
+            ret.result.put(
+                "tcp.ip", globals::instance().address_public().to_string(),
+                rpc_json_parser::translator<std::string> ()
+            );
+            ret.result.put(
+                "tcp.port", stack_impl_.get_configuration().network_port_tcp()
+            );
+            ret.result.put(
+                "udp.ip", globals::instance().address_public().to_string(),
+                rpc_json_parser::translator<std::string> ()
+            );
+            ret.result.put(
+                "udp.port", stack_impl_.get_configuration().network_port_tcp()
+            );
+        }
+        catch (...)
+        {
+            // ...
+        }
     }
     catch (std::exception & e)
     {
