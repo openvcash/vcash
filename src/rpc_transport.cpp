@@ -272,7 +272,7 @@ void rpc_transport::do_connect(const boost::asio::ip::tcp::endpoint & ep)
     m_state = state_connecting;
 
     m_socket->lowest_layer().async_connect(ep,
-        [this, self](boost::system::error_code ec)
+        strand_.wrap([this, self](boost::system::error_code ec)
     {
         if (ec)
         {
@@ -306,7 +306,7 @@ void rpc_transport::do_connect(const boost::asio::ip::tcp::endpoint & ep)
             
             do_read();
         }
-    });
+    }));
 #if (defined __IPHONE_OS_VERSION_MAX_ALLOWED)
     set_voip();
 #endif // __IPHONE_OS_VERSION_MAX_ALLOWED
@@ -321,7 +321,7 @@ void rpc_transport::do_connect(
     m_state = state_connecting;
     
     boost::asio::async_connect(m_socket->lowest_layer(), endpoint_iterator,
-        [this, self](boost::system::error_code ec,
+        strand_.wrap([this, self](boost::system::error_code ec,
         boost::asio::ip::tcp::resolver::iterator)
     {
         if (ec)
@@ -359,7 +359,7 @@ void rpc_transport::do_connect(
             
             do_read();
         }
-    });
+    }));
 #if (defined __IPHONE_OS_VERSION_MAX_ALLOWED)
     set_voip();
 #endif // __IPHONE_OS_VERSION_MAX_ALLOWED
@@ -396,7 +396,8 @@ void rpc_transport::do_read()
         }
         
         m_socket->async_read_some(boost::asio::buffer(read_buffer_),
-            [this, self](boost::system::error_code ec, std::size_t len)
+            strand_.wrap([this, self](boost::system::error_code ec,
+            std::size_t len)
         {
             if (ec)
             {
@@ -424,7 +425,7 @@ void rpc_transport::do_read()
                 
                 do_read();
             }
-        });
+        }));
     }
 }
 
@@ -459,7 +460,7 @@ void rpc_transport::do_write(const char * buf, const std::size_t & len)
         }
 
         boost::asio::async_write(*m_socket, boost::asio::buffer(buf, len),
-            [this, self](boost::system::error_code ec,
+            strand_.wrap([this, self](boost::system::error_code ec,
             std::size_t bytes_transferred)
         {
             if (ec)
@@ -496,7 +497,7 @@ void rpc_transport::do_write(const char * buf, const std::size_t & len)
                     );
                 }
             }
-        });
+        }));
     }
 }
 
