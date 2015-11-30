@@ -1480,17 +1480,17 @@ void address_manager::tick(const boost::system::error_code & ec)
             /**
              * Only keep recent good endpoints that are less than N hours old.
              */
-            auto it = m_recent_good_endpoints.begin();
+            auto it1 = m_recent_good_endpoints.begin();
             
-            while (it != m_recent_good_endpoints.end())
+            while (it1 != m_recent_good_endpoints.end())
             {
-                if (std::time(0) - it->second.time > (3 * 60 * 60))
+                if (std::time(0) - it1->second.time > (3 * 60 * 60))
                 {
-                    it = m_recent_good_endpoints.erase(it);
+                    it1 = m_recent_good_endpoints.erase(it1);
                 }
                 else
                 {
-                    ++it;
+                    ++it1;
                 }
             }
             
@@ -1503,7 +1503,8 @@ void address_manager::tick(const boost::system::error_code & ec)
                 ss <<
                     "\t" << ++index << ". " << i.first.ipv4_mapped_address() <<
                     ":" << i.first.port << ":" <<
-                    (std::time(0) + 300) - i.second.time <<
+                    ((std::time(0) - i.second.time) < 0 ? 0 :
+                    (std::time(0) - i.second.time)) <<
                     ":" << i.second.protocol_version << ":" <<
                     i.second.protocol_version_user_agent << ":" <<
                     i.second.protocol_version_services << ":" <<
@@ -1513,16 +1514,56 @@ void address_manager::tick(const boost::system::error_code & ec)
             
             log_debug("Address manager recent good endpoints:\n" << ss.str());
             
+            /**
+             * If we have not been able to probe an endpoint after N hours
+             * erase it.
+             */
+            auto it2 = probed_endpoints_.begin();
+            
+            while (it2 != probed_endpoints_.end())
+            {
+                if (std::time(0) - it2->second > (3 * 60 * 60))
+                {
+                    it2 = probed_endpoints_.erase(it2);
+                }
+                else
+                {
+                    ++it2;
+                }
+            }
+            
+            /**
+             * If 30 minutes has elapsed the the node needs probing.
+             */
             std::vector<boost::asio::ip::tcp::endpoint> endpoints;
             
             auto eps = stack_impl_.get_database_stack()->endpoints();
 
             for (auto & i : eps)
             {
-                endpoints.push_back(
-                    boost::asio::ip::tcp::endpoint(
-                    boost::asio::ip::address::from_string(i.first), i.second)
-                );
+                try
+                {
+                    boost::asio::ip::tcp::endpoint ep(
+                        boost::asio::ip::address::from_string(i.first),
+                        i.second
+                    );
+                    
+                    if (probed_endpoints_.count(ep) > 0)
+                    {
+                        if (std::time(0) - probed_endpoints_[ep] > (30 * 60))
+                        {
+                            endpoints.push_back(ep);
+                        }
+                    }
+                    else
+                    {
+                        endpoints.push_back(ep);
+                    }
+                }
+                catch (...)
+                {
+                    // ...
+                }
             }
 
             std::random_shuffle(endpoints.begin(), endpoints.end());
@@ -1534,14 +1575,25 @@ void address_manager::tick(const boost::system::error_code & ec)
                 endpoints.resize(max_probes_new);
             }
 
-            auto addrs = get_addr(12);
+            auto addrs = get_addr(8);
             
             for (auto & i : addrs)
             {
-                endpoints.push_back(
-                    boost::asio::ip::tcp::endpoint(
-                    i.ipv4_mapped_address(), i.port)
+                boost::asio::ip::tcp::endpoint ep(
+                    i.ipv4_mapped_address(), i.port
                 );
+                
+                if (probed_endpoints_.count(ep) > 0)
+                {
+                    if (std::time(0) - probed_endpoints_[ep] > (30 * 60))
+                    {
+                        endpoints.push_back(ep);
+                    }
+                }
+                else
+                {
+                    endpoints.push_back(ep);
+                }
             }
 
             std::sort(endpoints.begin(), endpoints.end());
@@ -1552,24 +1604,27 @@ void address_manager::tick(const boost::system::error_code & ec)
             
             std::random_shuffle(endpoints.begin(), endpoints.end());
 
-            enum { max_probes_total = 24 };
+            enum { max_probes_total = 64 };
             
             if (endpoints.size() > max_probes_total)
             {
                 endpoints.resize(max_probes_total);
             }
-            
+
             /**
-             * Always probe the recent good endpoints.
+             * Always probe (some of) the recent good endpoints.
              */
             for (auto & i : m_recent_good_endpoints)
             {
-                endpoints.push_back(
-                    boost::asio::ip::tcp::endpoint(
-                    i.first.ipv4_mapped_address(), i.first.port)
-                );
+                if (std::time(0) - i.second.time > (30 * 60))
+                {
+                    endpoints.push_back(
+                        boost::asio::ip::tcp::endpoint(
+                        i.first.ipv4_mapped_address(), i.first.port)
+                    );
+                }
             }
-            
+
             std::sort(endpoints.begin(), endpoints.end());
             endpoints.erase(
                 std::unique(endpoints.begin(), endpoints.end()),
@@ -1577,6 +1632,11 @@ void address_manager::tick(const boost::system::error_code & ec)
             );
             
             std::random_shuffle(endpoints.begin(), endpoints.end());
+            
+            if (endpoints.size() > max_probes_total)
+            {
+                endpoints.resize(max_probes_total);
+            }
             
             auto probed = 0;
             
@@ -1611,14 +1671,16 @@ void address_manager::tick(const boost::system::error_code & ec)
                     }
                 }
                 
-                if (probed_endpoints_.size() > 2048)
-                {
-                    probed_endpoints_.clear();
-                }
-                
                 if (should_probe)
                 {
-                    log_debug("Address manager is probing " << i << ".");
+                    if (probed_endpoints_.count(i) > 0)
+                    {
+                        log_debug(
+                            "Address manager is probing " << i <<
+                            ", last = " << std::time(0) -
+                            probed_endpoints_[i] << " seconds."
+                        );
+                    }
                     
                     /**
                      * Increment the number we've probed so far.
@@ -1646,16 +1708,16 @@ void address_manager::tick(const boost::system::error_code & ec)
                         protocol::network_address_t::from_endpoint(i),
                         std::time(0) - (20 * 60)
                     );
-            
-                    /**
-                     * Retain the time the endpoint was probed.
-                     */
-                    probed_endpoints_[i] = std::time(0);
                     
                     /**
                      * Set that this is a probe only connection.
                      */
                     connection->set_probe_only(true);
+                    
+                    /**
+                     * Retain the time the endpoint was probed.
+                     */
+                    probed_endpoints_[i] = std::time(0);
                     
                     /**
                      * Set the probe callback.
@@ -1833,7 +1895,7 @@ void address_manager::tick(const boost::system::error_code & ec)
                 {
                     interval =
                         m_recent_good_endpoints.size() < min_good_endpoints ?
-                        (5 * 60) : (8 * 60)
+                        (4 * 60) : (8 * 60)
                     ;
                 }
             }
@@ -1843,14 +1905,14 @@ void address_manager::tick(const boost::system::error_code & ec)
                 {
                     interval =
                         m_recent_good_endpoints.size() < min_good_endpoints ?
-                        8 : (5 * 60)
+                        8 : (8 * 60)
                     ;
                 }
                 else
                 {
                     interval =
                         m_recent_good_endpoints.size() < min_good_endpoints ?
-                        (10 * 60) : (12 * 60)
+                        (8 * 60) : (16 * 60)
                     ;
                 }
             }
