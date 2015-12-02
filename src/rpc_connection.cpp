@@ -1329,7 +1329,23 @@ rpc_connection::json_rpc_response_t rpc_connection::json_dumpprivkey(
                 };
             }
             
-            if (globals::instance().wallet_unlocked_mint_only())
+            /**
+             * Make sure the wallet is unlocked.
+             */
+            if (globals::instance().wallet_main()->is_locked())
+            {
+                auto pt_error = create_error_object(
+                    error_code_wallet_unlock_needed, "wallet is locked"
+                );
+                
+                /**
+                 * error_code_wallet_unlock_needed
+                 */
+                return json_rpc_response_t{
+                    boost::property_tree::ptree(), pt_error, request.id
+                };
+            }
+            else if (globals::instance().wallet_unlocked_mint_only())
             {
                 auto pt_error = create_error_object(
                     error_code_wallet_unlock_needed,
@@ -1430,7 +1446,23 @@ rpc_connection::json_rpc_response_t rpc_connection::json_dumpwallet(
     
     try
     {
-        if (globals::instance().wallet_unlocked_mint_only())
+        /**
+         * Make sure the wallet is unlocked.
+         */
+        if (globals::instance().wallet_main()->is_locked())
+        {
+            auto pt_error = create_error_object(
+                error_code_wallet_unlock_needed, "wallet is locked"
+            );
+            
+            /**
+             * error_code_wallet_unlock_needed
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
+        }
+        else if (globals::instance().wallet_unlocked_mint_only())
         {
             auto pt_error = create_error_object(
                 error_code_wallet_unlock_needed,
@@ -1451,14 +1483,14 @@ rpc_connection::json_rpc_response_t rpc_connection::json_dumpwallet(
         auto reserve_keys = globals::instance().wallet_main()->reserve_keys();
 
         /**
-         * Format: key, address, type
+         * Format: key,address,type
          */
         std::ofstream ofs(filesystem::data_path() + "wallet.csv");
         
         /**
          * Columns
          */
-        ofs << "Key, Address, Type" << std::endl;
+        ofs << "Key,Address,Type\r\n";
         
         if (globals::instance().wallet_main()->is_crypted() == true)
         {
@@ -1486,25 +1518,25 @@ rpc_connection::json_rpc_response_t rpc_connection::json_dumpwallet(
                         )
                     {
                         ofs <<
-                            secret(s, k.is_compressed()).to_string() << ", " <<
-                            address(key_id).to_string() << ", label" <<
-                            std::endl
+                            secret(s, k.is_compressed()).to_string() << "," <<
+                            address(key_id).to_string() << ",label" <<
+                            "\r\n"
                         ;
                     }
                     else if (reserve_keys.count(key_id) > 0)
                     {
                         ofs <<
-                            secret(s, k.is_compressed()).to_string() << ", " <<
-                            address(key_id).to_string() << ", reserve" <<
-                            std::endl
+                            secret(s, k.is_compressed()).to_string() << "," <<
+                            address(key_id).to_string() << ",reserve" <<
+                            "\r\n"
                         ;
                     }
                     else
                     {
                         ofs <<
-                            secret(s, k.is_compressed()).to_string() << ", " <<
-                            address(key_id).to_string() << ", change" <<
-                            std::endl
+                            secret(s, k.is_compressed()).to_string() << "," <<
+                            address(key_id).to_string() << ",change" <<
+                            "\r\n"
                         ;
                     }
                 }
@@ -1536,25 +1568,25 @@ rpc_connection::json_rpc_response_t rpc_connection::json_dumpwallet(
                         )
                     {
                         ofs <<
-                            secret(s, k.is_compressed()).to_string() << ", " <<
-                            address(key_id).to_string() << ", label" <<
-                            std::endl
+                            secret(s, k.is_compressed()).to_string() << "," <<
+                            address(key_id).to_string() << ",label" <<
+                            "\r\n"
                         ;
                     }
                     else if (reserve_keys.count(key_id) > 0)
                     {
                         ofs <<
-                            secret(s, k.is_compressed()).to_string() << ", " <<
-                            address(key_id).to_string() << ", reserve" <<
-                            std::endl
+                            secret(s, k.is_compressed()).to_string() << "," <<
+                            address(key_id).to_string() << ",reserve" <<
+                            "\r\n"
                         ;
                     }
                     else
                     {
                         ofs <<
-                            secret(s, k.is_compressed()).to_string() << ", " <<
-                            address(key_id).to_string() << ", change" <<
-                            std::endl
+                            secret(s, k.is_compressed()).to_string() << "," <<
+                            address(key_id).to_string() << ",change" <<
+                            "\r\n"
                         ;
                     }
                 }
