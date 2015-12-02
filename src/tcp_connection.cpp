@@ -3178,8 +3178,20 @@ bool tcp_connection::handle_message(message & msg)
                     if (hash_not_found)
                     {
                         log_info(
-                            "TCP connection got ZeroTime (hash not found)"
+                            "TCP connection got ZeroTime lock (hash not found)"
                             ", dropping " <<
+                            ztlock->hash_tx().to_string().substr(0, 8) << "."
+                        );
+                    }
+                    else if (
+                        transaction_pool::instance().transactions()[
+                        ztlock->hash_tx()].time() >
+                        time::instance().get_adjusted()
+                        )
+                    {
+                        log_info(
+                            "TCP connection got ZeroTime lock (arrived in "
+                            "a flying delorean), dropping " <<
                             ztlock->hash_tx().to_string().substr(0, 8) << "."
                         );
                     }
