@@ -794,7 +794,7 @@ bool transaction::fetch_inputs(
                 previous_out.get_hash()) == false
                 )
             {
-                log_error(
+                log_debug(
                     "Transaction failed to fetch inputs, " <<
                     get_hash().to_string().substr(0, 10) <<
                     " pool previous transaction not found " <<
@@ -1406,9 +1406,7 @@ bool transaction::check()
         log_error(
             "Transaction check failed, tx in is empty:\n" << to_string()
         );
-        
-        throw std::runtime_error("tx in empty");
-        
+
         return false;
     }
     
@@ -1417,12 +1415,10 @@ bool transaction::check()
         log_error(
             "Transaction check failed, tx out is empty:\n" << to_string()
         );
-        
-        throw std::runtime_error("tx out empty");
-        
+
         return false;
     }
-    
+
     /**
      * Clear
      */
@@ -1438,10 +1434,19 @@ bool transaction::check()
      */
     if (size() > constants::max_block_size)
     {
-        throw std::runtime_error("size limits failed");
+        log_error(
+            "Transaction check failed, size limits failed:\n" <<
+            to_string()
+        );
         
         return false;
     }
+
+    /**
+     * Clear
+     * @note Added 12/6/2015
+     */
+    clear();
     
     /**
      * The value out.
@@ -1455,22 +1460,31 @@ bool transaction::check()
     {
         if (i.is_empty() && is_coin_base() == false && is_coin_stake() == false)
         {
-            throw std::runtime_error("tx out empty for user transaction");
+            log_error(
+                "Transaction check failed, tx out empty for user "
+                "transaction:\n" << to_string()
+            );
         
             return false;
         }
         
         if (i.value() < 0)
         {
-            throw std::runtime_error("tx out value is negative");
+            log_error(
+                "Transaction check failed, tx out value is negative:\n" <<
+                to_string()
+            );
         
             return false;
         }
         
         if (i.value() > constants::max_money_supply)
         {
-            throw std::runtime_error("tx out value is too high");
-        
+            log_error(
+                "Transaction check failed, tx out value is too high:\n" <<
+                to_string()
+            );
+            
             return false;
         }
         
@@ -1478,8 +1492,11 @@ bool transaction::check()
         
         if (utility::money_range(value_out) == false)
         {
-            throw std::runtime_error("tx out total out of range");
-        
+            log_error(
+                "Transaction check failed, tx out total out of range:\n" <<
+                to_string()
+            );
+            
             return false;
         }
     }
@@ -1506,8 +1523,11 @@ bool transaction::check()
             m_transactions_in[0].script_signature().size() > 100
             )
         {
-            throw std::runtime_error("coinbase script size");
-        
+            log_error(
+                "Transaction check failed, coinbase script size:\n" <<
+                to_string()
+            );
+            
             return false;
         }
     }
@@ -1517,7 +1537,10 @@ bool transaction::check()
         {
             if (i.previous_out().is_null())
             {
-                throw std::runtime_error("prev_out is null");
+                log_error(
+                    "Transaction check failed, prev_out is null:\n" <<
+                    to_string()
+                );
             
                 return false;
             }
