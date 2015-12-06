@@ -1444,7 +1444,7 @@ bool transaction::check()
 
     /**
      * Clear
-     * @note Added 12/6/2015
+     * @note :JC: Added 12/6/2015
      */
     clear();
     
