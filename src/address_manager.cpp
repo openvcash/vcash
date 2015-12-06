@@ -1905,14 +1905,14 @@ void address_manager::tick(const boost::system::error_code & ec)
                 {
                     interval =
                         m_recent_good_endpoints.size() < min_good_endpoints ?
-                        8 : (8 * 60)
+                        8 : (10 * 60)
                     ;
                 }
                 else
                 {
                     interval =
                         m_recent_good_endpoints.size() < min_good_endpoints ?
-                        (8 * 60) : (16 * 60)
+                        (8 * 60) : (20 * 60)
                     ;
                 }
             }
