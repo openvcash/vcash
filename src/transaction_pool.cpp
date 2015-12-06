@@ -283,22 +283,32 @@ std::pair<bool, std::string> transaction_pool::accept(
         auto fees = tx.get_value_in(inputs) - tx.get_value_out();
         
         /**
+         * Allocate a buffer to contain the encoded transaction.
+         */
+        data_buffer buffer;
+        
+        /**
          * Clear the transaction's buffer.
          */
         tx.clear();
-        
+    
         /**
-         * Encode the transaction to get the size.
+         * Encode the transaction into the buffer.
          */
-        tx.encode();
+        tx.encode(buffer);
+    
+        /**
+         * Get the transaction size.
+         */
+        auto tx_size = buffer.size();
 
         /**
          * Don't accept it if it can't get into a block.
          */
         auto tx_min_fee = tx.get_minimum_fee(
-            1000, false, types::get_minimum_fee_mode_relay, tx.size()
+            1000, false, types::get_minimum_fee_mode_relay, tx_size
         );
-        
+
         if (fees < tx_min_fee)
         {
             log_error(
@@ -352,10 +362,10 @@ std::pair<bool, std::string> transaction_pool::accept(
             
             log_debug(
                 "Transaction pool rate limit free count = " <<
-                g_free_count << " => " << g_free_count + tx.size() << "."
+                g_free_count << " => " << g_free_count + tx_size << "."
             );
 
-            g_free_count += tx.size();
+            g_free_count += tx_size;
         }
         
         /**
@@ -415,8 +425,6 @@ std::pair<bool, std::string> transaction_pool::acceptable(transaction & tx)
      */
     if (tx.check() == false)
     {
-        throw std::runtime_error("check transaction failed");
-    
         return std::make_pair(false, "check transaction failed");
     }
     
@@ -425,8 +433,6 @@ std::pair<bool, std::string> transaction_pool::acceptable(transaction & tx)
      */
     if (tx.is_coin_base())
     {
-        throw std::runtime_error("coin base as individual transaction");
-    
         return std::make_pair(false, "coin base as individual transaction");
     }
     
@@ -435,8 +441,6 @@ std::pair<bool, std::string> transaction_pool::acceptable(transaction & tx)
      */
     if (tx.is_coin_stake())
     {
-        throw std::runtime_error("coin stake as individual transaction");
-    
         return std::make_pair(false, "coin stake as individual transaction");
     }
     
