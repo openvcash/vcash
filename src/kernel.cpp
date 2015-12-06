@@ -552,16 +552,36 @@ bool kernel::check_proof_of_stake(
         tx_index) == false
         )
     {
-        log_debug(
-            "Kernel, check proof of stake failed, read tx previous failed."
-        );
-        
-        /**
-         * Set the Denial-of-Service score for the connection.
-         */
-        if (connection)
+        if (utility::is_initial_block_download() == true)
         {
-            connection->set_dos_score(connection->dos_score() + 1);
+            log_debug(
+                "Kernel, check proof of stake failed, read tx previous failed "
+                "(normal during initial download)."
+            );
+            
+            /**
+             * Set the Denial-of-Service score for the connection.
+             */
+            if (connection)
+            {
+                connection->set_dos_score(
+                    connection->dos_score() + (std::rand() % 2 == 1)
+                );
+            }
+        }
+        else
+        {
+            log_debug(
+                "Kernel, check proof of stake failed, read tx previous failed."
+            );
+            
+            /**
+             * Set the Denial-of-Service score for the connection.
+             */
+            if (connection)
+            {
+                connection->set_dos_score(connection->dos_score() + 1);
+            }
         }
         
         /**
@@ -612,7 +632,7 @@ bool kernel::check_proof_of_stake(
         return false;
     }
     
-    bool print_pos = false;
+    auto print_pos = false;
     
     if (
         check_stake_kernel_hash(bits, blk,
@@ -621,18 +641,39 @@ bool kernel::check_proof_of_stake(
         tx_in.previous_out(), tx.time(), hash_pos, print_pos) == false
         )
     {
-        log_debug(
-            "Kernel, check proof of stake failed, check kernel failed on "
-            "coinstake " << tx.get_hash().to_string() << ", hash_pos = " <<
-            hash_pos.to_string() << "."
-        );
-        
-        /**
-         * Set the Denial-of-Service score for the connection.
-         */
-        if (connection)
+        if (utility::is_initial_block_download() == true)
         {
-            connection->set_dos_score(connection->dos_score() + 1);
+            log_debug(
+                "Kernel, check proof of stake failed, check kernel failed on "
+                "coinstake " << tx.get_hash().to_string() << ", hash_pos = " <<
+                hash_pos.to_string() << " (normal during initial download)."
+            );
+            
+            /**
+             * Set the Denial-of-Service score for the connection.
+             */
+            if (connection)
+            {
+                connection->set_dos_score(
+                    connection->dos_score() + (std::rand() % 2 == 1)
+                );
+            }
+        }
+        else
+        {
+            log_debug(
+                "Kernel, check proof of stake failed, check kernel failed on "
+                "coinstake " << tx.get_hash().to_string() << ", hash_pos = " <<
+                hash_pos.to_string() << "."
+            );
+            
+            /**
+             * Set the Denial-of-Service score for the connection.
+             */
+            if (connection)
+            {
+                connection->set_dos_score(connection->dos_score() + 1);
+            }
         }
         
         /**
