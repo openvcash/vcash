@@ -32,8 +32,6 @@
 #include <coin/inventory_vector.hpp>
 #include <coin/sha256.hpp>
 
-#error "0.4.0 RC3 should not be deployed to essentials services, incentive nodes may remove this error macro if they would like to participate in testing"
-
 namespace coin {
 
 class alert;
