@@ -540,12 +540,12 @@ void tcp_connection_manager::tick(const boost::system::error_code & ec)
          */
         if (
             tcp_connections < (is_initial_block_download ?
-            minimum_tcp_connections() * 1.1 : minimum_tcp_connections())
+            minimum_tcp_connections() * 1 : minimum_tcp_connections())
             )
         {
             for (
                 auto i = 0; i < (is_initial_block_download ?
-                minimum_tcp_connections() * 1.1 : minimum_tcp_connections()) -
+                minimum_tcp_connections() * 1 : minimum_tcp_connections()) -
                 tcp_connections; i++
                 )
             {
@@ -560,7 +560,7 @@ void tcp_connection_manager::tick(const boost::system::error_code & ec)
                 /**
                  * Only connect to one peer per group.
                  */
-                bool is_in_same_group = false;
+                auto is_in_same_group = false;
 
                 for (auto & i : m_tcp_connections)
                 {
@@ -767,7 +767,7 @@ std::size_t tcp_connection_manager::minimum_tcp_connections()
     
     return
         globals::instance().operation_mode() ==
-        protocol::operation_mode_peer ? (is_firewalled ? 8 : 12) : 6
+        protocol::operation_mode_peer ? (is_firewalled ? 8 : 10) : 6
     ;
 }
 
