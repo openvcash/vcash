@@ -182,15 +182,15 @@ db_wallet::error_t db_wallet::load(wallet & w)
     {
         write_tx(i, w.transactions()[i]);
     }
-    
+
     /**
-     * Rewrite encrypted wallets of versions 0.4.0 and 0.5.0rc.
+     * Rewrite encrypted wallets of versions if needed.
      */
-    if (is_encrypted && (file_version == 40000 || file_version == 50000))
+    if (is_encrypted && (file_version == 00000))
     {
         return db_wallet::error_need_rewrite;
     }
-    
+
     /**
      * Update the version.
      */
@@ -507,7 +507,7 @@ bool db_wallet::read_key_value(
         
         wtx.decode(buffer_value);
 
-        if (wtx.check() && (wtx.get_hash() == hash))
+        if (wtx.get_hash() == hash)
         {
             wtx.bind_wallet(w);
         }
