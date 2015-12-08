@@ -1420,6 +1420,21 @@ bool transaction::check()
     }
 
     /**
+     * Check the transaction did not arrive in a flying delorean.
+     */
+    if (
+        m_time > time::instance().get_adjusted() + constants::max_clock_drift
+        )
+    {
+        log_error(
+            "Transaction check failed, timestamp too far in the future:\n" <<
+            to_string()
+        );
+     
+        return false;
+    }
+
+    /**
      * Clear
      */
     clear();
