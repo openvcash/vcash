@@ -1711,12 +1711,15 @@ void stack_impl::stop()
         /**
          * Set the previous block index to null.
          */
-        i.second->set_block_index_previous(std::shared_ptr<block_index> ());
-        
-        /**
-         * Set the next block index to null.
-         */
-        i.second->set_block_index_next(std::shared_ptr<block_index> ());
+        if (i.second)
+        {
+            i.second->set_block_index_previous(std::shared_ptr<block_index> ());
+            
+            /**
+             * Set the next block index to null.
+             */
+            i.second->set_block_index_next(std::shared_ptr<block_index> ());
+        }
     }
     
     /**
