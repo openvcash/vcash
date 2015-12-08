@@ -57,8 +57,6 @@ std::pair<bool, std::string> transaction_pool::accept(
      */
     if (tx.check() == false)
     {
-        throw std::runtime_error("check transaction failed");
-    
         return std::make_pair(false, "check transaction failed");
     }
     
@@ -67,8 +65,6 @@ std::pair<bool, std::string> transaction_pool::accept(
      */
     if (tx.is_coin_base())
     {
-        throw std::runtime_error("coin base as individual transaction");
-    
         return std::make_pair(false, "coin base as individual transaction");
     }
     
@@ -77,8 +73,6 @@ std::pair<bool, std::string> transaction_pool::accept(
      */
     if (tx.is_coin_stake())
     {
-        throw std::runtime_error("coin stake as individual transaction");
-    
         return std::make_pair(false, "coin stake as individual transaction");
     }
     
@@ -87,8 +81,6 @@ std::pair<bool, std::string> transaction_pool::accept(
      */
     if (constants::test_net == false && tx.is_standard() == false)
     {
-        throw std::runtime_error("nonstandard transaction type");
-    
         return std::make_pair(false, "nonstandard transaction type");
     }
     
