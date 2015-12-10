@@ -1973,7 +1973,7 @@ unsigned int script::get_sig_op_count(const bool & accurate) const
             n++;
         }
         else if (
-            opcode == op_checkmultisigverify ||
+            opcode == op_checkmultisig ||
             opcode == op_checkmultisigverify
             )
         {
