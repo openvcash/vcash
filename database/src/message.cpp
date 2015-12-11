@@ -307,7 +307,6 @@ bool message::decode()
                     m_endpoint_attributes.push_back(attr);
                 }
                 break;
-                break;
                 case attribute_type_broadcast_buffer:
                 {
                     log_none("Message got attribute_type_broadcast_buffer.");
