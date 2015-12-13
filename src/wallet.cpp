@@ -4313,7 +4313,8 @@ void wallet::resend_transactions_tick(const boost::system::error_code & ec)
                     if (
                         globals::instance().time_best_received() -
                         static_cast<std::int64_t> (wtx.time_received()) >
-                        constants::work_and_stake_target_spacing
+                        constants::work_and_stake_target_spacing &&
+                        wtx.get_depth_in_main_chain(false) == 0
                         )
                     {
                         sorted.insert(
