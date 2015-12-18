@@ -52,6 +52,7 @@ LOCAL_SRC_FILES := \
 	../src/db_tx.cpp \
 	../src/db_wallet.cpp \
 	../src/db.cpp \
+	../src/ecdhe.cpp \
 	../src/file.cpp \
 	../src/filesystem.cpp \
 	../src/gateway.cpp \
