@@ -157,6 +157,14 @@ namespace coin {
             }
         
             /**
+             * If true chainblender is enabled.
+             */
+            const bool is_chainblender_enabled() const
+            {
+                return false;
+            }
+        
+            /**
              * Sets the version nonce.
              */
             void set_version_nonce(const std::uint64_t & val)
