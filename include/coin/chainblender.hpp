@@ -21,7 +21,14 @@
 #ifndef COIN_CHAINBLENDER_HPP
 #define COIN_CHAINBLENDER_HPP
 
+#include <cstdint>
+#include <map>
 #include <mutex>
+#include <set>
+
+#include <boost/asio.hpp>
+
+#include <coin/sha256.hpp>
 
 namespace coin {
 
@@ -33,6 +40,28 @@ namespace coin {
         public:
         
             /**
+             * A session.
+             */
+            typedef struct
+            {
+                sha256 hash_id;
+                std::int64_t denomination;
+                std::time_t time;
+                std::uint8_t participants;
+                bool is_active;
+            } session_t;
+        
+            /**
+             * k
+             */
+            enum { k = 8 };
+        
+            /**
+             * n
+             */
+            enum { n = 2 };
+        
+            /**
              * Constructor
              */
             chainblender();
@@ -41,10 +70,31 @@ namespace coin {
              * The singleton accessor.
              */
             static chainblender & instance();
-            
+        
+            /**
+             * Create the denominations.
+             */
+            std::set<std::int64_t> denominations();
+        
+            /**
+             * Calculates the score of a chainblender relay node.
+             * @param ep The boost::asio::ip::tcp::endpoint.
+             */
+            std::int16_t calculate_score(
+                const boost::asio::ip::tcp::endpoint & ep
+            );
+        
+            /**
+             * The sessions.
+             */
+            std::map<sha256, session_t> & sessions();
+        
         private:
         
-            // ...
+            /**
+             * The sessions.
+             */
+            std::map<sha256, session_t> m_sessions;
         
         protected:
         
