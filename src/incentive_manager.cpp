@@ -554,9 +554,8 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                         
                         /**
                          * Erase all nodes with protocol versions less than
-                         * ours (minus one) so that they no longer receive
-                         * incentive rewards to encourage an up-to-date
-                         * network backbone.
+                         * ours so that they no longer receive incentive
+                         * rewards to encourage an up-to-date network backbone.
                          */
                         auto it = kclosest.begin();
                         
@@ -566,10 +565,7 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                                 recent = *it
                             ;
                             
-                            if (
-                                recent.protocol_version <
-                                (protocol::version - 1)
-                                )
+                            if (recent.protocol_version < protocol::version)
                             {
                                 it = kclosest.erase(it);
                             }
@@ -1119,12 +1115,12 @@ void incentive_manager::do_tick_check_inputs(const std::uint32_t & interval)
 
                                     transaction tx;
                                     
-                                    transaction_out vout = transaction_out(
+                                    transaction_out tx_out = transaction_out(
                                         collateral * constants::coin,
                                         script_collateral
                                     );
                                     tx.transactions_in().push_back(tx_in);
-                                    tx.transactions_out().push_back(vout);
+                                    tx.transactions_out().push_back(tx_out);
                     
                                     if (
                                         transaction_pool::instance(
