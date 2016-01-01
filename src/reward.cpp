@@ -138,8 +138,6 @@ std::int64_t reward::get_proof_of_stake_vanilla(
     )
 {
     std::int64_t coin_reward_year = constants::max_mint_proof_of_stake;
-
-    enum { yearly_block_count = 365 * 432};
     
     coin_reward_year = 1 * constants::max_mint_proof_of_stake;
     
