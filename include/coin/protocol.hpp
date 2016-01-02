@@ -37,6 +37,10 @@ namespace coin {
 class alert;
 class block;
 class block_locator;
+class chainblender_broadcast;
+class chainblender_join;
+class chainblender_leave;
+class chainblender_status;
 class incentive_answer;
 class incentive_question;
 class incentive_vote;
@@ -51,12 +55,12 @@ namespace protocol {
         /**
          * The version.
          */
-        enum { version = 60044 };
+        enum { version = 60045 };
 
         /**
          * The minimum version.
          */
-        enum { minimum_version = 60042 };
+        enum { minimum_version = 60043 };
     
         /**
          * The default peer port.
@@ -107,7 +111,7 @@ namespace protocol {
         typedef struct network_address_s
         {
             /**
-             * The version .
+             * The version.
              */
             std::uint8_t version;
             
@@ -814,6 +818,38 @@ namespace protocol {
         {
             std::shared_ptr<incentive_question> iquestion;
         } iquestion_t;
+    
+        /**
+         * The cbjoin structure.
+         */
+        typedef struct
+        {
+            std::shared_ptr<chainblender_join> cbjoin;
+        } cbjoin_t;
+
+        /**
+         * The cbstatus structure.
+         */
+        typedef struct
+        {
+            std::shared_ptr<chainblender_status> cbstatus;
+        } cbstatus_t;
+
+        /**
+         * The cbbroadcast structure.
+         */
+        typedef struct
+        {
+            std::shared_ptr<chainblender_broadcast> cbbroadcast;
+        } cbbroadcast_t;
+
+        /**
+         * The cbleave structure.
+         */
+        typedef struct
+        {
+            std::shared_ptr<chainblender_leave> cbleave;
+        } cbleave_t;
 
         /**
          * The maximum inventory size.
@@ -821,6 +857,7 @@ namespace protocol {
         enum { max_inv_size = 50000 };
     
     } // namespace protocol
+    
 } // namespace coin
 
 #endif // COIN_PROTOCOL_HPP
