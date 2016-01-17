@@ -847,10 +847,11 @@ std::shared_ptr<block> block::create_new(
             );
             
             auto value_incentive =
-                value * (incentive::instance().get_percentage(
-                index_previous->height() + 1) / 100.0f)
+                static_cast<std::uint64_t> (value * (
+                incentive::instance().get_percentage(
+                index_previous->height() + 1) / 100.0f))
             ;
-            
+
             ret->transactions()[0].transactions_out()[0].set_value(
                 value - value_incentive
             );
@@ -3291,17 +3292,6 @@ std::shared_ptr<file> block::file_append(std::uint32_t & index)
                  * The default maximum size is 128 megabytes.
                  */
                 std::size_t max_file_size = 128;
-                
-                /**
-                 * The client maximum is 16 megabytes.
-                 */
-                if (
-                    globals::instance().operation_mode() ==
-                    protocol::operation_mode_client
-                    )
-                {
-                    max_file_size = 16;
-                }
                 
                 max_file_size *= 1000000;
 
