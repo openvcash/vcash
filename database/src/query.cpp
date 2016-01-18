@@ -99,7 +99,7 @@ std::map<std::string, std::string> & query::pairs_public()
     return m_pairs_public;
 }
 
-const char g_hex_2_dec[256] =
+const std::int8_t g_hex_2_dec[256] =
 {
     /*       0  1  2  3   4  5  6  7   8  9  A  B   C  D  E  F */
     /* 0 */ -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
