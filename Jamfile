@@ -43,10 +43,12 @@ SOURCES =
 	alert_unsigned
 	base58
 	big_number
+    blake256
 	block
 	block_index
 	block_index_disk
 	block_locator
+	chainblender
 	checkpoint_sync
 	checkpoint_sync_unsigned
 	checkpoints

@@ -218,11 +218,27 @@ sha256 block::get_hash() const
 
     assert(buffer.size() == header_length);
 
-    auto digest = hash::whirlpoolx(
-        reinterpret_cast<std::uint8_t *>(buffer.data()), buffer.size()
-    );
+    /**
+     * Use whirlpool for blocks less than version 5.
+     */
+    auto use_whirlpool = m_header.version < 5;
     
-    std::memcpy(ptr, &digest[0], digest.size());
+    if (use_whirlpool == true)
+    {
+        auto digest = hash::whirlpoolx(
+            reinterpret_cast<std::uint8_t *>(buffer.data()), buffer.size()
+        );
+        
+        std::memcpy(ptr, &digest[0], digest.size());
+    }
+    else
+    {
+        auto digest = hash::blake2568round(
+            reinterpret_cast<std::uint8_t *>(buffer.data()), buffer.size()
+        );
+        
+        std::memcpy(ptr, &digest[0], digest.size());
+    }
 
     return ret;
 }
@@ -2239,7 +2255,23 @@ bool block::accept_block(
     
         return false;
     }
-   
+    
+    /**
+     * Reject block header version < 5 after block 310000.
+     */
+    if (
+        m_header.version < 5 &&
+        ((constants::test_net == false && height > 310000) ||
+        (constants::test_net == true && height > 18))
+        )
+    {
+        log_error(
+            "Block, accept block failed, rejected block header version < 5."
+        );
+    
+        return false;
+    }
+
     /**
      * Enforce rule that the coinbase starts with serialized block height.
      */
@@ -2703,11 +2735,11 @@ bool block::set_best_chain(
      */
     if (utility::is_initial_block_download() == false)
     {
-        int blocks_upgraded = 0;
+        auto blocks_upgraded = 0;
         
         auto index = stack_impl::get_block_index_best();
         
-        for (int i = 0; i < 100 && index != 0; i++)
+        for (auto i = 0; i < 100 && index != 0; i++)
         {
             if (index->version() > block::current_version)
             {

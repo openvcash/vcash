@@ -24,6 +24,7 @@
 #include <array>
 #include <cstdint>
 
+#include <coin/blake256.hpp>
 #include <coin/sha256.hpp>
 #include <coin/whirlpool.hpp>
 
@@ -94,6 +95,15 @@ namespace coin {
              */
             static std::array<std::uint8_t, whirlpool::digest_length / 2>
                 whirlpoolx(const std::uint8_t * buf, const std::size_t & len
+            );
+        
+            /**
+             * Calculates a blake256 hash.
+             * @param buf The buffer.
+             * @param len The length.
+             */
+            static std::array<std::uint8_t, blake256::digest_length>
+                blake2568round(const std::uint8_t * buf, const std::size_t & len
             );
         
             /**

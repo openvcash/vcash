@@ -86,6 +86,21 @@ namespace coin {
                 std::uint32_t & out_hashes, std::uint8_t * out_digest,
                 block::header_t * out_header
             );
+        
+            /**
+             * Increments a nonce in the block header and hashes it and then
+             * scans it for at least some zero bits.
+             * @param in_header The block::header_t in.
+             * @param max_nonce The maximum nonce.
+             * @param out_hashes The number of hashes out.
+             * @param out_digest The digest out.
+             * @param out_header The block::header_t out.
+             */
+            static std::uint32_t scan_hash_blake256(
+                block::header_t * in_header, std::uint32_t max_nonce,
+                std::uint32_t & out_hashes, std::uint8_t * out_digest,
+                block::header_t * out_header
+            );
 
         private:
         

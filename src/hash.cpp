@@ -136,6 +136,13 @@ std::array<std::uint8_t, whirlpool::digest_length / 2> hash::whirlpoolx(
     return ret;
 }
 
+std::array<std::uint8_t, blake256::digest_length> hash::blake2568round(
+    const std::uint8_t * buf, const std::size_t & len
+    )
+{
+    return blake256::hash(buf, len);
+}
+
 std::uint64_t hash::to_uint64(
     const std::uint8_t * buf, const std::size_t & n
     )

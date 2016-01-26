@@ -38,10 +38,12 @@ LOCAL_SRC_FILES := \
 	../src/alert.cpp \
 	../src/base58.cpp \
 	../src/big_number.cpp \
+	../src/blake256.cpp \
 	../src/block_index_disk.cpp \
 	../src/block_index.cpp \
 	../src/block_locator.cpp \
 	../src/block.cpp \
+	../src/chainblender.cpp \
 	../src/checkpoint_sync_unsigned.cpp \
 	../src/checkpoint_sync.cpp \
 	../src/checkpoints.cpp \
