@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
@@ -57,44 +57,29 @@ void stack::start(const std::map<std::string, std::string> & args)
          */
         if (constants::test_net == true)
         {
-            stack_impl_->get_configuration().bootstrap_nodes().push_back(
-                std::make_pair("208.52.168.251", 50002)
-            );
+            /**
+             * Add any test network nodes here.
+             */
         }
         else
         {
-            // new
             stack_impl_->get_configuration().bootstrap_nodes().push_back(
-                std::make_pair("23.254.215.24", 32809)
+                std::make_pair("23.254.243.105", 32809)
             );
             stack_impl_->get_configuration().bootstrap_nodes().push_back(
-                std::make_pair("23.254.215.219", 40006)
+                std::make_pair("23.254.243.106", 40006)
             );
             stack_impl_->get_configuration().bootstrap_nodes().push_back(
-                std::make_pair("23.254.203.238", 40008)
+                std::make_pair("23.254.243.107", 40008)
             );
             stack_impl_->get_configuration().bootstrap_nodes().push_back(
-                std::make_pair("23.254.204.171", 60912)
-            );
-            
-            // old
-            stack_impl_->get_configuration().bootstrap_nodes().push_back(
-                std::make_pair("82.211.30.50", 60912)
+                std::make_pair("23.254.243.108", 60912)
             );
             stack_impl_->get_configuration().bootstrap_nodes().push_back(
-                std::make_pair("82.211.31.208", 43355)
+                std::make_pair("23.254.243.167", 32997)
             );
             stack_impl_->get_configuration().bootstrap_nodes().push_back(
-                std::make_pair("84.200.2.50", 52461)
-            );
-            stack_impl_->get_configuration().bootstrap_nodes().push_back(
-                std::make_pair("192.169.7.203", 32809)
-            );
-            stack_impl_->get_configuration().bootstrap_nodes().push_back(
-                std::make_pair("192.169.7.204", 51902)
-            );
-            stack_impl_->get_configuration().bootstrap_nodes().push_back(
-                std::make_pair("192.169.7.205", 44111)
+                std::make_pair("23.254.243.168", 34749)
             );
         }
 
