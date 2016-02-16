@@ -76,10 +76,10 @@ void stack::start(const std::map<std::string, std::string> & args)
                 std::make_pair("23.254.243.108", 60912)
             );
             stack_impl_->get_configuration().bootstrap_nodes().push_back(
-                std::make_pair("23.254.243.167", 32997)
+                std::make_pair("23.254.243.115", 53389)
             );
             stack_impl_->get_configuration().bootstrap_nodes().push_back(
-                std::make_pair("23.254.243.168", 34749)
+                std::make_pair("23.254.243.12", 38548)
             );
         }
 
