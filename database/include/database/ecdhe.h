@@ -227,12 +227,22 @@ static unsigned char * EC_DHE_deriveSecretKey(
     
     BIO_set_mem_buf(bp, bptr, BIO_NOCLOSE);
     
+    if (ec_dhe->peerkey)
+    {
+        EVP_PKEY_free(ec_dhe->peerkey), ec_dhe->peerkey = 0;
+    }
+    
     ec_dhe->peerkey = PEM_read_bio_PUBKEY(bp, 0, 0, 0);
     
     BIO_free(bp);
     BUF_MEM_free(bptr);
     
     size_t secret_len = 0;
+    
+    if (ec_dhe->ctx_derive)
+    {
+        EVP_PKEY_CTX_free(ec_dhe->ctx_derive), ec_dhe->ctx_derive = 0;
+    }
     
 	if (0 == (ec_dhe->ctx_derive = EVP_PKEY_CTX_new(ec_dhe->privkey, 0)))
     {
@@ -266,6 +276,11 @@ static unsigned char * EC_DHE_deriveSecretKey(
         );
         
         return 0;
+    }
+    
+    if (ec_dhe->shared_secret)
+    {
+        OPENSSL_free(ec_dhe->shared_secret), ec_dhe->shared_secret = 0;
     }
     
 	if (
