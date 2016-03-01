@@ -49,6 +49,11 @@ SOURCES =
 	block_index_disk
 	block_locator
 	chainblender
+    chainblender_broadcast
+    chainblender_join
+    chainblender_leave
+    chainblender_manager
+    chainblender_status
 	checkpoint_sync
 	checkpoint_sync_unsigned
 	checkpoints
@@ -65,6 +70,7 @@ SOURCES =
     gateway
     globals
 	hash
+    hc256
 	http_transport
 	incentive
 	incentive_answer

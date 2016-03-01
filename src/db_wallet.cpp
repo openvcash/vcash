@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
@@ -28,6 +28,7 @@
 #include <coin/key_wallet.hpp>
 #include <coin/key_wallet_master.hpp>
 #include <coin/stack_impl.hpp>
+#include <coin/status_manager.hpp>
 #include <coin/transaction_wallet.hpp>
 #include <coin/wallet.hpp>
 
@@ -86,6 +87,8 @@ db_wallet::error_t db_wallet::load(wallet & w)
             return db_wallet::error_corrupt;
         }
 
+        auto index = 0;
+        
         for (;;)
         {
             if (globals::instance().state() >= globals::state_stopping)
@@ -152,6 +155,50 @@ db_wallet::error_t db_wallet::load(wallet & w)
                     "Database wallet load got error " << err << " while "
                     "reading key/value pairs."
                 );
+            }
+            else
+            {
+                /**
+                 * Increment the index.
+                 */
+                index++;
+                
+                /**
+                 * Only callback status every 10 transactions.
+                 */
+                if ((index % 10) == 0)
+                {
+                    /**
+                     * Allocate the status.
+                     */
+                    std::map<std::string, std::string> status;
+                
+                    /**
+                     * Set the status type.
+                     */
+                    status["type"] = "wallet";
+
+                    /**
+                     * Set the status value.
+                     */
+                    status["value"] = "Loading wallet";
+                    
+                    /**
+                     * Set the status value.
+                     */
+                    status["wallet.status"] =
+                        "Loading wallet (" + std::to_string(index) +
+                        " transactions)"
+                    ;
+
+                    /**
+                     * Callback
+                     */
+                    if (w.get_stack_impl())
+                    {
+                        w.get_stack_impl()->get_status_manager()->insert(status);
+                    }
+                }
             }
         }
         

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
@@ -25,6 +25,7 @@
 #include <string>
 
 #include <coin/data_buffer.hpp>
+#include <coin/protocol.hpp>
 
 namespace coin {
 
@@ -215,6 +216,26 @@ namespace coin {
              */
             protocol::ivote_t & protocol_ivote();
         
+            /**
+             * The protocol cbbroadcast structure.
+             */
+            protocol::cbbroadcast_t & protocol_cbbroadcast();
+        
+            /**
+             * The protocol cbjoin structure.
+             */
+            protocol::cbjoin_t & protocol_cbjoin();
+        
+            /**
+             * The protocol cbleave structure.
+             */
+            protocol::cbleave_t & protocol_cbleave();
+        
+            /**
+             * The protocol cbstatus structure.
+             */
+            protocol::cbstatus_t & protocol_cbstatus();
+        
         private:
         
             /**
@@ -327,6 +348,26 @@ namespace coin {
              */
             protocol::ivote_t m_protocol_ivote;
         
+            /**
+             * The protocol cbbroadcast structure.
+             */
+            protocol::cbbroadcast_t m_protocol_cbbroadcast;
+        
+            /**
+             * The protocol cbjoin structure.
+             */
+            protocol::cbjoin_t m_protocol_cbjoin;
+        
+            /**
+             * The protocol cbleave structure.
+             */
+            protocol::cbleave_t m_protocol_cbleave;
+        
+            /**
+             * The protocol cbstatus structure.
+             */
+            protocol::cbstatus_t m_protocol_cbstatus;
+        
         protected:
         
             /**
@@ -428,6 +469,26 @@ namespace coin {
              * Creates an ivote.
              */
             data_buffer create_ivote();
+        
+            /**
+             * Creates an cbbroadcast.
+             */
+            data_buffer create_cbbroadcast();
+        
+            /**
+             * Creates an cbjoin.
+             */
+            data_buffer create_cbjoin();
+        
+            /**
+             * Creates an cbleave.
+             */
+            data_buffer create_cbleave();
+        
+            /**
+             * Creates an cbstatus.
+             */
+            data_buffer create_cbstatus();
     };
     
 } // namespace coin

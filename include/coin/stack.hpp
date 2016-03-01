@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
@@ -137,6 +137,16 @@ namespace coin {
             void wallet_zerotime_lock(const std::string & tx_id);
         
             /**
+             * Starts chainblender.
+             */
+            void chainblender_start();
+        
+            /**
+             * Stops chainblender.
+             */
+            void chainblender_stop();
+        
+            /**
              * Sends an RPC command line.
              * @param command_line The command line.
              */
@@ -156,6 +166,21 @@ namespace coin {
             const std::time_t
                 configuration_wallet_transaction_history_maximum() const
             ;
+        
+            /**
+             * Sets chainblender to use common output denominations.
+             * @param val The value.
+             */
+            void set_configuration_chainblender_use_common_output_denominations(
+                const bool & val
+            );
+        
+            /**
+             * The chainblender.use_common_output_denominations.
+             */
+            const bool
+                configuration_chainblender_use_common_output_denominations()
+            const;
         
             /**
              * Called when an error occurs.

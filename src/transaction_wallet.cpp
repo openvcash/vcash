@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
@@ -20,6 +20,7 @@
 
 #include <boost/lexical_cast.hpp>
 
+#include <coin/chainblender.hpp>
 #include <coin/db_wallet.hpp>
 #include <coin/message.hpp>
 #include <coin/database_stack.hpp>
@@ -47,6 +48,10 @@ transaction_wallet::transaction_wallet()
     , debit_cached_(0)
     , available_credit_is_cached_(false)
     , available_credit_cached_(0)
+    , available_denominated_credit_is_cached_(false)
+    , available_denominated_credit_cached_(0)
+    , available_chainblended_credit_is_cached_(false)
+    , available_chainblended_credit_cached_(0)
     , change_is_cached_(false)
 {
     initialize(0);
@@ -281,10 +286,14 @@ void transaction_wallet::initialize(const wallet * ptr_wallet)
     debit_is_cached_ = false;
     credit_is_cached_ = false;
     available_credit_is_cached_ = false;
+    available_denominated_credit_is_cached_ = false;
+    available_chainblended_credit_is_cached_ = false;
     change_is_cached_ = false;
     debit_cached_ = 0;
     credit_cached_ = 0;
     available_credit_cached_ = 0;
+    available_denominated_credit_cached_ = 0;
+    available_chainblended_credit_cached_ = 0;
     change_is_cached_ = false;
     m_order_position = -1;
 }
@@ -550,6 +559,8 @@ bool transaction_wallet::update_spent(const std::vector<char> & spent_new) const
             ret = true;
             
             available_credit_is_cached_ = false;
+            available_denominated_credit_is_cached_ = false;
+            available_chainblended_credit_is_cached_ = false;
         }
     }
     
@@ -560,6 +571,8 @@ void transaction_wallet::mark_dirty()
 {
     credit_is_cached_ = false;
     available_credit_is_cached_ = false;
+    available_denominated_credit_is_cached_ = false;
+    available_chainblended_credit_is_cached_ = false;
     debit_is_cached_ = false;
     change_is_cached_ = false;
 }
@@ -571,41 +584,57 @@ void transaction_wallet::bind_wallet(const wallet & value)
     mark_dirty();
 }
 
-void transaction_wallet::mark_spent(const std::uint32_t & out)
+bool transaction_wallet::mark_spent(const std::uint32_t & out)
 {
     if (out >= transactions_out().size())
     {
-        throw std::runtime_error(
-            "transaction_wallet::mark_unspent() : out out of range"
+        /**
+         * Can be caused by chainblended transactions and is normal in that
+         * case.
+         */
+        log_debug(
+            "Transaction wallet failed to mark spent, out is out of range."
         );
-    }
-    
-    m_spent.resize(transactions_out().size());
-    
-    if (!m_spent[out])
-    {
-        m_spent[out] = true;
         
-        available_credit_is_cached_ = false;
+        return false;
     }
+    else
+    {
+        m_spent.resize(transactions_out().size());
+        
+        if (!m_spent[out])
+        {
+            m_spent[out] = true;
+            
+            available_credit_is_cached_ = false;
+            available_denominated_credit_is_cached_ = false;
+            available_chainblended_credit_is_cached_ = false;
+        }
+    }
+    
+    return true;
 }
 
 void transaction_wallet::mark_unspent(const std::uint32_t & out)
 {
     if (out >= transactions_out().size())
     {
-        throw std::runtime_error(
-            "transaction_wallet::mark_unspent() : out out of range"
+        log_error(
+            "Transaction wallet failed to mark unspent, out is out of range."
         );
     }
-    
-    m_spent.resize(transactions_out().size());
-    
-    if (m_spent[out])
+    else
     {
-        m_spent[out] = false;
+        m_spent.resize(transactions_out().size());
         
-        available_credit_is_cached_ = false;
+        if (m_spent[out])
+        {
+            m_spent[out] = false;
+            
+            available_credit_is_cached_ = false;
+            available_denominated_credit_is_cached_ = false;
+            available_chainblended_credit_is_cached_ = false;
+        }
     }
 }
 
@@ -613,9 +642,11 @@ bool transaction_wallet::is_spent(const std::uint32_t & out) const
 {
     if (out >= transactions_out().size())
     {
-        throw std::runtime_error(
-            "transaction_wallet::is_spent() : out out of range"
+        log_error(
+            "Transaction wallet failed to is_spent, out is out of range."
         );
+        
+        return false;
     }
     
     if (out >= m_spent.size())
@@ -707,6 +738,110 @@ std::int64_t transaction_wallet::get_available_credit(
 
     available_credit_cached_ = ret;
     available_credit_is_cached_ = true;
+    
+    return ret;
+}
+
+std::int64_t transaction_wallet::get_available_denominated_credit(
+    const bool & use_cache
+    ) const
+{
+    std::int64_t ret = 0;
+    
+    /**
+     * We must wait until the coinbase is (safely) deep enough in the chain
+     * before valuing it.
+     */
+    if ((is_coin_base() || is_coin_stake()) && get_blocks_to_maturity() > 0)
+    {
+        return 0;
+    }
+    
+    if (use_cache && available_denominated_credit_is_cached_)
+    {
+        return available_denominated_credit_cached_;
+    }
+    
+    auto denominations = chainblender::instance().denominations();
+    
+    for (auto i = 0; i < transactions_out().size(); i++)
+    {
+        if (is_spent(i) == false)
+        {
+            const auto & tx_out = transactions_out()[i];
+            
+            for (auto & j : denominations)
+            {
+                auto credit = wallet_->get_credit(tx_out);
+                
+                if (credit == j)
+                {
+                    ret += credit;
+                    
+                    if (utility::money_range(ret) == false)
+                    {
+                        throw std::runtime_error("credit out of range");
+                    }
+                }
+            }
+        }
+    }
+
+    available_denominated_credit_cached_ = ret;
+    available_denominated_credit_is_cached_ = true;
+    
+    return ret;
+}
+
+std::int64_t transaction_wallet::get_available_chainblended_credit(
+    const bool & use_cache
+    ) const
+{
+    std::int64_t ret = 0;
+    
+    /**
+     * We must wait until the coinbase is (safely) deep enough in the chain
+     * before valuing it.
+     */
+    if ((is_coin_base() || is_coin_stake()) && get_blocks_to_maturity() > 0)
+    {
+        return 0;
+    }
+    
+    if (use_cache && available_chainblended_credit_is_cached_)
+    {
+        return available_chainblended_credit_cached_;
+    }
+    
+    auto denominations_blended =
+        chainblender::instance().denominations_blended()
+    ;
+    
+    for (auto i = 0; i < transactions_out().size(); i++)
+    {
+        if (is_spent(i) == false)
+        {
+            const auto & tx_out = transactions_out()[i];
+            
+            for (auto & j : denominations_blended)
+            {
+                auto credit = wallet_->get_credit(tx_out);
+                
+                if (credit == j)
+                {
+                    ret += credit;
+                    
+                    if (utility::money_range(ret) == false)
+                    {
+                        throw std::runtime_error("credit out of range");
+                    }
+                }
+            }
+        }
+    }
+
+    available_chainblended_credit_cached_ = ret;
+    available_chainblended_credit_is_cached_ = true;
     
     return ret;
 }

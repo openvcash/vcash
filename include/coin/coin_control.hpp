@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
@@ -77,7 +77,7 @@ namespace coin {
              * Selects
              * @param output The point_out.
              */
-            void select(point_out & output)
+            void select(const point_out & output)
             {
                 m_selected.insert(output);
             }
@@ -86,7 +86,7 @@ namespace coin {
              * Unselects
              * @param output The point_out.
              */
-            void unselect(point_out & output)
+            void unselect(const point_out & output)
             {
                 m_selected.erase(output);
             }
@@ -106,6 +106,15 @@ namespace coin {
             void list_selected(std::vector<point_out> & out_points)
             {
                 out_points.assign(m_selected.begin(), m_selected.end());
+            }
+        
+            /**
+             * Sets the change destination.
+             * @pram val The destination::tx_t.
+             */
+            void set_destination_change(const destination::tx_t & val)
+            {
+                m_destination_change = val;
             }
         
             /**

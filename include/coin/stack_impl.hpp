@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
@@ -44,6 +44,7 @@ namespace coin {
     class alert_manager;
     class block;
     class block_index;
+    class chainblender_manager;
     class database_stack;
     class db_env;
     class incentive_manager;
@@ -167,6 +168,16 @@ namespace coin {
             void wallet_zerotime_lock(const std::string & tx_id);
         
             /**
+             * Starts chainblender.
+             */
+            void chainblender_start();
+        
+            /**
+             * Stops chainblender.
+             */
+            void chainblender_stop();
+            
+            /**
              * Sends an RPC command line.
              * @param command_line The command line.
              */
@@ -186,6 +197,21 @@ namespace coin {
             const std::time_t
                 configuration_wallet_transaction_history_maximum() const
             ;
+        
+            /**
+             * Sets chainblender to use common output denominations.
+             * @param val The value.
+             */
+            void set_configuration_chainblender_use_common_output_denominations(
+                const bool & val
+            );
+        
+            /**
+             * The chainblender.use_common_output_denominations.
+             */
+            const bool
+                configuration_chainblender_use_common_output_denominations()
+            const;
             
             /**
              * Performs an http get operation toward the url.
@@ -242,6 +268,11 @@ namespace coin {
             std::shared_ptr<alert_manager> & get_alert_manager();
         
             /**
+             * The chainblender_manager.
+             */
+            std::shared_ptr<chainblender_manager> & get_chainblender_manager();
+        
+            /**
              * The database_stack.
              */
             std::shared_ptr<database_stack> & get_database_stack();
@@ -255,6 +286,11 @@ namespace coin {
              * The status_manager.
              */
             std::shared_ptr<status_manager> & get_status_manager();
+        
+            /**
+             * The status_manager.
+             */
+            const std::shared_ptr<status_manager> & get_status_manager() const;
         
             /**
              * The tcp_acceptor.
@@ -402,6 +438,11 @@ namespace coin {
             std::shared_ptr<alert_manager> m_alert_manager;
         
             /**
+             * The chainblender_manager.
+             */
+            std::shared_ptr<chainblender_manager> m_chainblender_manager;
+        
+            /**
              * The database_stack.
              */
             std::shared_ptr<database_stack> m_database_stack;
@@ -523,9 +564,9 @@ namespace coin {
             bool import_blockchain_file(const std::string & path);
         
             /**
-             * Removes old blocks from disk if we are operating as a client.
+             * Prunes old blocks from disk.
              */
-            void remove_old_blocks_if_client();
+            void prune_old_blocks();
         
             /**
              * The main loop.

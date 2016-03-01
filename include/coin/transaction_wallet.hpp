@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
@@ -156,7 +156,7 @@ namespace coin {
              * Marks spent.
              * @param out The out.
              */
-            void mark_spent(const std::uint32_t & out);
+            bool mark_spent(const std::uint32_t & out);
     
             /** 
              * Marks unspent.
@@ -188,6 +188,24 @@ namespace coin {
             std::int64_t
                 get_available_credit(const bool & use_cache = true) const
             ;
+        
+            /**
+             * Gets the available (denominated) credit.
+             * @param use_cache If true the cache will be used.
+             */
+            std::int64_t
+                get_available_denominated_credit(
+                    const bool & use_cache = true
+            ) const;
+        
+            /**
+             * Gets the available (chainblended) credit.
+             * @param use_cache If true the cache will be used.
+             */
+            std::int64_t
+                get_available_chainblended_credit(
+                    const bool & use_cache = true
+            ) const;
     
             /**
              * Writes to disk.
@@ -440,6 +458,26 @@ namespace coin {
              * The amount of available cached credit
              */
             mutable std::int64_t available_credit_cached_;
+        
+            /**
+             * If true available (denominated) credit is cached.
+             */
+            mutable bool available_denominated_credit_is_cached_;
+        
+            /**
+             * The amount of available cached (denominated) credit
+             */
+            mutable std::int64_t available_denominated_credit_cached_;
+
+            /**
+             * If true available (chainblended) credit is cached.
+             */
+            mutable bool available_chainblended_credit_is_cached_;
+        
+            /**
+             * The amount of available cached (chainblended) credit
+             */
+            mutable std::int64_t available_chainblended_credit_cached_;
         
             /**
              * If true if change is cached.

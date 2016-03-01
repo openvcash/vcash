@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
@@ -322,6 +322,14 @@ namespace coin {
              * @param request The json_rpc_request_t.
              */
             json_rpc_response_t json_backupwallet(
+                const json_rpc_request_t & request
+            );
+        
+            /**
+             * Performs a chainblender operation.
+             * @param request The json_rpc_request_t.
+             */
+            json_rpc_response_t json_chainblender(
                 const json_rpc_request_t & request
             );
         

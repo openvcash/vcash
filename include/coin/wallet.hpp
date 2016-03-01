@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
@@ -493,6 +493,26 @@ namespace coin {
             std::int64_t get_balance() const;
         
             /**
+             * Gets the (on-chain) balance.
+             */
+            std::int64_t get_on_chain_balance() const;
+        
+            /**
+             * Gets the (on-chain + non-denominated) balance.
+             */
+            std::int64_t get_on_chain_nondenominated_balance() const;
+        
+            /**
+             * Gets the (on-chain + denominated) balance.
+             */
+            std::int64_t get_on_chain_denominated_balance() const;
+        
+            /**
+             * Gets the (on-chain + blended) balance.
+             */
+            std::int64_t get_on_chain_blended_balance() const;
+        
+            /**
              * Gets the unconfirmed balance.
              */
             std::int64_t get_unconfirmed_balance() const;
@@ -522,6 +542,10 @@ namespace coin {
              * excluded from output).
              * @param control The coin_control.
              * @param use_zerotime If true ZeroTime will be used.
+             * @param use_chainblended If true chainblended transactions will
+             * be used.
+             * @param use_only_chainblended If true only chainblended inputs
+             * will be used.
              */
             bool select_coins(
                 const std::int64_t & target_value,
@@ -530,7 +554,9 @@ namespace coin {
                 std::uint32_t> > & coins_out, std::int64_t & value_out,
                 const std::set<std::int64_t> & filter,
                 const std::shared_ptr<coin_control> & control,
-                const bool & use_zerotime = false
+                const bool & use_zerotime = false,
+                const bool & use_chainblended = true,
+                const bool & use_only_chainblended = false
             ) const;
 
             /**
@@ -543,6 +569,10 @@ namespace coin {
              * excluded from the transaction).
              * @param control The coin_control.
              * @param use_zerotime If true ZeroTime will be used.
+             * @param use_chainblended If true chainblended transactions will
+             * be used.
+             * @param use_only_chainblended If true only chainblended inputs
+             * will be used.
              */
             bool create_transaction(
                 const std::vector< std::pair<script, std::int64_t> > & scripts,
@@ -550,7 +580,8 @@ namespace coin {
                 std::int64_t & fee_out,
                 const std::set<std::int64_t> & filter,
                 const std::shared_ptr<coin_control> & control,
-                const bool & use_zerotime
+                const bool & use_zerotime, const bool & use_chainblended = true,
+                const bool & use_only_chainblended = false
             );
       
             /**
@@ -564,6 +595,10 @@ namespace coin {
              * excluded from the transaction).
              * @param control The coin_control.
              * @param use_zerotime If true ZeroTime will be used.
+             * @param use_chainblended If true chainblended transactions will
+             * be used.
+             * @param use_only_chainblended If true only chainblended inputs
+             * will be used.
              */
             bool create_transaction(
                 const script & script_pub_key, const std::int64_t & value,
@@ -571,7 +606,8 @@ namespace coin {
                 std::int64_t & fee_out,
                 const std::set<std::int64_t> & filter,
                 const std::shared_ptr<coin_control> & control,
-                const bool & use_zerotime
+                const bool & use_zerotime, const bool & use_chainblended = true,
+                const bool & use_only_chainblended = false
             );
         
             /**
@@ -612,10 +648,13 @@ namespace coin {
              * @param value The value.
              * @param wtx_new The new transaction_wallet.
              * @param use_zerotime If true ZeroTime will be used.
+             * @param use_only_chainblended If true only chainblended inputs
+             * will be used.
              */
             std::pair<bool, std::string> send_money(
                 const script & script_pub_key, const std::int64_t & value,
-                const transaction_wallet & wtx_new, const bool & use_zerotime
+                const transaction_wallet & wtx_new, const bool & use_zerotime,
+                const bool & use_only_chainblended
             );
         
             /**
@@ -624,10 +663,13 @@ namespace coin {
              * @param value The value.
              * @param wtx_new The new transaction_wallet.
              * @param use_zerotime If true ZeroTime will be used.
+             * @param use_only_chainblended If true only chainblended inputs
+             * will be used.
              */
             std::pair<bool, std::string> send_money_to_destination(
                 const destination::tx_t & address, const std::int64_t & value,
-                const transaction_wallet & wtx_new, const bool & use_zerotime
+                const transaction_wallet & wtx_new, const bool & use_zerotime,
+                const bool & use_only_chainblended
             );
         
             /**
@@ -639,12 +681,17 @@ namespace coin {
              * excluded from outputs).
              * @param control The coin_control.
              * @param use_zerotime If true ZeroTime will be used.
+             * @param use_chainblended If true chainblended transactions will
+             * be used.
+             * @param use_only_chainblended If true only chainblended
+             * transactions will be used.
              */
             void available_coins(
                 std::vector<output> & coins, const bool & only_confirmed,
                 const std::set<std::int64_t> & filter,
                 const std::shared_ptr<coin_control> & control,
-                const bool & use_zerotime
+                const bool & use_zerotime, const bool & use_chainblended = true,
+                const bool & use_only_chainblended = false
             ) const;
 
             /**

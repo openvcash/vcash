@@ -60,7 +60,7 @@ std::vector<std::uint8_t> ecdhe::derive_secret_key(
     
     auto buf = EC_DHE_deriveSecretKey(
         m_ecdhe, peer_public_key.c_str(),
-        peer_public_key.size(), &len
+        static_cast<int> (peer_public_key.size()), &len
     );
     
     ret.insert(ret.begin(), buf, buf + len);

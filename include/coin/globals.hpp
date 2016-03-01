@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
@@ -36,11 +36,6 @@
 #include <coin/point_out.hpp>
 #include <coin/protocol.hpp>
 #include <coin/sha256.hpp>
-
-/**
- * Enable to use whirlpool over scrypt.
- */
-#define USE_WHIRLPOOL 1
 
 namespace coin {
 
@@ -161,7 +156,7 @@ namespace coin {
              */
             const bool is_chainblender_enabled() const
             {
-                return false;
+                return m_operation_mode == protocol::operation_mode_peer;
             }
         
             /**

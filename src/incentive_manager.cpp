@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
@@ -684,7 +684,7 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                                             ).acceptable(tx).first == false
                                             )
                                         {
-                                            log_info(
+                                            log_debug(
                                                 "Incentive manager detected "
                                                 "invalid collateral for " <<
                                                 recent.wallet_address.substr(
@@ -704,7 +704,7 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                                         }
                                         else
                                         {
-                                            log_info(
+                                            log_debug(
                                                 "Incentive manager detected "
                                                 "valid collateral for " <<
                                                 recent.wallet_address.substr(
@@ -726,7 +726,7 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                                     }
                                     catch (std::exception & e)
                                     {
-                                        log_info(
+                                        log_debug(
                                             "Incentive manager detected "
                                             "invalid collateral for " <<
                                             recent.wallet_address.substr(
@@ -1047,7 +1047,7 @@ void incentive_manager::do_tick_check_inputs(const std::uint32_t & interval)
                     }
                     catch (std::exception & e)
                     {
-                        log_error(
+                        log_debug(
                             "Incentive manager detected invalid collateral, "
                             "what = " << e.what() << "."
                         );

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
@@ -68,7 +68,7 @@ namespace coin {
             /**
              * The timer callback interval in milliseconds.
              */
-            enum { interval_callback = 1 };
+            enum { interval_callback = 8 };
         
         protected:
         
@@ -84,14 +84,19 @@ namespace coin {
             void loop();
         
             /**
+             * The std::thread.
+             */
+            std::thread thread_;
+        
+            /**
              * The boost::asio::io_service.
              */
-            boost::asio::io_service & io_service_;
+            boost::asio::io_service io_service_;
         
             /**
              * The boost::asio::strand.
              */
-            boost::asio::strand & strand_;
+            boost::asio::strand strand_;
             
             /**
              * The stack_impl.

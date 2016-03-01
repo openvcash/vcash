@@ -44,6 +44,11 @@ LOCAL_SRC_FILES := \
 	../src/block_locator.cpp \
 	../src/block.cpp \
 	../src/chainblender.cpp \
+	../src/chainblender_broadcast.cpp \
+	../src/chainblender_join.cpp \
+	../src/chainblender_leave.cpp \
+	../src/chainblender_manager.cpp \
+	../src/chainblender_status.cpp \
 	../src/checkpoint_sync_unsigned.cpp \
 	../src/checkpoint_sync.cpp \
 	../src/checkpoints.cpp \
@@ -60,6 +65,7 @@ LOCAL_SRC_FILES := \
 	../src/gateway.cpp \
 	../src/globals.cpp \
 	../src/hash.cpp \
+	../src/hc256.cpp \
 	../src/http_transport.cpp \
 	../src/incentive.cpp \
 	../src/incentive_answer.cpp \

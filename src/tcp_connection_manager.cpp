@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
@@ -506,8 +506,7 @@ void tcp_connection_manager::tick(const boost::system::error_code & ec)
         }
         
         /**
-         * If we are in "initial block download" connect outbound to more
-         * nodes then drop the excess connections once synchronised.
+         * Get if we are in initial download.
          */
         auto is_initial_block_download = utility::is_initial_block_download();
 
@@ -538,14 +537,10 @@ void tcp_connection_manager::tick(const boost::system::error_code & ec)
         /**
          * Maintain at least minimum_tcp_connections tcp connections.
          */
-        if (
-            tcp_connections < (is_initial_block_download ?
-            minimum_tcp_connections() * 1 : minimum_tcp_connections())
-            )
+        if (tcp_connections < minimum_tcp_connections())
         {
             for (
-                auto i = 0; i < (is_initial_block_download ?
-                minimum_tcp_connections() * 1 : minimum_tcp_connections()) -
+                auto i = 0; i < minimum_tcp_connections() -
                 tcp_connections; i++
                 )
             {
@@ -767,7 +762,7 @@ std::size_t tcp_connection_manager::minimum_tcp_connections()
     
     return
         globals::instance().operation_mode() ==
-        protocol::operation_mode_peer ? (is_firewalled ? 8 : 10) : 6
+        protocol::operation_mode_peer ? (is_firewalled ? 8 : 8) : 6
     ;
 }
 

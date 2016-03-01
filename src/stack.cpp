@@ -239,6 +239,30 @@ void stack::wallet_zerotime_lock(const std::string & tx_id)
     }
 }
 
+void stack::chainblender_start()
+{
+    if (stack_impl_)
+    {
+        stack_impl_->chainblender_stop();
+    }
+    else
+    {
+        throw std::runtime_error("Stack is not allocated");
+    }
+}
+
+void stack::chainblender_stop()
+{
+    if (stack_impl_)
+    {
+        stack_impl_->chainblender_stop();
+    }
+    else
+    {
+        throw std::runtime_error("Stack is not allocated");
+    }
+}
+
 void stack::on_error(const std::map<std::string, std::string> & pairs)
 {
     log_error("Stack got error, pairs = " << pairs.size() << ".");
@@ -264,6 +288,38 @@ void stack::set_configuration_wallet_transaction_history_maximum(
     {
         throw std::runtime_error("Stack is not allocated");
     }
+}
+
+void stack::set_configuration_chainblender_use_common_output_denominations(
+    const bool & val
+    )
+{
+    if (stack_impl_)
+    {
+        stack_impl_->set_configuration_chainblender_use_common_output_denominations(
+            val
+        );
+    }
+    else
+    {
+        throw std::runtime_error("Stack is not allocated");
+    }
+}
+
+const bool stack::configuration_chainblender_use_common_output_denominations() const
+{
+    if (stack_impl_)
+    {
+        return
+            stack_impl_->configuration_chainblender_use_common_output_denominations()
+        ;
+    }
+    else
+    {
+        throw std::runtime_error("Stack is not allocated");
+    }
+    
+    return false;
 }
 
 const std::time_t

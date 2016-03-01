@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
@@ -88,9 +88,9 @@ std::string ripemd160::to_string() const
 
 bool ripemd160::is_empty() const
 {
-    for (auto & i : m_digest)
+    for (auto i = 0; i < digest_length; i++)
     {
-        if (i != 0)
+        if (m_digest[i] != 0)
         {
             return false;
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
@@ -25,6 +25,11 @@
 #include <coin/alert.hpp>
 #include <coin/alert_manager.hpp>
 #include <coin/block_locator.hpp>
+#include <coin/chainblender.hpp>
+#include <coin/chainblender_broadcast.hpp>
+#include <coin/chainblender_join.hpp>
+#include <coin/chainblender_leave.hpp>
+#include <coin/chainblender_status.hpp>
 #include <coin/checkpoints.hpp>
 #include <coin/checkpoint_sync.hpp>
 #include <coin/db_tx.hpp>
@@ -81,6 +86,8 @@ tcp_connection::tcp_connection(
     , timer_addr_rebroadcast_(ios)
     , time_last_getblocks_received_(0)
     , time_last_getblocks_sent_(0)
+    , timer_cbstatus_(ios)
+    , did_send_cbstatus_cbready_code_(false)
 {
     // ...
 }
@@ -241,16 +248,58 @@ void tcp_connection::stop()
 {
     m_state = state_stopping;
     
+    /**
+     * If we are a part of a chainblender session we need to reduce the
+     * participants count.
+     */
+    if (m_hash_chainblender_session_id.is_empty() == false)
+    {
+        /**
+         * Get the sessions.
+         */
+        auto & sessions = chainblender::instance().sessions();
+        
+        if (
+            sessions.count(m_hash_chainblender_session_id) > 0
+            )
+        {
+            if (
+                sessions[m_hash_chainblender_session_id].participants > 0
+                )
+            {
+                sessions[
+                    m_hash_chainblender_session_id
+                ].participants -= 1;
+            }
+            else
+            {
+                sessions.erase(m_hash_chainblender_session_id);
+            }
+        }
+    }
+    
+    /**
+     * Stop the transport.
+     */
     if (auto t = m_tcp_transport.lock())
     {
         t->stop();
     }
+    
+    /**
+     * Remove references to shared pointers.
+     */
+    m_oneshot_ztquestion = nullptr,
+        m_on_probe = nullptr, m_on_ianswer = nullptr, m_on_cbstatus = nullptr,
+        m_on_cbbroadcast = nullptr, m_chainblender_join = nullptr;
+    ;
     
     read_queue_.clear();
     timer_ping_.cancel();
     timer_ping_timeout_.cancel();
     timer_getblocks_.cancel();
     timer_addr_rebroadcast_.cancel();
+    timer_cbstatus_.cancel();
     timer_delayed_stop_.cancel();
     
     m_state = state_stopped;
@@ -258,12 +307,14 @@ void tcp_connection::stop()
 
 void tcp_connection::stop_after(const std::uint32_t & interval)
 {
+    auto self(shared_from_this());
+    
     /**
      * Starts the delayed stop timer.
      */
     timer_delayed_stop_.expires_from_now(std::chrono::seconds(interval));
     timer_delayed_stop_.async_wait(strand_.wrap(
-        [this, interval](boost::system::error_code ec)
+        [this, self, interval](boost::system::error_code ec)
     {
         if (ec)
         {
@@ -685,6 +736,141 @@ void tcp_connection::send_block_message(const block & blk)
     }
 }
 
+void tcp_connection::send_cbbroadcast_message(
+    const chainblender_broadcast & cbbroadcast
+    )
+{
+    if (globals::instance().is_chainblender_enabled())
+    {
+        if (auto t = m_tcp_transport.lock())
+        {
+            if (m_hash_chainblender_session_id.is_empty() == false)
+            {
+                /**
+                 * Allocate the message.
+                 */
+                message msg("cbbroadcast");
+
+                /**
+                 * Set the cbbroadcast.
+                 */
+                msg.protocol_cbbroadcast().cbbroadcast =
+                    std::make_shared<chainblender_broadcast> (cbbroadcast)
+                ;
+
+                /**
+                 * Set the session id.
+                 */
+                msg.protocol_cbbroadcast().cbbroadcast->set_session_id(
+                    m_hash_chainblender_session_id
+                );
+
+                log_info("TCP connection is sending cbbroadcast.");
+
+                /**
+                 * Encode the message.
+                 */
+                msg.encode();
+                
+                /**
+                 * Write the message.
+                 */
+                t->write(msg.data(), msg.size());
+            }
+        }
+        else
+        {
+            stop();
+        }
+    }
+}
+
+void tcp_connection::send_cbleave_message()
+{
+    if (globals::instance().is_chainblender_enabled())
+    {
+        if (auto t = m_tcp_transport.lock())
+        {
+            if (m_direction == direction_outgoing)
+            {
+                if (m_hash_chainblender_session_id.is_empty() == false)
+                {
+                    /**
+                     * Allocate the message.
+                     */
+                    message msg("cbleave");
+
+                    /**
+                     * Set the cbleave.
+                     */
+                    msg.protocol_cbleave().cbleave =
+                        std::make_shared<chainblender_leave> ()
+                    ;
+                    
+                    /**
+                     * Set the session id.
+                     */
+                    msg.protocol_cbleave().cbleave->set_session_id(
+                        m_hash_chainblender_session_id
+                    );
+                    
+                    log_debug("TCP connection is sending cbleave.");
+
+                    /**
+                     * Encode the message.
+                     */
+                    msg.encode();
+                    
+                    /**
+                     * Write the message.
+                     */
+                    t->write(msg.data(), msg.size());
+                }
+            }
+        }
+        else
+        {
+            stop();
+        }
+    }
+}
+
+void tcp_connection::send_tx_message(const transaction & tx)
+{
+    if (auto t = m_tcp_transport.lock())
+    {
+        /**
+         * Allocate the message.
+         */
+        message msg("tx");
+
+        /**
+         * Set the tx.
+         */
+        msg.protocol_tx().tx = std::make_shared<transaction> (tx);
+        
+        log_debug(
+            "TCP connection is sending tx " <<
+            msg.protocol_tx().tx->get_hash().to_string().substr(0, 20) <<
+            "."
+        );
+
+        /**
+         * Encode the message.
+         */
+        msg.encode();
+        
+        /**
+         * Write the message.
+         */
+        t->write(msg.data(), msg.size());
+    }
+    else
+    {
+        stop();
+    }
+}
+
 void tcp_connection::set_hash_checkpoint_known(const sha256 & val)
 {
     m_hash_checkpoint_known = val;
@@ -747,6 +933,16 @@ void tcp_connection::set_oneshot_ztquestion(
     )
 {
     m_oneshot_ztquestion = val;
+}
+
+void tcp_connection::set_cbjoin(const std::shared_ptr<chainblender_join> & val)
+{
+    m_chainblender_join = val;
+}
+
+const sha256 & tcp_connection::hash_chainblender_session_id() const
+{
+    return m_hash_chainblender_session_id;
 }
 
 bool tcp_connection::is_transport_valid()
@@ -1242,42 +1438,6 @@ void tcp_connection::send_headers_message(const std::vector<block> & headers)
     }
 }
 
-void tcp_connection::send_tx_message(const transaction & tx)
-{
-    if (auto t = m_tcp_transport.lock())
-    {
-        /**
-         * Allocate the message.
-         */
-        message msg("tx");
-
-        /**
-         * Set the tx.
-         */
-        msg.protocol_tx().tx = std::make_shared<transaction> (tx);
-        
-        log_debug(
-            "TCP connection is sending tx " <<
-            msg.protocol_tx().tx->get_hash().to_string().substr(0, 20) <<
-            "."
-        );
-
-        /**
-         * Encode the message.
-         */
-        msg.encode();
-        
-        /**
-         * Write the message.
-         */
-        t->write(msg.data(), msg.size());
-    }
-    else
-    {
-        stop();
-    }
-}
-
 void tcp_connection::send_ztlock_message(const zerotime_lock & ztlock)
 {
     if (auto t = m_tcp_transport.lock())
@@ -1520,6 +1680,93 @@ void tcp_connection::send_ivote_message(const incentive_vote & ivote)
     }
 }
 
+void tcp_connection::send_cbjoin_message(const chainblender_join & cbjoin)
+{
+    if (globals::instance().is_chainblender_enabled())
+    {
+        /**
+         * Only send a cbjoin message if the remote node is a peer.
+         */
+        if (
+            (m_protocol_version_services & protocol::operation_mode_peer) == 1
+            )
+        {
+            if (auto t = m_tcp_transport.lock())
+            {
+                /**
+                 * Allocate the message.
+                 */
+                message msg("cbjoin");
+
+                /**
+                 * Set the cbjoin.
+                 */
+                msg.protocol_cbjoin().cbjoin =
+                    std::make_shared<chainblender_join> (cbjoin)
+                ;
+                
+                log_debug("TCP connection is sending cbjoin.");
+
+                /**
+                 * Encode the message.
+                 */
+                msg.encode();
+                
+                /**
+                 * Write the message.
+                 */
+                t->write(msg.data(), msg.size());
+            }
+            else
+            {
+                stop();
+            }
+        }
+    }
+}
+
+void tcp_connection::send_cbstatus_message(
+    const chainblender_status & cbstatus
+    )
+{
+    if (globals::instance().is_chainblender_enabled())
+    {
+        if (auto t = m_tcp_transport.lock())
+        {
+            if (m_direction == direction_incoming)
+            {
+                /**
+                 * Allocate the message.
+                 */
+                message msg("cbstatus");
+
+                /**
+                 * Set the cbstatus.
+                 */
+                msg.protocol_cbstatus().cbstatus =
+                    std::make_shared<chainblender_status> (cbstatus)
+                ;
+                
+                log_debug("TCP connection is sending cbstatus.");
+
+                /**
+                 * Encode the message.
+                 */
+                msg.encode();
+                
+                /**
+                 * Write the message.
+                 */
+                t->write(msg.data(), msg.size());
+            }
+        }
+        else
+        {
+            stop();
+        }
+    }
+}
+
 void tcp_connection::send_mempool_message()
 {
     if (auto t = m_tcp_transport.lock())
@@ -1601,6 +1848,21 @@ void tcp_connection::set_on_ianswer(
     )
 {
     m_on_ianswer = f;
+}
+
+void tcp_connection::set_on_cbbroadcast(
+    const std::function< void (
+    const chainblender_broadcast &) > & f
+    )
+{
+    m_on_cbbroadcast = f;
+}
+
+void tcp_connection::set_on_cbstatus(
+    const std::function< void (const chainblender_status &) > & f
+    )
+{
+    m_on_cbstatus = f;
 }
 
 void tcp_connection::relay_checkpoint(const checkpoint_sync & checkpoint)
@@ -1919,7 +2181,7 @@ bool tcp_connection::handle_message(message & msg)
                     /**
                      * If we have a one-shot ztquestion send it.
                      */
-                    if (auto ztquestion = m_oneshot_ztquestion.lock())
+                    if (m_oneshot_ztquestion)
                     {
                         /**
                          * Stop the connection after N seconds, in case we
@@ -1930,7 +2192,14 @@ bool tcp_connection::handle_message(message & msg)
                         /**
                          * Send the ztquestion.
                          */
-                        send_ztquestion_message(*ztquestion);
+                        send_ztquestion_message(*m_oneshot_ztquestion);
+                    }
+                    else if (m_chainblender_join)
+                    {
+                        /**
+                         * Send the cbjoin.
+                         */
+                        send_cbjoin_message(*m_chainblender_join);
                     }
                     else if (m_probe_only == true)
                     {
@@ -2034,10 +2303,16 @@ bool tcp_connection::handle_message(message & msg)
                 }
             }
 
-            if (m_oneshot_ztquestion.lock())
+            if (m_oneshot_ztquestion)
             {
                 /**
                  * This is a one-shot connection, no need to proceed.
+                 */
+            }
+            else if (m_chainblender_join)
+            {
+                /**
+                 * This is a chainblender session, no need to proceed.
                  */
             }
             else
@@ -2231,13 +2506,13 @@ bool tcp_connection::handle_message(message & msg)
                                     sizeof(ptr_uint32)
                                 );
                                 
-                                sha256 hashKey = hash_random ^ ptr_uint32;
+                                sha256 hash_key = hash_random ^ ptr_uint32;
                                 
-                                hashKey = sha256::from_digest(&hash::sha256d(
-                                    hashKey.digest(), sha256::digest_length)[0]
+                                hash_key = sha256::from_digest(&hash::sha256d(
+                                    hash_key.digest(), sha256::digest_length)[0]
                                 );
                             
-                                mixes.insert(std::make_pair(hashKey, t));
+                                mixes.insert(std::make_pair(hash_key, t));
                             }
                         }
                         
@@ -2367,65 +2642,10 @@ bool tcp_connection::handle_message(message & msg)
                 
                 if (already_have == false)
                 {
-                     if (utility::is_initial_block_download() == false)
-                     {
-                         /**
-                          * Ask for the data.
-                          */
-                         getdata_.push_back(i);
-                     }
-                     else
-                     {
-                         /**
-                          * Do not allow tcp_connection's to send duplicate
-                          * getdata requests during a small window.
-                          */
-                         static std::map<inventory_vector, std::time_t>
-                             g_last_getdatas
-                         ;
-                      
-                         static std::recursive_mutex g_mutex_last_getdatas;
-                         
-                         std::lock_guard<std::recursive_mutex> l1(
-                             g_mutex_last_getdatas
-                         );
-                         
-                         if (g_last_getdatas.count(i) == 0)
-                         {
-                             g_last_getdatas[i] = std::time(0);
-                             
-                             /**
-                              * Ask for the data.
-                              */
-                             getdata_.push_back(i);
-                         }
-                         else
-                         {
-                             auto last_getdata = g_last_getdatas[i];
-                             
-                             if ((std::time(0) - last_getdata) >= 3)
-                             {
-                                 /**
-                                  * Ask for the data.
-                                  */
-                                 getdata_.push_back(i);
-                             }
-                         }
-                         
-                         auto it = g_last_getdatas.begin();
-                         
-                         while (it != g_last_getdatas.end())
-                         {
-                             if ((std::time(0) - it->second) >= 3)
-                             {
-                                 it = g_last_getdatas.erase(it);
-                             }
-                             else
-                             {
-                                 ++it;
-                             }
-                         }
-                     }
+                     /**
+                      * Ask for the data.
+                      */
+                     getdata_.push_back(i);
                 }
                 else if (
                     i.type() == inventory_vector::type_msg_block &&
@@ -2978,7 +3198,7 @@ bool tcp_connection::handle_message(message & msg)
                 inventory_vector::type_msg_tx, tx->get_hash()
             );
             
-            bool missing_inputs = false;
+            auto missing_inputs = false;
             
             /**
              * Allocate the data_buffer.
@@ -3367,7 +3587,7 @@ bool tcp_connection::handle_message(message & msg)
             /**
              * If we have a one-shot ztquestion call stop.
              */
-            if (m_oneshot_ztquestion.lock())
+            if (m_oneshot_ztquestion)
             {
                 /**
                  * Stop
@@ -3595,6 +3815,407 @@ bool tcp_connection::handle_message(message & msg)
                                  */
                                 relay_inv(inv, buffer);
                             }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    else if (msg.header().command == "cbbroadcast")
+    {
+        log_info("TCP connection got cbbroadcast.");
+        
+        if (globals::instance().is_chainblender_enabled())
+        {
+            if (utility::is_initial_block_download() == false)
+            {
+                const auto & cbbroadcast =
+                    msg.protocol_cbbroadcast().cbbroadcast
+                ;
+                
+                if (cbbroadcast)
+                {
+                    if (m_direction == direction_incoming)
+                    {
+                        if (
+                            m_hash_chainblender_session_id ==
+                            cbbroadcast->hash_session_id()
+                            )
+                        {
+                            auto self(shared_from_this());
+        
+                            /**
+                             * Get all of the tcp_connection's.
+                             */
+                            auto connections =
+                                stack_impl_.get_tcp_connection_manager(
+                                )->tcp_connections()
+                            ;
+                            
+                            log_info(
+                                "TCP connection is relaying cbbroadcast."
+                            );
+                            
+                            /**
+                             * Relay the message to all connections except this
+                             * one.
+                             */
+                            for (auto & i : connections)
+                            {
+                                if (auto j = i.second.lock())
+                                {
+                                    if (j == self)
+                                    {
+                                        continue;
+                                    }
+                                    else if (
+                                        j->hash_chainblender_session_id() ==
+                                        cbbroadcast->hash_session_id()
+                                        )
+                                    {
+                                        /**
+                                         * Send the cbbroadcast message.
+                                         */
+                                        j->send_cbbroadcast_message(
+                                            *cbbroadcast
+                                        );
+                                        
+                                        log_info(
+                                            "TCP connection relayed "
+                                            "cbbroadcast."
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            log_error(
+                                "TCP connection cbbroadcast session id "
+                                "mismatch."
+                            );
+                            
+                            /**
+                             * Call stop.
+                             */
+                            stop();
+                        }
+                    }
+                    else if (m_direction == direction_outgoing)
+                    {
+                        /**
+                         * Callback
+                         */
+                        if (m_on_cbbroadcast)
+                        {
+                            m_on_cbbroadcast(*cbbroadcast);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    else if (msg.header().command == "cbjoin")
+    {
+        if (globals::instance().is_chainblender_enabled())
+        {
+            if (utility::is_initial_block_download() == false)
+            {
+                const auto & cbjoin = msg.protocol_cbjoin().cbjoin;
+                
+                if (cbjoin)
+                {
+                    if (m_direction == direction_incoming)
+                    {
+                        /**
+                         * :TODO: Check that the denomination is one of the
+                         * possible combinations given the sum of the input
+                         * denominations.
+                         */
+                        
+                        /**
+                         * First try to find an inactive session with a
+                         * matching denomination otherwise create a new session
+                         * if we have room in our fixed size queue.
+                         */
+                        chainblender::session_t s;
+
+                        auto found = false;
+                        
+                        /**
+                         * Get the sessions.
+                         */
+                        auto & sessions = chainblender::instance().sessions();
+                        
+                        /**
+                         * If set to true all outputs for each session must
+                         * be of identical denominations.
+                         */
+                        auto
+                            enforce_common_output_denominations =
+                            cbjoin->denomination() > 0
+                        ;
+                        
+                        /**
+                         * We limit two participants per session.
+                         */
+                        for (auto & i : sessions)
+                        {
+                            if (enforce_common_output_denominations)
+                            {
+                                /**
+                                 * An inactive session that is at least 56
+                                 * seconds old is considered stalled.
+                                 */
+                                auto is_session_stalled =
+                                    i.second.is_active == false &&
+                                    std::time(0) - i.second.time >= 56
+                                ;
+                                
+                                if (
+                                    i.second.denomination ==
+                                    cbjoin->denomination() &&
+                                    i.second.participants <= 1 &&
+                                    is_session_stalled == false
+                                    )
+                                {
+                                    s = i.second;
+                                    
+                                    found = true;
+                                    
+                                    break;
+                                }
+                            }
+                            else
+                            {
+                                if (
+                                    i.second.participants <= 1 &&
+                                    i.second.is_active == false
+                                    )
+                                {
+                                    s = i.second;
+                                    
+                                    found = true;
+                                    
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        /**
+                         * If true we accepted the session.
+                         */
+                        auto accepted = false;
+                        
+                        if (found)
+                        {
+                            /**
+                             * Set the we have accepted the session.
+                             */
+                            accepted = true;
+                            
+                            /**
+                             * Increment the participants.
+                             */
+                            s.participants += 1;
+                            
+                            /**
+                             * Replace the session information.
+                             */
+                            sessions[s.hash_id] = s;
+                        }
+                        else if (sessions.size() < 12)
+                        {
+                            /**
+                             * Set the we have accepted the session.
+                             */
+                            accepted = true;
+                            
+                            /**
+                             * Create a new session.
+                             */
+                            s.hash_id = hash::sha256_random();
+                            s.denomination = cbjoin->denomination();
+                            s.time = std::time(0);
+                            s.participants = 1;
+                            s.is_active = false;
+                            
+                            /**
+                             * Add the new session.
+                             */
+                            sessions[s.hash_id] = s;
+                        }
+                        else
+                        {
+                            log_info(
+                                "TCP connection is rejecting cbjoin, session "
+                                "queue is full."
+                            );
+                            
+                            /**
+                             * Create the chainblender_status message.
+                             */
+                            auto cbstatus =
+                                std::make_shared<chainblender_status> ()
+                            ;
+                            
+                            /**
+                             * Set the code to
+                             * (chainblender_status::code_declined).
+                             */
+                            cbstatus->set_code(
+                                chainblender_status::code_declined
+                            );
+            
+                            /**
+                             * Send the cbstatus message.
+                             */
+                            send_cbstatus_message(*cbstatus);
+                            
+                            /**
+                             * Stop the connection after N seconds.
+                             */
+                            stop_after(4);
+                        }
+                        
+                        if (accepted == true)
+                        {
+                            /**
+                             * Set the session id.
+                             */
+                            m_hash_chainblender_session_id = s.hash_id;
+                            
+                            /**
+                             * Create the chainblender_status message.
+                             */
+                            auto cbstatus =
+                                std::make_shared<chainblender_status> ()
+                            ;
+                            
+                            /**
+                             * Set the code to
+                             * (chainblender_status::code_accepted).
+                             */
+                            cbstatus->set_code(
+                                chainblender_status::code_accepted
+                            );
+                            
+                            /**
+                             * Set the session id.
+                             */
+                            cbstatus->set_hash_session_id(s.hash_id);
+                            
+                            /**
+                             * Set the number of participants.
+                             */
+                            cbstatus->set_participants(s.participants);
+                            
+                            /**
+                             * Send the cbstatus message.
+                             */
+                            send_cbstatus_message(*cbstatus);
+                            
+                            /**
+                             * Start sending cbstatus messages.
+                             */
+                            do_send_cbstatus(2);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    else if (msg.header().command == "cbleave")
+    {
+        if (globals::instance().is_chainblender_enabled())
+        {
+            if (utility::is_initial_block_download() == false)
+            {
+                const auto & cbleave = msg.protocol_cbleave().cbleave;
+                
+                if (cbleave)
+                {
+                    if (m_direction == direction_incoming)
+                    {
+                        /**
+                         * Get the sessions.
+                         */
+                        auto & sessions = chainblender::instance().sessions();
+                        
+                        if (sessions.count(cbleave->hash_session_id()) > 0)
+                        {
+                            if (
+                                sessions[cbleave->hash_session_id()
+                                ].participants > 0
+                                )
+                            {
+                                sessions[
+                                    cbleave->hash_session_id()
+                                ].participants -= 1;
+                            }
+                            else
+                            {
+                                sessions.erase(cbleave->hash_session_id());
+                            }
+                        }
+                        
+                        /**
+                         * Call stop.
+                         */
+                        stop();
+                    }
+                }
+            }
+        }
+    }
+    else if (msg.header().command == "cbstatus")
+    {
+        if (globals::instance().is_chainblender_enabled())
+        {
+            if (utility::is_initial_block_download() == false)
+            {
+                const auto & cbstatus = msg.protocol_cbstatus().cbstatus;
+                
+                if (cbstatus)
+                {
+                    if (m_direction == direction_outgoing)
+                    {
+                        switch (cbstatus->code())
+                        {
+                            case chainblender_status::code_accepted:
+                            {
+                                if (m_hash_chainblender_session_id.is_empty())
+                                {
+                                    /**
+                                     * The session was accepted, set the id.
+                                     */
+                                    m_hash_chainblender_session_id =
+                                        cbstatus->hash_session_id()
+                                    ;
+                                }
+                            }
+                            break;
+                            default:
+                            {
+                                // ...
+                            }
+                            break;
+                        }
+                        
+                        if (
+                            m_hash_chainblender_session_id.is_empty(
+                            ) == false && m_hash_chainblender_session_id ==
+                            cbstatus->hash_session_id()
+                            )
+                        {
+                            if (m_on_cbstatus)
+                            {
+                                m_on_cbstatus(*cbstatus);
+                            }
+                        }
+                        else
+                        {
+                            stop();
                         }
                     }
                 }
@@ -3873,6 +4494,143 @@ void tcp_connection::do_rebroadcast_addr_messages(
                     do_rebroadcast_addr_messages(60 * 60);
                 }
             }
+        })
+    );
+}
+
+void tcp_connection::do_send_cbstatus(const std::uint32_t & interval)
+{
+    auto self(shared_from_this());
+    
+    /**
+     * Start the addr rebroadcast timer.
+     */
+    timer_cbstatus_.expires_from_now(std::chrono::seconds(interval));
+    timer_cbstatus_.async_wait(globals::instance().strand().wrap(
+        [this, self] (const boost::system::error_code & ec)
+        {
+            if (ec)
+            {
+                // ...
+            }
+            else
+            {
+                if (
+                    chainblender::instance().sessions().count(
+                    m_hash_chainblender_session_id) > 0
+                    )
+                {
+                    auto & s = chainblender::instance().sessions()[
+                        m_hash_chainblender_session_id]
+                    ;
+                    
+                    auto should_send_ready_code = false;
+                    
+                    if (s.is_active == true)
+                    {
+                        if (did_send_cbstatus_cbready_code_ == false)
+                        {
+                            did_send_cbstatus_cbready_code_ = true;
+                            
+                            should_send_ready_code = true;
+                        }
+                        else
+                        {
+                            should_send_ready_code = false;
+                        }
+                    }
+                    else
+                    {
+                        /**
+                         * We only set the session active after 8 seconds to
+                         * allow more time for participants to join.
+                         */
+                        if (
+                            s.participants >= 2 &&
+                            did_send_cbstatus_cbready_code_ == false &&
+                            std::time(0) - s.time >= 8
+                            )
+                        {
+                            s.is_active = true;
+                            
+                            did_send_cbstatus_cbready_code_ = true;
+                            
+                            should_send_ready_code = true;
+                        }
+                        else
+                        {
+                            should_send_ready_code = false;
+                        }
+                    }
+
+                    if (should_send_ready_code == true)
+                    {
+                        /**
+                         * Create the chainblender_status message.
+                         */
+                        auto cbstatus =
+                            std::make_shared<chainblender_status> ()
+                        ;
+                        
+                        /**
+                         * Set the code to
+                         * (chainblender_status::code_ready).
+                         */
+                        cbstatus->set_code(
+                            chainblender_status::code_ready
+                        );
+                        
+                        /**
+                         * Set the session id.
+                         */
+                        cbstatus->set_hash_session_id(s.hash_id);
+                        
+                        /**
+                         * Set the number of participants.
+                         */
+                        cbstatus->set_participants(s.participants);
+                        
+                        /**
+                         * Send the cbstatus message.
+                         */
+                        send_cbstatus_message(*cbstatus);
+                    }
+                    else
+                    {
+                        /**
+                         * Create the chainblender_status message.
+                         */
+                        auto cbstatus =
+                            std::make_shared<chainblender_status> ()
+                        ;
+                        
+                        /**
+                         * Set the code to
+                         * (chainblender_status::code_update).
+                         */
+                        cbstatus->set_code(
+                            chainblender_status::code_update
+                        );
+                        
+                        /**
+                         * Set the session id.
+                         */
+                        cbstatus->set_hash_session_id(s.hash_id);
+                        
+                        /**
+                         * Set the number of participants.
+                         */
+                        cbstatus->set_participants(s.participants);
+                        
+                        /**
+                         * Send the cbstatus message.
+                         */
+                        send_cbstatus_message(*cbstatus);
+                    }
+                }
+            }
+            
+            do_send_cbstatus(2);
         })
     );
 }

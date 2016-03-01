@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
@@ -213,6 +213,45 @@ namespace coin {
                 return m_mining_proof_of_stake;
             }
         
+            /**
+             * Set blockchain pruning enabled.
+             * @param val The value.
+             */
+            void set_blockchain_pruning(const bool & val)
+            {
+                m_blockchain_pruning = val;
+            }
+        
+            /**
+             * Enable blockchain pruning.
+             */
+            const bool & blockchain_pruning() const
+            {
+                return m_blockchain_pruning;
+            }
+        
+            /**
+             * Sets chainblender to use debug options.
+             * @param val The value.
+             */
+            void set_chainblender_debug(const bool & val);
+        
+            /**
+             * If true run chainblender with debug options.
+             */
+            const bool & chainblender_debug() const;
+        
+            /** 
+             * Sets chainblender to use common output denominations.
+             * @param val The value.
+             */
+            void set_chainblender_use_common_output_denominations(const bool & val);
+        
+            /**
+             * Enable chainblender common output denominations.
+             */
+            const bool & chainblender_use_common_output_denominations() const;
+        
         private:
         
             /** 
@@ -271,6 +310,21 @@ namespace coin {
              * Enable Proof-of-Stake mining.
              */
             bool m_mining_proof_of_stake;
+        
+            /**
+             * Enable blockchain pruning.
+             */
+            bool m_blockchain_pruning;
+        
+            /**
+             * If true run chainblender with debug options.
+             */
+            bool m_chainblender_debug;
+        
+            /**
+             * Enable chainblender common output denominations.
+             */
+            bool m_chainblender_use_common_output_denominations;
         
         protected:
         

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
@@ -179,6 +179,25 @@ namespace coin {
              * @param blk The block.
              */
             void send_block_message(const block & blk);
+        
+            /**
+             * Sends a cbbroadcast message.
+             * @param cbbroadcast The chainblender_broadcast message.
+             */
+            void send_cbbroadcast_message(
+                const chainblender_broadcast & cbbroadcast
+            );
+        
+            /**
+             * Sends a cbleave message.
+             */
+            void send_cbleave_message();
+        
+            /**
+             * Sends a tx message.
+             * @param tx The transaction.
+             */
+            void send_tx_message(const transaction & tx);
             
             /**
              * The tcp_transport.
@@ -241,6 +260,23 @@ namespace coin {
             );
         
             /**
+             * Sets the on cbbroadcast handler.
+             * @param f The std::function.
+             */
+            void set_on_cbbroadcast(
+                const std::function< void (
+                const chainblender_broadcast &) > & f
+            );
+        
+            /**
+             * Sets the on cbstatus handler.
+             * @param f The std::function.
+             */
+            void set_on_cbstatus(
+                const std::function< void (const chainblender_status &) > & f
+            );
+        
+            /**
              * Sets the hash of the known checkpoint.
              * @param val The sha256.
              */
@@ -281,6 +317,19 @@ namespace coin {
             void set_oneshot_ztquestion(
                 const std::shared_ptr<zerotime_question> & val
             );
+        
+            /**
+             * Set's the cbjoin.
+             * @param val The chainblender_join.
+             */
+            void set_cbjoin(
+                const std::shared_ptr<chainblender_join> & val
+            );
+        
+            /**
+             * The chainblender session id.
+             */
+            const sha256 & hash_chainblender_session_id() const;
         
             /**
              * If true the transport is valid (usable).
@@ -346,12 +395,6 @@ namespace coin {
             void send_headers_message(const std::vector<block> & headers);
         
             /**
-             * Sends a tx message.
-             * @param tx The transaction.
-             */
-            void send_tx_message(const transaction & tx);
-        
-            /**
              * Sends a ztlock message.
              * @param ztlock The zerotime_lock.
              */
@@ -384,6 +427,18 @@ namespace coin {
              * @param ivote The incentive_vote.
              */
             void send_ivote_message(const incentive_vote & ivote);
+        
+            /**
+             * Sends a cbjoin message.
+             * @param cbjoin The chainblender_join message.
+             */
+            void send_cbjoin_message(const chainblender_join & cbjoin);
+        
+            /**
+             * Sends a cbstatus message.
+             * @param cbstatus The chainblender_status message.
+             */
+            void send_cbstatus_message(const chainblender_status & cbstatus);
         
             /**
              * Sends a mempool message.
@@ -433,6 +488,12 @@ namespace coin {
              * Rebroadcasts addr messages every 24 hours.
              */
             void do_rebroadcast_addr_messages(const std::uint32_t & interval);
+        
+            /**
+             * The cbstatus timer handler.
+             * @param interval The interval.
+             */
+            void do_send_cbstatus(const std::uint32_t & interval);
         
             /**
              * The tcp_transport.
@@ -490,6 +551,20 @@ namespace coin {
             > m_on_ianswer;
         
             /**
+             * The cbbroadcast handler.
+             */
+            std::function<
+                void (const chainblender_broadcast &)
+            > m_on_cbbroadcast;
+        
+            /**
+             * The cbstatus handler.
+             */
+            std::function<
+                void (const chainblender_status &)
+            > m_on_cbstatus;
+        
+            /**
              * Our public address as advertised in the version message.
              */
             boost::asio::ip::address m_address_public;
@@ -533,7 +608,17 @@ namespace coin {
             /**
              * The one-shot ztquestion (if any).
              */
-            std::weak_ptr<zerotime_question> m_oneshot_ztquestion;
+            std::shared_ptr<zerotime_question> m_oneshot_ztquestion;
+        
+            /**
+             * The cbjoin (if any).
+             */
+            std::shared_ptr<chainblender_join> m_chainblender_join;
+        
+            /**
+             * The chainblender session id.
+             */
+            sha256 m_hash_chainblender_session_id;
         
             /**
              * The state.
@@ -658,6 +743,19 @@ namespace coin {
              * The seen_network_addresses mutex.
              */
             std::recursive_mutex mutex_seen_network_addresses_;
+        
+            /**
+             * The cbstatus timer.
+             */
+            boost::asio::basic_waitable_timer<
+                std::chrono::steady_clock
+            > timer_cbstatus_;
+        
+            /**
+             * If true we have sent a cbstatus message with a code of
+             * chainblender_status::code_ready.
+             */
+            bool did_send_cbstatus_cbready_code_;
     };
     
 } // namespace coin

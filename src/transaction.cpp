@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
@@ -1538,7 +1538,7 @@ bool transaction::check()
             m_transactions_in[0].script_signature().size() > 100
             )
         {
-            log_error(
+            log_debug(
                 "Transaction check failed, coinbase script size:\n" <<
                 to_string()
             );

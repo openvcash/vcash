@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
@@ -40,13 +40,16 @@ using namespace coin;
 configuration::configuration()
     : m_network_port_tcp(protocol::default_tcp_port)
     , m_network_tcp_inbound_maximum(network::tcp_inbound_maximum)
-    , m_network_udp_enable(false)
+    , m_network_udp_enable(true)
     , m_wallet_transaction_history_maximum(wallet::configuration_interval_history)
     , m_wallet_keypool_size(wallet::configuration_keypool_size)
     , m_zerotime_depth(zerotime::depth)
     , m_zerotime_answers_minimum(zerotime::answers_minimum)
     , m_wallet_rescan(false)
     , m_mining_proof_of_stake(true)
+    , m_blockchain_pruning(false)
+    , m_chainblender_debug(true)
+    , m_chainblender_use_common_output_denominations(true)
 {
     // ...
 }
@@ -210,6 +213,33 @@ bool configuration::load()
             "Configuration read mining.proof-of-stake = " <<
             m_mining_proof_of_stake << "."
         );
+
+        /**
+         * Get the chainblender.debug.
+         */
+        m_chainblender_debug = std::stoi(pt.get(
+            "chainblender.debug",
+            std::to_string(m_chainblender_debug))
+        );
+        
+        log_debug(
+            "Configuration read " << "chainblender.debug = " <<
+            m_chainblender_debug << "."
+        );
+        
+        /**
+         * Get the chainblender.use_common_output_denominations.
+         */
+        m_chainblender_use_common_output_denominations = std::stoi(pt.get(
+            "chainblender.use_common_output_denominations",
+            std::to_string(m_chainblender_use_common_output_denominations))
+        );
+        
+        log_debug(
+            "Configuration read " <<
+            "chainblender.use_common_output_denominations = " <<
+            m_chainblender_use_common_output_denominations << "."
+        );
     }
     catch (std::exception & e)
     {
@@ -306,6 +336,22 @@ bool configuration::save()
         );
         
         /**
+         * Put the chainblender.debug into property tree.
+         */
+        pt.put(
+            "chainblender.debug", std::to_string(m_chainblender_debug)
+        );
+        
+        /**
+         * Put the chainblender.use_common_output_denominations into property
+         * tree.
+         */
+        pt.put(
+            "chainblender.use_common_output_denominations",
+            std::to_string(m_chainblender_use_common_output_denominations)
+        );
+        
+        /**
          * The std::stringstream.
          */
         std::stringstream ss;
@@ -387,5 +433,27 @@ void configuration::set_network_udp_enable(const bool & val)
 const bool & configuration::network_udp_enable() const
 {
     return m_network_udp_enable;
+}
+
+void configuration::set_chainblender_debug(const bool & val)
+{
+    m_chainblender_debug = val;
+}
+
+const bool & configuration::chainblender_debug() const
+{
+    return m_chainblender_debug;
+}
+
+void configuration::set_chainblender_use_common_output_denominations(
+    const bool & val
+    )
+{
+    m_chainblender_use_common_output_denominations = val;
+}
+
+const bool & configuration::chainblender_use_common_output_denominations() const
+{
+    return m_chainblender_use_common_output_denominations;
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
@@ -39,6 +39,8 @@
 #include <coin/alert_manager.hpp>
 #include <coin/block.hpp>
 #include <coin/block_index.hpp>
+#include <coin/chainblender.hpp>
+#include <coin/chainblender_manager.hpp>
 #include <coin/checkpoint_sync.hpp>
 #include <coin/database_stack.hpp>
 #include <coin/db_env.hpp>
@@ -116,15 +118,6 @@ void stack_impl::start()
     globals::instance().set_state(globals::state_starting);
     
     /**
-     * @note Do not enable.
-     */
-#if 0
-    /**
-     * Try to remove old client blocks.
-     */
-    remove_old_blocks_if_client();
-#endif
-    /**
      * Load the configuration.
      */
     if (m_configuration.load() == false)
@@ -147,6 +140,24 @@ void stack_impl::start()
     {
         log_info("Stack loaded configuration from disk.");
     }
+    
+    /**
+     * @note Do not enable.
+     */
+#if 0
+    /**
+     * Force blockchain pruning for testing.
+     */
+    m_configuration.set_blockchain_pruning(true);
+    
+    if (m_configuration.blockchain_pruning() == true)
+    {
+        /**
+         * Try to prune old blocks.
+         */
+        prune_old_blocks();
+    }
+#endif
     
     if (
         m_configuration.network_port_tcp() == protocol::default_tcp_port
@@ -173,6 +184,13 @@ void stack_impl::start()
      */
     globals::instance().set_zerotime_answers_minimum(
         m_configuration.zerotime_answers_minimum()
+    );
+    
+    /**
+     * Set the chainblender::use_common_output_denominations
+     */
+    chainblender::instance().set_use_common_output_denominations(
+        m_configuration.chainblender_use_common_output_denominations()
     );
     
     /**
@@ -269,7 +287,9 @@ void stack_impl::start()
             /**
              * When pruning is enabled this must always succeed.
              */
-            if (success)
+            if (
+                success || m_configuration.blockchain_pruning() == true
+                )
             {
                 log_info("Stack loaded block index.");
                 
@@ -323,6 +343,26 @@ void stack_impl::start()
                     
                     exists = false;
                 }
+                
+                /**
+                 * Allocate the status.
+                 */
+                std::map<std::string, std::string> status2;
+            
+                /**
+                 * Set the status type.
+                 */
+                status2["type"] = "wallet";
+
+                /**
+                 * Set the status value.
+                 */
+                status2["value"] = "Loading wallet";
+
+                /**
+                 * Callback
+                 */
+                m_status_manager->insert(status2);
                 
                 /**
                  * Load the wallet.
@@ -663,7 +703,7 @@ void stack_impl::start()
                          */
                         globals::instance().wallet_main()->flush();
                     }
-                    
+
                     /**
                      * Callback all transactions from the main wallet.
                      */
@@ -949,6 +989,11 @@ void stack_impl::start()
                          * Set the status value.
                          */
                         status["value"] = "Rescanning wallet";
+                        
+                        /**
+                         * Set the status wallet.status.
+                         */
+                        status["wallet.status"] = "Rescanning wallet";
 
                         /**
                          * Callback
@@ -963,40 +1008,26 @@ void stack_impl::start()
                             "."
                         );
                     
+                        /**
+                         * Rescan the blockchain for transactions.
+                         */
                         globals::instance().wallet_main()->scan_for_transactions(
                             index_rescan, true
                         );
                     }
                 });
-#if 0
-                /**
-                 * Use a single std::thread to run the asio::io_service to
-                 * obtain the maximum performance to energy usage ratio.
-                 */
-                auto cores = 0;
-#else
+
                 /**
                  * Now that the block index is loaded increase the thread
-                 * count to max(1, cores - 1) if required.
+                 * count to max(3, cores) if required.
                  */
                 auto cores = std::thread::hardware_concurrency();
-                
-                /**
-                 * If we only have a single core run single threaded
-                 * (on main thread). Lastly, do not use more than 7 threads.
-                 */
-                if (cores == 1)
-                {
-                    cores = 0;
-                }
-                else
-                {
-                    cores = std::max(
-                        static_cast<std::uint32_t> (1),
-                        std::min(static_cast<std::uint32_t> (7), cores - 1)
-                    );
-                }
-#endif
+
+                cores = std::max(
+                    static_cast<std::uint32_t> (4 - 1),
+                    std::min(static_cast<std::uint32_t> (8 - 1), cores - 1)
+                );
+
                 log_info("Stack is adding " << cores << " threads.");
                 
                 for (auto i = 0; i < cores; i++)
@@ -1266,6 +1297,19 @@ void stack_impl::start()
             );
             
             /**
+             * Allocate the chainblender_manager.
+             */
+            m_chainblender_manager.reset(new chainblender_manager(
+                globals::instance().io_service(),
+                globals::instance().strand(), *this)
+            );
+            
+            /**
+             * Start the chainblender_manager.
+             */
+            m_chainblender_manager->start();
+            
+            /**
              * Allocate the tcp_connection_manager.
              */
             m_tcp_connection_manager.reset(
@@ -1388,16 +1432,6 @@ void stack_impl::start()
                 globals::instance().io_service(),
                 globals::instance().strand(), *this)
             );
-            
-            /**
-             * Set network.udp.enable to true.
-             */
-            m_configuration.set_network_udp_enable(true);
-            
-            /**
-             * Save the configuration file.
-             */
-            m_configuration.save();
             
             /**
              * Start the UDP layer if configured.
@@ -1618,6 +1652,14 @@ void stack_impl::stop()
     if (m_address_manager)
     {
         m_address_manager->stop();
+    }
+    
+    /**
+     * Stop the chainblender_manager.
+     */
+    if (m_chainblender_manager)
+    {
+        m_chainblender_manager->stop();
     }
     
     /**
@@ -1945,6 +1987,23 @@ void stack_impl::send_coins(
             }
             
             /**
+             * Check if only Blended coins should be used.
+             */
+            auto use_only_chainblended = false;
+            
+            it = wallet_values.find("blended");
+            
+            if (it != wallet_values.end())
+            {
+                use_only_chainblended = it->second == "1";
+                
+                if (use_only_chainblended)
+                {
+                    log_info("Stack is sending only Blended coins.");
+                }
+            }
+            
+            /**
              * Check for a comment.
              */
             it = wallet_values.find("comment");
@@ -1968,7 +2027,7 @@ void stack_impl::send_coins(
 
             auto ret =
                 globals::instance().wallet_main()->send_money_to_destination(
-                dest_tx, amount, wtx, use_zerotime
+                dest_tx, amount, wtx, use_zerotime, use_only_chainblended
             );
             
             if (ret.first)
@@ -2410,6 +2469,26 @@ void stack_impl::wallet_zerotime_lock(const std::string & tx_id)
     globals::instance().wallet_main()->zerotime_lock(sha256(tx_id));
 }
 
+void stack_impl::chainblender_start()
+{
+    if (m_chainblender_manager)
+    {
+        m_chainblender_manager->set_blend_state(
+            chainblender_manager::blend_state_active
+        );
+    }
+}
+
+void stack_impl::chainblender_stop()
+{
+    if (m_chainblender_manager)
+    {
+        m_chainblender_manager->set_blend_state(
+            chainblender_manager::blend_state_none
+        );
+    }
+}
+
 void stack_impl::rpc_send(const std::string & command_line)
 {
     auto tmp = command_line;
@@ -2700,6 +2779,30 @@ const std::time_t
     stack_impl::configuration_wallet_transaction_history_maximum() const
 {
     return m_configuration.wallet_transaction_history_maximum();
+}
+
+void stack_impl::set_configuration_chainblender_use_common_output_denominations(
+    const bool & val
+    )
+{
+    globals::instance().io_service().post(globals::instance().strand().wrap(
+        [this, val]()
+    {
+        m_configuration.set_chainblender_use_common_output_denominations(
+            val
+        );
+        
+        m_configuration.save();
+        
+        chainblender::instance().set_use_common_output_denominations(val);
+    }));
+}
+
+const bool
+    stack_impl::configuration_chainblender_use_common_output_denominations()
+    const
+{
+    return m_configuration.chainblender_use_common_output_denominations();
 }
 
 void stack_impl::url_get(
@@ -3124,6 +3227,11 @@ std::shared_ptr<alert_manager> & stack_impl::get_alert_manager()
     return m_alert_manager;
 }
 
+std::shared_ptr<chainblender_manager> & stack_impl::get_chainblender_manager()
+{
+    return m_chainblender_manager;
+}
+
 std::shared_ptr<database_stack> & stack_impl::get_database_stack()
 {
     return m_database_stack;
@@ -3138,6 +3246,12 @@ std::shared_ptr<status_manager> & stack_impl::get_status_manager()
 {
     return m_status_manager;
 }
+
+const std::shared_ptr<status_manager> & stack_impl::get_status_manager() const
+{
+    return m_status_manager;
+}
+
 
 std::shared_ptr<tcp_acceptor> & stack_impl::get_tcp_acceptor()
 {
@@ -4147,6 +4261,8 @@ void stack_impl::backup_last_wallet_file()
     {
         std::map<std::time_t, std::string> wallets_sorted_by_time;
         
+        std::time_t time_latest = 0;
+        
         for (auto & i : contents)
         {
             if (
@@ -4184,6 +4300,11 @@ void stack_impl::backup_last_wallet_file()
                 {
                     wallets_sorted_by_time[time] = i;
                 }
+                
+                if (time > time_latest)
+                {
+                    time_latest = time;
+                }
             }
         }
         
@@ -4212,6 +4333,28 @@ void stack_impl::backup_last_wallet_file()
                 if (
                     filesystem::copy_file(filesystem::data_path() + "wallet.dat",
                     path_backups +  "wallet." +
+                    std::to_string(std::time(0)) + ".dat") == true
+                    )
+                {
+                    log_info(
+                        "Stack backed up wallet to " << path_backups << "."
+                    );
+                }
+            }
+        }
+        else if (
+            wallets_sorted_by_time.size() > 0 &&
+            std::time(0) - time_latest > 24 * 60 * 60
+             )
+        {
+            /**
+             * Backup the wallet.
+             */
+            if (std::ifstream(filesystem::data_path() + "wallet.dat").good())
+            {
+                if (
+                    filesystem::copy_file(filesystem::data_path() +
+                    "wallet.dat", path_backups +  "wallet." +
                     std::to_string(std::time(0)) + ".dat") == true
                     )
                 {
@@ -4439,76 +4582,47 @@ bool stack_impl::import_blockchain_file(const std::string & path)
     return blocks_loaded != 0;
 }
 
-void stack_impl::remove_old_blocks_if_client()
+void stack_impl::prune_old_blocks()
 {
-    log_info("Stack is removing old blocks if client.");
+    log_info("Stack is pruning old blocks.");
     
-    if (
-        globals::instance().operation_mode() == protocol::operation_mode_client
-        )
+    std::vector<std::uint32_t> indexes;
+
+    /** 
+     * Try to remove the last N block files before the last 32.
+     */
+    for (auto i = 1; i < 32; i++)
     {
-        std::vector<std::uint32_t> indexes;
-
-        /** 
-         * Try to remove the last N block files before the last 32.
-         */
-        for (auto i = 1; i < 32; i++)
-        {
-            auto f = block::file_open(i, 0, "r");
-            
-            if (f == 0)
-            {
-                // ...
-            }
-            else
-            {
-                indexes.push_back(i);
-            }
-        }
+        auto f = block::file_open(i, 0, "r");
         
-        /**
-         * Never remove the last - 3.
-         */
-        if (indexes.size() > 0)
+        if (f == 0)
         {
-            indexes.pop_back();
+            // ...
         }
+        else
+        {
+            indexes.push_back(i);
+        }
+    }
+    
+    /**
+     * Never remove the last.
+     */
+    if (indexes.size() > 0)
+    {
+        indexes.pop_back();
+    }
+    
+    /**
+     * Remove the paths.
+     */
+    for (auto & i : indexes)
+    {
+        auto path = block::get_file_path(i);
         
-        /**
-         * Never remove the last - 2.
-         */
-        if (indexes.size() > 0)
-        {
-            indexes.pop_back();
-        }
+        log_info("Stack is removing old file " << path << ".");
         
-        /**
-         * Never remove the last - 1.
-         */
-        if (indexes.size() > 0)
-        {
-            indexes.pop_back();
-        }
-
-        /**
-         * Never remove the last.
-         */
-        if (indexes.size() > 0)
-        {
-            indexes.pop_back();
-        }
-        
-        /**
-         * Remove the paths.
-         */
-        for (auto & i : indexes)
-        {
-            auto path = block::get_file_path(i);
-            
-            log_info("Stack is removing old file " << path << ".");
-            
-            file::remove(path);
-        }
+        file::remove(path);
     }
 }
 

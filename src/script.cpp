@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
@@ -2507,7 +2507,7 @@ bool script::verify_script(
     
     if (to_bool(stack.back()) == false)
     {
-        log_debug("Script, verify script failed, 4.");
+        log_debug("Script, verify script failed, 4 (eval = false).");
         
         return false;
     }
@@ -2563,7 +2563,7 @@ bool script::verify_signature(
     assert(in < tx_to.transactions_in().size());
     
     const auto & tx_in = tx_to.transactions_in()[in];
-    
+
     if (tx_in.previous_out().n() >= tx_from.transactions_out().size())
     {
         return false;
@@ -2573,7 +2573,7 @@ bool script::verify_signature(
     {
         return false;
     }
-    
+
     const auto & tx_out = tx_from.transactions_out()[tx_in.previous_out().n()];
     
     return verify_script(

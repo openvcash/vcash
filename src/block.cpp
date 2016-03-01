@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
@@ -2464,6 +2464,10 @@ bool block::write_to_disk(
     std::uint32_t & file_number, std::uint32_t & block_position
     )
 {
+    /**
+     * :TODO: Do not allow empty pruned block files to be created.
+     */
+     
     /**
      * Open history file to append.
      */

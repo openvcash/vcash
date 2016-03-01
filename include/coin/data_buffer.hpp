@@ -1,5 +1,5 @@
  /*
- * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
@@ -32,6 +32,7 @@
 #include <vector>
 
 #include <boost/asio.hpp>
+#include <boost/crc.hpp>
 
 #include <coin/android.hpp>
 #include <coin/endian.hpp>
@@ -281,7 +282,7 @@ namespace coin {
                     }
                     else
                     {
-                        assert(0);
+                        throw std::runtime_error("read (file) failed");
                     }
                 }
                 else
@@ -589,6 +590,27 @@ namespace coin {
                 write_sha256(pair.first);
                 write_uint32(pair.second);
             }
+        
+            /**
+             * Calculates the checksum of the data.
+             */
+			std::uint32_t checksum()
+			{
+			    /**
+			     * Allocate the crc digest.
+			     */
+			    boost::crc_32_type digest;
+
+			    /**
+			     * Calculate the checksum.
+			     */
+			    digest.process_bytes(&m_data[0], m_data.size());
+
+			    /**
+			     * Return the checksum.
+			     */
+			    return digest.checksum();
+			}
 
             /**
              * The file.

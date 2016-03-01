@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
@@ -25,10 +25,9 @@
 using namespace coin;
 
 status_manager::status_manager(stack_impl & owner)
-    : io_service_(globals::instance().io_service())
-    , strand_(globals::instance().strand())
+    : strand_(io_service_)
     , stack_impl_(owner)
-    , timer_(globals::instance().io_service())
+    , timer_(io_service_)
 {
     // ...
 }
@@ -39,12 +38,24 @@ void status_manager::start()
      * Start the timer.
      */
     do_tick(interval_callback);
+    
+    /**
+     * Allocate the thread.
+     */
+    thread_ = std::thread(&status_manager::loop, this);
 }
 
 void status_manager::stop()
 {
     timer_.cancel();
     pairs_.clear();
+    
+    if (thread_.joinable())
+    {
+        thread_.join();
+    }
+    
+    io_service_.reset();
 }
 
 void status_manager::insert(const std::map<std::string, std::string> & pairs)
@@ -54,8 +65,6 @@ void status_manager::insert(const std::map<std::string, std::string> & pairs)
      * Ignore status updates on linux (until there is a UI).
      */
 #else
-    std::lock_guard<std::mutex> l1(mutex_);
-    
     io_service_.post(strand_.wrap(
         [this, pairs]()
     {
@@ -78,8 +87,6 @@ void status_manager::do_tick(const std::uint32_t & interval)
         }
         else
         {
-            std::lock_guard<std::mutex> l1(mutex_);
-
             if (pairs_.size() > 0)
             {
                 /**
@@ -109,7 +116,7 @@ void status_manager::do_tick(const std::uint32_t & interval)
                     /**
                      * Start the timer.
                      */
-                    do_tick(1000);
+                    do_tick(1250);
                 }
             }
             else
@@ -117,8 +124,13 @@ void status_manager::do_tick(const std::uint32_t & interval)
                 /**
                  * Start the timer.
                  */
-                do_tick(1000);
+                do_tick(1250);
             }
         }
     }));
+}
+
+void status_manager::loop()
+{
+    io_service_.run();
 }

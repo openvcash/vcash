@@ -168,9 +168,9 @@ std::uint64_t sha256::to_uint64(const std::uint32_t & index) const
 
 bool sha256::is_empty() const
 {
-    for (auto & i : m_digest)
+    for (auto i = 0; i < digest_length; i++)
     {
-        if (i != 0)
+        if (m_digest[i] != 0)
         {
             return false;
         }

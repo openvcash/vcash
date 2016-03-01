@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
@@ -28,6 +28,8 @@ using namespace coin;
 std::mutex chainblender::mutex_;
 
 chainblender::chainblender()
+    : m_use_common_output_denominations(true)
+    , m_denomination_mode(denomination_mode_auto)
 {
     // ...
 }
@@ -48,9 +50,40 @@ std::set<std::int64_t> chainblender::denominations()
         static_cast<std::int64_t> (500.0 * constants::coin) + 500000,
         static_cast<std::int64_t> (50.0 * constants::coin) + 50000,
         static_cast<std::int64_t> (5.0 * constants::coin) + 5000,
+        /**
+         * Enable 0.505 denomination when market price has risen from current
+         * (Q1 2016) levels.
+         */
+#if 0
         static_cast<std::int64_t> (0.5 * constants::coin) + 500,
+#endif
         static_cast<std::int64_t> (globals::instance().transaction_fee()) + 0,
     };
+}
+
+std::set<std::int64_t> chainblender::denominations_blended()
+{
+    /**
+     * Cache the results.
+     */
+    static std::set<std::int64_t> ret;
+    
+    if (ret.size() == 0)
+    {
+        auto denoms = denominations();
+
+        for (auto & i : denoms)
+        {
+            if (i == globals::instance().transaction_fee())
+            {
+                continue;
+            }
+            
+            ret.insert(i + globals::instance().transaction_fee());
+        }
+    }
+    
+    return ret;
 }
 
 std::int16_t chainblender::calculate_score(
@@ -120,4 +153,20 @@ std::int16_t chainblender::calculate_score(
 std::map<sha256, chainblender::session_t> & chainblender::sessions()
 {
     return m_sessions;
+}
+
+void chainblender::set_use_common_output_denominations(const bool & val)
+{
+    m_use_common_output_denominations = val;
+}
+
+const bool & chainblender::use_common_output_denominations() const
+{
+    return m_use_common_output_denominations;
+}
+
+const chainblender::denomination_mode_t &
+    chainblender::denomination_mode() const
+{
+    return m_denomination_mode;
 }

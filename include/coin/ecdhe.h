@@ -165,7 +165,6 @@ static char * EC_DHE_getPublicKey(EC_DHE * ec_dhe, int * public_key_len)
         
         return 0;
     }
-    
 	
 	if (1 != EVP_PKEY_keygen_init(ec_dhe->ctx_keygen))
     {

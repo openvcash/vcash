@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
@@ -28,6 +28,7 @@
 #include <coin/accounting_entry.hpp>
 #include <coin/address.hpp>
 #include <coin/block_locator.hpp>
+#include <coin/chainblender.hpp>
 #include <coin/coin_control.hpp>
 #include <coin/constants.hpp>
 #include <coin/crypter.hpp>
@@ -81,9 +82,12 @@ wallet::wallet(stack_impl & impl)
 void wallet::start()
 {
     /**
-     * Start the resend transactions timer.
+     * Start the timer after a random time interval.
      */
-    resend_transactions_timer_.expires_from_now(std::chrono::seconds(900));
+    resend_transactions_timer_.expires_from_now(
+        std::chrono::seconds(random::uint16_random_range(
+        5 * 60, 15 * 60))
+    );
     resend_transactions_timer_.async_wait(globals::instance().strand().wrap(
         std::bind(&wallet::resend_transactions_tick, this,
         std::placeholders::_1))
@@ -1283,15 +1287,9 @@ bool wallet::chainblender_denominate(const std::int64_t & val)
         std::vector< std::pair<script, std::int64_t> > to_send;
         
         /**
-         * Create the denominations.
+         * Get the denominations.
          */
-        std::set<std::int64_t> denominations =
-        {
-            static_cast<std::int64_t> (100.0 * constants::coin) + 100000,
-            static_cast<std::int64_t> (10.0 * constants::coin) + 10000,
-            static_cast<std::int64_t> (1.0 * constants::coin) + 1000,
-            static_cast<std::int64_t> (0.1 * constants::coin) + 100,
-        };
+        auto denominations = chainblender::instance().denominations();
 
         /**
          * Work backwards over the denominations.
@@ -1304,8 +1302,19 @@ bool wallet::chainblender_denominate(const std::int64_t & val)
             
             auto outputs = 0;
 
+            /**
+             * Get the (on-chain + non-denominated) balance.
+             */
+            auto balance_on_chain_nondenominated =
+                get_on_chain_nondenominated_balance()
+            ;
+
+            /**
+             * Create the denominations.
+             */
             while (
-                remaining - denomination >= 0 && outputs <= 8
+                remaining - denomination >= 0 && outputs <= 8 &&
+                balance_on_chain_nondenominated > remaining
                 )
             {
                 /**
@@ -1354,16 +1363,34 @@ bool wallet::chainblender_denominate(const std::int64_t & val)
         auto use_zerotime = false;
         
         /**
+         * Initialize the filter with the denominations.
+         */
+        auto filter = denominations;
+        
+        /**
+         * Get the blended denominations.
+         */
+        auto denominations_blended =
+            chainblender::instance().denominations_blended()
+        ;
+        
+        /**
+         * Add blended denominations to the filter.
+         */
+        filter.insert(
+            denominations_blended.begin(), denominations_blended.end()
+        );
+        
+        /**
          * Create the transaction.
          */
         auto success = create_transaction(
-            to_send, wtx, reserved_key, required_fee, denominations, 0,
-            use_zerotime
+            to_send, wtx, reserved_key, required_fee, filter, 0, use_zerotime,
+            false
         );
         
         if (success)
         {
-
             /**
              * Set that the transaction_wallet is chainblender denominated.
              */
@@ -1680,8 +1707,7 @@ void wallet::disable_transaction(const transaction & tx) const
             
             if (
                 i.previous_out().n() < prev.transactions_out().size() &&
-                is_mine(prev.transactions_out()[i.previous_out().n()]
-                )
+                is_mine(prev.transactions_out()[i.previous_out().n()])
                 )
             {
                 prev.mark_unspent(i.previous_out().n());
@@ -1785,21 +1811,25 @@ void wallet::update_spent(const transaction & tx) const
         if (it != m_transactions.end())
         {
             auto & wtx = it->second;
-            
+
             if (i.previous_out().n() >= wtx.transactions_out().size())
             {
-                log_error(
+                /**
+                 * This can happen because of chainblended transactions and
+                 * is ok.
+                 */
+                log_debug(
                     "Wallet, update spent failed, bad wallet transaction " <<
                     wtx.get_hash().to_string().substr(0, 10) << "."
                 );
             }
             else if (
-                wtx.is_spent(i.previous_out().n()) &&
-                is_mine(wtx.transactions_out()[i.previous_out().n()]) == false
+                wtx.is_spent(i.previous_out().n()) == false &&
+                is_mine(wtx.transactions_out()[i.previous_out().n()]) == true
                 )
             {
                 log_debug(
-                    "Wallet, update found spent coin " <<
+                    "Wallet, update mark spent coin " <<
                     utility::format_money(wtx.get_credit()) << ":" <<
                     wtx.get_hash().to_string().substr(0, 10) <<
                     "."
@@ -1828,7 +1858,7 @@ void wallet::update_spent(const transaction & tx) const
                  * Set the wallet.transaction.hash.
                  */
                 status["wallet.transaction.hash"] =
-                    i.previous_out().to_string()
+                    wtx.get_hash().to_string()
                 ;
                 
                 if (m_stack_impl)
@@ -2433,6 +2463,85 @@ std::int64_t wallet::get_balance() const
     return ret;
 }
 
+std::int64_t wallet::get_on_chain_balance() const
+{
+    std::lock_guard<std::recursive_mutex> l1(mutex_);
+    
+    std::int64_t ret = 0;
+
+    for (auto & i : m_transactions)
+    {
+        const auto & coin = i.second;
+        
+        if (coin.get_depth_in_main_chain(false) == 0)
+        {
+            continue;
+        }
+        
+        if (coin.is_final() && coin.is_confirmed())
+        {
+            ret += coin.get_available_credit();
+        }
+    }
+    
+    return ret;
+}
+
+std::int64_t wallet::get_on_chain_nondenominated_balance() const
+{
+    std::lock_guard<std::recursive_mutex> l1(mutex_);
+    
+    return get_on_chain_balance() - get_on_chain_denominated_balance();
+}
+
+std::int64_t wallet::get_on_chain_denominated_balance() const
+{
+    std::lock_guard<std::recursive_mutex> l1(mutex_);
+    
+    std::int64_t ret = 0;
+
+    for (auto & i : m_transactions)
+    {
+        const auto & coin = i.second;
+        
+        if (coin.get_depth_in_main_chain(false) == 0)
+        {
+            continue;
+        }
+
+        if (coin.is_final() && coin.is_confirmed())
+        {
+            ret += coin.get_available_denominated_credit();
+        }
+    }
+    
+    return ret;
+}
+
+std::int64_t wallet::get_on_chain_blended_balance() const
+{
+    std::lock_guard<std::recursive_mutex> l1(mutex_);
+    
+    std::int64_t ret = 0;
+
+    for (auto & i : m_transactions)
+    {
+        const auto & coin = i.second;
+        
+        if (coin.get_depth_in_main_chain(false) == 0)
+        {
+            continue;
+        }
+
+        if (coin.is_final() && coin.is_confirmed())
+        {
+            ret += coin.get_available_chainblended_credit();
+        }
+    }
+    
+    return ret;
+}
+
 std::int64_t wallet::get_unconfirmed_balance() const
 {
     std::lock_guard<std::recursive_mutex> l1(mutex_);
@@ -2523,12 +2632,16 @@ bool wallet::select_coins(
     std::uint32_t> > & coins_out, std::int64_t & value_out,
     const std::set<std::int64_t> & filter,
     const std::shared_ptr<coin_control> & control,
-    const bool & use_zerotime
+    const bool & use_zerotime, const bool & use_chainblended,
+    const bool & use_only_chainblended
     ) const
 {
     std::vector<output> coins;
     
-    available_coins(coins, true, filter, control, use_zerotime);
+    available_coins(
+        coins, true, filter, control, use_zerotime, use_chainblended,
+        use_only_chainblended
+    );
 
     if (control && control->has_selected())
     {
@@ -2560,7 +2673,8 @@ bool wallet::create_transaction(
     const std::vector< std::pair<script, std::int64_t> > & scripts,
     transaction_wallet & tx_new, key_reserved & reserved_key,
     std::int64_t & fee_out, const std::set<std::int64_t> & filter,
-    const std::shared_ptr<coin_control> & control, const bool & use_zerotime
+    const std::shared_ptr<coin_control> & control, const bool & use_zerotime,
+    const bool & use_chainblended, const bool & use_only_chainblended
     )
 {
     std::int64_t value = 0;
@@ -2625,13 +2739,15 @@ bool wallet::create_transaction(
         > coins;
         
         std::int64_t value_in = 0;
-        
+
         if (
             select_coins(total_value, tx_new.time(),
-            coins, value_in, filter, control, use_zerotime) == false
+            coins, value_in, filter, control, use_zerotime, use_chainblended,
+            use_only_chainblended
+            ) == false
             )
         {
-            log_debug(
+            log_error(
                 "Wallet, create transaction failed, select coins failed."
             );
 
@@ -2823,7 +2939,8 @@ bool wallet::create_transaction(
     const script & script_pub_key, const std::int64_t & value,
     transaction_wallet & tx_new, key_reserved & reserved_key,
     std::int64_t & fee_out, const std::set<std::int64_t> & filter,
-    const std::shared_ptr<coin_control> & control, const bool & use_zerotime
+    const std::shared_ptr<coin_control> & control, const bool & use_zerotime,
+    const bool & use_chainblended, const bool & use_only_chainblended
     )
 {
     std::vector< std::pair<script, std::int64_t> > scripts;
@@ -2831,7 +2948,8 @@ bool wallet::create_transaction(
     scripts.push_back(std::make_pair(script_pub_key, value));
 
     return create_transaction(
-        scripts, tx_new, reserved_key, fee_out, filter, control, use_zerotime
+        scripts, tx_new, reserved_key, fee_out, filter, control, use_zerotime,
+        use_chainblended, use_only_chainblended
     );
 }
 
@@ -2872,192 +2990,8 @@ std::pair<bool, std::string> wallet::commit_transaction(
     );
 
     /**
-     * Take a key/pair from key pool so it won't be used again.
+     * Try to accept it into the memory pool.
      */
-    reserve_key.keep_key();
-
-    /**
-     * Add transaction to wallet.
-     */
-    add_to_wallet(wtx_new);
-    
-    /**
-     * Mark old coins as spent.
-     */
-    for (auto & i : wtx_new.transactions_in())
-    {
-        transaction_wallet & wtx = m_transactions[i.previous_out().get_hash()];
-        
-        /**
-         * Bind the wallet.
-         */
-        wtx.bind_wallet(*this);
-        
-        /**
-         * Mark spent.
-         */
-        wtx.mark_spent(i.previous_out().n());
-        
-        /**
-         * Write the transaction to disk.
-         */
-        wtx.write_to_disk();
-        
-        /**
-         * Allocate the status.
-         */
-        std::map<std::string, std::string> status;
-
-        /**
-         * Add the transaction_wallet values to the status.
-         */
-        for (auto & j : wtx.values())
-        {
-            status[j.first] = j.second;
-        }
-
-        /**
-         * Set the status type.
-         */
-        status["type"] = "wallet.transaction";
-        
-        /**
-         * Set the status value.
-         */
-        status["value"] = "updated";
-
-        /**
-         * Set the wallet.transaction.hash.
-         */
-        status["wallet.transaction.hash"] = wtx.get_hash().to_string();
-
-        /**
-         * Set the wallet.transaction.in_main_chain.
-         */
-        status["wallet.transaction.in_main_chain"] = std::to_string(
-            wtx.is_in_main_chain()
-        );
-        
-        /**
-         * Set the wallet.transaction.is_from_me.
-         */
-        status["wallet.transaction.is_from_me"] =
-            std::to_string(wtx.is_from_me())
-        ;
-        
-        /**
-         * Set the wallet.transaction.confirmations.
-         */
-        status["wallet.transaction.confirmations"] =
-            std::to_string(wtx.get_depth_in_main_chain())
-        ;
-        
-        /**
-         * Set the wallet.transaction.confirmed.
-         */
-        status["wallet.transaction.confirmed"] =
-            std::to_string(wtx.is_confirmed())
-        ;
-        
-        /**
-         * Set the wallet.transaction.credit.
-         */
-        status["wallet.transaction.credit"] = std::to_string(
-            wtx.get_credit(true)
-        );
-
-        /**
-         * Set the wallet.transaction.debit.
-         */
-        status["wallet.transaction.debit"] =
-            std::to_string(wtx.get_debit())
-        ;
-        
-        /**
-         * Set the wallet.transaction.net.
-         */
-        status["wallet.transaction.net"] =
-            std::to_string(wtx.get_credit(true) - wtx.get_debit())
-        ;
-
-        /**
-         * Set the wallet.transaction.time.
-         */
-        status["wallet.transaction.time"] = std::to_string(wtx.time());
-
-        if (wtx.is_coin_stake())
-        {
-            /**
-             * Set the wallet.transaction.coin_stake.
-             */
-            status["wallet.transaction.coin_stake"] = "1";
-            
-            /**
-             * Set the wallet.transaction.credit.
-             */
-            status["wallet.transaction.credit"] =
-                std::to_string(-wtx.get_debit())
-            ;
-        }
-        else if (wtx.is_coin_base())
-        {
-            /**
-             * Set the wallet.transaction.coin_base.
-             */
-            status["wallet.transaction.coin_base"] = "1";
-            
-            std::int64_t credit = 0;
-            
-            /**
-             * Since this is a coin base transaction we only add the first value
-             * from the first transaction out.
-             */
-            for (auto & j : wtx.transactions_out())
-            {
-                if (
-                    globals::instance().wallet_main(
-                    )->is_mine(j)
-                    )
-                {
-                    credit += j.value();
-                    
-                    break;
-                }
-            }
-            
-            /**
-             * Set the wallet.transaction.credit.
-             */
-            status["wallet.transaction.credit"] = std::to_string(credit);
-            
-            /**
-             * Set the wallet.transaction.type.
-             */
-            status["wallet.transaction.type"] = "mined";
-        }
-        
-        if (m_stack_impl)
-        {
-            /**
-             * Callback
-             */
-            m_stack_impl->get_status_manager()->insert(status);
-        }
-    }
-    
-    if (m_is_file_backed)
-    {
-        /**
-         * Deallocate
-         */
-        unused.reset();
-    }
-    
-    /**
-     * Track how many getdata requests our transaction gets.
-     */
-    m_request_counts[wtx_new.get_hash()] = 0;
-
     auto ret = wtx_new.accept_to_memory_pool();
 
     /**
@@ -3068,12 +3002,205 @@ std::pair<bool, std::string> wallet::commit_transaction(
         /**
          * The transaction has been signed and recorded, something bad happened.
          */
-        
         log_error(
             "Wallet, commit transaction failed, transaction is not valid."
         );
 
         return std::make_pair(false, ret.second);
+    }
+    else
+    {
+        /**
+         * Take a key/pair from key pool so it won't be used again.
+         */
+        reserve_key.keep_key();
+
+        /**
+         * Add transaction to wallet.
+         */
+        add_to_wallet(wtx_new);
+        
+        /**
+         * Mark old coins as spent.
+         */
+        for (auto & i : wtx_new.transactions_in())
+        {
+            transaction_wallet & wtx = m_transactions[
+                i.previous_out().get_hash()]
+            ;
+            
+            /**
+             * Bind the wallet.
+             */
+            wtx.bind_wallet(*this);
+            
+            /**
+             * Mark spent.
+             */
+            if (wtx.mark_spent(i.previous_out().n()) == true)
+            {
+                /**
+                 * Write the transaction to disk.
+                 */
+                wtx.write_to_disk();
+                
+                /**
+                 * Allocate the status.
+                 */
+                std::map<std::string, std::string> status;
+
+                /**
+                 * Add the transaction_wallet values to the status.
+                 */
+                for (auto & j : wtx.values())
+                {
+                    status[j.first] = j.second;
+                }
+
+                /**
+                 * Set the status type.
+                 */
+                status["type"] = "wallet.transaction";
+                
+                /**
+                 * Set the status value.
+                 */
+                status["value"] = "updated";
+
+                /**
+                 * Set the wallet.transaction.hash.
+                 */
+                status["wallet.transaction.hash"] = wtx.get_hash().to_string();
+
+                /**
+                 * Set the wallet.transaction.in_main_chain.
+                 */
+                status["wallet.transaction.in_main_chain"] = std::to_string(
+                    wtx.is_in_main_chain()
+                );
+                
+                /**
+                 * Set the wallet.transaction.is_from_me.
+                 */
+                status["wallet.transaction.is_from_me"] =
+                    std::to_string(wtx.is_from_me())
+                ;
+                
+                /**
+                 * Set the wallet.transaction.confirmations.
+                 */
+                status["wallet.transaction.confirmations"] =
+                    std::to_string(wtx.get_depth_in_main_chain())
+                ;
+                
+                /**
+                 * Set the wallet.transaction.confirmed.
+                 */
+                status["wallet.transaction.confirmed"] =
+                    std::to_string(wtx.is_confirmed())
+                ;
+                
+                /**
+                 * Set the wallet.transaction.credit.
+                 */
+                status["wallet.transaction.credit"] = std::to_string(
+                    wtx.get_credit(true)
+                );
+
+                /**
+                 * Set the wallet.transaction.debit.
+                 */
+                status["wallet.transaction.debit"] =
+                    std::to_string(wtx.get_debit())
+                ;
+                
+                /**
+                 * Set the wallet.transaction.net.
+                 */
+                status["wallet.transaction.net"] =
+                    std::to_string(wtx.get_credit(true) - wtx.get_debit())
+                ;
+
+                /**
+                 * Set the wallet.transaction.time.
+                 */
+                status["wallet.transaction.time"] = std::to_string(wtx.time());
+
+                if (wtx.is_coin_stake())
+                {
+                    /**
+                     * Set the wallet.transaction.coin_stake.
+                     */
+                    status["wallet.transaction.coin_stake"] = "1";
+                    
+                    /**
+                     * Set the wallet.transaction.credit.
+                     */
+                    status["wallet.transaction.credit"] =
+                        std::to_string(-wtx.get_debit())
+                    ;
+                }
+                else if (wtx.is_coin_base())
+                {
+                    /**
+                     * Set the wallet.transaction.coin_base.
+                     */
+                    status["wallet.transaction.coin_base"] = "1";
+                    
+                    std::int64_t credit = 0;
+                    
+                    /**
+                     * Since this is a coin base transaction we only add the
+                     * first value from the first transaction out.
+                     */
+                    for (auto & j : wtx.transactions_out())
+                    {
+                        if (
+                            globals::instance().wallet_main(
+                            )->is_mine(j)
+                            )
+                        {
+                            credit += j.value();
+                            
+                            break;
+                        }
+                    }
+                    
+                    /**
+                     * Set the wallet.transaction.credit.
+                     */
+                    status["wallet.transaction.credit"] =
+                        std::to_string(credit)
+                    ;
+                    
+                    /**
+                     * Set the wallet.transaction.type.
+                     */
+                    status["wallet.transaction.type"] = "mined";
+                }
+                
+                if (m_stack_impl)
+                {
+                    /**
+                     * Callback
+                     */
+                    m_stack_impl->get_status_manager()->insert(status);
+                }
+            }
+        }
+        
+        if (m_is_file_backed)
+        {
+            /**
+             * Deallocate
+             */
+            unused.reset();
+        }
+        
+        /**
+         * Track how many getdata requests our transaction gets.
+         */
+        m_request_counts[wtx_new.get_hash()] = 0;
     }
     
     if (m_stack_impl)
@@ -3534,7 +3661,7 @@ bool wallet::create_coin_stake(
         /**
          * Generate the signature.
          */
-        int n = 0;
+        auto n = 0;
         
         for (auto & pcoin : previous_wtxs)
         {
@@ -3596,7 +3723,8 @@ bool wallet::create_coin_stake(
 
 std::pair<bool, std::string> wallet::send_money(
     const script & script_pub_key, const std::int64_t & value,
-    const transaction_wallet & wtx_new, const bool & use_zerotime
+    const transaction_wallet & wtx_new, const bool & use_zerotime,
+    const bool & use_only_chainblended
     )
 {
     std::lock_guard<std::recursive_mutex> l1(mutex_);
@@ -3638,14 +3766,31 @@ std::pair<bool, std::string> wallet::send_money(
      * Do not filter any coin denominations.
      */
     std::set<std::int64_t> filter;
-    
+
     if (
         create_transaction(script_pub_key, value,
         *const_cast<transaction_wallet *> (&wtx_new), *reserve_key,
-        fee_required, filter, 0, use_zerotime) == false
+        fee_required, filter, 0, use_zerotime, true, use_only_chainblended
+        ) == false
         )
     {
-        if (value + fee_required > get_balance())
+        if (
+            use_only_chainblended && value + fee_required >
+            get_on_chain_blended_balance()
+            )
+        {
+            log_error(
+                "Wallet, send money failed, create transaction failed, "
+                "insufficient funds, fee required = " <<
+                utility::format_money(fee_required) << "."
+            );
+            
+            return std::make_pair(
+                false, "failed to create transaction, insufficient "
+                "blended funds"
+            );
+        }
+        else if (value + fee_required > get_balance())
         {
             log_error(
                 "Wallet, send money failed, create transaction failed, "
@@ -3701,13 +3846,20 @@ std::pair<bool, std::string> wallet::send_money(
         
         return std::make_pair(ret_pair.first, ret_pair.second);
     }
+    
+    log_info(
+        "Wallet commit transaction " <<
+        wtx_new.get_hash().to_string().substr(0, 8) <<
+        ", use_only_chainblended = " << use_only_chainblended << "."
+    );
 
     return std::make_pair(true, "");
 }
 
 std::pair<bool, std::string> wallet::send_money_to_destination(
     const destination::tx_t & address, const std::int64_t & value,
-    const transaction_wallet & wtx_new, const bool & use_zerotime
+    const transaction_wallet & wtx_new, const bool & use_zerotime,
+    const bool & use_only_chainblended
     )
 {
     if (value <= 0)
@@ -3732,22 +3884,41 @@ std::pair<bool, std::string> wallet::send_money_to_destination(
         return std::make_pair(false, "insufficient funds");
     }
     
+    if (
+        use_only_chainblended && value +
+        globals::instance().transaction_fee() > get_on_chain_blended_balance()
+        )
+    {
+        log_error(
+            "Wallet, send money to destination  failed, "
+            "insufficient funds = " << utility::format_money(value) <<
+            ", fee required = " <<
+            utility::format_money(globals::instance().transaction_fee()) <<
+            ", balance = " << get_balance() << "."
+        );
+    
+        return std::make_pair(false, "insufficient funds");
+    }
+    
     script script_pub_key;
     
     script_pub_key.set_destination(address);
 
-    return send_money(script_pub_key, value, wtx_new, use_zerotime);
+    return send_money(
+        script_pub_key, value, wtx_new, use_zerotime, use_only_chainblended
+    );
 }
 
 void wallet::available_coins(
     std::vector<output> & coins, const bool & only_confirmed,
     const std::set<std::int64_t> & filter,
     const std::shared_ptr<coin_control> & control,
-    const bool & use_zerotime
+    const bool & use_zerotime, const bool & use_chainblended,
+    const bool & use_only_chainblended
     ) const
 {
     coins.clear();
-
+    
     for (auto & i : m_transactions)
     {
         const transaction_wallet & coin = i.second;
@@ -3779,7 +3950,22 @@ void wallet::available_coins(
         {
             continue;
         }
-        
+
+        if (use_only_chainblended == false)
+        {
+            /**
+             * Do not use chainblended transactions if use_chainblended is
+             * false.
+             */
+            if (use_chainblended == false && coin.values().count("blended") > 0)
+            {
+                continue;
+            }
+        }
+
+        /**
+         * Check filter.
+         */
         for (auto j = 0; j < coin.transactions_out().size(); j++)
         {
             auto found_in_filter = false;
@@ -3797,6 +3983,34 @@ void wallet::available_coins(
             if (found_in_filter)
             {
                 continue;
+            }
+            
+            auto is_chainblended = false;
+            
+            /**
+             * If use_only_chainblended is set to true we only use outputs
+             * who's value is equal to a possible blended transaction.
+             */
+            if (use_only_chainblended)
+            {
+                auto denominations_blended =
+                    chainblender::instance().denominations_blended()
+                ;
+                
+                for (auto & k : denominations_blended)
+                {
+                    if (k == coin.transactions_out()[j].value())
+                    {
+                        is_chainblended = true;
+
+                        break;
+                    }
+                }
+                
+                if (is_chainblended == false)
+                {
+                    continue;
+                }
             }
         
             if (
@@ -3999,13 +4213,13 @@ bool wallet::select_coins_min_conf(
         {
             std::stringstream ss;
             
-            ss << "Wallet is selecting coins, best subset: ";
+            ss << "Wallet is selecting coins, best subset:\n";
             
             for (auto i = 0; i < values.size(); i++)
             {
                 if (bests[i])
                 {
-                    ss << utility::format_money(values[i].first);
+                    ss << utility::format_money(values[i].first) << "\n";
                 }
             }
             
@@ -4278,8 +4492,6 @@ void wallet::resend_transactions_tick(const boost::system::error_code & ec)
     }
     else
     {
-        log_debug("resend_transactions_tick");
-        
         std::lock_guard<std::recursive_mutex> l1(mutex_);
         
         if (m_stack_impl)
@@ -4374,7 +4586,7 @@ void wallet::resend_transactions_tick(const boost::system::error_code & ec)
          */
         resend_transactions_timer_.expires_from_now(
             std::chrono::seconds(random::uint16_random_range(
-            1 * 60 * 60, 8 * 60 * 60))
+            5 * 60, 15 * 60))
         );
         resend_transactions_timer_.async_wait(globals::instance().strand().wrap(
             std::bind(&wallet::resend_transactions_tick, this,

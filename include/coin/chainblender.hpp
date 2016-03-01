@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
@@ -40,6 +40,17 @@ namespace coin {
         public:
         
             /**
+             * The denomination mode.
+             */
+            typedef enum denomination_mode_s
+            {
+                denomination_mode_auto,
+                denomination_mode_low,
+                denomination_mode_medium,
+                denomination_mode_high,
+            } denomination_mode_t;
+        
+            /**
              * A session.
              */
             typedef struct
@@ -72,9 +83,14 @@ namespace coin {
             static chainblender & instance();
         
             /**
-             * Create the denominations.
+             * The denominations.
              */
             std::set<std::int64_t> denominations();
+        
+            /**
+             * The blended denominations.
+             */
+            std::set<std::int64_t> denominations_blended();
         
             /**
              * Calculates the score of a chainblender relay node.
@@ -89,12 +105,38 @@ namespace coin {
              */
             std::map<sha256, session_t> & sessions();
         
+            /**
+             * Set if we use common output denominations.
+             * @param val The value.
+             */
+            void set_use_common_output_denominations(const bool & val);
+        
+            /**
+             * If true common output denomindations will be used.
+             */
+            const bool & use_common_output_denominations() const;
+        
+            /**
+             * The denomination mode.
+             */
+            const denomination_mode_t & denomination_mode() const;
+        
         private:
         
             /**
              * The sessions.
              */
             std::map<sha256, session_t> m_sessions;
+        
+            /**
+             * If true common output denomindations will be used.
+             */
+            bool m_use_common_output_denominations;
+        
+            /**
+             * The denomination mode.
+             */
+            denomination_mode_t m_denomination_mode;
         
         protected:
         

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
@@ -51,7 +51,7 @@ db_tx::db_tx(const std::string & file_mode)
 
 bool db_tx::load_block_index(stack_impl & impl)
 {
-    if (load_block_index_guts())
+    if (load_block_index_guts(impl))
     {
         /**
          * Calculate chain trust.
@@ -202,7 +202,7 @@ bool db_tx::load_block_index(stack_impl & impl)
          */
         enum { check_level = 1 };
 
-        auto check_depth = 1400;
+        auto check_depth = 1500;
 
         if (check_depth == 0)
         {
@@ -214,7 +214,7 @@ bool db_tx::load_block_index(stack_impl & impl)
             check_depth = globals::instance().best_block_height();
         }
         
-        log_debug(
+        log_info(
             "DB TX is verifying " << check_depth <<
             " blocks at level << " << check_level << "."
         );
@@ -701,7 +701,7 @@ bool db_tx::write_best_invalid_trust(big_number & bn)
     return write(std::string("bnBestInvalidTrust"), bn);
 }
 
-bool db_tx::load_block_index_guts()
+bool db_tx::load_block_index_guts(stack_impl & impl)
 {
     /**
      * Get database cursor.
@@ -823,6 +823,36 @@ bool db_tx::load_block_index_guts()
                     index_new->m_time = index_disk.m_time;
                     index_new->m_bits = index_disk.m_bits;
                     index_new->m_nonce = index_disk.m_nonce;
+                    
+                    /**
+                     * Only callback status every 5000 blocks.
+                     */
+                    if ((index_new->m_height % 5000) == 0)
+                    {
+                        /**
+                         * Allocate the status.
+                         */
+                        std::map<std::string, std::string> status;
+                        
+                        /**
+                         * Set the status type.
+                         */
+                        status["type"] = "database";
+                    
+                        /**
+                         * Set the status value.
+                         */
+                        status["value"] =
+                            "Loading block indexes (" +
+                            std::to_string(index_new->m_height) +
+                            ")..."
+                        ;
+
+                        /**
+                         * Callback
+                         */
+                        impl.get_status_manager()->insert(status);
+                    }
                     
                     /**
                      * Check for the genesis block.

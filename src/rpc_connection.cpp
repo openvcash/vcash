@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
@@ -33,6 +33,7 @@
 #include <coin/block_index.hpp>
 #include <coin/block_locator.hpp>
 #include <coin/key_store_crypto.hpp>
+#include <coin/chainblender_manager.hpp>
 #include <coin/database_stack.hpp>
 #include <coin/db_tx.hpp>
 #include <coin/incentive.hpp>
@@ -522,7 +523,11 @@ bool rpc_connection::handle_json_rpc_request(
             ", method = " << request.method
         );
 
-        if (request.method == "checkwallet")
+        if (request.method == "chainblender")
+        {
+            response = json_chainblender(request);
+        }
+        else if (request.method == "checkwallet")
         {
             response = json_checkwallet(request);
         }
@@ -986,6 +991,223 @@ rpc_connection::json_rpc_response_t rpc_connection::json_backupwallet(
         
         /**
          * error_code_internal_error
+         */
+        return json_rpc_response_t{
+            boost::property_tree::ptree(), pt_error, request.id
+        };
+    }
+
+    return ret;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_chainblender(
+    const json_rpc_request_t & request
+    )
+{
+    json_rpc_response_t ret;
+
+    if (globals::instance().is_chainblender_enabled() == true)
+    {
+        try
+        {
+            if (request.params.size() == 1)
+            {
+                /**
+                 * Make sure the wallet is unlocked.
+                 */
+                if (globals::instance().wallet_main()->is_locked())
+                {
+                    auto pt_error = create_error_object(
+                        error_code_wallet_unlock_needed, "wallet is locked"
+                    );
+                    
+                    /**
+                     * error_code_wallet_unlock_needed
+                     */
+                    return json_rpc_response_t{
+                        boost::property_tree::ptree(), pt_error, request.id
+                    };
+                }
+                else if (globals::instance().wallet_unlocked_mint_only())
+                {
+                    auto pt_error = create_error_object(
+                        error_code_wallet_unlock_needed,
+                        "wallet is unlocked for minting only"
+                    );
+                    
+                    /**
+                     * error_code_wallet_unlock_needed
+                     */
+                    return json_rpc_response_t{
+                        boost::property_tree::ptree(), pt_error, request.id
+                    };
+                }
+                
+                /**
+                 * Get the command parameter.
+                 */
+                auto param_command =
+                    request.params.front().second.get<std::string> ("")
+                ;
+                
+                if (param_command == "start")
+                {
+                    stack_impl_.get_chainblender_manager()->set_blend_state(
+                        chainblender_manager::blend_state_active
+                    );
+                    
+                    ret.result.put("", "null");
+                }
+                else if (param_command == "stop")
+                {
+                    stack_impl_.get_chainblender_manager()->set_blend_state(
+                        chainblender_manager::blend_state_none
+                    );
+                    
+                    ret.result.put("", "null");
+                }
+                else if (param_command == "info")
+                {
+                    auto on_chain_balance =
+                        globals::instance().wallet_main(
+                        )->get_on_chain_balance()
+                    ;
+                    auto on_chain_denominated_balance =
+                        globals::instance().wallet_main(
+                        )->get_on_chain_denominated_balance()
+                    ;
+                    auto on_chain_nondenominated_balance =
+                        globals::instance().wallet_main(
+                        )->get_on_chain_nondenominated_balance()
+                    ;
+                    auto on_chain_blended_balance =
+                        globals::instance().wallet_main(
+                        )->get_on_chain_blended_balance()
+                    ;
+                    
+                    /**
+                     * Calculate the blended percentage.
+                     */
+                    auto percentage = 0.0;
+                    
+                    if (on_chain_balance > 0 && on_chain_blended_balance > 0)
+                    {
+                        percentage = 100.0 - (static_cast<double> (((
+                            on_chain_balance / constants::coin) -
+                            static_cast<double> (
+                            on_chain_blended_balance / constants::coin)) /
+                            static_cast<double> (
+                            on_chain_balance / constants::coin)) * 100.0)
+                        ;
+                    }
+
+                    switch (
+                        stack_impl_.get_chainblender_manager()->blend_state()
+                        )
+                    {
+                        case chainblender_manager::blend_state_active:
+                        {
+                            ret.result.put(
+                                "blendstate", "active",
+                                rpc_json_parser::translator<std::string> ()
+                            );
+                        }
+                        break;
+                        case chainblender_manager::blend_state_passive:
+                        {
+                            ret.result.put(
+                                "blendstate", "passive",
+                                rpc_json_parser::translator<std::string> ()
+                            );
+                        }
+                        break;
+                        default:
+                        {
+                            ret.result.put(
+                                "blendstate", "none",
+                                rpc_json_parser::translator<std::string> ()
+                            );
+                        }
+                        break;
+                    }
+                    
+                    ret.result.put(
+                        "balance",
+                        static_cast<double> (on_chain_balance) /
+                        constants::coin
+                    );
+                    ret.result.put(
+                        "denominatedbalance",
+                        static_cast<double> (on_chain_denominated_balance) /
+                        constants::coin
+                    );
+                    ret.result.put(
+                        "nondenominatedbalance",
+                        static_cast<double> (on_chain_nondenominated_balance) /
+                        constants::coin
+                    );
+                    ret.result.put(
+                        "blendedbalance",
+                        static_cast<double> (on_chain_blended_balance) /
+                        constants::coin
+                    );
+                    ret.result.put("blendedpercentage", percentage);
+                }
+                else
+                {
+                    auto pt_error = create_error_object(
+                        error_code_invalid_parameter, "invalid parameter"
+                    );
+                    
+                    /**
+                     * error_code_invalid_parameter
+                     */
+                    return json_rpc_response_t{
+                        boost::property_tree::ptree(), pt_error, request.id
+                    };
+                }
+            }
+            else
+            {
+                auto pt_error = create_error_object(
+                    error_code_invalid_params, "invalid parameter count"
+                );
+                
+                /**
+                 * error_code_invalid_params
+                 */
+                return json_rpc_response_t{
+                    boost::property_tree::ptree(), pt_error, request.id
+                };
+            }
+        }
+        catch (std::exception & e)
+        {
+            log_error(
+                "RPC Connection failed to create json_chainblender, what = " <<
+                e.what() << "."
+            );
+            
+            auto pt_error = create_error_object(
+                error_code_internal_error, e.what()
+            );
+            
+            /**
+             * error_code_internal_error
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
+        }
+    }
+    else
+    {
+        auto pt_error = create_error_object(
+            error_code_method_not_found, "method not found"
+        );
+        
+        /**
+         * error_code_method_not_found
          */
         return json_rpc_response_t{
             boost::property_tree::ptree(), pt_error, request.id
@@ -2598,7 +2820,7 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getblocktemplate(
             rpc_json_parser::translator<std::string> ()
         );
 
-        auto hashTarget = big_number().set_compact(
+        auto hash_target = big_number().set_compact(
             blk->header().bits
         ).get_sha256();
         
@@ -2671,7 +2893,7 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getblocktemplate(
          * Put target into property tree.
          */
         ret.result.put(
-            "target", hashTarget.to_string(),
+            "target", hash_target.to_string(),
             rpc_json_parser::translator<std::string> ()
         );
         
@@ -5038,10 +5260,15 @@ rpc_connection::json_rpc_response_t rpc_connection::json_sendtoaddress(
                  */
                 auto use_zerotime = false;
                 
+                /**
+                 * Use any coins.
+                 */
+                auto use_only_chainblended = false;
+                
                 auto result =
                     globals::instance().wallet_main(
                     )->send_money_to_destination(addr.get(), amount, wtx,
-                    use_zerotime
+                    use_zerotime, use_only_chainblended
                 );
                 
                 if (result.first)
@@ -5426,7 +5653,7 @@ rpc_connection::json_rpc_response_t rpc_connection::json_walletdenominate(
                     request.id
                 };
             }
-            else if (amount < (1000.0 * constants::coin))
+            else if (amount < (999.0 * constants::coin))
             {
                 auto success = globals::instance().wallet_main(
                     )->chainblender_denominate(amount

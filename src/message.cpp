@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
  * This file is part of vanillacoin.
  *
@@ -26,6 +26,10 @@
 #include <coin/block.hpp>
 #include <coin/block_locator.hpp>
 #include <coin/checkpoint_sync.hpp>
+#include <coin/chainblender_broadcast.hpp>
+#include <coin/chainblender_join.hpp>
+#include <coin/chainblender_leave.hpp>
+#include <coin/chainblender_status.hpp>
 #include <coin/constants.hpp>
 #include <coin/endian.hpp>
 #include <coin/globals.hpp>
@@ -36,7 +40,6 @@
 #include <coin/inventory_vector.hpp>
 #include <coin/logger.hpp>
 #include <coin/message.hpp>
-#include <coin/protocol.hpp>
 #include <coin/stack_impl.hpp>
 #include <coin/time.hpp>
 #include <coin/zerotime_answer.hpp>
@@ -219,12 +222,40 @@ void message::encode()
              */
             m_payload = create_iquestion();
         }
+        else if (m_header.command == "cbbroadcast")
+        {
+            /**
+             * Create the cbbroadcast.
+             */
+            m_payload = create_cbbroadcast();
+        }
+        else if (m_header.command == "cbjoin")
+        {
+            /**
+             * Create the cbjoin.
+             */
+            m_payload = create_cbjoin();
+        }
+        else if (m_header.command == "cbleave")
+        {
+            /**
+             * Create the cbleave.
+             */
+            m_payload = create_cbleave();
+        }
+        else if (m_header.command == "cbstatus")
+        {
+            /**
+             * Create the cbstatus.
+             */
+            m_payload = create_cbstatus();
+        }
     }
     
     /**
      * Encode the header magic to little endian.
      */
-    auto header_magic = endian::to_little<std::uint32_t>(m_header.magic);
+    auto header_magic = endian::to_little<std::uint32_t> (m_header.magic);
     
     /**
      * Write the header length.
@@ -825,6 +856,110 @@ void message::decode()
                 m_protocol_ivote.ivote.reset();
             }
         }
+        else if (m_header.command == "cbbroadcast")
+        {
+            /**
+             * Allocate the cbbroadcast.
+             */
+            m_protocol_cbbroadcast.cbbroadcast =
+                std::make_shared<chainblender_broadcast> ()
+            ;
+            
+            /**
+             * Decode the cbbroadcast.
+             */
+            if (m_protocol_cbbroadcast.cbbroadcast->decode(*this))
+            {
+                // ...
+            }
+            else
+            {
+                log_error("Message failed to decode cbbroadcast.");
+                
+                /**
+                 * Deallocate the cbbroadcast.
+                 */
+                m_protocol_cbbroadcast.cbbroadcast.reset();
+            }
+        }
+        else if (m_header.command == "cbjoin")
+        {
+            /**
+             * Allocate the cbjoin.
+             */
+            m_protocol_cbjoin.cbjoin =
+                std::make_shared<chainblender_join> ()
+            ;
+            
+            /**
+             * Decode the cbjoin.
+             */
+            if (m_protocol_cbjoin.cbjoin->decode(*this))
+            {
+                // ...
+            }
+            else
+            {
+                log_error("Message failed to decode cbjoin.");
+                
+                /**
+                 * Deallocate the cbjoin.
+                 */
+                m_protocol_cbjoin.cbjoin.reset();
+            }
+        }
+        else if (m_header.command == "cbleave")
+        {
+            /**
+             * Allocate the cbleave.
+             */
+            m_protocol_cbleave.cbleave =
+                std::make_shared<chainblender_leave> ()
+            ;
+            
+            /**
+             * Decode the cbleave.
+             */
+            if (m_protocol_cbleave.cbleave->decode(*this))
+            {
+                // ...
+            }
+            else
+            {
+                log_error("Message failed to decode cbleave.");
+                
+                /**
+                 * Deallocate the cbleave.
+                 */
+                m_protocol_cbleave.cbleave.reset();
+            }
+        }
+        else if (m_header.command == "cbstatus")
+        {
+            /**
+             * Allocate the cbstatus.
+             */
+            m_protocol_cbstatus.cbstatus =
+                std::make_shared<chainblender_status> ()
+            ;
+            
+            /**
+             * Decode the cbstatus.
+             */
+            if (m_protocol_cbstatus.cbstatus->decode(*this))
+            {
+                // ...
+            }
+            else
+            {
+                log_error("Message failed to decode cbstatus.");
+                
+                /**
+                 * Deallocate the cbstatus.
+                 */
+                m_protocol_cbstatus.cbstatus.reset();
+            }
+        }
         else
         {
             log_error(
@@ -992,6 +1127,26 @@ protocol::iquestion_t & message::protocol_iquestion()
 protocol::ivote_t & message::protocol_ivote()
 {
     return m_protocol_ivote;
+}
+
+protocol::cbbroadcast_t & message::protocol_cbbroadcast()
+{
+    return m_protocol_cbbroadcast;
+}
+
+protocol::cbjoin_t & message::protocol_cbjoin()
+{
+    return m_protocol_cbjoin;
+}
+
+protocol::cbleave_t & message::protocol_cbleave()
+{
+    return m_protocol_cbleave;
+}
+
+protocol::cbstatus_t & message::protocol_cbstatus()
+{
+    return m_protocol_cbstatus;
 }
 
 data_buffer message::create_version()
@@ -1510,6 +1665,54 @@ data_buffer message::create_ivote()
     if (m_protocol_ivote.ivote)
     {
         m_protocol_ivote.ivote->encode(ret);
+    }
+    
+    return ret;
+}
+
+data_buffer message::create_cbbroadcast()
+{
+    data_buffer ret;
+    
+    if (m_protocol_cbbroadcast.cbbroadcast)
+    {
+        m_protocol_cbbroadcast.cbbroadcast->encode(ret);
+    }
+    
+    return ret;
+}
+
+data_buffer message::create_cbjoin()
+{
+    data_buffer ret;
+    
+    if (m_protocol_cbjoin.cbjoin)
+    {
+        m_protocol_cbjoin.cbjoin->encode(ret);
+    }
+    
+    return ret;
+}
+
+data_buffer message::create_cbleave()
+{
+    data_buffer ret;
+    
+    if (m_protocol_cbleave.cbleave)
+    {
+        m_protocol_cbleave.cbleave->encode(ret);
+    }
+    
+    return ret;
+}
+
+data_buffer message::create_cbstatus()
+{
+    data_buffer ret;
+    
+    if (m_protocol_cbstatus.cbstatus)
+    {
+        m_protocol_cbstatus.cbstatus->encode(ret);
     }
     
     return ret;

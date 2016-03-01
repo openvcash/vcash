@@ -49,7 +49,7 @@ namespace coin {
             static digest_t hash(
                 const std::uint8_t * buf, const std::size_t & len
             );
-            
+        
         private:
         
             // ...
