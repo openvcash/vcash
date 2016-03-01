@@ -236,7 +236,7 @@ namespace coin {
                 std::int64_t sum;
                 std::uint8_t participants;
                 std::set<std::string> public_keys;
-                std::shared_ptr<coin_control> coin_control;
+                std::shared_ptr<coin_control> coin_control_inputs;
                 std::map<sha256, transaction> transactions;
                 transaction transaction_mine;
                 transaction transaction_blended;

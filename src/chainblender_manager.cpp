@@ -76,7 +76,7 @@ void chainblender_manager::start()
         session_.sum = 0;
         session_.participants = 0;
         session_.public_keys.clear();
-        session_.coin_control = 0;
+        session_.coin_control_inputs = 0;
         session_.transactions.clear();
         session_.transaction_mine = transaction();
         session_.transaction_blended = transaction();
@@ -119,7 +119,7 @@ void chainblender_manager::stop()
         session_.sum = 0;
         session_.participants = 0;
         session_.public_keys.clear();
-        session_.coin_control = 0;
+        session_.coin_control_inputs = 0;
         session_.transactions.clear();
         session_.transaction_mine.set_null();
         session_.transaction_blended.set_null();
@@ -210,7 +210,7 @@ void chainblender_manager::set_blend_state(
                 session_.sum = 0;
                 session_.participants = 0;
                 session_.public_keys.clear();
-                session_.coin_control = 0;
+                session_.coin_control_inputs = 0;
                 session_.transactions.clear();
                 session_.transaction_mine.set_null();
                 session_.transaction_blended.set_null();
@@ -1661,7 +1661,7 @@ void chainblender_manager::do_tick_tx(const std::uint32_t & interval)
                     script_pub_key,
                     session_.sum, tx_new,
                     reserved_key, fee_out, filter,
-                    session_.coin_control, false, false)
+                    session_.coin_control_inputs, false, false)
                     )
                 {
                     log_info(
@@ -1997,7 +1997,7 @@ void chainblender_manager::do_tick_blend(const std::uint32_t & interval)
                     session_.sum = 0;
                     session_.participants = 0;
                     session_.public_keys.clear();
-                    session_.coin_control = 0;
+                    session_.coin_control_inputs = 0;
                     session_.transactions.clear();
                     session_.transaction_mine.set_null();
                     session_.transaction_blended.set_null();
