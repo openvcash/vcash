@@ -107,6 +107,16 @@ namespace coin {
             );
         
             /**
+             * Calculates the Murmur3 hash.
+             * @param buf The buffer.
+             * @param len The length.
+             */
+            static std::uint32_t murmur3(
+                const std::uint32_t & seed, const std::uint8_t * buf,
+                const std::size_t & len
+            );
+        
+            /**
              * Returns a 64-bit representation of the input.
              * @param buf The buffer.
              * @param n The n.
@@ -114,6 +124,11 @@ namespace coin {
             static std::uint64_t to_uint64(
                 const std::uint8_t * buf, const std::size_t & n = 0
             );
+        
+            /**
+             * Runs the test case.
+             */
+            static int run_test();
     
         private:
         
