@@ -48,7 +48,7 @@ configuration::configuration()
     , m_wallet_rescan(false)
     , m_mining_proof_of_stake(true)
     , m_blockchain_pruning(false)
-    , m_chainblender_debug(true)
+    , m_chainblender_debug_options(false)
     , m_chainblender_use_common_output_denominations(true)
 {
     // ...
@@ -215,16 +215,16 @@ bool configuration::load()
         );
 
         /**
-         * Get the chainblender.debug.
+         * Get the chainblender.debug_options.
          */
-        m_chainblender_debug = std::stoi(pt.get(
-            "chainblender.debug",
-            std::to_string(m_chainblender_debug))
+        m_chainblender_debug_options = std::stoi(pt.get(
+            "chainblender.debug_options",
+            std::to_string(m_chainblender_debug_options))
         );
         
         log_debug(
-            "Configuration read " << "chainblender.debug = " <<
-            m_chainblender_debug << "."
+            "Configuration read " << "chainblender.debug_options = " <<
+            m_chainblender_debug_options << "."
         );
         
         /**
@@ -336,10 +336,11 @@ bool configuration::save()
         );
         
         /**
-         * Put the chainblender.debug into property tree.
+         * Put the chainblender.debug_options into property tree.
          */
         pt.put(
-            "chainblender.debug", std::to_string(m_chainblender_debug)
+            "chainblender.debug_options",
+            std::to_string(m_chainblender_debug_options)
         );
         
         /**
@@ -435,14 +436,14 @@ const bool & configuration::network_udp_enable() const
     return m_network_udp_enable;
 }
 
-void configuration::set_chainblender_debug(const bool & val)
+void configuration::set_chainblender_debug_options(const bool & val)
 {
-    m_chainblender_debug = val;
+    m_chainblender_debug_options = val;
 }
 
-const bool & configuration::chainblender_debug() const
+const bool & configuration::chainblender_debug_options() const
 {
-    return m_chainblender_debug;
+    return m_chainblender_debug_options;
 }
 
 void configuration::set_chainblender_use_common_output_denominations(

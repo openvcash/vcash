@@ -20,6 +20,8 @@
 
 #include <cassert>
 
+#include <boost/asio.hpp>
+
 #include <openssl/rand.h>
 
 #include <coin/hash.hpp>

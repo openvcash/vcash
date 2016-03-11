@@ -234,12 +234,12 @@ namespace coin {
              * Sets chainblender to use debug options.
              * @param val The value.
              */
-            void set_chainblender_debug(const bool & val);
+            void set_chainblender_debug_options(const bool & val);
         
             /**
              * If true run chainblender with debug options.
              */
-            const bool & chainblender_debug() const;
+            const bool & chainblender_debug_options() const;
         
             /** 
              * Sets chainblender to use common output denominations.
@@ -319,7 +319,7 @@ namespace coin {
             /**
              * If true run chainblender with debug options.
              */
-            bool m_chainblender_debug;
+            bool m_chainblender_debug_options;
         
             /**
              * Enable chainblender common output denominations.

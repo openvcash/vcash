@@ -70,7 +70,7 @@ void chainblender_manager::start()
     if (globals::instance().is_chainblender_enabled())
     {
         log_info("ChainBlender manager is starting.");
-        
+          
         session_.hash_id.clear();
         session_.denomination = 0;
         session_.sum = 0;
@@ -2332,12 +2332,12 @@ void chainblender_manager::do_tick_blend(const std::uint32_t & interval)
                                     boost::asio::ip::tcp::endpoint ep;
                                     
                                     /**
-                                     * If we are in debug mode connect to one
-                                     * of the static nodes.
+                                     * If we are not in debug options mode
+                                     * connect to one of the static nodes.
                                      */
                                     if (
                                         stack_impl_.get_configuration(
-                                        ).chainblender_debug() == true
+                                        ).chainblender_debug_options() == true
                                         )
                                     {
                                         ep = boost::asio::ip::tcp::endpoint(
