@@ -31,7 +31,16 @@ namespace coin {
     {
         public:
         
-            // ...
+            /**
+             * The flags.
+             */
+            typedef enum flags_s
+            {
+                update_none,
+                update_all,
+                update_p2pubkey_only,
+                update_mask,
+            } flags_t;
         
         private:
         
