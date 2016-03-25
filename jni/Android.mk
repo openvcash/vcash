@@ -108,6 +108,8 @@ LOCAL_SRC_FILES := \
 	../src/tcp_connection_manager.cpp \
 	../src/tcp_connection.cpp \
 	../src/tcp_transport.cpp \
+	../src/transaction.cpp \
+    ../src/transaction_bloom_filter.cpp \
 	../src/transaction_in.cpp \
 	../src/transaction_index.cpp \
 	../src/transaction_merkle.cpp \
@@ -115,7 +117,6 @@ LOCAL_SRC_FILES := \
 	../src/transaction_pool.cpp \
 	../src/transaction_position.cpp \
 	../src/transaction_wallet.cpp \
-	../src/transaction.cpp \
 	../src/upnp_client.cpp \
 	../src/utility.cpp \
 	../src/wallet_manager.cpp \

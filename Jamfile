@@ -113,6 +113,7 @@ SOURCES =
 	tcp_connection_manager
 	tcp_transport
 	transaction
+    transaction_bloom_filter
 	transaction_in
 	transaction_index
 	transaction_merkle
