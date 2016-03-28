@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of Vcash.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * Vcash is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -23,6 +23,7 @@
 
 #include <coin/data_buffer.hpp>
 #include <coin/hash.hpp>
+#include <coin/point_out.hpp>
 #include <coin/script.hpp>
 #include <coin/secret.hpp>
 #include <coin/transaction.hpp>
@@ -561,5 +562,259 @@ int transaction_bloom_filter::run_test()
     
     printf("transaction_bloom_filter: Check 13 Passed\n");
     
+    transaction tx;
+    
+    /**
+     * Tx ID: 2360b151ee55db09ecf5a9b7527d33610c8f3bdf7e17af350cff939b8bcaeaac
+     */
+    tmp = utility::from_hex("0100000009f0f556012dbf3865b09a8ec76c7a94239dc42df3458f63af3197a76edf7da29b43f95c01010000008b48304502201e1847d73ebf8e2762ffeaf71ad760b82df223a6ae73eaff2c7a6189cd516d88022100e574269ef71ec9f6c11f5bb51fe8c06283d63a2518e633cd79fe0e215cb06f590141045cfb58bf2cde0dea18413fd97ea98349a51d303d6baeab00536ebb02da2205d39f1b568913c5443a2f9db57dedd355e38cacc3b33fd1502a22059dfbad668afbffffffff02cc6d9026000000001976a914b0828b96cc3adc502911b5de4c4ddcc3e23c716488ac40420f00000000001976a9145365aeb2ae680ae2c18522d26f33acdb3884ef6988ac00000000"
+    );
+    
+    buffer.clear();
+    
+    buffer.write_bytes(reinterpret_cast<const char *> (&tmp[0]), tmp.size());
+    
+    tx.decode(buffer);
+
+    /**
+     * Tx ID: af1fe7d7c9b5abc1df57e0438bb523af1097be748c3248ac160a1ab154efb82e
+     */
+    tmp = utility::from_hex("01000000c5f1f55601aceaca8b9b93ff0c35af177edf3b8f0c61337d52b7a9f5ec09db55ee51b16023010000006b48304502207dab2f956042b278bfc28f0f995a3257b31a6c38062d54b006651bfd6e297846022100b97124afbab6c9d9ba7d6bb3cb842044f1366d88736df5e4b72e93c4940cdae5012103f61929f6a32fda609602f532bcbf3967e4b1a52996df2e212b0274d3e8638c5affffffff02ac840100000000001976a9149becef0b1317539d8c0be8415cd866cc3a00682388aca0bb0d00000000001976a914538d91f1856fef39665107f09b133917ea92a14388ac00000000"
+    );
+    
+    transaction tx_spending;
+    
+    buffer.clear();
+    
+    buffer.write_bytes(reinterpret_cast<const char *> (&tmp[0]), tmp.size());
+    
+    tx_spending.decode(buffer);
+    
+    transaction_bloom_filter filter4(
+        10, 0.000001, 0, transaction_bloom_filter::update_all
+    );
+    
+    /**
+     * Tx ID: 2360b151ee55db09ecf5a9b7527d33610c8f3bdf7e17af350cff939b8bcaeaac
+     * @note https://explorer.v.cash/api/getrawtransaction?txid=2360b151ee55db09ecf5a9b7527d33610c8f3bdf7e17af350cff939b8bcaeaac&decrypt=1
+     */
+    filter4.insert(
+        sha256("2360b151ee55db09ecf5a9b7527d33610c8f3bdf7e17af350cff939b8bcaeaac")
+    );
+    
+    assert(filter4.is_relevant_and_update(tx));
+    
+    printf("transaction_bloom_filter: Check 14 Passed\n");
+
+    transaction_bloom_filter filter5(
+        10, 0.000001, 0, transaction_bloom_filter::update_all
+    );
+    
+    /**
+     * The Tx ID that will be byte reversed.
+     */
+    std::string tx_id_reversed =
+        "2360b151ee55db09ecf5a9b7527d33610c8f3bdf7e17af350cff939b8bcaeaac"
+    ;
+    
+    std::reverse(tx_id_reversed.begin(), tx_id_reversed.end());
+    
+    for (auto it = tx_id_reversed.begin(); it != tx_id_reversed.end(); it += 2)
+    {
+        std::swap(it[0], it[1]);
+    }
+
+    /**
+     * Tx ID: 2360b151ee55db09ecf5a9b7527d33610c8f3bdf7e17af350cff939b8bcaeaac
+     */
+    filter5.insert(utility::from_hex(tx_id_reversed));
+    
+    assert(filter5.is_relevant_and_update(tx));
+    
+    printf("transaction_bloom_filter: Check 15 Passed\n");
+    
+    transaction_bloom_filter filter6(
+        10, 0.000001, 0, transaction_bloom_filter::update_all
+    );
+    
+    /**
+     * Input signature.
+     */
+    
+    filter6.insert(utility::from_hex(
+        "304502201e1847d73ebf8e2762ffeaf71ad760b82df223a6ae73eaff2c7a6189cd516"
+        "d88022100e574269ef71ec9f6c11f5bb51fe8c06283d63a2518e633cd79fe0e215cb0"
+        "6f5901")
+    );
+    
+    assert(filter6.is_relevant_and_update(tx));
+    
+    printf("transaction_bloom_filter: Check 16 Passed\n");
+    
+    transaction_bloom_filter filter7(
+        10, 0.000001, 0, transaction_bloom_filter::update_all
+    );
+    
+    /**
+     * Insert public key.
+     */
+    
+    filter7.insert(utility::from_hex(
+        "5365aeb2ae680ae2c18522d26f33acdb3884ef69")
+    );
+    
+    assert(filter7.is_relevant_and_update(tx));
+    
+    printf("transaction_bloom_filter: Check 17 Passed\n");
+
+    transaction_bloom_filter filter8(
+        10, 0.000001, 0, transaction_bloom_filter::update_all
+    );
+    
+    /**
+     * Insert output address.
+     */
+    
+    filter8.insert(utility::from_hex(
+        "5365aeb2ae680ae2c18522d26f33acdb3884ef69")
+    );
+    
+    assert(filter8.is_relevant_and_update(tx));
+    assert(filter8.is_relevant_and_update(tx_spending));
+    
+    printf("transaction_bloom_filter: Check 18 Passed\n");
+    
+    transaction_bloom_filter filter9(
+        10, 0.000001, 0, transaction_bloom_filter::update_all
+    );
+    
+    /**
+     * Insert output address.
+     */
+    
+    filter9.insert(utility::from_hex(
+        "b0828b96cc3adc502911b5de4c4ddcc3e23c7164")
+    );
+    
+    assert(filter9.is_relevant_and_update(tx));
+    
+    printf("transaction_bloom_filter: Check 19 Passed\n");
+    
+    transaction_bloom_filter filter10(
+        10, 0.000001, 0, transaction_bloom_filter::update_all
+    );
+    
+    /**
+     * Insert output point_out.
+     * 015cf9439ba27ddf6ea79731af638f45f32dc49d23947a6cc78e9ab06538bf2d
+     */
+
+    filter10.insert(
+        point_out(sha256(
+        "015cf9439ba27ddf6ea79731af638f45f32dc49d23947a6cc78e9ab06538bf2d"), 1)
+    );
+    
+    assert(filter10.is_relevant_and_update(tx));
+    
+    printf("transaction_bloom_filter: Check 20 Passed\n");
+    
+    transaction_bloom_filter filter11(
+        10, 0.000001, 0, transaction_bloom_filter::update_all
+    );
+    
+    /**
+     * Insert output point_out from raw data.
+     * 015cf9439ba27ddf6ea79731af638f45f32dc49d23947a6cc78e9ab06538bf2d
+     */
+    
+    point_out previous_out(sha256(
+        "015cf9439ba27ddf6ea79731af638f45f32dc49d23947a6cc78e9ab06538bf2d"), 1
+    );
+
+    std::vector<std::uint8_t> data(32 + sizeof(std::uint32_t));
+    
+    std::memcpy(
+        &data[0], previous_out.get_hash().digest(), sha256::digest_length
+    );
+    std::memcpy(&data[32], &previous_out.n(), sizeof(std::uint32_t));
+ 
+    filter11.insert(data);
+    
+    assert(filter11.is_relevant_and_update(tx));
+    
+    printf("transaction_bloom_filter: Check 21 Passed\n");
+    
+    transaction_bloom_filter filter12(
+        10, 0.000001, 0, transaction_bloom_filter::update_all
+    );
+    
+    /**
+     * Insert random Tx ID.
+     * 00000009e784f32f62ef849763d4f45b98e07ba658647343b915ff832b110436
+     */
+
+    filter12.insert(
+        sha256(
+        "00000009e784f32f62ef849763d4f45b98e07ba658647343b915ff832b110436")
+    );
+    
+    assert(filter12.is_relevant_and_update(tx) == false);
+    
+    printf("transaction_bloom_filter: Check 22 Passed\n");
+    
+    transaction_bloom_filter filter13(
+        10, 0.000001, 0, transaction_bloom_filter::update_all
+    );
+    
+    /**
+     * Insert random address.
+     * 0000006d2965547608b9e15d9032a7b9d64fa431
+     */
+
+    filter13.insert(
+        utility::from_hex("0000006d2965547608b9e15d9032a7b9d64fa431")
+    );
+    
+    assert(filter13.is_relevant_and_update(tx) == false);
+    
+    printf("transaction_bloom_filter: Check 23 Passed\n");
+    
+    transaction_bloom_filter filter14(
+        10, 0.000001, 0, transaction_bloom_filter::update_all
+    );
+    
+    /**
+     * Insert random point_out.
+     * 90c122d70786e899529d71dbeba91ba216982fb6ba58f3bdaab65e73b7e9260b
+     */
+
+    filter14.insert(
+        point_out(sha256(
+        "90c122d70786e899529d71dbeba91ba216982fb6ba58f3bdaab65e73b7e9260b"), 2)
+    );
+    
+    assert(filter14.is_relevant_and_update(tx) == false);
+    
+    printf("transaction_bloom_filter: Check 24 Passed\n");
+    
+    
+    transaction_bloom_filter filter15(
+        10, 0.000001, 0, transaction_bloom_filter::update_all
+    );
+    
+    /**
+     * Insert random point_out.
+     * 000000d70786e899529d71dbeba91ba216982fb6ba58f3bdaab65e73b7e9260b
+     */
+
+    filter15.insert(
+        point_out(sha256(
+        "000000d70786e899529d71dbeba91ba216982fb6ba58f3bdaab65e73b7e9260b"), 0)
+    );
+    
+    assert(filter15.is_relevant_and_update(tx) == false);
+    
+    printf("transaction_bloom_filter: Check 25 Passed\n");
+
     return 0;
 }

@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of Vcash.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * Vcash is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -82,6 +82,21 @@ checkpoints::checkpoints()
     );
     m_checkpoints[249556] = sha256(
         "00000000000014d2a03f03655d6e47c7710f6bbd7080f645918f38fa1df8acca"
+    );
+    m_checkpoints[275000] = sha256(
+        "000000000000b1511fbc2beb3c2eff0f9e8b356e065ca36aadaf2b15925f1530"
+    );
+    m_checkpoints[300000] = sha256(
+        "7faf69f614805521e5c431ba215905a9027e89bd30f79b28a17bbdf98179919f"
+    );
+    m_checkpoints[325000] = sha256(
+        "5b5328da4a16f07f5c47c449c17754d1c4fce77918aaa1944953eee12190649e"
+    );
+    m_checkpoints[340000] = sha256(
+        "000000000000478dc5c5ead7ca6bb0421b61a8879c95a9e71c3cf161510d637c"
+    );
+    m_checkpoints[350000] = sha256(
+        "fc35f333efc1c30ce4d61a85246fd88ca7854914b283f250f5a5151fe758f511"
     );
     
     m_checkpoints_test_net[0] = block::get_hash_genesis_test_net();
