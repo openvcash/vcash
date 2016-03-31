@@ -252,6 +252,11 @@ namespace coin {
              */
             const bool & chainblender_use_common_output_denominations() const;
         
+            /**
+             * The database cache size.
+             */
+            const std::uint32_t & database_cache_size() const;
+        
         private:
         
             /** 
@@ -325,6 +330,11 @@ namespace coin {
              * Enable chainblender common output denominations.
              */
             bool m_chainblender_use_common_output_denominations;
+        
+            /**
+             * The database cache size.
+             */
+            std::uint32_t m_database_cache_size;
         
         protected:
         

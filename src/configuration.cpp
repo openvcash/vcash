@@ -28,6 +28,7 @@
 
 #include <coin/android.hpp>
 #include <coin/configuration.hpp>
+#include <coin/db_env.hpp>
 #include <coin/filesystem.hpp>
 #include <coin/logger.hpp>
 #include <coin/network.hpp>
@@ -50,6 +51,7 @@ configuration::configuration()
     , m_blockchain_pruning(false)
     , m_chainblender_debug_options(false)
     , m_chainblender_use_common_output_denominations(true)
+    , m_database_cache_size(db_env::default_cache_size)
 {
     // ...
 }
@@ -240,6 +242,27 @@ bool configuration::load()
             "chainblender.use_common_output_denominations = " <<
             m_chainblender_use_common_output_denominations << "."
         );
+        
+        /**
+         * Get the database.cache_size.
+         */
+        m_database_cache_size = std::stoi(pt.get(
+            "database.cache_size",
+            std::to_string(m_database_cache_size))
+        );
+        
+        /**
+         * Make sure the database.cache_size stays within a range.
+         */
+        if (m_database_cache_size < 4 || m_database_cache_size > 2048)
+        {
+            m_database_cache_size = db_env::default_cache_size;
+        }
+        
+        log_debug(
+            "Configuration read database.cache_size = " <<
+            m_database_cache_size << "."
+        );
     }
     catch (std::exception & e)
     {
@@ -353,6 +376,21 @@ bool configuration::save()
         );
         
         /**
+         * Make sure the database.cache_size stays within a range.
+         */
+        if (m_database_cache_size < 4 || m_database_cache_size > 2048)
+        {
+            m_database_cache_size = db_env::default_cache_size;
+        }
+        
+        /**
+         * Put the database.cache_size into property tree.
+         */
+        pt.put(
+            "database.cache_size", std::to_string(m_database_cache_size)
+        );
+        
+        /**
          * The std::stringstream.
          */
         std::stringstream ss;
@@ -458,3 +496,7 @@ const bool & configuration::chainblender_use_common_output_denominations() const
     return m_chainblender_use_common_output_denominations;
 }
 
+const std::uint32_t & configuration::database_cache_size() const
+{
+    return m_database_cache_size;
+}
