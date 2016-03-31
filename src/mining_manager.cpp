@@ -676,9 +676,20 @@ void mining_manager::pos_tick(const boost::system::error_code & ec)
             )
         {
             if (
-                (utility::is_initial_block_download() ||
-                stack_impl_.get_tcp_connection_manager()->is_connected() ==
-                false) && globals::instance().state() == globals::state_started
+                stack_impl_.get_tcp_connection_manager(
+                )->active_tcp_connections() <
+                stack_impl_.get_tcp_connection_manager(
+                )->minimum_tcp_connections() &&
+                globals::instance().state() == globals::state_started
+                )
+            {
+                log_info(
+                    "Mining manager is waiting on more network connections."
+                );
+            }
+            else if (
+                utility::is_initial_block_download() &&
+                globals::instance().state() == globals::state_started
                 )
             {
                 log_info(
