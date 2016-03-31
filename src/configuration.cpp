@@ -51,7 +51,7 @@ configuration::configuration()
     , m_blockchain_pruning(false)
     , m_chainblender_debug_options(false)
     , m_chainblender_use_common_output_denominations(true)
-    , m_database_cache_size(db_env::default_cache_size)
+    , m_database_cache_size(128)
 {
     // ...
 }
