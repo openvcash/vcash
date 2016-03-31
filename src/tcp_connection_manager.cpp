@@ -317,6 +317,31 @@ void tcp_connection_manager::broadcast(
     }
 }
 
+void tcp_connection_manager::broadcast_bip0037(
+    const char * buf, const std::size_t & len
+    )
+{
+    std::lock_guard<std::recursive_mutex> l1(mutex_tcp_connections_);
+    
+    for (auto & i : m_tcp_connections)
+    {
+        if (auto j = i.second.lock())
+        {
+            /**
+             * Skip the bip0037 tcp_connection with relay = false.
+             */
+            if (j->protocol_version_relay() == false)
+            {
+                continue;
+            }
+            else
+            {
+                j->send(buf, len);
+            }
+        }
+    }
+}
+
 std::map< boost::asio::ip::tcp::endpoint, std::weak_ptr<tcp_connection> > &
     tcp_connection_manager::tcp_connections()
 {
@@ -372,6 +397,22 @@ bool tcp_connection_manager::is_connected()
     }
     
     return tcp_connections > 0;
+}
+
+std::size_t tcp_connection_manager::minimum_tcp_connections()
+{
+    /**
+     * Check if we are firewalled (have had a recent inbound
+     * TCP connection).
+     */
+    auto is_firewalled =
+        std::time(0) - m_time_last_inbound > 60 * 60
+    ;
+    
+    return
+        globals::instance().operation_mode() ==
+        protocol::operation_mode_peer ? (is_firewalled ? 8 : 8) : 6
+    ;
 }
 
 const std::time_t & tcp_connection_manager::time_last_inbound() const
@@ -748,22 +789,6 @@ void tcp_connection_manager::do_resolve(
             }
         )
     );
-}
-
-std::size_t tcp_connection_manager::minimum_tcp_connections()
-{
-    /**
-     * Check if we are firewalled (have had a recent inbound
-     * TCP connection).
-     */
-    auto is_firewalled =
-        std::time(0) - m_time_last_inbound > 60 * 60
-    ;
-    
-    return
-        globals::instance().operation_mode() ==
-        protocol::operation_mode_peer ? (is_firewalled ? 8 : 8) : 6
-    ;
 }
 
 bool tcp_connection_manager::is_ip_banned(const std::string & val)

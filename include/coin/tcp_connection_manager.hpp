@@ -76,6 +76,16 @@ namespace coin {
              * @param len The length.
              */
             void broadcast(const char * buf, const std::size_t & len);
+
+            /**
+             * Broadcasts a message to all connected peers except bip0037
+             * with relay = false.
+             * @param buf The buffer.
+             * @param len The length.
+             */
+            void broadcast_bip0037(
+                const char * buf, const std::size_t & len
+            );
         
             /**
              * The tcp connections.
@@ -94,6 +104,11 @@ namespace coin {
              */
             bool is_connected();
         
+            /**
+             * The minimum number of tcp connections to maintain.
+             */
+            std::size_t minimum_tcp_connections();
+            
             /**
              * The last time we have accepted an inbound connection.
              */
@@ -142,11 +157,6 @@ namespace coin {
              * @param val The ip address.
              */
             bool is_ip_banned(const std::string & val);
-        
-            /**
-             * The minimum number of tcp connections to maintain.
-             */
-            std::size_t minimum_tcp_connections();
         
             /**
              * The boost::asio::io_service.
