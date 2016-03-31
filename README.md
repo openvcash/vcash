@@ -1,4 +1,4 @@
-vanillacoin
+V(anilla)cash
 ===========
 
 A decentralized currency for the internet.
