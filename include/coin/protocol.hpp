@@ -638,10 +638,19 @@ namespace protocol {
             "ztlock",
             "ztvote",
             "ivote",
+            "unkown",
+            "unkown",
+            "unkown",
+            "unkown",
+            "unkown",
+            "unkown",
+            "unkown",
+            "unkown",
+            "unkown",
         };
     
         /** Message Structures */
-    
+        
         /**
          * The version structure.
          */
@@ -655,6 +664,7 @@ namespace protocol {
             std::uint64_t nonce;
             std::string user_agent;
             std::uint32_t start_height;
+            std::uint8_t relay;
         } version_t;
     
         /**
