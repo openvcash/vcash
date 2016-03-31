@@ -68,7 +68,17 @@ void status_manager::insert(const std::map<std::string, std::string> & pairs)
     io_service_.post(strand_.wrap(
         [this, pairs]()
     {
+        auto was_empty = pairs_.size() == 0;
+        
         pairs_.push_back(pairs);
+        
+        if (was_empty == true)
+        {
+            /**
+             * Start the timer.
+             */
+            do_tick(interval_callback);
+        }
     }));
 #endif // __linux__
 }
@@ -116,7 +126,7 @@ void status_manager::do_tick(const std::uint32_t & interval)
                     /**
                      * Start the timer.
                      */
-                    do_tick(1250);
+                    do_tick(1000);
                 }
             }
             else
@@ -124,7 +134,7 @@ void status_manager::do_tick(const std::uint32_t & interval)
                 /**
                  * Start the timer.
                  */
-                do_tick(1250);
+                do_tick(1000);
             }
         }
     }));

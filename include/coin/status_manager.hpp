@@ -68,7 +68,7 @@ namespace coin {
             /**
              * The timer callback interval in milliseconds.
              */
-            enum { interval_callback = 8 };
+            enum { interval_callback = 1 };
         
         protected:
         
