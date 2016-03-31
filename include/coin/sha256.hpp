@@ -85,21 +85,24 @@ namespace coin {
         
             /**
              * init
+             * @param ctx The SHA256_CTX.
              */
-            void init();
+            void init(SHA256_CTX & ctx);
         
             /**
              * final
+             * @param ctx The SHA256_CTX.
              */
-            void final();
+            void final(SHA256_CTX & ctx);
 
             /**
              * update
+             * @param ctx The SHA256_CTX.
              * @param buf The buf.
              * @param len The length.
              */
             void update(
-                const std::uint8_t * buf, std::size_t len
+                SHA256_CTX & ctx, const std::uint8_t * buf, std::size_t len
             );
         
             /**
@@ -168,9 +171,7 @@ namespace coin {
             sha256 & operator = (const sha256 & b)
             {
                 std::memcpy(m_digest, b.digest(), sha256::digest_length);
-             
-                std::memcpy(&context_, &b.context_, sizeof(context_));
-                
+ 
                 return *this;
             }
     
@@ -496,10 +497,7 @@ namespace coin {
 
         protected:
         
-            /**
-             * The context.
-             */
-            SHA256_CTX context_;
+            // ...
     };
     
     inline const sha256 operator - (const sha256 & a, const sha256 & b)

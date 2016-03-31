@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  */
 
+#include <cassert>
 #include <memory>
 
 #include <coin/sha256.hpp>
@@ -33,8 +34,6 @@ using namespace coin;
 sha256::sha256()
 {
     std::memset(m_digest, 0, sizeof(m_digest));
-    
-    init();
 }
 
 sha256::sha256(std::uint64_t b)
@@ -75,7 +74,7 @@ sha256::sha256(const std::string & hex)
         0xe, 0xf, 0, 0, 0, 0, 0, 0, 0, 0, 0
     };
     
-    const char* pbegin = psz;
+    const char * pbegin = psz;
     
     while (phexdigit[(std::uint8_t)*psz] || *psz == '0')
     {
@@ -101,9 +100,11 @@ sha256::sha256(const std::string & hex)
 
 sha256::sha256(const std::uint8_t * buf, const std::size_t & len)
 {
-    init();
-    update(buf, len);
-    final();
+    SHA256_CTX ctx;
+    
+    init(ctx);
+    update(ctx, buf, len);
+    final(ctx);
 }
 
 sha256 sha256::from_digest(const std::uint8_t * digest)
@@ -115,19 +116,21 @@ sha256 sha256::from_digest(const std::uint8_t * digest)
     return ret;
 }
 
-void sha256::init()
+void sha256::init(SHA256_CTX & ctx)
 {
-    SHA256_Init(&context_);
+    SHA256_Init(&ctx);
 }
 
-void sha256::final()
+void sha256::final(SHA256_CTX & ctx)
 {
-    SHA256_Final(m_digest, &context_);
+    SHA256_Final(m_digest, &ctx);
 }
 
-void sha256::update(const std::uint8_t * buf, std::size_t len)
+void sha256::update(
+    SHA256_CTX & ctx, const std::uint8_t * buf, std::size_t len
+    )
 {
-    SHA256_Update(&context_, buf, len);
+    SHA256_Update(&ctx, buf, len);
 }
 
 std::array<std::uint8_t, sha256::digest_length> sha256::hash(
@@ -136,10 +139,10 @@ std::array<std::uint8_t, sha256::digest_length> sha256::hash(
 {
     std::array<std::uint8_t, digest_length> ret;
 
-    SHA256_CTX context;
-    SHA256_Init(&context);
-    SHA256_Update(&context, buf, len);
-    SHA256_Final(&ret[0], &context);
+    SHA256_CTX ctx;
+    SHA256_Init(&ctx);
+    SHA256_Update(&ctx, buf, len);
+    SHA256_Final(&ret[0], &ctx);
 
     return ret;
 }

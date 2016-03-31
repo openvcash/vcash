@@ -49,13 +49,18 @@ std::array<std::uint8_t, sha256::digest_length> hash::sha256d(
 {
     static std::uint8_t blank[1];
 
+    SHA256_CTX ctx;
+    
     sha256 one;
     
+    one.init(ctx);
+    
     one.update(
-        (begin == end ? blank : &begin[0]),
+        ctx, (begin == end ? blank : &begin[0]),
         (end - begin) * sizeof(begin[0])
     );
-    one.final();
+    
+    one.final(ctx);
     
     std::array<std::uint8_t, 32> two = sha256::hash(
         one.digest(), sha256::digest_length
@@ -71,18 +76,23 @@ std::array<std::uint8_t, sha256::digest_length> hash::sha256d(
 {
     static std::uint8_t blank[1];
 
+    SHA256_CTX ctx;
+    
     sha256 one;
     
+    one.init(ctx);
+    
     one.update(
-        (p1begin == p1end ? blank : &p1begin[0]),
+        ctx, (p1begin == p1end ? blank : &p1begin[0]),
         (p1end - p1begin) * sizeof(p1begin[0])
     );
+    
     one.update(
-        (p2begin == p2endn ? blank : &p2begin[0]),
+        ctx, (p2begin == p2endn ? blank : &p2begin[0]),
         (p2endn - p2begin) * sizeof(p2begin[0])
     );
     
-    one.final();
+    one.final(ctx);
     
     std::array<std::uint8_t, 32> two = sha256::hash(
         one.digest(), sha256::digest_length
