@@ -584,24 +584,34 @@ bool kernel::check_proof_of_stake(
     tx_db.close();
 
     /**
-     * Verify the signature.
+     * Skip ECDSA signature verification when checking blocks before the last
+     * blockchain checkpoint.
      */
-    if (script::verify_signature(tx_previous, tx, 0, true, 0) == false)
+    if (
+        globals::instance().best_block_height() >=
+        checkpoints::instance().get_total_blocks_estimate()
+        )
     {
-        log_error(
-            "Kernel, check proof of stake failed, verify_signature"
-            " failed on coinstake " << tx.get_hash().to_string() << "."
-        );
-        
         /**
-         * Set the Denial-of-Service score for the connection.
+         * Verify the signature.
          */
-        if (connection)
+        if (script::verify_signature(tx_previous, tx, 0, true, 0) == false)
         {
-            connection->set_dos_score(100);
+            log_error(
+                "Kernel, check proof of stake failed, verify_signature"
+                " failed on coinstake " << tx.get_hash().to_string() << "."
+            );
+            
+            /**
+             * Set the Denial-of-Service score for the connection.
+             */
+            if (connection)
+            {
+                connection->set_dos_score(100);
+            }
+            
+            return false;
         }
-        
-        return false;
     }
     
     /**

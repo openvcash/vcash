@@ -1983,21 +1983,31 @@ bool block::check_block(
     }
 
     /**
-     * Check the signature.
+     * Skip ECDSA signature verification when checking blocks before the last
+     * blockchain checkpoint.
      */
-    if (check_signature() == false)
+    if (
+        globals::instance().best_block_height() >=
+        checkpoints::instance().get_total_blocks_estimate()
+        )
     {
         /**
-         * Set the Denial-of-Service score for the connection.
+         * Check the signature.
          */
-        if (connection)
+        if (check_signature() == false)
         {
-            connection->set_dos_score(100);
+            /**
+             * Set the Denial-of-Service score for the connection.
+             */
+            if (connection)
+            {
+                connection->set_dos_score(100);
+            }
+            
+            throw std::runtime_error("bad block signature");
+            
+            return false;
         }
-        
-        throw std::runtime_error("bad block signature");
-        
-        return false;
     }
 
     return true;
