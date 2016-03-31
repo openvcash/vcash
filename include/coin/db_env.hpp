@@ -61,7 +61,7 @@ namespace coin {
              * Opens the database environment.
              * @param data_path The data path.
              */
-            bool open(const std::string & data_path = filesystem::data_path()
+            bool open(const std::string & data_path = filesystem::data_path());
   
             /**
              * Closes the DbEnv object.
