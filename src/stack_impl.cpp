@@ -255,7 +255,7 @@ void stack_impl::start()
     /**
      * Open the db_env.
      */
-    if (g_db_env->open())
+    if (g_db_env->open(m_configuration.database_cache_size()))
     {
         log_info("Stack is loading block index...");
         
@@ -272,7 +272,7 @@ void stack_impl::start()
         /**
          * Set the status value.
          */
-        status["value"] = "Loading blockchain";
+        status["value"] = "Loading ledger";
 
         /**
          * Callback
@@ -291,7 +291,7 @@ void stack_impl::start()
                 success || m_configuration.blockchain_pruning() == true
                 )
             {
-                log_info("Stack loaded block index.");
+                log_info("Stack loaded ledger index.");
                 
                 /**
                  * Allocate the status.
@@ -306,7 +306,7 @@ void stack_impl::start()
                 /**
                  * Set the status value.
                  */
-                status["value"] = "Loaded block index";
+                status["value"] = "Loaded ledger index";
 
                 /**
                  * Callback
@@ -3814,31 +3814,87 @@ const boost::asio::ip::tcp::endpoint & stack_impl::local_endpoint() const
 
 void stack_impl::create_directories()
 {
-    std::string path = filesystem::data_path();
+    /**
+     * Get the data path.
+     */
+    auto path_data = filesystem::data_path();
     
     log_info(
-        "Stack creating path = " << path << "."
+        "Stack creating path = " << path_data << "."
     );
 
-    auto result = filesystem::create_path(path);
+    auto result = filesystem::create_path(path_data);
     
     if (result == 0 || result == filesystem::error_already_exists)
     {
-        log_none("Stack, path already exists.");
+        /**
+         * Migration of data path from Vanillcoin to Vcash (can be removed in
+         * future versions).
+         */
+#if 1
+        /**
+         * Get the old data path.
+         */
+        auto path_data_old = filesystem::data_path_old();
+        
+        /**
+         * Get the old path contents.
+         */
+        auto path_contents_old = filesystem::path_contents(path_data_old);
+        
+        /**
+         * If we have contents we need to migrate.
+         */
+        if (path_contents_old.size() > 0)
+        {
+            for (auto & i : path_contents_old)
+            {
+                /**
+                 * Skip files we do not care about.
+                 */
+                if (i == "." || i == "..")
+                {
+                    continue;
+                }
+                
+                log_info("Stack environment migrating " << i << ".");
+                
+                /**
+                 * Rename the file to the new path.
+                 */
+                auto rc = std::rename(
+                    (path_data_old + i).c_str(), (path_data + i).c_str()
+                );
+                
+                if (rc)
+                {
+                    log_error(
+                        "Stack environment migrate rename " << i << " failed."
+                    );
+                }
+                else
+                {
+                    log_info(
+                        "Stack environment migrate rename " << i << " success"
+                    );
+                }
+            }
+        }
+#endif
     }
     else
     {
-        throw std::runtime_error("failed to create path " + path);
+        throw std::runtime_error("failed to create path " + path_data);
     }
     
     /**
      * Create backups directory.
      */
-    result = filesystem::create_path(path + "backups/");
+    result = filesystem::create_path(path_data + "backups/");
     
     if (result == 0 || result == filesystem::error_already_exists)
     {
-        log_none("Stack, " + path + "backups/ already exists.");
+        log_none("Stack, " + path_data + "backups/ already exists.");
     }
     else
     {
@@ -3852,11 +3908,11 @@ void stack_impl::create_directories()
         globals::instance().operation_mode() == protocol::operation_mode_client
         )
     {
-        path = path + "blockchain/";
+        path_data = path_data + "blockchain/";
         
-        result = filesystem::create_path(path);
+        result = filesystem::create_path(path_data);
         
-        log_info("Stack creating path = " << path << ".");
+        log_info("Stack creating path = " << path_data << ".");
         
         if (result == 0 || result == filesystem::error_already_exists)
         {
@@ -3864,18 +3920,18 @@ void stack_impl::create_directories()
         }
         else
         {
-            throw std::runtime_error("failed to create path " + path);
+            throw std::runtime_error("failed to create path " + path_data);
         }
         
-        path += "client/";
+        path_data += "client/";
     }
     else
     {
-        path = path + "blockchain/";
+        path_data = path_data + "blockchain/";
         
-        log_info("Stack creating path = " << path << ".");
+        log_info("Stack creating path = " << path_data << ".");
         
-        result = filesystem::create_path(path);
+        result = filesystem::create_path(path_data);
         
         if (result == 0 || result == filesystem::error_already_exists)
         {
@@ -3883,15 +3939,15 @@ void stack_impl::create_directories()
         }
         else
         {
-            throw std::runtime_error("failed to create path " + path);
+            throw std::runtime_error("failed to create path " + path_data);
         }
             
-        path += "peer/";
+        path_data += "peer/";
     }
 
-    log_info("Stack creating path = " << path << ".");
+    log_info("Stack creating path = " << path_data << ".");
 
-    result = filesystem::create_path(path);
+    result = filesystem::create_path(path_data);
     
     if (result == 0 || result == filesystem::error_already_exists)
     {
@@ -3899,7 +3955,7 @@ void stack_impl::create_directories()
     }
     else
     {
-        throw std::runtime_error("failed to create path " + path);
+        throw std::runtime_error("failed to create path " + path_data);
     }
 #if (defined __ANDROID__)
     /** 
@@ -4309,10 +4365,9 @@ void stack_impl::backup_last_wallet_file()
         }
         
         /**
-         * Keep at least 8 (automatic) backup wallet files. If you use RPC
-         * "backupwallet" more than 8 will accumulate and this is desired.
+         * Keep at most 12 (automatic) backup wallet files.
          */
-        enum { minimum_to_keep = 8 };
+        enum { minimum_to_keep = 12 };
 
         if (wallets_sorted_by_time.size() >= minimum_to_keep)
         {
@@ -4325,20 +4380,25 @@ void stack_impl::backup_last_wallet_file()
                 );
             }
             
-            /**
-             * Backup the wallet.
-             */
-            if (std::ifstream(filesystem::data_path() + "wallet.dat").good())
+            if (std::time(0) - time_latest > 24 * 60 * 60)
             {
+                /**
+                 * Backup the wallet.
+                 */
                 if (
-                    filesystem::copy_file(filesystem::data_path() + "wallet.dat",
-                    path_backups +  "wallet." +
-                    std::to_string(std::time(0)) + ".dat") == true
+                    std::ifstream(filesystem::data_path() + "wallet.dat").good()
                     )
                 {
-                    log_info(
-                        "Stack backed up wallet to " << path_backups << "."
-                    );
+                    if (
+                        filesystem::copy_file(filesystem::data_path() +
+                        "wallet.dat", path_backups +  "wallet." +
+                        std::to_string(std::time(0)) + ".dat") == true
+                        )
+                    {
+                        log_info(
+                            "Stack backed up wallet to " << path_backups << "."
+                        );
+                    }
                 }
             }
         }

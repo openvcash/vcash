@@ -56,13 +56,14 @@ namespace coin {
              */
             ~db_env();
         
-         		          
             /**
              * Opens the database environment.
-             * @param data_path The data path.
+             * @param cache_size The cache size.
              */
-            bool open(const std::string & data_path = filesystem::data_path());
-  
+            bool open(
+                const std::uint32_t & cache_size = default_cache_size
+            );
+        
             /**
              * Closes the DbEnv object.
              */

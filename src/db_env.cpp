@@ -49,10 +49,12 @@ db_env::~db_env()
     close_DbEnv();
 }
 
-bool db_env::open(const std::string & data_path)
+bool db_env::open(const std::uint32_t & cache_size)
 {
     if (state_ == state_closed)
     {
+        auto data_path = filesystem::data_path();
+        
         filesystem::create_path(data_path);
         
         auto log_path = data_path + "database";
@@ -65,24 +67,29 @@ bool db_env::open(const std::string & data_path)
         
         log_info("Database environment err path = " << errfile_path << ".");
         
-        std::int32_t flags =
+        log_info("Database environment cache size = " << cache_size << ".");
+        
+        std::int32_t flags = 0;
+        
+        flags |=
             DB_CREATE | DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL |
             DB_INIT_TXN | DB_THREAD | DB_RECOVER
         ;
 
-        auto cache = 25;
-        
         std::lock_guard<std::recursive_mutex> l1(m_mutex_DbEnv);
-
+        
         m_DbEnv.set_lg_dir(log_path.c_str());
-        m_DbEnv.set_cachesize(cache / 1024, (cache % 1024) * 1048576, 1);
+        m_DbEnv.set_cachesize(
+            cache_size / 1024, (cache_size % 1024) * 1048576, 1
+        );
         m_DbEnv.set_lg_bsize(1048576);
         m_DbEnv.set_lg_max(10485760);
-        m_DbEnv.set_lk_max_locks(10000);
-        m_DbEnv.set_lk_max_objects(10000);
+        m_DbEnv.set_lk_max_locks(537000);
+        m_DbEnv.set_lk_max_objects(40000);
         m_DbEnv.set_errfile(fopen(errfile_path.c_str(), "a"));
         m_DbEnv.set_flags(DB_AUTO_COMMIT, 1);
         m_DbEnv.set_flags(DB_TXN_WRITE_NOSYNC, 1);
+        m_DbEnv.log_set_config(DB_LOG_AUTO_REMOVE, 1);
 
         auto ret = m_DbEnv.open(data_path.c_str(), flags, S_IRUSR | S_IWUSR);
         
@@ -126,7 +133,7 @@ void db_env::close_DbEnv()
             );
         }
         
-        std::string data_path = filesystem::data_path();
+        auto data_path = filesystem::data_path();
         
         DbEnv(0).remove(data_path.c_str(), 0);
         
