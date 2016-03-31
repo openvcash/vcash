@@ -63,6 +63,11 @@ namespace coin {
              */
             static std::string data_path();
         
+            /** 
+             * The (old) user data directory.
+             */
+            static std::string data_path_old();
+        
         private:
         
             /** 
