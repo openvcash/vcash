@@ -70,6 +70,7 @@ tcp_connection::tcp_connection(
     , m_protocol_version_services(0)
     , m_protocol_version_timestamp(0)
     , m_protocol_version_start_height(-1)
+    , m_protocol_version_relay(true)
     , m_sent_getaddr(false)
     , m_dos_score(0)
     , m_probe_only(false)
@@ -1835,6 +1836,11 @@ const protocol::network_address_t &
     return m_protocol_version_addr_src;
 }
 
+const bool & tcp_connection::protocol_version_relay() const
+{
+    return m_protocol_version_relay;
+}
+
 void tcp_connection::set_on_probe(
     const std::function<void (const std::uint32_t &, const std::string &,
     const std::uint64_t &, const std::int32_t &)> & f
@@ -1975,7 +1981,7 @@ void tcp_connection::relay_inv(
     globals::instance().relay_inv_expirations().push_back(
         std::make_pair(std::time(0) + 15 * 60, inv)
     );
-
+    
     log_debug(
         "TCP connection is relaying inv message, command = " <<
         inv.command() << "."
@@ -1990,13 +1996,32 @@ void tcp_connection::relay_inv(
      * Encode the message.
      */
     msg.encode();
-    
+
     /**
-     * Broadcast the message to "all" connected peers.
+     * Check if this is related to a transaction.
      */
-    stack_impl_.get_tcp_connection_manager()->broadcast(
-        msg.data(), msg.size()
-    );
+    auto is_tx_related =
+        inv.command() == "tx" || inv.command() == "ztlock"
+    ;
+    
+    if (m_protocol_version_relay == false && is_tx_related)
+    {
+        /**
+         * Broadcast the message via bip0037 rules.
+         */
+         stack_impl_.get_tcp_connection_manager()->broadcast_bip0037(
+            msg.data(), msg.size()
+         );
+    }
+    else
+    {
+        /**
+         * Broadcast the message to "all" connected peers.
+         */
+        stack_impl_.get_tcp_connection_manager()->broadcast(
+            msg.data(), msg.size()
+        );
+    }
 }
 
 bool tcp_connection::handle_message(message & msg)
@@ -2104,6 +2129,11 @@ bool tcp_connection::handle_message(message & msg)
                  * Set the protocol version source address.
                  */
                 m_protocol_version_addr_src = msg.protocol_version().addr_src;
+                
+                /**
+                 * Set the protocol version relay.
+                 */
+                m_protocol_version_relay = msg.protocol_version().relay == 1;
 
                 /**
                  * Add the timestamp from the peer.
@@ -3216,11 +3246,18 @@ bool tcp_connection::handle_message(message & msg)
                  * Inform the wallet_manager.
                  */
                 wallet_manager::instance().sync_with_wallets(*tx, 0, true);
-                
-                /**
-                 * Relay the inv.
-                 */
-                relay_inv(inv, buffer);
+
+                if (m_protocol_version_relay == false)
+                {
+                    log_info("TCP connection is not relaying transaction.");
+                }
+                else
+                {
+                    /**
+                     * Relay the inv.
+                     */
+                    relay_inv(inv, buffer);
+                }
 
                 queue_work.push_back(inv.hash());
                 queue_erase.push_back(inv.hash());
@@ -3276,7 +3313,17 @@ bool tcp_connection::handle_message(message & msg)
                                 tx2, 0, true
                             );
 
-                            relay_inv(inv2, buffer2);
+                            if (m_protocol_version_relay == false)
+                            {
+                                log_info(
+                                    "TCP connection is not relaying "
+                                    "transaction to bip-0037 node."
+                                );
+                            }
+                            else
+                            {
+                                relay_inv(inv2, buffer2);
+                            }
                             
                             queue_work.push_back(inv2.hash());
                             queue_erase.push_back(inv2.hash());

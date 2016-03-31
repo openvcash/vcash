@@ -242,6 +242,11 @@ namespace coin {
             ;
         
             /**
+             * The (remote) protocol version relay.
+             */
+            const bool & protocol_version_relay() const;
+        
+            /**
              * Sets the on probe handler (probe-only mode).
              * @param f The std::function.
              */
@@ -534,6 +539,11 @@ namespace coin {
              * The (remote) protocol version source address.
              */
             protocol::network_address_t m_protocol_version_addr_src;
+        
+            /**
+             * The (remote) protocol version relay.
+             */
+            bool m_protocol_version_relay;
         
             /**
              * The probe handler (probe-only mode).
