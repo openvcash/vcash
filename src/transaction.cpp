@@ -644,6 +644,16 @@ bool transaction::read_from_disk(const transaction_position & position)
              * Decode
              */
             decode(buffer);
+            
+            /**
+             * Clear the buffer.
+             */
+            clear();
+            
+            /**
+             * Close the file.
+             */
+            f->close(), f = nullptr;
         }
         else
         {
