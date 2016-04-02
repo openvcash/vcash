@@ -2427,16 +2427,26 @@ bool block::read_from_disk(
         if (decode(block_header_only))
         {
             /**
+             * Clear the buffer.
+             */
+            clear();
+        
+            /**
+             * Close the file.
+             */
+            f->close();
+            
+            /**
              * Set the file to null.
              */
-            set_file(0);
+            set_file(nullptr);
         }
         else
         {
             /**
              * Set the file to null.
              */
-            set_file(0);
+            set_file(nullptr);
         
             return false;
         }
