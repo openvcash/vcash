@@ -449,6 +449,41 @@ void message::decode()
                 m_protocol_version.user_agent.size()
             );
             m_protocol_version.start_height = read_uint32();
+            
+            /**
+             * bip-0037
+             */
+            if (m_protocol_version.version > 60047 && remaining() > 0)
+            {
+                /**
+                 * Only read the version.relay a getdata message if the remote
+                 * node is not a peer.
+                 */
+                if (
+                    (m_protocol_version.services &
+                    protocol::operation_mode_peer) == 1
+                    )
+                {
+                    /**
+                     * Set relay to true.
+                     */
+                    m_protocol_version.relay = true;
+                }
+                else
+                {
+                    /**
+                     * Set relay to version.relay.
+                     */
+                    m_protocol_version.relay = read_uint8();
+                }
+            }
+            else
+            {
+                /**
+                 * Set relay to true.
+                 */
+                m_protocol_version.relay = true;
+            }
 
             log_none("version = " << m_protocol_version.version);
             log_none("services = " << m_protocol_version.services);
@@ -457,6 +492,9 @@ void message::decode()
             log_none("nonce = " << m_protocol_version.nonce);
             log_none("user_agent = " << m_protocol_version.user_agent);
             log_none("start_height = " << m_protocol_version.start_height);
+            log_none(
+                "relay = " << static_cast<bool> (m_protocol_version.relay)
+            );
         }
         else if (m_header.command == "addr")
         {
@@ -1339,11 +1377,32 @@ data_buffer message::create_version()
     );
     
     /**
-     * Write the payload nonce.
+     * Write the payload start height.
      */
     ret.write_bytes(reinterpret_cast<char *> (
         &payload_start_height[0]), payload_start_height.size()
     );
+    
+    /**
+     * bip-0037
+     */
+    if (protocol::version > 60047)
+    {
+        /**
+         * :TODO: bip-0037 lite clients need to set relay to false first, then
+         * update it when setting the bloom filter.
+         */
+        
+        /**
+         * Set the payload relay.
+         */
+        m_protocol_version.relay = true;
+
+        /**
+         * Write the payload relay.
+         */
+        ret.write_uint8(m_protocol_version.relay);
+    }
     
     return ret;
 }
