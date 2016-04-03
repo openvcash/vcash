@@ -45,6 +45,8 @@ namespace coin {
              * @param type_error Any data of with this number may be ignored.
              * @param type_msg_tx Hash is related to a transaction.
              * @param type_msg_block Hash is related to a data block.
+             * @param type_msg_filtered_block Hash is related to a filtered
+             * block.
              * @param type_msg_ztlock Hash is related to a zerotime lock.
              * @param type_msg_ztvote Hash is related to zerotime vote.
              * @param type_msg_ivote Hash is related to incentive vote.
@@ -54,6 +56,9 @@ namespace coin {
                 type_error,
                 type_msg_tx,
                 type_msg_block,
+#if 0 /* BIP-0037 */
+                type_msg_filtered_block,
+#endif
                 type_msg_ztlock,
                 type_msg_ztvote,
                 type_msg_ivote,
