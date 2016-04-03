@@ -637,6 +637,9 @@ namespace protocol {
             "ERROR",
             "tx",
             "block",
+#if 0 /* BIP-0037 */
+            "filtered block",
+#endif
             "ztlock",
             "ztvote",
             "ivote",
