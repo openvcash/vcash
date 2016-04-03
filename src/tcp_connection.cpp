@@ -2657,7 +2657,7 @@ bool tcp_connection::handle_message(message & msg)
             auto index = 0;
             
             auto inventory = msg.protocol_inv().inventory;
-            
+
             for (auto & i : inventory)
             {
                 auto already_have = inventory_vector::already_have(tx_db, i);
@@ -2981,34 +2981,14 @@ bool tcp_connection::handle_message(message & msg)
                 }
                 
                 /**
-                 * We send a random number of blocks depending on remote
-                 * node operation mode defaulting to a 300 lower/upper
-                 * peer/client boundry.
+                 * We send 500 block hashes.
                  */
-                enum { default_blocks = 300 };
+                enum { default_blocks = 500 };
                 
                 /**
                  * The limit on the number of blocks to send.
                  */
                 std::int16_t limit = default_blocks;
-
-                if (
-                    (m_protocol_version_services &
-                    protocol::operation_mode_peer) == 1
-                    )
-                {
-                    limit = static_cast<std::int16_t> (
-                        random::uint16_random_range(
-                        default_blocks, default_blocks * 3)
-                    );
-                }
-                else
-                {
-                    limit = static_cast<std::int16_t> (
-                        random::uint16_random_range(
-                        default_blocks / 3, default_blocks)
-                    );
-                }
 
                 log_debug(
                     "TCP connection getblocks " <<
