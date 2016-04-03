@@ -1018,14 +1018,25 @@ void stack_impl::start()
                 });
 
                 /**
-                 * Now that the block index is loaded increase the thread
-                 * count to max(3, cores) if required.
+                 * Get the number of cores.
                  */
                 auto cores = std::thread::hardware_concurrency();
 
+                /**
+                 * Do not use more than 8 cores.
+                 */
+                if (cores >= 8)
+                {
+                    cores = 7;
+                }
+                
+                /**
+                 * Now that the block index is loaded increase the thread
+                 * count to max(3, cores) if required.
+                 */
                 cores = std::max(
-                    static_cast<std::uint32_t> (4 - 1),
-                    std::min(static_cast<std::uint32_t> (8 - 1), cores - 1)
+                    static_cast<std::uint32_t> (3 - 1),
+                    static_cast<std::uint32_t> (cores - 1)
                 );
 
                 log_info("Stack is adding " << cores << " threads.");
