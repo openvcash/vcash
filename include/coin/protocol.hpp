@@ -50,14 +50,12 @@ class zerotime_lock;
 class zerotime_question;
 class zerotime_vote;
 
-#error 0.4.5 merge in progress, please wait until it has been completed.
-
 namespace protocol {
 
         /**
          * The version.
          */
-        enum { version = 60047 };
+        enum { version = 60048 };
 
         /**
          * The minimum version.
