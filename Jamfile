@@ -87,6 +87,7 @@ SOURCES =
 	key_store_crypto
 	key_wallet
 	key_wallet_master
+    merkle_tree_partial
 	message
     mining
 	mining_manager
