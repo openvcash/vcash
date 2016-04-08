@@ -82,6 +82,7 @@ LOCAL_SRC_FILES := \
 	../src/key_wallet_master.cpp \
 	../src/key_wallet.cpp \
 	../src/key.cpp \
+    ../src/merkle_tree_partial.cpp \
 	../src/message.cpp \
 	../src/mining_manager.cpp \
 	../src/mining.cpp \
