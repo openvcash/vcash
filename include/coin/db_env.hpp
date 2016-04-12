@@ -45,7 +45,7 @@ namespace coin {
             /**
              * The default cache size.
              */
-            enum { default_cache_size = 128 };
+            enum { default_cache_size = 100 };
         
             /**
              * Constructor
