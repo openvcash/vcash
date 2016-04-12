@@ -881,6 +881,16 @@ namespace coin {
             bool write_version(const std::int32_t & version);
         
             /**
+             * The state.
+             */
+            enum
+            {
+                state_none,
+                state_opened,
+                state_closed,
+            } state_;
+        
+            /**
              * The std::mutex.
              */
             std::mutex mutex_;
