@@ -37,8 +37,6 @@
 
 using namespace coin;
 
-std::thread db_env::thread_memp_trickle_;
-
 db_env::db_env()
     : m_DbEnv(DB_CXX_NO_EXCEPTIONS)
     , state_(state_closed)
@@ -105,49 +103,6 @@ bool db_env::open(const std::uint32_t & cache_size)
         else
         {
             state_ = state_opened;
-            
-            /**
-             * Start the memp_trickle std::thread.
-             */
-            thread_memp_trickle_ = std::thread(
-                [this] ()
-                {
-                    while (state_ == state_opened)
-                    {
-                        int ret;
-                        
-                        int nwrotep;
-                        
-                        if ((ret = m_DbEnv.memp_trickle(100, &nwrotep)) != 0)
-                        {
-                            m_DbEnv.err(ret, "memp_trickle thread");
-                        }
-                        
-                        m_DbEnv.errx(
-                            "memp_trickle writing %d dirty pages", nwrotep
-                        );
-                        
-                        log_info(
-                            "DB Env wrote " << nwrotep << " dirty pages, "
-                            "ret = " << DbEnv::strerror(ret) << "."
-                        );
-
-                        /**
-                         * Pause for 600 seconds by looping 600 times sleeping
-                         * for one second each.
-                         */
-                        auto loops = 0;
-                        
-                        do
-                        {
-                            std::this_thread::sleep_for(
-                                std::chrono::seconds(1)
-                            );
-                            
-                        } while (state_ == state_opened && loops++ < 600);
-                    }
-                }
-            );
         }
 
         return ret == 0;
@@ -167,11 +122,6 @@ void db_env::close_DbEnv()
         state_ = state_closed;
         
         std::lock_guard<std::recursive_mutex> l1(m_mutex_DbEnv);
-        
-        /**
-         * Join the memp_trickle thread.
-         */
-        thread_memp_trickle_.detach();
         
         auto ret = m_DbEnv.close(0);
         
@@ -315,9 +265,9 @@ void db_env::flush()
             
             auto reference_count = it->second;
             
-            log_debug(
-                "Db Env " << file_name << ", reference count = " <<
-                reference_count << "."
+            log_info(
+                "Database environment " << file_name <<
+                ", reference count = " << reference_count << "."
             );
 
             if (reference_count == 0)
@@ -327,7 +277,9 @@ void db_env::flush()
                  */
                 close_Db(file_name);
 
-                log_debug("Db Env checkpoint " << file_name << ".");
+                log_info(
+                    "Database environment checkpoint " << file_name << "."
+                );
                 
                 std::lock_guard<std::recursive_mutex> l2(m_mutex_DbEnv);
                 
@@ -339,7 +291,9 @@ void db_env::flush()
                     utility::is_chain_file(file_name) == false || detach_db
                     )
                 {
-                    log_debug("Db Env detach " << file_name << ".");
+                    log_info(
+                        "Database environment detach " << file_name << "."
+                    );
 
                     m_DbEnv.lsn_reset(file_name.c_str(), 0);
                 }

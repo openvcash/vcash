@@ -179,11 +179,6 @@ namespace coin {
              * m_Dbs std::recursive_mutex.
              */
             std::recursive_mutex mutex_m_Dbs_;
-        
-            /**
-             * The memp_trickle thread.
-             */
-            static std::thread thread_memp_trickle_;
     };
     
 } // namespace coin
