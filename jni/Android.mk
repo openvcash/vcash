@@ -39,10 +39,11 @@ LOCAL_SRC_FILES := \
 	../src/base58.cpp \
 	../src/big_number.cpp \
 	../src/blake256.cpp \
+	../src/block.cpp \
 	../src/block_index_disk.cpp \
 	../src/block_index.cpp \
 	../src/block_locator.cpp \
-	../src/block.cpp \
+	../src/block_merkle.cpp \
 	../src/chainblender.cpp \
 	../src/chainblender_broadcast.cpp \
 	../src/chainblender_join.cpp \

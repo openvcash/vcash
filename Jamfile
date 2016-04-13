@@ -43,11 +43,12 @@ SOURCES =
 	alert_unsigned
 	base58
 	big_number
-    blake256
+        blake256
 	block
 	block_index
 	block_index_disk
-	block_locator
+        block_locator
+        block_merkle
 	chainblender
     chainblender_broadcast
     chainblender_join
