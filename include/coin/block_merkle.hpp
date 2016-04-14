@@ -24,7 +24,7 @@
 namespace coin {
 
     /**
-     * Implements a BIP-0037 (filtered block) Merkle Block.
+     * Implements a BIP-0037 Merkle Block (filtered block).
      */
     class block_merkle
     {
