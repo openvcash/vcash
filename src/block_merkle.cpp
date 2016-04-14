@@ -19,5 +19,73 @@
  */
 
 #include <coin/block_merkle.hpp>
+#include <coin/transaction.hpp>
 
 using namespace coin;
+
+block_merkle::block_merkle(
+    const block & blk, transaction_bloom_filter & filter
+    )
+    : m_block_header(blk.header())
+{
+    initialize(blk, filter);
+}
+
+void block_merkle::encode(data_buffer & buffer)
+{
+    buffer.write_uint32(m_block_header.version);
+    buffer.write_sha256(m_block_header.hash_previous_block);
+    buffer.write_sha256(m_block_header.hash_merkle_root);
+    buffer.write_uint32(m_block_header.timestamp);
+    buffer.write_uint32(m_block_header.bits);
+    buffer.write_uint32(m_block_header.nonce);
+    
+    m_merkle_tree_partial.encode(buffer);
+}
+
+void block_merkle::decode(data_buffer & buffer)
+{
+    m_block_header.version = buffer.read_uint32();
+    m_block_header.hash_previous_block = buffer.read_sha256();
+    m_block_header.hash_merkle_root = buffer.read_sha256();
+    m_block_header.timestamp = buffer.read_uint32();
+    m_block_header.bits = buffer.read_uint32();
+    m_block_header.nonce = buffer.read_uint32();
+    
+    m_merkle_tree_partial.decode(buffer);
+}
+
+void block_merkle::initialize(
+    const block & blk, transaction_bloom_filter & filter
+    )
+{
+    std::vector<sha256> hashes;
+    std::vector<bool> matches;
+    
+    const auto & transactions = const_cast<block *> (&blk)->transactions();
+
+    hashes.reserve(transactions.size());
+    matches.reserve(transactions.size());
+
+    for (auto i = 0; i < transactions.size(); i++)
+    {
+        const auto & tx = transactions[i];
+        
+        const auto & h = tx.get_hash();
+        
+        if (filter.is_relevant_and_update(tx) == true)
+        {
+            m_transactions_matched.push_back(std::make_pair(i, h));
+            
+            matches.push_back(true);
+        }
+        else
+        {
+            matches.push_back(false);
+        }
+        
+        hashes.push_back(h);
+    }
+
+    m_merkle_tree_partial = merkle_tree_partial(hashes, matches);
+}

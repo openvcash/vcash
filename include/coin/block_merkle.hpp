@@ -21,6 +21,15 @@
 #ifndef COIN_BLOCK_MERKLE_HPP
 #define COIN_BLOCK_MERKLE_HPP
 
+#include <cstdint>
+#include <vector>
+
+#include <coin/block.hpp>
+#include <coin/transaction_bloom_filter.hpp>
+#include <coin/data_buffer.hpp>
+#include <coin/merkle_tree_partial.hpp>
+#include <coin/sha256.hpp>
+
 namespace coin {
 
     /**
@@ -30,11 +39,54 @@ namespace coin {
     {
         public:
         
-            // ...
-            
+            /**
+             * Constructor
+             * @param blk The block.
+             * @param filter The transaction_bloom_filter.
+             */
+            explicit block_merkle(
+                const block & blk, transaction_bloom_filter & filter
+            );
+
+            /**
+             * Encodes
+             * @param buffer The data_buffer.
+             */
+            void encode(data_buffer & buffer);
+        
+            /**
+             * Decodes
+             * @param buffer The data_buffer.
+             */
+            void decode(data_buffer & buffer);
+        
         private:
         
-            // ...
+            /**
+             * Intitializes the merkle block.
+             * @param blk The block.
+             * @param filter The transaction_bloom_filter.
+             */
+            void initialize(
+                const block & blk, transaction_bloom_filter & filter
+            );
+        
+            /**
+             * The matched transactions.
+             */
+            std::vector<
+                std::pair<std::uint32_t, sha256> > m_transactions_matched
+            ;
+        
+            /**
+             * The block header.
+             */
+            block::header_t m_block_header;
+        
+            /**
+             * The partial merkle tree.
+             */
+            merkle_tree_partial m_merkle_tree_partial;
         
         protected:
         
