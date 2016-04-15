@@ -51,6 +51,11 @@ namespace coin {
         public:
         
             /**
+             * The maximum element size.
+             */
+            enum { max_element_size = 520 };
+        
+            /**
              * Implements a script visitor.
              */
             class visitor : public boost::static_visitor<bool>

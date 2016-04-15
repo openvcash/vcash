@@ -707,15 +707,15 @@ bool script::evaluate(
         {
             bool fExec = count(exec.begin(), exec.end(), false) == 0;
             
-            //
-            // Read instruction
-            //
+            /**
+             * Read instruction
+             */
             if (scr.get_op(pc, opcode, vchPushValue) == false)
             {
                 return false;
             }
 
-            if (vchPushValue.size() > 520)
+            if (vchPushValue.size() > max_element_size)
             {
                 return false;
             }
@@ -1177,7 +1177,7 @@ bool script::evaluate(
                         
                         pop_stack(stack);
                         
-                        if (stack_top(stack, -1).size() > 520)
+                        if (stack_top(stack, -1).size() > max_element_size)
                         {
                             return false;
                         }
