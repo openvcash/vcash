@@ -45,6 +45,7 @@ class incentive_answer;
 class incentive_question;
 class incentive_vote;
 class transaction;
+class transaction_bloom_filter;
 class zerotime_answer;
 class zerotime_lock;
 class zerotime_question;
@@ -775,6 +776,22 @@ namespace protocol {
         {
             std::shared_ptr<alert> a;
         } alert_t;
+    
+        /**
+         * The filterload structure.
+         */
+        typedef struct
+        {
+            std::shared_ptr<transaction_bloom_filter> filterload;
+        } filterload_t;
+    
+        /**
+         * The filteradd structure.
+         */
+        typedef struct
+        {
+            std::vector<std::uint8_t> filteradd;
+        } filteradd_t;
     
         /**
          * The ztlock structure.
