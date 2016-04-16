@@ -182,6 +182,16 @@ namespace coin {
             protocol::alert_t & protocol_alert();
         
             /**
+             * The protocol filterload.
+             */
+            protocol::filterload_t & protocol_filterload();
+        
+            /**
+             * The protocol filteradd.
+             */
+            protocol::filteradd_t & protocol_filteradd();
+        
+            /**
              * The protocol ztlock structure.
              */
             protocol::ztlock_t & protocol_ztlock();
@@ -312,6 +322,16 @@ namespace coin {
              * The protocol alert structure.
              */
             protocol::alert_t m_protocol_alert;
+        
+            /**
+             * The protocol filterload.
+             */
+            protocol::filterload_t m_protocol_filterload;
+        
+            /**
+             * The protocol filteradd.
+             */
+            protocol::filteradd_t m_protocol_filteradd;
         
             /**
              * The protocol ztlock structure.

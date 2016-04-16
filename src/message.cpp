@@ -42,6 +42,7 @@
 #include <coin/message.hpp>
 #include <coin/stack_impl.hpp>
 #include <coin/time.hpp>
+#include <coin/transaction_bloom_filter.hpp>
 #include <coin/zerotime_answer.hpp>
 #include <coin/zerotime_lock.hpp>
 #include <coin/zerotime_question.hpp>
@@ -172,6 +173,18 @@ void message::encode()
              * Create the alert.
              */
             m_payload = create_alert();
+        }
+        else if (m_header.command == "filterload")
+        {
+            // ...
+        }
+        else if (m_header.command == "filteradd")
+        {
+            // ...
+        }
+        else if (m_header.command == "filterclear")
+        {
+            // ...
         }
         else if (m_header.command == "ztlock")
         {
@@ -714,6 +727,51 @@ void message::decode()
                 m_protocol_alert.a.reset();
             }
         }
+        else if (m_header.command == "filterload")
+        {
+            /**
+             * Allocate the filterload.
+             */
+            m_protocol_filterload.filterload =
+                std::make_shared<transaction_bloom_filter> ()
+            ;
+            
+            /**
+             * Decode the filterload.
+             */
+            if (m_protocol_filterload.filterload->decode(*this))
+            {
+                // ...
+            }
+            else
+            {
+                log_error("Message failed to decode filterload.");
+                
+                /**
+                 * Deallocate the filterload.
+                 */
+                m_protocol_filterload.filterload.reset();
+            }
+        }
+        else if (m_header.command == "filteradd")
+        {
+            auto len = read_var_int();
+            
+            if (len > 0)
+            {
+                m_protocol_filteradd.filteradd.resize(len);
+                
+                read_bytes(
+                    reinterpret_cast<char *> (
+                    &m_protocol_filteradd.filteradd[0]),
+                    m_protocol_filteradd.filteradd.size()
+                );
+            }
+        }
+        else if (m_header.command == "filterclear")
+        {
+            // ...
+        }
         else if (m_header.command == "ztlock")
         {
             /**
@@ -1130,6 +1188,16 @@ protocol::tx_t & message::protocol_tx()
 protocol::alert_t & message::protocol_alert()
 {
     return m_protocol_alert;
+}
+
+protocol::filterload_t & message::protocol_filterload()
+{
+    return m_protocol_filterload;
+}
+
+protocol::filteradd_t & message::protocol_filteradd()
+{
+    return m_protocol_filteradd;
 }
 
 protocol::ztlock_t & message::protocol_ztlock()
