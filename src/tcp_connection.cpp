@@ -3389,6 +3389,75 @@ bool tcp_connection::handle_message(message & msg)
             }
         }
     }
+    else if (msg.header().command == "filterload")
+    {
+        assert(msg.protocol_filterload().filterload);
+        
+        /**
+         * First check the size constraints of the filter.
+         */
+        if (
+            msg.protocol_filterload(
+            ).filterload->is_within_size_constraints() == false
+            )
+        {
+            /**
+             * Set the Denial-of-Service score for the connection.
+             */
+            set_dos_score(m_dos_score + 100);
+        }
+        else
+        {
+            transaction_bloom_filter_.reset(
+                new transaction_bloom_filter(
+                *msg.protocol_filterload().filterload)
+            );
+            
+            transaction_bloom_filter_->update_empty_full();
+        }
+        
+        m_protocol_version_relay = true;
+    }
+    else if (msg.header().command == "filteradd")
+    {
+        /**
+         * First check the size.
+         */
+        if (
+            msg.protocol_filteradd().filteradd.size() >
+            script::max_element_size
+            )
+        {
+            /**
+             * Set the Denial-of-Service score for the connection.
+             */
+            set_dos_score(m_dos_score + 100);
+        }
+        else
+        {
+            if (transaction_bloom_filter_ == 0)
+            {
+                /**
+                 * Set the Denial-of-Service score for the connection.
+                 */
+                set_dos_score(m_dos_score + 100);
+            }
+            else
+            {
+                transaction_bloom_filter_->insert(
+                    msg.protocol_filteradd().filteradd
+                );
+            }
+        }
+    }
+    else if (msg.header().command == "filterclear")
+    {
+        transaction_bloom_filter_.reset(
+            new transaction_bloom_filter()
+        );
+        
+        m_protocol_version_relay = true;
+    }
     else if (msg.header().command == "ztlock")
     {
         log_debug("Got ztlock");

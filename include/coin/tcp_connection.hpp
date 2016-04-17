@@ -23,6 +23,7 @@
 
 #include <deque>
 #include <functional>
+#include <memory>
 #include <mutex>
 #include <set>
 #include <string>
@@ -34,6 +35,7 @@
 #include <coin/inventory_vector.hpp>
 #include <coin/protocol.hpp>
 #include <coin/sha256.hpp>
+#include <coin/transaction_bloom_filter.hpp>
 
 namespace coin {
     
@@ -766,6 +768,13 @@ namespace coin {
              * chainblender_status::code_ready.
              */
             bool did_send_cbstatus_cbready_code_;
+        
+            /**
+             * The BIP-0037 transaction bloom filter.
+             */
+            std::unique_ptr<transaction_bloom_filter>
+                transaction_bloom_filter_
+            ;
     };
     
 } // namespace coin
