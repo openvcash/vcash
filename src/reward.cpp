@@ -105,7 +105,7 @@ std::int64_t reward::get_proof_of_work_vanilla(
                 subsidy -= subsidy / 6;
             }
         }
-        else
+        else if (height < 385000)
         {
             for (auto i = 10000; i <= height; i += 10000)
             {
@@ -117,10 +117,22 @@ std::int64_t reward::get_proof_of_work_vanilla(
                 subsidy -= (subsidy / 28 * 4) / 28;
             }
         }
-        
-        if ((subsidy / 1000000.0f) < 2.0f)
+        else
         {
-            subsidy = 2;
+            for (auto i = 7000; i <= height; i += 7000)
+            {
+                subsidy -=
+                    subsidy / 28 - ((double)(10000.0f / height) *
+                    ((double)(10000.0f / height)))
+                ;
+                
+                subsidy -= (subsidy / 28 * 4) / 28;
+            }
+        }
+        
+        if ((subsidy / 1000000.0f) < 1.0f)
+        {
+            subsidy = 1;
             
             subsidy *= 1000000;
         }
