@@ -62,6 +62,9 @@ namespace coin {
                 type_msg_ztlock,
                 type_msg_ztvote,
                 type_msg_ivote,
+#if 1 /* BIP-0037 */
+                type_msg_filtered_block_nonstandard,
+#endif
             } type_t;
     
             /**
