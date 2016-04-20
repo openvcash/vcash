@@ -36,6 +36,7 @@ namespace coin {
 
 class alert;
 class block;
+class block_merkle;
 class block_locator;
 class chainblender_broadcast;
 class chainblender_join;
@@ -794,6 +795,14 @@ namespace protocol {
         {
             std::vector<std::uint8_t> filteradd;
         } filteradd_t;
+    
+        /**
+         * The merkleblock structure.
+         */
+        typedef struct
+        {
+            std::shared_ptr<block_merkle> merkleblock;
+        } merkleblock_t;
     
         /**
          * The ztlock structure.

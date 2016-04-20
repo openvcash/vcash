@@ -24,6 +24,7 @@
 #include <coin/address_manager.hpp>
 #include <coin/alert.hpp>
 #include <coin/alert_manager.hpp>
+#include <coin/block_merkle.hpp>
 #include <coin/block_locator.hpp>
 #include <coin/chainblender.hpp>
 #include <coin/chainblender_broadcast.hpp>
@@ -1439,6 +1440,44 @@ void tcp_connection::send_headers_message(const std::vector<block> & headers)
     }
 }
 
+void tcp_connection::send_merkleblock_message(const block_merkle & merkleblock)
+{
+    if (auto t = m_tcp_transport.lock())
+    {
+        /**
+         * Allocate the message.
+         */
+        message msg("merkleblock");
+
+        /**
+         * Set the merkleblock.
+         */
+        msg.protocol_merkleblock().merkleblock =
+            std::make_shared<block_merkle> (merkleblock)
+        ;
+        
+        log_debug(
+            "TCP connection is sending merkleblock, tx's = " <<
+            msg.protocol_merkleblock(
+            ).merkleblock->transactions_matched().size() << "."
+        );
+
+        /**
+         * Encode the message.
+         */
+        msg.encode();
+        
+        /**
+         * Write the message.
+         */
+        t->write(msg.data(), msg.size());
+    }
+    else
+    {
+        stop();
+    }
+}
+
 void tcp_connection::send_ztlock_message(const zerotime_lock & ztlock)
 {
     if (auto t = m_tcp_transport.lock())
@@ -2771,7 +2810,11 @@ bool tcp_connection::handle_message(message & msg)
                         );
                     }
                     
-                    if (i.type() == inventory_vector::type_msg_block)
+                    if (
+                        i.type() == inventory_vector::type_msg_block ||
+                        i.type() ==
+                        inventory_vector::type_msg_filtered_block_nonstandard
+                        )
                     {
                         /**
                          * Find the block.
@@ -2792,10 +2835,54 @@ bool tcp_connection::handle_message(message & msg)
                              */
                             blk.read_from_disk(it->second);
                             
-                            /**
-                             * Send the block message.
-                             */
-                            send_block_message(blk);
+                            if (i.type() == inventory_vector::type_msg_block)
+                            {
+                                /**
+                                 * Send the block message.
+                                 */
+                                send_block_message(blk);
+                            }
+                            else
+                            {
+                                /**
+                                 * Check if we have a BIP-0037 bloom filter.
+                                 */
+                                if (transaction_bloom_filter_)
+                                {
+                                    /**
+                                     * Create the block_merkle.
+                                     */
+                                    block_merkle merkle_block(
+                                        blk, *transaction_bloom_filter_
+                                    );
+                                    
+                                    /**
+                                     * Send the merkleblock message.
+                                     */
+                                    send_merkleblock_message(merkle_block);
+                                    
+                                    for (
+                                        auto & i :
+                                        merkle_block.transactions_matched()
+                                        )
+                                    {
+                                        if (
+                                            transaction_pool::instance().exists(
+                                            i.second)
+                                            )
+                                        {
+                                            auto tx = transaction_pool::instance(
+                                                ).lookup(i.second
+                                            );
+
+                                            /**
+                                             * Send the tx message.
+                                             */
+                                            send_tx_message(tx);
+                                        }
+                                    }
+                                }
+                            }
 
                             /**
                              * Trigger them to send a getblocks request for the
@@ -3394,7 +3481,7 @@ bool tcp_connection::handle_message(message & msg)
         assert(msg.protocol_filterload().filterload);
         
         /**
-         * First check the size constraints of the filter.
+         * First check the size constrainsts of the filter.
          */
         if (
             msg.protocol_filterload(
@@ -4326,14 +4413,49 @@ bool tcp_connection::handle_message(message & msg)
         
         transaction_pool::instance().query_hashes(block_hashes);
         
-        if (block_hashes.size() > protocol::max_inv_size)
+        if (transaction_bloom_filter_)
         {
-            block_hashes.resize(protocol::max_inv_size);
-        }
+            std::vector<sha256> block_hashes_filtered;
+            
+            for (auto & i : block_hashes)
+            {
+                if (transaction_pool::instance().exists(i) == true)
+                {
+                    auto tx = transaction_pool::instance().lookup(i);
+                    
+                    if (
+                        transaction_bloom_filter_->is_relevant_and_update(
+                        tx) == true
+                        )
+                    {
+                        block_hashes_filtered.push_back(i);
+                    }
+                }
+            }
+            
+            if (block_hashes_filtered.size() > protocol::max_inv_size)
+            {
+                block_hashes_filtered.resize(protocol::max_inv_size);
+            }
         
-        if (block_hashes.size() > 0)
+            if (block_hashes_filtered.size() > 0)
+            {
+                send_inv_message(
+                    inventory_vector::type_msg_tx, block_hashes_filtered
+                );
+            }
+        }
+        else
         {
-            send_inv_message(inventory_vector::type_msg_tx, block_hashes);
+            if (block_hashes.size() > protocol::max_inv_size)
+            {
+                block_hashes.resize(protocol::max_inv_size);
+            }
+        
+            if (block_hashes.size() > 0)
+            {
+                send_inv_message(inventory_vector::type_msg_tx, block_hashes);
+            }
         }
     }
     else if (msg.header().command == "alert")

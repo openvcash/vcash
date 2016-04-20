@@ -41,10 +41,15 @@ namespace coin {
         
             /**
              * Constructor
+             */
+            block_merkle();
+            
+            /**
+             * Constructor
              * @param blk The block.
              * @param filter The transaction_bloom_filter.
              */
-            explicit block_merkle(
+            block_merkle(
                 const block & blk, transaction_bloom_filter & filter
             );
 
@@ -58,7 +63,15 @@ namespace coin {
              * Decodes
              * @param buffer The data_buffer.
              */
-            void decode(data_buffer & buffer);
+            bool decode(data_buffer & buffer);
+        
+            /**
+             * The matched transactions.
+             */
+            const std::vector<
+                std::pair<std::uint32_t, sha256> > &
+                transactions_matched() const
+            ;
         
         private:
         

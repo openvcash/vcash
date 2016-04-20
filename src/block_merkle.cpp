@@ -23,6 +23,11 @@
 
 using namespace coin;
 
+block_merkle::block_merkle()
+{
+    // ...
+}
+
 block_merkle::block_merkle(
     const block & blk, transaction_bloom_filter & filter
     )
@@ -43,7 +48,7 @@ void block_merkle::encode(data_buffer & buffer)
     m_merkle_tree_partial.encode(buffer);
 }
 
-void block_merkle::decode(data_buffer & buffer)
+bool block_merkle::decode(data_buffer & buffer)
 {
     m_block_header.version = buffer.read_uint32();
     m_block_header.hash_previous_block = buffer.read_sha256();
@@ -53,6 +58,14 @@ void block_merkle::decode(data_buffer & buffer)
     m_block_header.nonce = buffer.read_uint32();
     
     m_merkle_tree_partial.decode(buffer);
+    
+    return true;
+}
+
+const std::vector< std::pair<std::uint32_t, sha256> > &
+    block_merkle::transactions_matched() const
+{
+    return m_transactions_matched;
 }
 
 void block_merkle::initialize(

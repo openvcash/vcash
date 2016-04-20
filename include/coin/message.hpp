@@ -192,6 +192,11 @@ namespace coin {
             protocol::filteradd_t & protocol_filteradd();
         
             /**
+             * The protocol merkleblock.
+             */
+            protocol::merkleblock_t & protocol_merkleblock();
+        
+            /**
              * The protocol ztlock structure.
              */
             protocol::ztlock_t & protocol_ztlock();
@@ -334,6 +339,11 @@ namespace coin {
             protocol::filteradd_t m_protocol_filteradd;
         
             /**
+             * The protocol merkleblock.
+             */
+            protocol::merkleblock_t m_protocol_merkleblock;
+        
+            /**
              * The protocol ztlock structure.
              */
             protocol::ztlock_t m_protocol_ztlock;
@@ -444,6 +454,11 @@ namespace coin {
              * Creates a block.
              */
             data_buffer create_block();
+        
+            /**
+             * Creates a merkleblock.
+             */
+            data_buffer create_merkleblock();
         
             /**
              * Creates a tx.

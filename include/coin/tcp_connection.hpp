@@ -42,6 +42,7 @@ namespace coin {
     class alert;
     class block;
     class block_index;
+    class block_merkle;
     class checkpoint_sync;
     class incentive_answer;
     class message;
@@ -400,6 +401,12 @@ namespace coin {
              * @param headers The block headers.
              */
             void send_headers_message(const std::vector<block> & headers);
+        
+            /**
+             * Sends a merkleblock message.
+             * @param merkleblock The block_merkle.
+             */
+            void send_merkleblock_message(const block_merkle & merkleblock);
         
             /**
              * Sends a ztlock message.

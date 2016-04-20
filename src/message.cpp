@@ -24,6 +24,7 @@
 
 #include <coin/alert.hpp>
 #include <coin/block.hpp>
+#include <coin/block_merkle.hpp>
 #include <coin/block_locator.hpp>
 #include <coin/checkpoint_sync.hpp>
 #include <coin/chainblender_broadcast.hpp>
@@ -176,15 +177,28 @@ void message::encode()
         }
         else if (m_header.command == "filterload")
         {
-            // ...
+            /**
+             * We are not a BIP-0037 (lite client).
+             */
         }
         else if (m_header.command == "filteradd")
         {
-            // ...
+            /**
+             * We are not a BIP-0037 (lite client).
+             */
         }
         else if (m_header.command == "filterclear")
         {
-            // ...
+            /**
+             * We are not a BIP-0037 (lite client).
+             */
+        }
+        else if (m_header.command == "merkleblock")
+        {
+            /**
+             * Create the merkleblock.
+             */
+            m_payload = create_merkleblock();
         }
         else if (m_header.command == "ztlock")
         {
@@ -772,6 +786,32 @@ void message::decode()
         {
             // ...
         }
+        else if (m_header.command == "merkleblock")
+        {
+            /**
+             * Allocate the merkleblock.
+             */
+            m_protocol_merkleblock.merkleblock =
+                std::make_shared<block_merkle> ()
+            ;
+            
+            /**
+             * Decode the merkleblock.
+             */
+            if (m_protocol_merkleblock.merkleblock->decode(*this))
+            {
+                // ...
+            }
+            else
+            {
+                log_error("Message failed to decode merkleblock.");
+                
+                /**
+                 * Deallocate the merkleblock.
+                 */
+                m_protocol_merkleblock.merkleblock.reset();
+            }
+        }
         else if (m_header.command == "ztlock")
         {
             /**
@@ -1200,6 +1240,11 @@ protocol::filteradd_t & message::protocol_filteradd()
     return m_protocol_filteradd;
 }
 
+protocol::merkleblock_t & message::protocol_merkleblock()
+{
+    return m_protocol_merkleblock;
+}
+
 protocol::ztlock_t & message::protocol_ztlock()
 {
     return m_protocol_ztlock;
@@ -1452,7 +1497,7 @@ data_buffer message::create_version()
     );
     
     /**
-     * bip-0037
+     * BIP-0037
      */
     if (protocol::version > 60047)
     {
@@ -1676,6 +1721,18 @@ data_buffer message::create_block()
     if (m_protocol_block.blk)
     {
         m_protocol_block.blk->encode(ret);
+    }
+    
+    return ret;
+}
+
+data_buffer message::create_merkleblock()
+{
+    data_buffer ret;
+    
+    if (m_protocol_merkleblock.merkleblock)
+    {
+        m_protocol_merkleblock.merkleblock->encode(ret);
     }
     
     return ret;
