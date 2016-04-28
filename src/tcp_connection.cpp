@@ -1362,15 +1362,6 @@ void tcp_connection::send_getdata_message()
                  * Allocate the message.
                  */
                 message msg("getdata");
-
-                /**
-                 * Remove any duplicates.
-                 */
-                std::sort(getdata_.begin(), getdata_.end());
-                getdata_.erase(
-                    std::unique(getdata_.begin(), getdata_.end()),
-                    getdata_.end()
-                );
                 
                 /**
                  * Set the getdata.
