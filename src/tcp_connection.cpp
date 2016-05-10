@@ -2851,25 +2851,21 @@ bool tcp_connection::handle_message(message & msg)
                                      * Send the merkleblock message.
                                      */
                                     send_merkleblock_message(merkle_block);
-                                    
+
                                     for (
                                         auto & i :
                                         merkle_block.transactions_matched()
                                         )
                                     {
-                                        if (
-                                            transaction_pool::instance().exists(
-                                            i.second)
-                                            )
+										for (auto & j : blk.transactions())
                                         {
-                                            auto tx = transaction_pool::instance(
-                                                ).lookup(i.second
-                                            );
-
-                                            /**
-                                             * Send the tx message.
-                                             */
-                                            send_tx_message(tx);
+											if (i.second == j.get_hash())
+											{
+												/**
+												 * Send the tx message.
+												 */
+												send_tx_message(j);
+											}
                                         }
                                     }
                                 }

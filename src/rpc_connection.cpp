@@ -2614,14 +2614,17 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getblocktemplate(
                 boost::property_tree::ptree(), pt_error, request.id
             };
         }
-
+        
         if (
             stack_impl_.get_tcp_connection_manager(
-            )->active_tcp_connections() == 0
+            )->active_tcp_connections() <
+            (stack_impl_.get_tcp_connection_manager(
+            )->minimum_tcp_connections() / 2)
             )
         {
             auto pt_error = create_error_object(
-                error_code_client_not_connected, "client not connected"
+                error_code_client_not_connected,
+                "client not connected (well or at all)"
             );
             
             /**
@@ -6238,7 +6241,7 @@ boost::property_tree::ptree rpc_connection::transactions_to_ptree(
         {
             pt_entry.put(
                 "category",
-                wtx.get_depth_in_main_chain() ? "immature" : "orphan",
+                wtx.get_depth_in_main_chain() > 0 ? "immature" : "orphan",
                 rpc_json_parser::translator<std::string> ()
             );
             pt_entry.put(

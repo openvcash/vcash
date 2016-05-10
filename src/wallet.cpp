@@ -3285,24 +3285,6 @@ bool wallet::create_coin_stake(
     std::int64_t reserve_balance = 0;
 
     /**
-     * Create a reserve balance equal to that of the collateral deposit.
-     */
-    if (m_stack_impl && globals::instance().is_incentive_enabled())
-    {
-        /**
-         * Set the reserve balance from the collateral balance.
-         */
-        reserve_balance =
-            m_stack_impl->get_incentive_manager()->collateral_balance()
-        ;
-        
-        log_info(
-            "Wallet, create coin stake has reserve balance of " <<
-            reserve_balance << "."
-        );
-    }
-
-    /**
      * -reservebalance
      */
     if (0)
@@ -3311,11 +3293,6 @@ bool wallet::create_coin_stake(
             "Wallet failed to create coin stake, invalid reserve balance."
         );
         
-        return false;
-    }
-    
-    if (balance <= reserve_balance)
-    {
         return false;
     }
     
@@ -3330,6 +3307,45 @@ bool wallet::create_coin_stake(
      */
     std::set<std::int64_t> filter;
 
+    /**
+     * If we have the collateral balance reserve it.
+     */
+    if (m_stack_impl && globals::instance().is_incentive_enabled())
+    {
+        auto collateral_balance =
+            m_stack_impl->get_incentive_manager()->collateral_balance()
+        ;
+        
+        auto index_previous = stack_impl::get_block_index_best();
+        
+        /**
+         * Get the collateral.
+         */
+        auto collateral =
+            incentive::instance().get_collateral(
+            index_previous ? index_previous->height() + 1 : 0)
+        ;
+        
+        if (collateral_balance >= collateral)
+        {
+            reserve_balance += collateral_balance * constants::coin;
+            
+            log_info(
+                "Wallet (create coin stake) has reserve balance of " <<
+                utility::format_money(reserve_balance) << "."
+            );
+        }
+    }
+    
+    if (balance <= reserve_balance)
+    {
+        log_error(
+            "Wallet failed to create coin stake, balance is less then reserve."
+        );
+        
+        return false;
+    }
+    
     if (
         select_coins(balance - reserve_balance, tx_new.time(), coins,
         value_in, filter, 0) == false

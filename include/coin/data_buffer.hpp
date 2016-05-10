@@ -77,9 +77,14 @@ namespace coin {
              */
 			data_buffer(const data_buffer & other)
 			    : m_read_ptr(0)
-                , file_offset_(0)
+                , file_offset_(other.file_offset_)
+                , file_(other.file_)
 			{
+                clear();
+                
 			    write_bytes(other.data(), other.size());
+                
+                m_read_ptr = &m_data[0];
 			}
         
             /**
@@ -627,8 +632,25 @@ namespace coin {
                     /**
                      * Set the file offset.
                      */
-                    file_offset_ = f->ftell();
+                    file_offset_ = file_->ftell();
                 }
+            }
+        
+            /**
+             * operator =
+             */
+            data_buffer & operator = (const data_buffer & other)
+            {
+                clear();
+                
+			    write_bytes(other.data(), other.size());
+                
+                m_read_ptr = &m_data[0];
+                
+                file_offset_ = other.file_offset_;
+                file_ = other.file_;
+                
+                return *this;
             }
         
         private:

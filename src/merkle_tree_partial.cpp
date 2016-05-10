@@ -93,6 +93,8 @@ bool merkle_tree_partial::decode(data_buffer & buffer)
     
     if (len > 0)
     {
+        bytes.resize(len);
+        
         buffer.read_bytes(reinterpret_cast<char *>(&bytes[0]), len);
     }
     

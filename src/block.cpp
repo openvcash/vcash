@@ -1334,6 +1334,28 @@ bool block::check_block(
     }
 
     /**
+     * Check that the nonce is in range for the block type.
+     */
+    if (is_proof_of_stake() == true)
+    {
+        if (m_header.nonce != 0)
+        {
+            throw std::runtime_error("invalid nonce for proof of stake");
+            
+            return false;
+        }
+    }
+    else if (is_proof_of_work() == true)
+    {
+        if (m_header.nonce == 0)
+        {
+            throw std::runtime_error("invalid nonce for proof of work");
+            
+            return false;
+        }
+    }
+
+    /**
      * Check that the proof of work matches claimed amount.
      */
     if (
@@ -1446,23 +1468,7 @@ bool block::check_block(
             return false;
         }
     }
-#if 0 /** Commented out in the original code. */
-    /**
-     * Check the coinbase timestamp.
-     */
-    if (
-        m_header.timestamp > m_transactions[0].time() +
-        constants::max_clock_drift
-        )
-    {
-        log_error(
-            "Block failed to check coinbase timestamp because it "
-            "is too early."
-        );
-         
-        return false;
-    }
-#endif
+
     /**
      * Check coinstake timestamp.
      */
