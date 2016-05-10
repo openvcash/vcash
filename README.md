@@ -15,7 +15,9 @@ The easiest way to build for Ubunutu or similar Linux distributions is by using 
 
 https://github.com/john-connor/azure-quickstart-templates/blob/master/vcash-on-ubuntu/build_vcash.sh From_Source
 
-All other Linux distributions can use: https://github.com/xCoreDev/vcash-scripts/blob/master/build-linux.sh
+All other Linux distributions can use:
+
+https://github.com/xCoreDev/vcash-scripts/blob/master/build-linux.sh
 
 or alternatively you can compile manually:
 
