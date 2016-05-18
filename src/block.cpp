@@ -3263,6 +3263,112 @@ bool block::check_signature() const
     return false;
 }
 
+std::size_t block::get_maximum_size()
+{
+    /**
+     * 128 Kilobytes
+     */
+    enum { minimum_maximum_size = 128000 };
+
+    /**
+     * The number of blocks to calculate the median over.
+     */
+    enum { blocks_to_go_back = 220 };
+    
+    /**
+     * Get the last block_index.
+     */
+    const auto * index = stack_impl::get_block_index_best().get();
+    
+    static median_filter<std::size_t> g_median_filter(
+        blocks_to_go_back, minimum_maximum_size
+    );
+    
+    /**
+     * Initialise the median_filter once.
+     */
+    if (g_median_filter.sorted().size() <= 1)
+    {
+        for (auto i = 0; i < blocks_to_go_back; i++)
+        {
+            g_median_filter.input(minimum_maximum_size);
+        }
+    }
+
+    static std::recursive_mutex g_mutex_last_block_indexes;
+    
+    std::lock_guard<std::recursive_mutex> l1(g_mutex_last_block_indexes);
+
+    static std::map<const block_index *, std::size_t> g_last_block_indexes;
+    
+    auto it = g_last_block_indexes.begin();
+    
+    while (it != g_last_block_indexes.end())
+    {
+        if (
+            1 + globals::instance().best_block_height() -
+            it->first->height() > blocks_to_go_back
+            )
+        {
+            it = g_last_block_indexes.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+
+    /**
+     * Go back by what we want to be median size worth of blocks.
+     */
+    for (auto i = 0; index && i < blocks_to_go_back; i++)
+    {
+        if (g_last_block_indexes.count(index) > 0)
+        {
+            g_median_filter.input(g_last_block_indexes[index]);
+        }
+        else
+        {
+            /**
+             * Allocate the block.
+             */
+            block blk;
+            
+            /**
+             * Read the block from disk.
+             */
+            if (
+                blk.read_from_disk(index->file(),
+                index->block_position()) == true
+                )
+            {
+                /**
+                 * Encode to obtain the size in bytes.
+                 */
+                blk.encode();
+
+                g_last_block_indexes[index] = blk.size();
+                
+                g_median_filter.input(blk.size());
+            }
+        }
+        
+        index = index->block_index_previous().get();
+    }
+
+    /**
+     * 256 Bytes
+     */
+    enum { maximum_byte_increase = 256 };
+
+    return std::max(
+        static_cast<std::size_t> (minimum_maximum_size),
+        static_cast<std::size_t> ((g_median_filter.median() <
+        minimum_maximum_size ? minimum_maximum_size :
+        g_median_filter.median()) + maximum_byte_increase)
+    );
+}
+
 std::string block::get_file_path(const std::uint32_t & file_index)
 {
     std::stringstream ss;

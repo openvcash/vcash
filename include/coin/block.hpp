@@ -323,6 +323,12 @@ namespace coin {
             bool check_signature() const;
     
             /**
+             * Returns the maxium size of the next block based on 220 blocks
+             * worth of size history (median).
+             */
+            static std::size_t get_maximum_size();
+        
+            /**
              * Gets the block index file at the given index.
              * @param file_index The file index.
              */
