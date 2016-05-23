@@ -82,7 +82,14 @@ namespace coin {
              * Returns an estimate of total number of blocks, 0 if unknown.
              */
             std::uint32_t get_total_blocks_estimate();
-    
+
+            /**
+             * Returns (SPV) checkpoints (height, hash, timestamp).
+             */
+            std::map<std::int32_t, std::pair<sha256, std::time_t> >
+                get_spv_checkpoints()
+            ;
+
             /**
              * The hash sync checkpoint.
              */
