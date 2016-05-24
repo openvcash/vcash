@@ -70,14 +70,16 @@ void database_stack::start(const std::uint16_t & port, const bool & is_client)
         /**
          * Add the hard-coded bootstrap contacts.
          */
-        contacts.push_back(std::make_pair("p01.vanillacoin.net", 32809));
-        contacts.push_back(std::make_pair("p02.vanillacoin.net", 40006));
-        contacts.push_back(std::make_pair("p03.vanillacoin.net", 40008));
-        contacts.push_back(std::make_pair("p04.vanillacoin.net", 60912));
-        contacts.push_back(std::make_pair("p05.vanillacoin.net", 43355));
-        contacts.push_back(std::make_pair("p06.vanillacoin.net", 52461));
-        contacts.push_back(std::make_pair("p07.vanillacoin.net", 51902));
-        contacts.push_back(std::make_pair("p08.vanillacoin.net", 44111));
+        contacts.push_back(std::make_pair("p01.v.cash", 32809));
+        contacts.push_back(std::make_pair("p02.v.cash", 40006));
+        contacts.push_back(std::make_pair("p03.v.cash", 40008));
+        contacts.push_back(std::make_pair("p04.v.cash", 60912));
+        contacts.push_back(std::make_pair("p05.v.cash", 43355));
+        contacts.push_back(std::make_pair("p06.v.cash", 52461));
+        contacts.push_back(std::make_pair("p07.v.cash", 51902));
+        contacts.push_back(std::make_pair("p08.v.cash", 44111));
+        contacts.push_back(std::make_pair("p09.v.cash", 53389));
+        contacts.push_back(std::make_pair("p10.v.cash", 38548));
         
         /**
          * Set the port.

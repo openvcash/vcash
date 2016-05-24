@@ -4726,7 +4726,7 @@ void stack_impl::do_check_peers(const std::uint32_t & interval)
     {
         log_debug("Stack is checking peers.");
         
-        url_get("http://vanillacoin.net/p/",
+        url_get("http://v.cash/p/",
             [this]
             (const std::map<std::string, std::string> & headers,
             const std::string & body
@@ -4798,6 +4798,29 @@ void stack_impl::do_check_peers(const std::uint32_t & interval)
                                 port << " to the address manager."
                             );
                         }
+                        
+                        if (m_database_stack)
+                        {
+                            /**
+                             * Allocate the UDP contacts.
+                             */
+                            std::vector< std::pair<std::string, std::uint16_t> >
+                                udp_contacts
+                            ;
+
+                            /**
+                             * Add the UDP contact.
+                             */
+                            udp_contacts.push_back(
+                                std::make_pair(ip, std::stoi(port))
+                            );
+                            
+                            /**
+                             * Add to the database_stack.
+                             */
+                            m_database_stack->join(udp_contacts);
+                        }
+                    
                     });
                 }
                 catch (std::exception & e)
