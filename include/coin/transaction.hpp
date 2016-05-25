@@ -59,6 +59,11 @@ namespace coin {
              * The number confirmations.
              */
             enum { confirmations = 3 };
+        
+            /**
+             * The maximum encoded size in bytes.
+             */
+            enum { maxmimum_length = 300000 };
     
             /**
              * Constructor
@@ -142,7 +147,7 @@ namespace coin {
              * Check for standard transaction types.
              * @return True if all outputs use only standard transactions forms.
              */
-            bool is_standard() const;
+            bool is_standard();
     
             /**
              * are_inputs_standard

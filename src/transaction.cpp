@@ -351,12 +351,35 @@ bool transaction::is_coin_stake() const
     );
 }
 
-bool transaction::is_standard() const
+bool transaction::is_standard()
 {
     if (m_version > current_version)
     {
         return false;
     }
+    
+    /**
+     * Clear
+     */
+    clear();
+    
+    /**
+     * Encode
+     */
+    encode();
+    
+    /**
+     * Check the size.
+     */
+    if (size() > maxmimum_length / 3)
+    {
+        return false;
+    }
+
+    /**
+     * Clear
+     */
+    clear();
     
     for (auto & i : m_transactions_in)
     {
@@ -1457,7 +1480,7 @@ bool transaction::check()
     /**
      * Check the size.
      */
-    if (size() > constants::max_block_size)
+    if (size() > maxmimum_length)
     {
         log_error(
             "Transaction check failed, size limits failed:\n" <<
@@ -1469,7 +1492,6 @@ bool transaction::check()
 
     /**
      * Clear
-     * @note :JC: Added 12/6/2015
      */
     clear();
     

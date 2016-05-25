@@ -2888,7 +2888,7 @@ bool wallet::create_transaction(
         /**
          * Make sure the transaction is not too big.
          */
-        if (len >= constants::max_block_size_gen / 5)
+        if (len > transaction::maxmimum_length / 3)
         {
             log_debug("Wallet, create transaction failed, too big.");
             
@@ -3698,7 +3698,7 @@ bool wallet::create_coin_stake(
         /**
          * Enforce the size limit.
          */
-        if (buffer.size() >= constants::max_block_size_gen / 5)
+        if (buffer.size() > transaction::maxmimum_length / 3)
         {
             log_error(
                 "Wallet, create coin stake failed, exceeded coinstake "
