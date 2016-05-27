@@ -3785,7 +3785,9 @@ bool tcp_connection::handle_message(message & msg)
              */
             if (
                 ztvote && ztvote->score() > -1 &&
-                ztvote->score() <= std::numeric_limits<std::int16_t>::max() / 6
+                ztvote->score() <= (constants::test_net == true ?
+                std::numeric_limits<std::int16_t>::max() :
+                std::numeric_limits<std::int16_t>::max() / 16)
                 )
             {
                 /**

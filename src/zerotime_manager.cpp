@@ -77,7 +77,14 @@ void zerotime_manager::vote(
     const sha256 & hash_tx, const std::vector<transaction_in> & transactions_in
     )
 {
-    if (globals::instance().is_zerotime_enabled())
+    /**
+     * Client nodes do not vote.
+     */
+    if (
+        globals::instance().is_zerotime_enabled() &&
+        globals::instance().is_client() == false &&
+        globals::instance().operation_mode() == protocol::operation_mode_peer
+        )
     {
         assert(transactions_in.size());
         
@@ -128,7 +135,9 @@ void zerotime_manager::vote(
                  */
                 if (
                     vote_score > -1 &&
-                    vote_score <= std::numeric_limits<std::int16_t>::max() / 6
+                    vote_score <= (constants::test_net == true ?
+                    std::numeric_limits<std::int16_t>::max() :
+                    std::numeric_limits<std::int16_t>::max() / 16)
                     )
                 {
                     /**
@@ -225,6 +234,12 @@ void zerotime_manager::probe_for_answers(
             std::random_shuffle(
                 recent_good_endpoints.begin(), recent_good_endpoints.end()
             );
+            
+            /**
+             * Limit the number of queued tcp endpoints to
+             * zerotime::answers_maximum.
+             */
+            recent_good_endpoints.resize(zerotime::answers_maximum);
 
             if (recent_good_endpoints.size() > 0)
             {
@@ -340,7 +355,9 @@ void zerotime_manager::handle_vote(
          */
         if (
             vote_score > -1 &&
-            vote_score <= std::numeric_limits<std::int16_t>::max() / 6
+            vote_score <= (constants::test_net == true ?
+            std::numeric_limits<std::int16_t>::max() :
+            std::numeric_limits<std::int16_t>::max() / 16)
             )
         {
             log_debug(
@@ -355,20 +372,21 @@ void zerotime_manager::handle_vote(
             auto votes = zerotime::instance().votes();
             
             /**
-             * We require at least 1/2 of the K closest votes.
+             * We require at least 15% of the K closest votes.
              */
-            enum { safe_percentage = constants::test_net ? 20 : 50 };
+            enum { safe_percentage = constants::test_net ? 8 : 15 };
 
             std::vector<std::int16_t> vote_scores;
 
             auto it = votes.begin();
-            
+
             while (it != votes.end())
             {
                 if (
                     it->second.score() > -1 &&
-                    it->second.score() <=
-                    std::numeric_limits<std::int16_t>::max() / 6 &&
+                    it->second.score() <= (constants::test_net == true ?
+                    std::numeric_limits<std::int16_t>::max() :
+                    std::numeric_limits<std::int16_t>::max() / 16) &&
                     it->second.hash_tx() == hash_tx
                     )
                 {
@@ -390,15 +408,11 @@ void zerotime_manager::handle_vote(
             /**
              * Get the K closest scores to the block height.
              */
-            auto kclosest = k_closest(
-                vote_scores, block_height,
-                constants::test_net ? zerotime::k_test_network : zerotime::k
-            );
+            auto kclosest = k_closest(vote_scores, block_height, zerotime::k);
 
             auto percentage =
                 (static_cast<double> (kclosest.size()) /
-                static_cast<double> (constants::test_net ?
-                zerotime::k_test_network : zerotime::k) * 100.0f)
+                static_cast<double> (zerotime::k) * 100.0f)
             ;
             
             log_debug(

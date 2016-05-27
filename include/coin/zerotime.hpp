@@ -44,12 +44,7 @@ namespace coin {
     class zerotime
     {
         public:
-        
-            /**
-             * K for the test network.
-             */
-            enum { k_test_network = 6 };
-        
+
             /**
              * K
              */
