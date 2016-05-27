@@ -4324,6 +4324,25 @@ void stack_impl::backup_last_wallet_file()
     
     auto contents = filesystem::path_contents(path_backups);
     
+    /**
+     * Erase anything that starts with ".".
+     */
+    auto it = contents.begin();
+    
+    while (it != contents.end())
+    {
+        const auto & val = *it;
+        
+        if (val.size() > 0 && val[0] == '.')
+        {
+            it = contents.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+    
     if (contents.size() > 0)
     {
         std::map<std::time_t, std::string> wallets_sorted_by_time;
@@ -4438,6 +4457,27 @@ void stack_impl::backup_last_wallet_file()
         else
         {
             log_info("Stack doesn't need to backup wallet file, too soon.");
+        }
+    }
+    else
+    {
+        /**
+         * Backup the wallet.
+         */
+        if (
+            std::ifstream(filesystem::data_path() + "wallet.dat").good()
+            )
+        {
+            if (
+                filesystem::copy_file(filesystem::data_path() +
+                "wallet.dat", path_backups +  "wallet." +
+                std::to_string(std::time(0)) + ".dat") == true
+                )
+            {
+                log_info(
+                    "Stack backed up wallet to " << path_backups << "."
+                );
+            }
         }
     }
 }

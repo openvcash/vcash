@@ -396,10 +396,10 @@ bool db_wallet::backup(const wallet & w, const std::string & root_path)
         std::string path;
         
         /**
-         * If the root path contains a "." then they must be passing in the
-         * entire path (or at least the file name).
+         * If the root path contains ".dat" the user is passing in a custom
+         * filename (with possible full path).
          */
-        if (root_path.find(".") != std::string::npos)
+        if (root_path.find(".dat") != std::string::npos)
         {
             /**
              * Use the name that was passed in.
