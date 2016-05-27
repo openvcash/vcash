@@ -1413,6 +1413,8 @@ data_buffer message::create_version()
     comments.push_back("iOS");
 #elif (defined __APPLE__)
     comments.push_back("Mac OS X");
+#elif (defined __linux__)
+    comments.push_back("Linux");
 #endif
     
     /**
