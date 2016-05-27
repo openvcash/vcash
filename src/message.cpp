@@ -1376,11 +1376,56 @@ data_buffer message::create_version()
     m_protocol_version.addr_dst.port = protocol::default_tcp_port;
     
     /**
+     * Allocate the user agent comments.
+     */
+    std::vector<std::string> comments;
+
+    if (
+        globals::instance().operation_mode() ==
+        protocol::operation_mode_client &&
+        globals::instance().is_client() == true
+        )
+    {
+        comments.push_back("SPV Client");
+    }
+    else if (
+        globals::instance().operation_mode() == protocol::operation_mode_peer
+        )
+    {
+        comments.push_back("Peer");
+    }
+    else if (
+        globals::instance().operation_mode() == protocol::operation_mode_client
+        )
+    {
+        comments.push_back("Client");
+    }
+    else
+    {
+        comments.push_back("Unkown");
+    }
+    
+#if (defined _MSC_VER)
+    comments.push_back("Windows");
+#elif (defined __ANDROID__)
+    comments.push_back("Android");
+#elif (defined __IPHONE_OS_VERSION_MAX_ALLOWED)
+    comments.push_back("iOS");
+#elif (defined __APPLE__)
+    comments.push_back("Mac OS X");
+#endif
+    
+    /**
+     * Create the user agent string.
+     */
+    auto user_agent = utility::format_sub_version(
+        constants::client_name, constants::version_client, comments
+    );
+    
+    /**
      * Set the payload user_agent.
      */
-    m_protocol_version.user_agent =
-        "/" + constants::client_name + ":" + constants::version_string + "/"
-    ;
+    m_protocol_version.user_agent = user_agent;
 
     /**
      * Set the payload start height.
