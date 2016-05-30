@@ -244,7 +244,7 @@ namespace coin {
 
 			void rewind()
 			{
-				m_read_ptr = &m_data[0];
+				m_read_ptr = m_data.size() > 0 ? &m_data[0] : 0;
 			}
 
 			void seek(const std::size_t & offset)
