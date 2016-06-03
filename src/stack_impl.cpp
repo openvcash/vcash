@@ -1158,7 +1158,7 @@ void stack_impl::start()
             }
             else
             {
-                log_error("Stack failed to reindex blockchain file(s).");
+                log_error("Stack failed to export blockchain file(s).");
             }
 
         }));
