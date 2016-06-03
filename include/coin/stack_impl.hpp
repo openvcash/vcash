@@ -558,6 +558,11 @@ namespace coin {
             void lock_file_or_exit();
         
             /**
+             * Exports the blk000x.dat files into a blockchain.dat file.
+             */
+            bool export_blockchain_file();
+        
+            /**
              * Imports a blockchain file from disk.
              * @param path The path.
              */

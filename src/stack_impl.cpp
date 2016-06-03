@@ -1142,9 +1142,35 @@ void stack_impl::start()
     }
     
     /**
+     * Check if we need to export the blockchain.dat file to disk.
+     */
+    if (
+        m_configuration.args().count("export-blockchain") > 0 &&
+        m_configuration.args()["export-blockchain"] == "1"
+        )
+    {
+        globals::instance().io_service().post(
+            globals::instance().strand().wrap([this]()
+        {
+            if (export_blockchain_file() == true)
+            {
+                log_info("Stack exported blockchain file(s).");
+            }
+            else
+            {
+                log_error("Stack failed to reindex blockchain file(s).");
+            }
+
+        }));
+    }
+    
+    /**
      * Check if we need to import the blockchain.dat file from disk.
      */
-    if (m_configuration.args()["import-blockchain"] == "1")
+    if (
+        m_configuration.args().count("import-blockchain") > 0 &&
+        m_configuration.args()["import-blockchain"] == "1"
+        )
     {
         globals::instance().io_service().post(
             globals::instance().strand().wrap([this]()
@@ -1162,7 +1188,6 @@ void stack_impl::start()
             {
                 log_error("Stack failed to import blockchain file.");
             }
-
         }));
     }
 
@@ -4524,6 +4549,55 @@ void stack_impl::lock_file_or_exit()
 #endif // _MSC_VER
 }
 
+bool stack_impl::export_blockchain_file()
+{
+    auto ret = false;
+    
+    auto path_concat = filesystem::data_path() + "blockchain.dat";
+    
+    std::shared_ptr<file> f;
+    
+    std::ofstream ofs(
+        path_concat, std::ios_base::binary | std::ios_base::app
+    );
+    
+    auto file_index = 1;
+    
+    auto loop = true;
+    
+    do
+    {
+        auto path = block::get_file_path(file_index++);
+        
+        std::ifstream ifs(path, std::ios_base::binary | std::ios_base::in);
+        
+        if (ifs.good() && ifs.is_open())
+        {
+            log_info(
+                "Stack (import blockchain) is concating path = " << path << "."
+            );
+            
+            ofs << ifs.rdbuf();
+            
+            ofs.flush();
+            
+            ifs.close();
+        }
+        else
+        {
+            loop = false;
+            
+            break;
+        }
+    } while (
+        loop && globals::instance().state() == globals::state_started
+    );
+
+    ofs.close();
+
+    return true;;
+}
+
 bool stack_impl::import_blockchain_file(const std::string & path)
 {
     file f;
@@ -4617,7 +4691,7 @@ bool stack_impl::import_blockchain_file(const std::string & path)
                     reinterpret_cast<char *> (&len), sizeof(len)) == true
                     )
                 {
-                    if (len > 0 && len < constants::max_block_size)
+                    if (len > 0)
                     {
                         data_buffer buffer(len);
                         
