@@ -67,6 +67,7 @@ namespace crawler {
                 )
                 : m_version("0")
                 , m_protocol(0)
+                , m_useragent("unknown")
                 , m_height(0)
                 , m_time_last_seen(std::time(0) - 10 * 60)
                 , m_udp_endpoint(ep)
@@ -99,6 +100,16 @@ namespace crawler {
             const std::int32_t & protocol() const
             {
                 return m_protocol;
+            }
+        
+            void set_useragent(const std::string & val)
+            {
+                m_useragent = val;
+            }
+        
+            const std::string & useragent() const
+            {
+                return m_useragent;
             }
         
             void set_height(const std::int32_t & val)
@@ -223,6 +234,8 @@ namespace crawler {
             std::string m_version;
         
             std::int32_t m_protocol;
+        
+            std::string m_useragent;
         
             std::int32_t m_height;
         
