@@ -101,7 +101,10 @@ checkpoints::checkpoints()
     m_checkpoints[388800] = sha256(
         "000000000000d7233c8735ecc5006fcd1aa4ecaf7c4525208c1459c9f4d21517"
     );
-    
+    m_checkpoints[409500] = sha256(
+        "0000000000004899e0ca41b2af07c371226cab9fd3b269016195f5db2327ad14"
+    );
+
     m_checkpoints_test_net[0] = block::get_hash_genesis_test_net();
 }
 
@@ -444,6 +447,10 @@ std::map<std::int32_t, std::pair<sha256, std::time_t> >
     ret[388800] = std::make_pair(sha256(
         "000000000000d7233c8735ecc5006fcd1aa4ecaf7c4525208c1459c9f4d21517"),
         1462809732
+    );
+    ret[409500] = std::make_pair(sha256(
+        "0000000000004899e0ca41b2af07c371226cab9fd3b269016195f5db2327ad14"),
+        1465150759
     );
 
     return ret;
