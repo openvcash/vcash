@@ -1402,7 +1402,7 @@ data_buffer message::create_version()
     }
     else
     {
-        comments.push_back("Unkown");
+        comments.push_back("Unknown");
     }
     
 #if (defined _MSC_VER)
