@@ -1160,7 +1160,6 @@ void stack_impl::start()
             {
                 log_error("Stack failed to export blockchain file(s).");
             }
-
         }));
     }
     
