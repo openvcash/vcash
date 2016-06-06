@@ -387,7 +387,7 @@ bool db_tx::load_block_index(stack_impl & impl)
                                     ) == false
                                     )
                                 {
-                                    log_debug(
+                                    log_error(
                                         "DB TX cannot read mislocated "
                                         "transaction " <<
                                         hash_tx.to_string() << "."
@@ -400,7 +400,7 @@ bool db_tx::load_block_index(stack_impl & impl)
                                 }
                                 else if (tx_found.get_hash() != hash_tx)
                                 {
-                                    log_debug(
+                                    log_error(
                                         "DB TX invalid transaction "
                                         "position for transaction " <<
                                         tx_found.get_hash().to_string() <<
