@@ -69,7 +69,7 @@ namespace coin {
             /**
              * The maximum number of inbound TCP connections.
              */
-            enum { tcp_inbound_maximum = 48 };
+            enum { tcp_inbound_maximum = 128 };
     
             /**
              * rfc1123 time.
