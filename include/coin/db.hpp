@@ -27,6 +27,8 @@
 
 #include <db_cxx.h>
 
+#include <boost/noncopyable.hpp>
+
 #include <coin/data_buffer.hpp>
 #include <coin/key_pool.hpp>
 #include <coin/key_wallet_master.hpp>
@@ -38,7 +40,7 @@ namespace coin {
     /**
      * Implements a berkley database Db object wrapper.
      */
-    class db
+    class db : private boost::noncopyable
     {
         public:
         

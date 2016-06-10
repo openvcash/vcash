@@ -23,6 +23,8 @@
 
 #include <string>
 
+#include <boost/noncopyable.hpp>
+
 #include <coin/big_number.hpp>
 #include <coin/db.hpp>
 #include <coin/sha256.hpp>
@@ -40,7 +42,9 @@ namespace coin {
     /**
      * Implements a transaction database.
      */
-    class db_tx : public db
+    class db_tx
+        : public db
+        , private boost::noncopyable
     {
         public:
         

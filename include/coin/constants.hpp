@@ -47,7 +47,7 @@ namespace constants {
     /**
      * The client version revision.
      */
-    enum { version_client_revision = 6 };
+    enum { version_client_revision = 7 };
     
     /**
      * The client version build.
@@ -70,7 +70,7 @@ namespace constants {
     /**
      * The version string.
      */
-    static const std::string version_string = "0.4.6";
+    static const std::string version_string = "0.4.7";
     
     /**
      * The name of the coin.
@@ -106,26 +106,6 @@ namespace constants {
      * The minimum transaction out amount.
      */
     static const std::int64_t min_txout_amount = min_tx_fee;
-
-    /**
-     * The maximum block size.
-     */
-    static const auto max_block_size = 3000000;
-    
-    /**
-     * The maximum number of orphan transactions.
-     */
-    enum { max_orphan_transactions = max_block_size / 100 };
-    
-    /**
-     * The maximum block size gen.
-     */
-    static const auto max_block_size_gen = max_block_size / 2;
-    
-    /**
-     * The maximum sig ops.
-     */
-    static const auto max_block_sig_ops = max_block_size / 50;
 
     /**
      * The chain start time.

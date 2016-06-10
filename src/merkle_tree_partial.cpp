@@ -18,6 +18,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <coin/block.hpp>
 #include <coin/constants.hpp>
 #include <coin/data_buffer.hpp>
 #include <coin/hash.hpp>
@@ -248,7 +249,7 @@ sha256 merkle_tree_partial::extract_matches(std::vector<sha256> & matches)
         return sha256();
     }
     
-    if (m_total_transactions > constants::max_block_size / 60)
+    if (m_total_transactions > block::get_maximum_size_median220() / 60)
     {
         return sha256();
     }

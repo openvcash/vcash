@@ -2921,12 +2921,12 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getblocktemplate(
         /**
          * Put sigoplimit into property tree.
          */
-        ret.result.put("sigoplimit", constants::max_block_sig_ops);
+        ret.result.put("sigoplimit", block::get_maximum_size_median220() / 50);
         
         /**
          * Put sizelimit into property tree.
          */
-        ret.result.put("sizelimit", constants::max_block_size);
+        ret.result.put("sizelimit", block::get_maximum_size_median220());
         
         /**
          * Put curtime into property tree.

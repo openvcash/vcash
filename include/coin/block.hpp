@@ -326,7 +326,7 @@ namespace coin {
              * Returns the maxium size of the next block based on 220 blocks
              * worth of size history (median).
              */
-            static std::size_t get_maximum_size();
+            static std::size_t get_maximum_size_median220();
         
             /**
              * Gets the block index file at the given index.

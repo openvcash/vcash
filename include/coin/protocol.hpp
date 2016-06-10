@@ -57,12 +57,12 @@ namespace protocol {
         /**
          * The version.
          */
-        enum { version = 60049 };
+        enum { version = 60050 };
 
         /**
          * The minimum version.
          */
-        enum { minimum_version = 60048 };
+        enum { minimum_version = 60050 };
     
         /**
          * The default peer port.

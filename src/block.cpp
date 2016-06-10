@@ -388,13 +388,15 @@ std::shared_ptr<block> block::create_new(
      * Calculate the largest block we're willing to create.
      * -blockmaxsize
     */
-    auto max_size = constants::max_block_size_gen / 2;
+    auto max_size = block::get_maximum_size_median220() / 4;
     
     /**
-     * Limit to betweeen 1000 and max_block_size - 1000 for sanity.
+     * Limit to betweeen 1000 and block::get_maximum_size_median220()
+     *  - 1000 for sanity.
      */
     max_size = std::max(
-        1000, std::min((constants::max_block_size - 1000), max_size)
+        static_cast<std::size_t> (1000),
+        std::min((block::get_maximum_size_median220() - 1000), max_size)
     );
 
     /**
@@ -404,7 +406,7 @@ std::shared_ptr<block> block::create_new(
      */
     auto priority_size = 27000;
     
-    priority_size = std::min(max_size, priority_size);
+    priority_size = std::min(max_size, static_cast<std::size_t> (priority_size));
 
     /**
      * Minimum block size you want to create; block will be filled with free
@@ -413,7 +415,7 @@ std::shared_ptr<block> block::create_new(
      */
     auto min_size = 0;
     
-    min_size = std::min(max_size, min_size);
+    min_size = std::min(max_size, static_cast<std::size_t> (min_size));
     
     /**
      * -mintxfee
@@ -666,16 +668,16 @@ std::shared_ptr<block> block::create_new(
         
         tx.encode(buffer);
         
-        auto tx_size = tx.size();
+        auto tx_size = buffer.size();
 
-        if (block_size + tx_size >= constants::max_block_size)
+        if (block_size + tx_size >= block::get_maximum_size_median220())
         {
             continue;
         }
         
         auto sig_ops = tx.get_legacy_sig_op_count();
         
-        if (block_sig_ops + sig_ops >= constants::max_block_sig_ops)
+        if (block_sig_ops + sig_ops >= block::get_maximum_size_median220() / 50)
         {
             continue;
         }
@@ -743,7 +745,9 @@ std::shared_ptr<block> block::create_new(
         
         sig_ops += tx.get_p2sh_sig_op_count(inputs);
 
-        if (block_sig_ops + sig_ops >= constants::max_block_sig_ops)
+        if (
+            block_sig_ops + sig_ops >= block::get_maximum_size_median220() / 50
+            )
         {
             continue;
         }
@@ -1037,7 +1041,7 @@ bool block::connect_block(
         
         sig_ops += i.get_legacy_sig_op_count();
         
-        if (sig_ops > constants::max_block_sig_ops)
+        if (sig_ops > block::get_maximum_size_median220() / 50)
         {
             log_error("Block connect block failed, too many sigops.");
             
@@ -1084,7 +1088,7 @@ bool block::connect_block(
                  */
                 sig_ops += i.get_p2sh_sig_op_count(inputs);
                 
-                if (sig_ops > constants::max_block_sig_ops)
+                if (sig_ops > block::get_maximum_size_median220() / 50)
                 {
                     log_error("Block connect failed, too many sig ops.");
                     
@@ -1312,12 +1316,32 @@ bool block::check_block(
      */
     
     /**
+     * Clear
+     */
+    clear();
+    
+    /**
+     * Encode
+     */
+    encode();
+    
+    /**
+     * Get the length.
+     */
+    auto length = size();
+    
+    /**
+     * Clear
+     */
+    clear();
+    
+    /**
      * Check size limits.
      */
     if (
         m_transactions.size() == 0 ||
-        m_transactions.size() > constants::max_block_size ||
-        size() > constants::max_block_size
+        m_transactions.size() > block::get_maximum_size_median220() ||
+        length > block::get_maximum_size_median220()
         )
     {
         /**
@@ -1949,7 +1973,7 @@ bool block::check_block(
         sig_ops += i.get_legacy_sig_op_count();
     }
     
-    if (sig_ops > constants::max_block_sig_ops)
+    if (sig_ops > block::get_maximum_size_median220() / 50)
     {
         /**
          * Set the Denial-of-Service score for the connection.
@@ -3263,8 +3287,20 @@ bool block::check_signature() const
     return false;
 }
 
-std::size_t block::get_maximum_size()
+std::size_t block::get_maximum_size_median220()
 {
+    /**
+     * (SPV) clients do not have a maximum block size.
+     */
+    if (
+        globals::instance().operation_mode() ==
+        protocol::operation_mode_client &&
+        globals::instance().is_client() == true
+        )
+    {
+        return std::numeric_limits<std::size_t>::max();
+    }
+    
     /**
      * 128 Kilobytes
      */
@@ -3357,9 +3393,9 @@ std::size_t block::get_maximum_size()
     }
 
     /**
-     * 256 Bytes
+     * 768 Kilobytes
      */
-    enum { maximum_byte_increase = 256 };
+    enum { maximum_byte_increase = 768000 };
 
     return std::max(
         static_cast<std::size_t> (minimum_maximum_size),

@@ -339,7 +339,7 @@ bool message::decode()
                     
                     if (attr.value < version_minimum)
                     {
-                        log_debug("Message got too low version.");
+                        log_info("Message got too low version.");
                         
                         return false;
                     }

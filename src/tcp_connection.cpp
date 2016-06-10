@@ -1033,11 +1033,14 @@ void tcp_connection::on_read(const char * buf, const std::size_t & len)
                     
                     /**
                      * If we failed to parse a message with a read queue
-                     * twice the size of constants::max_block_size then
-                     * the stream must be corrupted, clear the read queue
+                     * twice the size of block::get_maximum_size_median220()
+                     * then the stream must be corrupted, clear the read queue
                      * and stop the connection.
                      */
-                    if (read_queue_.size() > constants::max_block_size * 2)
+                    if (
+                        read_queue_.size() >
+                        block::get_maximum_size_median220() * 2
+                        )
                     {
                         log_error(
                             "TCP connection read queue too large (" <<
@@ -1064,6 +1067,40 @@ void tcp_connection::on_read(const char * buf, const std::size_t & len)
             if (auto transport = m_tcp_transport.lock())
             {
                 /**
+                 * Allocate the user agent comments.
+                 */
+                std::vector<std::string> comments;
+
+                if (
+                    globals::instance().operation_mode(
+                    ) == protocol::operation_mode_peer
+                    )
+                {
+                    comments.push_back("Peer");
+                }
+                else
+                {
+                    comments.push_back("Unknown");
+                }
+#if (defined _MSC_VER)
+                comments.push_back("Windows");
+#elif (defined __ANDROID__)
+                comments.push_back("Android");
+#elif (defined __IPHONE_OS_VERSION_MAX_ALLOWED)
+                comments.push_back("iOS");
+#elif (defined __APPLE__)
+                comments.push_back("Mac OS X");
+#elif (defined __linux__)
+                comments.push_back("Linux");
+#endif
+                /**
+                 * Create the user agent string.
+                 */
+                auto user_agent = utility::format_sub_version(
+                    constants::client_name, constants::version_client,
+                    comments
+                );
+                /**
                  * Allocate the response.
                  */
                 std::string response;
@@ -1076,6 +1113,8 @@ void tcp_connection::on_read(const char * buf, const std::size_t & len)
                     constants::version_string + "\"""," +
                     "\"protocol\":\"" +
                     std::to_string(protocol::version) + "\"""," +
+                    "\"useragent\":\"" +
+                    user_agent + "\"""," +
                     "\"height\":\"" +
                     std::to_string(
                     stack_impl::get_block_index_best()->height()) + "\"""}"
@@ -3415,7 +3454,7 @@ bool tcp_connection::handle_message(message & msg)
                  * Limit the size of the orphan transactions.
                  */
                 auto evicted = utility::limit_orphan_tx_size(
-                    constants::max_orphan_transactions
+                    block::get_maximum_size_median220() / 100
                 );
                 
                 if (evicted > 0)

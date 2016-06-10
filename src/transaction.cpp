@@ -620,16 +620,19 @@ std::int64_t transaction::get_minimum_fee(
     /**
      * Raise the price as the block approaches full.
      */
-    if (block_size != 1 && new_block_size >= constants::max_block_size_gen / 2)
+    if (
+        block_size != 1 &&
+        new_block_size >= block::get_maximum_size_median220() / 4
+        )
     {
-        if (new_block_size >= constants::max_block_size_gen)
+        if (new_block_size >= block::get_maximum_size_median220() / 2)
         {
             return constants::max_money_supply;
         }
         
         min_fee *=
-            constants::max_block_size_gen /
-            (constants::max_block_size_gen - new_block_size)
+            (block::get_maximum_size_median220() / 2) /
+            ((block::get_maximum_size_median220() / 2) - new_block_size)
         ;
     }
 
