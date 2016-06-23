@@ -47,6 +47,7 @@ c-files =
 	leveldb/util/crc32c.cc
 	leveldb/util/env_posix.cc
 	leveldb/util/env.cc
+    leveldb/util/filter_policy.cc
 	leveldb/util/hash.cc
 	leveldb/util/histogram.cc
 	leveldb/util/logging.cc
