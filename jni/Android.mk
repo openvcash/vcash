@@ -58,6 +58,8 @@ LOCAL_SRC_FILES := \
     ../src/database_stack.cpp \
 	../src/db_env.cpp \
 	../src/db_tx.cpp \
+	../src/db_tx_bdb.cpp \
+	../src/db_tx_ldb.cpp \
 	../src/db_wallet.cpp \
 	../src/db.cpp \
 	../src/ecdhe.cpp \

@@ -64,6 +64,8 @@ SOURCES =
 	db
 	db_env
 	db_tx
+    db_tx_bdb
+	db_tx_ldb
 	db_wallet
     ecdhe
 	file
