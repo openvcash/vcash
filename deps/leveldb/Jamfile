@@ -38,6 +38,7 @@ c-files =
 	leveldb/table/iterator.cc
 	leveldb/table/merger.cc
 	leveldb/table/table.cc
+	leveldb/table/table_builder.cc
 	leveldb/table/two_level_iterator.cc
 	leveldb/util/arena.cc
 	leveldb/util/bloom.cc
