@@ -189,92 +189,100 @@ void udp_multiplexor::send_to(
     const std::size_t & len
     )
 {
-    m_bytes_sent += len;
+    /**
+     * If the length cannot fit within the MTU of the underlying
+     * datagram protocol we can perform fragmentation and IP-layer
+     * fragmentation is allowed to the size of 2 Kilobytes.
+     */
+    if (len < 65535)
+    {
+        m_bytes_sent += len;
 
-    auto uptime = std::time(0) - send_time_;
-    
-    if (uptime > 0)
-    {
-        m_bps_sent = m_bytes_sent / uptime;
-    
-        log_none("m_bps_sent = " << m_bps_sent);
+        auto uptime = std::time(0) - send_time_;
         
-        if (uptime > 1)
+        if (uptime > 0)
         {
-            send_time_ = std::time(0);
+            m_bps_sent = m_bytes_sent / uptime;
+        
+            log_none("m_bps_sent = " << m_bps_sent);
             
-            uptime = std::time(0) - send_time_;
-            
-            m_bytes_sent = 0;
-        }
-    }
-    
-    if (ep.protocol() == boost::asio::ip::udp::v4())
-    {
-        if (socket_ipv4_.is_open())
-        {
-            boost::system::error_code ec;
-            
-            /**
-             * Perform a blocking send_to.
-             */
-            socket_ipv4_.send_to(boost::asio::buffer(buf, len), ep, 0, ec);
-            
-            if (ec)
+            if (uptime > 1)
             {
-                log_debug("UDP v4 send failed " << ec.message() << ".");
+                send_time_ = std::time(0);
                 
-                if (ec == boost::asio::error::broken_pipe)
+                uptime = std::time(0) - send_time_;
+                
+                m_bytes_sent = 0;
+            }
+        }
+        
+        if (ep.protocol() == boost::asio::ip::udp::v4())
+        {
+            if (socket_ipv4_.is_open())
+            {
+                boost::system::error_code ec;
+                
+                /**
+                 * Perform a blocking send_to.
+                 */
+                socket_ipv4_.send_to(boost::asio::buffer(buf, len), ep, 0, ec);
+                
+                if (ec)
                 {
-                    std::uint16_t port = socket_ipv4_.local_endpoint().port();
+                    log_debug("UDP v4 send failed " << ec.message() << ".");
                     
-                    close();
-                    
-                    open(port);
-                    
-                    boost::system::error_code ignored_ec;
-                    
-                    /**
-                     * Perform a blocking send_to.
-                     */
-                    socket_ipv4_.send_to(
-                        boost::asio::buffer(buf, len), ep, 0, ignored_ec
-                    );
+                    if (ec == boost::asio::error::broken_pipe)
+                    {
+                        std::uint16_t port = socket_ipv4_.local_endpoint().port();
+                        
+                        close();
+                        
+                        open(port);
+                        
+                        boost::system::error_code ignored_ec;
+                        
+                        /**
+                         * Perform a blocking send_to.
+                         */
+                        socket_ipv4_.send_to(
+                            boost::asio::buffer(buf, len), ep, 0, ignored_ec
+                        );
+                    }
                 }
             }
         }
-    }
-    else
-    {
-        if (socket_ipv6_.is_open())
+        else
         {
-            boost::system::error_code ec;
-            
-            /**
-             * Perform a blocking send_to.
-             */
-            socket_ipv6_.send_to(boost::asio::buffer(buf, len), ep, 0, ec);
-
-            if (ec)
+            if (socket_ipv6_.is_open())
             {
-                log_debug("UDP v6 send failed " << ec.message() << ".");
+                boost::system::error_code ec;
                 
-                if (ec == boost::asio::error::broken_pipe)
+                /**
+                 * Perform a blocking send_to.
+                 */
+                socket_ipv6_.send_to(boost::asio::buffer(buf, len), ep, 0, ec);
+
+                if (ec)
                 {
-                    std::uint16_t port = socket_ipv6_.local_endpoint().port();
+                    log_debug("UDP v6 send failed " << ec.message() << ".");
                     
-                    close();
-                    
-                    open(port);
-                    
-                    boost::system::error_code ignored_ec;
-                    
-                    /**
-                     * Perform a blocking send_to.
-                     */
-                    socket_ipv6_.send_to(
-                        boost::asio::buffer(buf, len), ep, 0, ignored_ec
-                    );
+                    if (ec == boost::asio::error::broken_pipe)
+                    {
+                        std::uint16_t port = socket_ipv6_.local_endpoint().port();
+                        
+                        close();
+                        
+                        open(port);
+                        
+                        boost::system::error_code ignored_ec;
+                        
+                        /**
+                         * Perform a blocking send_to.
+                         */
+                        socket_ipv6_.send_to(
+                            boost::asio::buffer(buf, len), ep, 0, ignored_ec
+                        );
+                    }
                 }
             }
         }
@@ -385,7 +393,12 @@ void udp_multiplexor::handle_async_receive_from(
     }
     else
     {
-        if (m_on_async_receive_from && len > 0)
+        /**
+         * Because of the way we fragment packets or let the IP-layer
+         * perform fragmentation we should never receive a message larger
+         * than 65535 because the largest we *should* send is 2 Kilobytes.
+         */
+        if (m_on_async_receive_from && (len > 0 && len < 65535))
         {
             m_on_async_receive_from(
                 remote_endpoint_, &receive_buffer_[0], len
