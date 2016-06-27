@@ -401,17 +401,10 @@ bool tcp_connection_manager::is_connected()
 
 std::size_t tcp_connection_manager::minimum_tcp_connections()
 {
-    /**
-     * Check if we are firewalled (have had a recent inbound
-     * TCP connection).
-     */
-    auto is_firewalled =
-        std::time(0) - m_time_last_inbound > 60 * 60
-    ;
-    
     return
         globals::instance().operation_mode() ==
-        protocol::operation_mode_peer ? (is_firewalled ? 8 : 8) : 6
+        protocol::operation_mode_peer ?
+        (utility::is_initial_block_download() ? 3 : 8) : 6
     ;
 }
 
