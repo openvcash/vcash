@@ -158,6 +158,11 @@ local usage-requirements =
 	<toolset>darwin:<include>./deps/platforms/osx/db/include
 	<toolset>msvc:<include>./deps/platforms/windows/db/build_windows
 
+	<toolset>gcc:<include>./deps/leveldb/leveldb/include
+	<toolset>clang-darwin:<include>./deps/leveldb/leveldb/include
+	<toolset>darwin:<include>./deps/leveldb/leveldb/include
+	<toolset>msvc:<include>./deps/leveldb/leveldb/include
+
 	<toolset>msvc,<variant>debug:<include>$(BOOST_ROOT)/build/debug/include
 	<toolset>msvc,<variant>release:<include>$(BOOST_ROOT)/build/release/include
 	<variant>release:<define>NDEBUG
