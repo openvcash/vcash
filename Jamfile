@@ -106,6 +106,7 @@ SOURCES =
     rpc_server
     rpc_transport
 	script
+    script_checker
 	secret
 	sha256
 	signature_cache

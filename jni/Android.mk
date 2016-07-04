@@ -102,6 +102,7 @@ LOCAL_SRC_FILES := \
 	../src/rpc_server.cpp \
 	../src/rpc_transport.cpp \
 	../src/script.cpp \
+	../src/script_checker.cpp \
 	../src/secret.cpp \
 	../src/sha256.cpp \
 	../src/signature_cache.cpp \
