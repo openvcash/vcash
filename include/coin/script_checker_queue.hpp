@@ -22,6 +22,7 @@
 #define SCRIPT_CHECKER_QUEUE_HPP
 
 #include <cassert>
+#include <condition_variable>
 #include <cstdint>
 #include <memory>
 #include <mutex>
