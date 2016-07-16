@@ -11,7 +11,7 @@ openssl
 
 Windows also requires miniupnpc but can be disabled by the use of USE_UPNP=0.
 
-The easiest way to build for Ubunutu or similar Linux distributions is by using the (azure) script:
+The easiest way to build for Ubuntu or similar Linux distributions is by using the (azure) script:
 
 https://github.com/john-connor/azure-quickstart-templates/blob/master/vcash-on-ubuntu/build_vcash.sh From_Source
 
