@@ -6,7 +6,7 @@ A decentralized currency for the internet.
 Dependencies:
 
 boost 1.53.0
-db-4.8.30
+db-6.1.29.NC
 openssl
 
 Windows also requires miniupnpc but can be disabled by the use of USE_UPNP=0.
