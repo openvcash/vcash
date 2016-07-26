@@ -17,7 +17,7 @@ https://github.com/john-connor/azure-quickstart-templates/blob/master/vcash-on-u
 
 All other Linux distributions can use:
 
-https://github.com/xCoreDev/vcash-scripts/blob/master/build-linux.sh
+https://github.com/john-connor/vcash-scripts/blob/master/build-linux.sh
 
 or alternatively you can compile manually:
 
