@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of vcash.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * vcash is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -27,6 +27,7 @@
 #include <coin/hash.hpp>
 #include <coin/logger.hpp>
 #include <coin/reward.hpp>
+#include <coin/script_checker.hpp>
 #include <coin/time.hpp>
 #include <coin/transaction.hpp>
 #include <coin/transaction_pool.hpp>
@@ -937,9 +938,10 @@ bool transaction::connect_inputs(
     std::map<sha256, std::pair<transaction_index, transaction> > & inputs,
     std::map<sha256, transaction_index> & test_pool,
     const transaction_position & position_tx_this,
-    const std::shared_ptr<block_index> & ptr_block_index,
+    const block_index * ptr_block_index,
     const bool & connect_block, const bool & create_new_block,
-    const bool & strict_pay_to_script_hash, const bool & check_signature
+    const bool & strict_pay_to_script_hash, const bool & check_signature,
+    std::vector<script_checker> * script_checker_checks
     )
 {
     if (is_coin_base() == false)
@@ -1041,6 +1043,15 @@ bool transaction::connect_inputs(
             }
 
         }
+        
+        /**
+         * Reserve memory for the script_checker's.
+         */
+        if (script_checker_checks)
+        {
+            script_checker_checks->reserve(m_transactions_in.size());
+        }
+        
         /**
          * Only if all inputs pass do we perform expensive ECDSA signature
          * checks. This may help prevent CPU exhaustion attacks.
@@ -1088,36 +1099,57 @@ bool transaction::connect_inputs(
                 checkpoints::instance().get_total_blocks_estimate())) == false
                 )
             {
-                if (
-                    check_signature && script::verify_signature(tx_previous,
-                    *this, i, strict_pay_to_script_hash, 0) == false
-                    )
+                if (check_signature == true)
                 {
                     /**
-                     * Only during transition phase for P2SH.
+                     * Allocate the script_checker.
                      */
-                    if (
-                        strict_pay_to_script_hash &&
-                        script::verify_signature(tx_previous, *this, i,
-                        false, 0)
-                        )
+                    script_checker checker(
+                        tx_previous, *this, i, strict_pay_to_script_hash, 0
+                    );
+                    
+                    /**
+                     * If we were passed a script_checker array use it.
+                     */
+                    if (script_checker_checks)
                     {
+                        script_checker_checks->push_back(checker);
+                    }
+                    else if (checker.check() == false)
+                    {
+                        if (strict_pay_to_script_hash == true)
+                        {
+                            /**
+                             * Allocate the script_checker.
+                             */
+                            script_checker checker(
+                                tx_previous, *this, i, false, 0
+                            );
+                    
+                            /**
+                             * Only during transition phase for P2SH.
+                             * @note true means failure here.
+                             */
+                            if (checker.check() == true)
+                            {
+                                log_error(
+                                    "Transaction connect inputs failed, " <<
+                                    get_hash().to_string().substr(0, 10) <<
+                                    " P2SH signature verification vailed."
+                                );
+                                
+                                return false;
+                            }
+                        }
+
                         log_error(
                             "Transaction connect inputs failed, " <<
                             get_hash().to_string().substr(0, 10) <<
-                            " P2SH signature verification vailed."
+                            " signature verification failed."
                         );
                         
                         return false;
                     }
-
-                    log_error(
-                        "Transaction connect inputs failed, " <<
-                        get_hash().to_string().substr(0, 10) <<
-                        " signature verification failed."
-                    );
-                    
-                    return false;
                 }
             }
 

@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of vcash.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * vcash is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -117,7 +117,7 @@ namespace coin {
              */
             int get_depth_in_main_chain(const bool & is_zerotime = true) const
             {
-                std::shared_ptr<block_index> index_out;
+                block_index * index_out = 0;
                 
                 return get_depth_in_main_chain(index_out, is_zerotime);
             }
@@ -129,8 +129,7 @@ namespace coin {
              * protected.
              */
             int get_depth_in_main_chain(
-                std::shared_ptr<block_index> & index_out,
-                const bool & is_zerotime
+                block_index * & index_out, const bool & is_zerotime
                 ) const
             {
                 auto ret = get_depth_in_main_chain_no_zerotime(index_out);
@@ -174,7 +173,7 @@ namespace coin {
              * @param index_out The block_index.
              */
             int get_depth_in_main_chain_no_zerotime(
-                std::shared_ptr<block_index> & index_out
+                block_index * & index_out
                 ) const
             {
                 int ret = -1;

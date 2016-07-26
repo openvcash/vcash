@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of vcash.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * vcash is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -203,7 +203,7 @@ namespace coin {
             /**
              * The block indexes.
              */
-            std::map<sha256, std::shared_ptr<block_index> > & block_indexes()
+            std::map<sha256, block_index *> & block_indexes()
             {
                 std::lock_guard<std::mutex> l1(mutex_);
                 
@@ -232,21 +232,19 @@ namespace coin {
         
             /**
              * Sets the block index fbbh last.
-             * @param value The block_index.
+             * @param val The block_index.
              */
-            void set_block_index_fbbh_last(
-                const std::shared_ptr<block_index> & value
-                )
+            void set_block_index_fbbh_last(block_index * val)
             {
                 std::lock_guard<std::mutex> l1(mutex_);
                 
-                m_block_index_fbbh_last = value;
+                m_block_index_fbbh_last = val;
             }
         
             /**
              * The block index used by find_block_by_height.
              */
-            const std::shared_ptr<block_index> & block_index_fbbh_last() const
+            const block_index * block_index_fbbh_last() const
             {
                 std::lock_guard<std::mutex> l1(mutex_);
                 
@@ -606,7 +604,7 @@ namespace coin {
             /**
              * The block indexes.
              */
-            std::map<sha256, std::shared_ptr<block_index> > m_block_indexes;
+            std::map<sha256, block_index *> m_block_indexes;
         
             /**
              * The hash of the best chain.
@@ -616,7 +614,7 @@ namespace coin {
             /**
              * The block index used by find_block_by_height.
              */
-            std::shared_ptr<block_index> m_block_index_fbbh_last;
+            block_index * m_block_index_fbbh_last;
         
             /**
              * The time of the best received block.

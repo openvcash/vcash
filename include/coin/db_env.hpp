@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of vcash.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * vcash is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -45,7 +45,7 @@ namespace coin {
             /**
              * The default cache size.
              */
-            enum { default_cache_size = 100 };
+            enum { default_cache_size = 25 };
         
             /**
              * Constructor
@@ -62,7 +62,7 @@ namespace coin {
              * @param cache_size The cache size.
              */
             bool open(
-                const std::uint32_t & cache_size = default_cache_size
+                const std::int32_t & cache_size = default_cache_size
             );
         
             /**

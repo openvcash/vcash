@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of vcash.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * vcash is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -121,36 +121,32 @@ block block_index::get_block_header() const
     return ret;
 }
 
-void block_index::set_block_index_previous(
-    const std::shared_ptr<block_index> & val
-    )
+void block_index::set_block_index_previous(block_index * val)
 {
     m_block_index_previous = val;
 }
 
-void block_index::set_block_index_next(
-    const std::shared_ptr<block_index> & val
-    )
+void block_index::set_block_index_next(block_index * val)
 {
     m_block_index_next = val;
 }
 
-std::shared_ptr<block_index> & block_index::block_index_previous()
+block_index * block_index::block_index_previous()
 {
     return m_block_index_previous;
 }
 
-const std::shared_ptr<block_index> & block_index::block_index_previous() const
+const block_index * block_index::block_index_previous() const
 {
     return m_block_index_previous;
 }
 
-std::shared_ptr<block_index> & block_index::block_index_next()
+block_index * block_index::block_index_next()
 {
     return m_block_index_next;
 }
 
-const std::shared_ptr<block_index> & block_index::block_index_next() const
+const block_index * block_index::block_index_next() const
 {
     return m_block_index_next;
 }
@@ -319,7 +315,7 @@ std::int64_t block_index::get_median_time_past()
     
     for (
         auto i = 0; i < median_time_span && index; i++,
-        index = index->block_index_previous().get()
+        index = index->block_index_previous()
         )
     {
         *(--begin) = index->time();
@@ -341,7 +337,7 @@ std::int64_t block_index::get_median_time()
             return m_time;
         }
         
-        index = index->block_index_next().get();
+        index = index->block_index_next();
     }
     
     return index->get_median_time_past();
@@ -365,7 +361,7 @@ bool block_index::is_proof_of_stake() const
 bool block_index::is_in_main_chain() const
 {
     return
-        m_block_index_next || this == stack_impl::get_block_index_best().get()
+        m_block_index_next || this == stack_impl::get_block_index_best()
     ;
 }
 

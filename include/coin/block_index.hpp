@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of vcash.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * vcash is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -84,37 +84,33 @@ namespace coin {
              * Sets the previous block index.
              * @param val The value.
              */
-            void set_block_index_previous(
-                const std::shared_ptr<block_index> & val
-            );
+            void set_block_index_previous(block_index * val);
         
             /**
              * Sets the next block index.
              * @param val The value.
              */
-            void set_block_index_next(
-                const std::shared_ptr<block_index> & val
-            );
+            void set_block_index_next(block_index * val);
         
             /**
              * The previous block index.
              */
-            std::shared_ptr<block_index> & block_index_previous();
+            block_index * block_index_previous();
         
             /**
              * The previous block index.
              */
-            const std::shared_ptr<block_index> & block_index_previous() const;
+            const block_index * block_index_previous() const;
         
             /**
              * The next block index.
              */
-            std::shared_ptr<block_index> & block_index_next();
+            block_index * block_index_next();
         
             /**
              * The next block index.
              */
-            const std::shared_ptr<block_index> & block_index_next() const;
+            const block_index * block_index_next() const;
         
             /**
              * The file.
@@ -316,12 +312,12 @@ namespace coin {
             /**
              * The previous block index.
              */
-            std::shared_ptr<block_index> m_block_index_previous;
+            block_index * m_block_index_previous;
         
             /**
              * The next block index.
              */
-            std::shared_ptr<block_index> m_block_index_next;
+            block_index * m_block_index_next;
         
             /**
              * The file.

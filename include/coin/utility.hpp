@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of vcash.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * vcash is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -335,15 +335,15 @@ namespace coin {
              * @param index The block_index.
              * @param is_pos If true it is proof-of-stake,
              */
-            static const std::shared_ptr<block_index> get_last_block_index(
-                const std::shared_ptr<block_index> & index, const bool & is_pos
+            static const block_index * get_last_block_index(
+                const block_index * index, const bool & is_pos
             );
         
             /**
              * Finds a block by it's height.
              * @param height The height.
              */
-            static std::shared_ptr<block_index> find_block_index_by_height(
+            static block_index * find_block_index_by_height(
                 const std::uint32_t & height
             );
         
@@ -384,7 +384,7 @@ namespace coin {
              * @param index_last The last block index.
              */
             static std::uint32_t get_target_spacing(
-                const std::shared_ptr<block_index> & index_last
+                const block_index * index_last
             );
         
             /**
@@ -393,8 +393,7 @@ namespace coin {
              * @param is_pos If true it is proof-of-stake.
              */
             static std::uint32_t get_next_target_required(
-                const std::shared_ptr<block_index> & index_last,
-                const bool & is_pos
+                const block_index * index_last, const bool & is_pos
             );
         
             /**
@@ -403,8 +402,7 @@ namespace coin {
              * @param is_pos If true it is proof-of-stake.
              */
             static std::uint32_t get_next_target_required_v020(
-                const std::shared_ptr<block_index> & index_last,
-                const bool & is_pos
+                const block_index * index_last, const bool & is_pos
             );
         
             /**
@@ -413,8 +411,7 @@ namespace coin {
              * @param is_pos If true it is proof-of-stake.
              */
             static std::uint32_t get_next_target_required_v023(
-                const std::shared_ptr<block_index> & index_last,
-                const bool & is_pos
+                const block_index * index_last, const bool & is_pos
             );
         
             /**

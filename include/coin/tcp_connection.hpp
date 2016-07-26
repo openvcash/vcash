@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of vcash.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * vcash is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -130,8 +130,7 @@ namespace coin {
              * @param hash_end The end hash.
              */
             void send_getblocks_message(
-                const std::shared_ptr<block_index> & index_begin,
-                const sha256 & hash_end
+                const block_index * index_begin, const sha256 & hash_end
             );
         
             /**
@@ -715,7 +714,7 @@ namespace coin {
             /**
              * The last getblocks index_begin.
              */
-            std::shared_ptr<block_index> last_getblocks_index_begin_;
+            block_index * last_getblocks_index_begin_;
         
             /**
              * The last getblocks hash_end.
@@ -749,12 +748,7 @@ namespace coin {
             > timer_addr_rebroadcast_;
         
             /**
-             * The last time a getblocks was received.
-             */
-            std::time_t time_last_getblocks_received_;
-        
-            /**
-             * The last time a getblocks was received.
+             * The last time a getblocks was sent.
              */
             std::time_t time_last_getblocks_sent_;
             

@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of vcash.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * vcash is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -165,7 +165,7 @@ bool utility::is_initial_block_download()
     }
     
     static std::time_t g_last_update;
-    static std::shared_ptr<block_index> g_index_last_best;
+    static block_index * g_index_last_best = 0;
 
     if (stack_impl::get_block_index_best() != g_index_last_best)
     {
@@ -365,8 +365,8 @@ std::uint32_t utility::limit_orphan_tx_size(const std::uint32_t & max_orphans)
     return evicted;
 }
 
-const std::shared_ptr<block_index> utility::get_last_block_index(
-    const std::shared_ptr<block_index> & index, const bool & is_pos
+const block_index * utility::get_last_block_index(
+    const block_index * index, const bool & is_pos
     )
 {
     auto tmp = index;
@@ -382,11 +382,11 @@ const std::shared_ptr<block_index> utility::get_last_block_index(
     return tmp;
 }
 
-std::shared_ptr<block_index> utility::find_block_index_by_height(
+block_index * utility::find_block_index_by_height(
     const std::uint32_t & height
     )
 {
-    std::shared_ptr<block_index> ret;
+    block_index * ret = 0;
     
     if (height < stack_impl::get_block_index_best()->height() / 2)
     {
@@ -404,7 +404,9 @@ std::shared_ptr<block_index> utility::find_block_index_by_height(
         ).block_index_fbbh_last()->height()))
         )
     {
-        ret = globals::instance().block_index_fbbh_last();
+        ret = const_cast<block_index *> (
+            globals::instance().block_index_fbbh_last()
+        );
     }
     
     while (ret->height() > height)
@@ -466,15 +468,13 @@ std::uint32_t utility::compute_min_stake(
     return compute_max_bits(constants::proof_of_stake_limit, base, time);
 }
 
-std::uint32_t utility::get_target_spacing(
-    const std::shared_ptr<block_index> & index_last
-    )
+std::uint32_t utility::get_target_spacing(const block_index * index_last)
 {
     return constants::work_and_stake_target_spacing;
 }
 
 std::uint32_t utility::get_next_target_required(
-    const std::shared_ptr<block_index> & index_last, const bool & is_pos
+    const block_index * index_last, const bool & is_pos
     )
 {
     /**
@@ -624,11 +624,11 @@ std::uint32_t utility::get_next_target_required(
         /**
          * Go back by what we want to be N days worth of blocks.
          */
-        const auto * index_first = index_last.get();
+        const auto * index_first = index_last;
         
         for (auto i = 0; index_first && i < blocks_to_go_back; i++)
         {
-            index_first = index_first->block_index_previous().get();
+            index_first = index_first->block_index_previous();
         }
         
         assert(index_first);
@@ -796,7 +796,7 @@ std::uint32_t utility::get_next_target_required(
 }
 
 std::uint32_t utility::get_next_target_required_v020(
-    const std::shared_ptr<block_index> & index_last, const bool & is_pos
+    const block_index * index_last, const bool & is_pos
     )
 {
     big_number ret;
@@ -881,7 +881,7 @@ std::uint32_t utility::get_next_target_required_v020(
 }
 
 std::uint32_t utility::get_next_target_required_v023(
-    const std::shared_ptr<block_index> & index_last, const bool & is_pos
+    const block_index * index_last, const bool & is_pos
     )
 {
     big_number ret;

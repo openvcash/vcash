@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of vcash.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * vcash is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -1441,14 +1441,14 @@ bool wallet::chainblender_denominate(const std::int64_t & val)
 }
 
 std::int32_t wallet::scan_for_transactions(
-    const std::shared_ptr<block_index> & index_start, const bool & update
+    const block_index * index_start, const bool & update
     )
 {
     std::lock_guard<std::recursive_mutex> l1(mutex_);
     
     std::int32_t ret = 0;
     
-    auto index = index_start;
+    auto * index = index_start;
     
     while (index)
     {

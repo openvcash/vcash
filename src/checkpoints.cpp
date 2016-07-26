@@ -135,8 +135,7 @@ bool checkpoints::check_hardened(
 }
 
 bool checkpoints::check_sync(
-    const sha256 & hash_block,
-    const std::shared_ptr<block_index> & index_previous
+    const sha256 & hash_block, const block_index * index_previous
     )
 {
     std::lock_guard<std::recursive_mutex> l1(mutex_);
@@ -512,7 +511,7 @@ const checkpoint_sync & checkpoints::get_checkpoint_message_pending() const
     return m_checkpoint_message_pending;
 }
 
-std::shared_ptr<block_index> checkpoints::get_last_sync_checkpoint()
+const block_index * checkpoints::get_last_sync_checkpoint()
 {
     if (globals::instance().block_indexes().count(m_hash_sync_checkpoint) == 0)
     {
@@ -522,7 +521,7 @@ std::shared_ptr<block_index> checkpoints::get_last_sync_checkpoint()
             m_hash_sync_checkpoint.to_string() << "."
         );
         
-        return std::shared_ptr<block_index> ();
+        return 0;
     }
     
     return globals::instance().block_indexes()[m_hash_sync_checkpoint];

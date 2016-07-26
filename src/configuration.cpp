@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of vcash.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * vcash is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -254,7 +254,7 @@ bool configuration::load()
         /**
          * Make sure the database.cache_size stays within a range.
          */
-        if (m_database_cache_size < 4 || m_database_cache_size > 2048)
+        if (m_database_cache_size < 1 || m_database_cache_size > 2048)
         {
             m_database_cache_size = db_env::default_cache_size;
         }
@@ -378,7 +378,7 @@ bool configuration::save()
         /**
          * Make sure the database.cache_size stays within a range.
          */
-        if (m_database_cache_size < 4 || m_database_cache_size > 2048)
+        if (m_database_cache_size < 1 || m_database_cache_size > 2048)
         {
             m_database_cache_size = db_env::default_cache_size;
         }
@@ -494,6 +494,11 @@ void configuration::set_chainblender_use_common_output_denominations(
 const bool & configuration::chainblender_use_common_output_denominations() const
 {
     return m_chainblender_use_common_output_denominations;
+}
+
+void configuration::set_database_cache_size(const std::uint32_t & val)
+{
+    m_database_cache_size = val;
 }
 
 const std::uint32_t & configuration::database_cache_size() const

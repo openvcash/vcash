@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of vcash.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * vcash is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -72,7 +72,7 @@ namespace coin {
              */
             bool compute_next_stake_modifier(
                 const std::uint32_t & block_position,
-                const std::shared_ptr<block_index> & index_previous,
+                const block_index * index_previous,
                 std::uint64_t & stake_modifier, bool & generated_stake_modifier
             );
 
@@ -81,7 +81,7 @@ namespace coin {
              * @param index The index.
              */
             static std::uint32_t get_stake_modifier_checksum(
-                const std::shared_ptr<block_index> & index
+                const block_index * index
             );
 
             /**
@@ -110,8 +110,8 @@ namespace coin {
              * @param modifier_time The modifier time.
              */
             static bool get_last_stake_modifier(
-                const std::shared_ptr<block_index> & index,
-                std::uint64_t & stake_modifier, std::int64_t & modifier_time
+                const block_index * index, std::uint64_t & stake_modifier,
+                std::int64_t & modifier_time
             );
 
             /**
@@ -139,10 +139,10 @@ namespace coin {
              */
             static bool select_block_from_candidates(
                 std::vector<std::pair<std::int64_t, sha256> > & sorted_by_timestamp,
-                std::map<sha256, std::shared_ptr<block_index> > & selected_blocks,
+                std::map<sha256, block_index *> & selected_blocks,
                 const std::int64_t & selection_interval_stop,
                 const std::uint64_t & previous_stake_modifier,
-                std::shared_ptr<block_index> & index_selected
+                const block_index ** index_selected
             );
 
             /**

@@ -58,6 +58,7 @@
 #include <coin/random.hpp>
 #include <coin/rpc_json_parser.hpp>
 #include <coin/rpc_manager.hpp>
+#include <coin/script_checker_queue.hpp>
 #include <coin/stack.hpp>
 #include <coin/stack_impl.hpp>
 #include <coin/status_manager.hpp>
@@ -73,9 +74,9 @@
 using namespace coin;
 
 std::shared_ptr<db_env> stack_impl::g_db_env;
-std::shared_ptr<block_index> stack_impl::g_block_index_genesis;
+block_index * stack_impl::g_block_index_genesis = 0;
 std::set< std::pair<point_out, std::uint32_t> > stack_impl::g_seen_stake;
-std::shared_ptr<block_index> stack_impl::g_block_index_best;
+block_index * stack_impl::g_block_index_best = 0;
 big_number stack_impl::g_best_chain_trust(0);
 big_number stack_impl::g_best_invalid_trust;
 
@@ -253,9 +254,47 @@ void stack_impl::start()
     m_status_manager->insert(status);
     
     /**
+     * Get the database cache size.
+     */
+    auto database_cache_size = m_configuration.database_cache_size();
+    
+    /**
+     * For verion 0.4.8 RC we need to reset the database cache size to 25
+     * Megabytes.
+     * @note This can be removed after 0.4.8 Final.
+     */
+    if (protocol::version == 60050)
+    {
+        if (database_cache_size > 25)
+        {
+            m_configuration.set_database_cache_size(25);
+            
+            m_configuration.save();
+            
+            database_cache_size = m_configuration.database_cache_size();
+            
+            log_info(
+                "Stack reset database cache size to " <<
+                database_cache_size << " Megabytes."
+            );
+        }
+    }
+    
+    /**
+     * If we are an (SPV) client we only need 1 Megabyte of cache.
+     */
+    if (globals::instance().is_client() == true)
+    {
+        if (database_cache_size > 1)
+        {
+            database_cache_size = 1;
+        }
+    }
+    
+    /**
      * Open the db_env.
      */
-    if (g_db_env->open(m_configuration.database_cache_size()))
+    if (g_db_env->open(database_cache_size))
     {
         log_info("Stack is loading block index...");
         
@@ -919,7 +958,7 @@ void stack_impl::start()
                         )
                     );
             
-                    auto index_rescan = stack_impl::get_block_index_best();
+                    auto * index_rescan = stack_impl::get_block_index_best();
 
                     /**
                      * Check for erase-wallet-transactions.
@@ -960,7 +999,10 @@ void stack_impl::start()
                             
                             if (wallet_db.read_bestblock(locator))
                             {
-                                index_rescan = locator.get_block_index();
+                                index_rescan =
+                                    const_cast<block_index *> (
+                                    locator.get_block_index())
+                                ;
                             }
                         }
                     }
@@ -1029,7 +1071,13 @@ void stack_impl::start()
                 {
                     cores = 7;
                 }
-                
+#if 1
+                /**
+                 * We use only one IO core, everything else is processed in
+                 * seperate threads or queues.
+                 */
+                cores = 0;
+#else
                 /**
                  * Now that the block index is loaded increase the thread
                  * count to max(3, cores) if required.
@@ -1038,7 +1086,7 @@ void stack_impl::start()
                     static_cast<std::uint32_t> (3 - 1),
                     static_cast<std::uint32_t> (cores - 1)
                 );
-
+#endif
                 log_info("Stack is adding " << cores << " threads.");
                 
                 for (auto i = 0; i < cores; i++)
@@ -1469,6 +1517,14 @@ void stack_impl::start()
             );
             
             /**
+             * Start the script_checker_queue.
+             */
+            if (globals::instance().is_client() == false)
+            {
+                script_checker_queue::instance().start();
+            }
+            
+            /**
              * Start the UDP layer if configured.
              */
             if (m_configuration.network_udp_enable() == true)
@@ -1754,6 +1810,14 @@ void stack_impl::stop()
     }
     
     /**
+     * Stop the script_checker_queue.
+     */
+    if (globals::instance().is_client() == false)
+    {
+        script_checker_queue::instance().stop();
+    }
+    
+    /**
      * Unregister the main wallet.
      */
     wallet_manager::instance().unregister_wallet(
@@ -1790,12 +1854,12 @@ void stack_impl::stop()
          */
         if (i.second)
         {
-            i.second->set_block_index_previous(std::shared_ptr<block_index> ());
+            i.second->set_block_index_previous(0);
             
             /**
              * Set the next block index to null.
              */
-            i.second->set_block_index_next(std::shared_ptr<block_index> ());
+            i.second->set_block_index_next(0);
         }
     }
     
@@ -1912,9 +1976,9 @@ void stack_impl::stop()
     globals::instance().stake_seen_orphan().clear();
     globals::instance().relay_invs().clear();
     globals::instance().relay_inv_expirations().clear();
-    g_block_index_genesis = std::shared_ptr<block_index> ();
+    g_block_index_genesis = 0;
     g_seen_stake.clear();
-    g_block_index_best = std::shared_ptr<block_index> ();
+    g_block_index_best = 0;
     
     /**
      * Set the state to stopped.
@@ -3001,7 +3065,7 @@ bool stack_impl::process_block(
             {
                 log_debug(
                     "Stack failed to process block, check proof-of-stake failed "
-                    "for block " << hash_block.to_string() << "."
+                    "for block ::" << hash_block.to_string() << "."
                 );
              
                 /**
@@ -3314,7 +3378,12 @@ std::shared_ptr<db_env> & stack_impl::get_db_env()
     return g_db_env;
 }
 
-std::shared_ptr<block_index> & stack_impl::get_block_index_genesis()
+void stack_impl::set_block_index_genesis(block_index * val)
+{
+    g_block_index_genesis = val;
+}
+
+block_index * stack_impl::get_block_index_genesis()
 {
     return g_block_index_genesis;
 }
@@ -3324,7 +3393,12 @@ std::set< std::pair<point_out, std::uint32_t> > & stack_impl::get_seen_stake()
     return g_seen_stake;
 }
 
-std::shared_ptr<block_index> & stack_impl::get_block_index_best()
+void stack_impl::set_block_index_best(block_index * val)
+{
+    g_block_index_best = val;
+}
+
+block_index * stack_impl::get_block_index_best()
 {
     return g_block_index_best;
 }
@@ -3339,11 +3413,11 @@ big_number & stack_impl::get_best_invalid_trust()
     return g_best_invalid_trust;
 }
 
-std::shared_ptr<block_index> stack_impl::insert_block_index(
+block_index * stack_impl::insert_block_index(
     const sha256 & hash_block
     )
 {
-    std::shared_ptr<block_index> ret;
+    block_index * ret = 0;
     
     if (hash_block == 0)
     {
@@ -3358,7 +3432,14 @@ std::shared_ptr<block_index> stack_impl::insert_block_index(
     }
     else
     {
-        ret = std::make_shared<block_index> ();
+        ret = new block_index();
+    
+        if (ret == 0)
+        {
+            throw std::runtime_error(
+                "Failed to insert block index (unable to allocate memory)."
+            );
+        }
     
         ret->set_hash_block(hash_block);
         
@@ -3381,9 +3462,9 @@ const std::uint32_t stack_impl::peer_block_count() const
     ;
 }
 
-double stack_impl::difficulty(const std::shared_ptr<block_index> & index) const
+double stack_impl::difficulty(block_index * index) const
 {
-    std::shared_ptr<block_index> index_tmp;
+    block_index * index_tmp = 0;
     
     if (index)
     {
@@ -3391,8 +3472,8 @@ double stack_impl::difficulty(const std::shared_ptr<block_index> & index) const
     }
     else
     {
-        index_tmp = utility::get_last_block_index(
-            stack_impl::get_block_index_best(), false
+        index_tmp = const_cast<block_index *> (utility::get_last_block_index(
+            stack_impl::get_block_index_best(), false)
         );
     }
 
@@ -3866,7 +3947,7 @@ void stack_impl::create_directories()
          * Migration of data path from Vanillcoin to Vcash (can be removed in
          * future versions).
          */
-#if 1
+#if (!defined __ANDROID__)
         /**
          * Get the old data path.
          */

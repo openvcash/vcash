@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of vcash.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * vcash is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -44,6 +44,7 @@
 #include <coin/message.hpp>
 #include <coin/point_out.hpp>
 #include <coin/reward.hpp>
+#include <coin/script_checker_queue.hpp>
 #include <coin/stack_impl.hpp>
 #include <coin/tcp_connection.hpp>
 #include <coin/tcp_connection_manager.hpp>
@@ -909,9 +910,7 @@ std::shared_ptr<block> block::create_new(
     return ret;
 }
 
-bool block::disconnect_block(
-    db_tx & tx_db, const std::shared_ptr<block_index> & index
-    )
+bool block::disconnect_block(db_tx & tx_db, block_index * index)
 {
     /**
      * Disconnect in reverse order.
@@ -960,8 +959,7 @@ bool block::disconnect_block(
 }
 
 bool block::connect_block(
-    db_tx & tx_db, const std::shared_ptr<block_index> & pindex,
-    const bool  & check_only
+    db_tx & tx_db, block_index * pindex, const bool  & check_only
     )
 {
     try
@@ -1012,6 +1010,11 @@ bool block::connect_block(
     }
 
     std::map<sha256, transaction_index> queued_changes;
+    
+    /**
+     * Allocate the script_checker_queue::context.
+     */
+    script_checker_queue::context script_checker_queue_context;
     
     std::int64_t fees = 0;
     std::int64_t value_in = 0;
@@ -1107,20 +1110,44 @@ bool block::connect_block(
                 fees += tx_value_in - tx_value_out;
             }
             
+            /**
+             * Allocate container to hold all scripts to be verified by the
+             * script_checker_queue.
+             */
+            std::vector<script_checker> script_checker_checks;
+            
             if (
                 i.connect_inputs(tx_db, inputs, queued_changes,
                 tx_position_this, pindex, true, false,
-                strict_pay_to_script_hash) == false
+                strict_pay_to_script_hash, true,
+                &script_checker_checks) == false
                 )
             {
                 return false;
             }
+            
+            /**
+             * Insert the scripts to be checked by the script_checker_queue.
+             */
+            script_checker_queue_context.insert(script_checker_checks);
         }
 
         queued_changes[hash_tx] = transaction_index(
             tx_position_this,
             static_cast<std::uint32_t> (i.transactions_out().size())
         );
+    }
+    
+    /**
+     * Wait for all scripts to be checked by the script_checker_queue.
+     */
+    if (script_checker_queue_context.sync_wait() == false)
+    {
+        log_error(
+            "Block connect failed, one of the scripts failed validation."
+        );
+        
+        return false;
     }
     
     /**
@@ -2044,7 +2071,7 @@ bool block::check_block(
 }
 
 bool block::read_from_disk(
-    const std::shared_ptr<block_index> & index, const bool & read_transactions
+    const block_index * index, const bool & read_transactions
     )
 {
     if (read_transactions == false)
@@ -2613,9 +2640,7 @@ bool block::write_to_disk(
     return true;
 }
 
-bool block::set_best_chain(
-    db_tx & tx_db, std::shared_ptr<block_index> & index_new
-    )
+bool block::set_best_chain(db_tx & tx_db, block_index * index_new)
 {
     auto block_hash = get_hash();
 
@@ -2641,7 +2666,7 @@ bool block::set_best_chain(
             return false;
         }
         
-        stack_impl::get_block_index_genesis() = index_new;
+        stack_impl::set_block_index_genesis(index_new);
     }
     else if (
         m_header.hash_previous_block == globals::instance().hash_best_chain()
@@ -2665,7 +2690,7 @@ bool block::set_best_chain(
         /**
          * List of blocks that need to be connected afterwards.
          */
-        std::vector< std::shared_ptr<block_index> > index_secondary;
+        std::vector<block_index *> index_secondary;
 
         /**
          * Reorganization is costly in terms of database load because it works
@@ -2760,7 +2785,7 @@ bool block::set_best_chain(
      * New best block.
      */
     globals::instance().set_hash_best_chain(block_hash);
-    stack_impl::get_block_index_best() = index_new;
+    stack_impl::set_block_index_best(index_new);
     globals::instance().set_block_index_fbbh_last(0);
     globals::instance().set_best_block_height(
         stack_impl::get_block_index_best()->height()
@@ -2778,6 +2803,17 @@ bool block::set_best_chain(
         ", trust = " << stack_impl::get_best_chain_trust().to_string() <<
         ", date = " << stack_impl::get_block_index_best()->time() << "."
     );
+    
+    if (globals::instance().best_block_height() % 500 == 0)
+    {
+        log_info(
+            "Block, set best chain, new best = " <<
+            globals::instance().hash_best_chain().to_string() <<
+            ", height = " << globals::instance().best_block_height() <<
+            ", trust = " << stack_impl::get_best_chain_trust().to_string() <<
+            ", date = " << stack_impl::get_block_index_best()->time() << "."
+        );
+    }
     
     log_debug(
         "Block, stake checkpoint = " <<
@@ -2846,10 +2882,10 @@ bool block::add_to_block_index(
     /**
      * Construct new block index.
      */
-    auto index_new = std::make_shared<block_index>(
-        file_index, block_position, *this
-    );
-    
+    auto index_new = new block_index(file_index, block_position, *this);
+#if (!defined _MSC_VER)
+#warning :TODO: If we do not add it to the block index map delete it to not leak memory.
+#endif
     if (index_new == 0)
     {
         log_error("Block add to block index failed, allocation failure.");
@@ -3031,9 +3067,7 @@ bool block::add_to_block_index(
     return true;
 }
 
-bool block::set_best_chain_inner(
-    db_tx & tx_db, const std::shared_ptr<block_index> & index_new
-    )
+bool block::set_best_chain_inner(db_tx & tx_db, block_index * index_new)
 {
     if (
         connect_block(tx_db, index_new) == false ||
@@ -3057,7 +3091,7 @@ bool block::set_best_chain_inner(
     /**
      * Add to current best branch.
      */
-    index_new->block_index_previous()->block_index_next() = index_new;
+    index_new->block_index_previous()->set_block_index_next(index_new);
 
     /**
      * Delete redundant memory transactions.
@@ -3070,7 +3104,7 @@ bool block::set_best_chain_inner(
     return true;
 }
 
-void block::invalid_chain_found(const std::shared_ptr<block_index> & index_new)
+void block::invalid_chain_found(const block_index * index_new)
 {
     if (index_new->chain_trust() > stack_impl::get_best_invalid_trust())
     {
@@ -3314,7 +3348,7 @@ std::size_t block::get_maximum_size_median220()
     /**
      * Get the last block_index.
      */
-    const auto * index = stack_impl::get_block_index_best().get();
+    const auto * index = stack_impl::get_block_index_best();
     
     static median_filter<std::size_t> g_median_filter(
         blocks_to_go_back, minimum_maximum_size
@@ -3389,7 +3423,7 @@ std::size_t block::get_maximum_size_median220()
             }
         }
         
-        index = index->block_index_previous().get();
+        index = index->block_index_previous();
     }
 
     /**

@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of vcash.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * vcash is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -781,7 +781,7 @@ bool rpc_connection::send_json_rpc_response(
         http_response += "Content-Length: " +
             std::to_string(body.size()) + "\r\n"
         ;
-        http_response += "Server: VanillaCoin JSON-RPC 2.0\r\n";
+        http_response += "Server: XVC JSON-RPC 2.0\r\n";
         http_response += "\r\n";
         
         http_response += body;
@@ -902,7 +902,7 @@ bool rpc_connection::send_json_rpc_responses(
         http_response += "Content-Length: " +
             std::to_string(body.size()) + "\r\n"
         ;
-        http_response += "Server: VanillaCoin JSON-RPC 2.0\r\n";
+        http_response += "Server: XVC JSON-RPC 2.0\r\n";
         http_response += "\r\n";
         
         http_response += body;
@@ -2206,8 +2206,9 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getdifficulty(
              */
             ret.result.put(
                 "proof-of-stake",
-                stack_impl_.difficulty(utility::get_last_block_index(
-                stack_impl::get_block_index_best(), true))
+                stack_impl_.difficulty(const_cast<block_index *> (
+                utility::get_last_block_index(
+                stack_impl::get_block_index_best(), true)))
             );
             
             /**
@@ -2663,7 +2664,7 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getblocktemplate(
          * Update the block.
          */
         static std::uint32_t transactions_updated_last;
-        static std::shared_ptr<block_index> index_previous;
+        static block_index * index_previous = 0;
         static std::time_t start;
         static std::shared_ptr<block> blk;
         
@@ -4265,7 +4266,7 @@ rpc_connection::json_rpc_response_t rpc_connection::json_listsinceblock(
 
     try
     {
-        std::shared_ptr<block_index> index_block;
+        block_index * index_block = 0;
         
         auto target_confirms = 1;
     
@@ -4341,7 +4342,7 @@ rpc_connection::json_rpc_response_t rpc_connection::json_listsinceblock(
                 target_confirms
             ;
 
-            std::shared_ptr<block_index> tmp;
+            block_index * tmp = 0;
             
             for (
                 tmp = stack_impl::get_block_index_best();

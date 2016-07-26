@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of vcash.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * vcash is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -320,9 +320,15 @@ namespace coin {
             static std::shared_ptr<db_env> & get_db_env();
         
             /**
+             * Set's the genesis block.
+             * @param val The block_index.
+             */
+            static void set_block_index_genesis(block_index * val);
+        
+            /**
              * The genesis block index.
              */
-            static std::shared_ptr<block_index> & get_block_index_genesis();
+            static block_index * get_block_index_genesis();
         
             /**
              * The seen stake.
@@ -332,9 +338,15 @@ namespace coin {
             > & get_seen_stake();
         
             /**
+             * Set's the best block index.
+             * @param val The block_index.
+             */
+            static void set_block_index_best(block_index * val);
+        
+            /**
              * The best block index.
              */
-            static std::shared_ptr<block_index> & get_block_index_best();
+            static block_index * get_block_index_best();
         
             /**
              * The best chain trust.
@@ -350,7 +362,7 @@ namespace coin {
              * Inserts a block index.
              * @param hash_block The hash of the block.
              */
-            static std::shared_ptr<block_index> insert_block_index(
+            static block_index * insert_block_index(
                 const sha256 & hash_block
             );
 
@@ -368,9 +380,7 @@ namespace coin {
              * The block difficulty.
              * index The block_index.
              */
-            double difficulty(
-                const std::shared_ptr<block_index> & index = 0
-            ) const;
+            double difficulty(block_index * index = 0) const;
 
             /**
              * Calculates the average network hashes per second based on the
@@ -500,7 +510,7 @@ namespace coin {
             /**
              * The genesis block index.
              */
-            static std::shared_ptr<block_index> g_block_index_genesis;
+            static block_index * g_block_index_genesis;
         
             /**
              * The seen stake.
@@ -510,7 +520,7 @@ namespace coin {
             /**
              * The best block index.
              */
-            static std::shared_ptr<block_index> g_block_index_best;
+            static block_index * g_block_index_best;
         
             /**
              * The best chain trust.

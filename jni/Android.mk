@@ -25,7 +25,7 @@ LOCAL_C_INCLUDES := \
 	./include \
     ./database/include \
 	./deps/boost \
-	./deps/db/build_unix \
+	./deps/platforms/android/db/build_android \
 	./deps/openssl/include
 
 LOCAL_SRC_FILES := \

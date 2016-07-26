@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of vcash.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * vcash is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -176,9 +176,7 @@ namespace coin {
              * @param tx_db The db_tx.
              * @param index The block_index.
              */
-            bool disconnect_block(
-                db_tx & tx_db, const std::shared_ptr<block_index> & index
-            );
+            bool disconnect_block(db_tx & tx_db, block_index * index);
 
             /**
              * connect_block
@@ -186,7 +184,7 @@ namespace coin {
              * @param check_only If true
              */
             bool connect_block(
-                db_tx & tx_db, const std::shared_ptr<block_index> & pindex,
+                db_tx & tx_db, block_index * pindex,
                 const bool  & check_only = false
             );
         
@@ -251,7 +249,7 @@ namespace coin {
              * @param read_transactions If true the transctions will be read.
              */
             bool read_from_disk(
-                const std::shared_ptr<block_index> & index,
+                const block_index * index,
                 const bool & read_transactions = true
             );
     
@@ -281,9 +279,7 @@ namespace coin {
              * @param tx_db The db_tx.
              * @param index_new The block_index.
              */
-            bool set_best_chain(
-                db_tx & tx_db, std::shared_ptr<block_index> & index_new
-            );
+            bool set_best_chain(db_tx & tx_db, block_index * index_new);
         
             /**
              * Adds the block to the block index.
@@ -300,16 +296,14 @@ namespace coin {
              * @param index_new The new block_index.
              */
             bool set_best_chain_inner(
-                db_tx & tx_db, const std::shared_ptr<block_index> & index_new
+                db_tx & tx_db, block_index * index_new
             );
         
             /**
              * Should be called when an invalid chain is found.
              * @param index_new The block_index.
              */
-            static void invalid_chain_found(
-                const std::shared_ptr<block_index> & index_new
-            );
+            static void invalid_chain_found(const block_index * index_new);
         
             /**
              * Signs (ppcoin).

@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of vcash.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * vcash is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -49,7 +49,7 @@ db_env::~db_env()
     close_DbEnv();
 }
 
-bool db_env::open(const std::uint32_t & cache_size)
+bool db_env::open(const std::int32_t & cache_size)
 {
     if (state_ == state_closed)
     {
@@ -75,17 +75,37 @@ bool db_env::open(const std::uint32_t & cache_size)
             DB_CREATE | DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL |
             DB_INIT_TXN | DB_THREAD | DB_RECOVER
         ;
+        
+        flags |= DB_PRIVATE;
 
         std::lock_guard<std::recursive_mutex> l1(m_mutex_DbEnv);
-        
+
         m_DbEnv.set_lg_dir(log_path.c_str());
-        m_DbEnv.set_cachesize(
-            cache_size / 1024, (cache_size % 1024) * 1048576, 1
-        );
-        m_DbEnv.set_lg_bsize(1048576);
-        m_DbEnv.set_lg_max(10485760);
-        m_DbEnv.set_lk_max_locks(537000);
-        m_DbEnv.set_lk_max_objects(40000);
+        
+        /**
+         * Confgiure according to cache size.
+         */
+        if (cache_size == 1)
+        {
+            m_DbEnv.set_cachesize(0, 0x100000, 1);
+
+            m_DbEnv.set_lg_bsize(0x10000);
+            m_DbEnv.set_lg_max(1048576);
+            m_DbEnv.set_lk_max_locks(10000);
+            m_DbEnv.set_lk_max_objects(10000);
+        }
+        else
+        {
+            m_DbEnv.set_cachesize(
+                cache_size / 1024, (cache_size % 1024) * 1048576, 1
+            );
+
+            m_DbEnv.set_lg_bsize(1048576);
+            m_DbEnv.set_lg_max(10485760);
+            m_DbEnv.set_lk_max_locks(537000);
+            m_DbEnv.set_lk_max_objects(10000);
+        }
+        
         m_DbEnv.set_errfile(fopen(errfile_path.c_str(), "a"));
         m_DbEnv.set_flags(DB_AUTO_COMMIT, 1);
         m_DbEnv.set_flags(DB_TXN_WRITE_NOSYNC, 1);

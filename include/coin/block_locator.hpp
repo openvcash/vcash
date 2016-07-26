@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of vcash.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * vcash is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -49,7 +49,7 @@ namespace coin {
              * Constructor
              * @param index The block_index.
              */
-            explicit block_locator(std::shared_ptr<block_index> index);
+            explicit block_locator(const block_index * index);
         
             /**
              * Constructor
@@ -112,7 +112,7 @@ namespace coin {
              * Sets
              * @param index The block_index.
              */
-            void set(const std::shared_ptr<block_index> & index);
+            void set(const block_index * index);
 
             /**
              * Gets the distance back.
@@ -122,7 +122,7 @@ namespace coin {
             /**
              *  The block index.
              */
-            std::shared_ptr<block_index> get_block_index();
+            block_index * get_block_index();
 
             /**
              * The block hash.

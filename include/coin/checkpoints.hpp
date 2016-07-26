@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of vcash.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * vcash is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -60,7 +60,9 @@ namespace coin {
              * @param height The block height.
              * @param hash The sha256.
              */
-            bool check_hardened(const std::int32_t & height, const sha256 & hash);
+            bool check_hardened(
+                const std::int32_t & height, const sha256 & hash
+            );
         
             /**
              * Check against synchronized checkpoint.
@@ -68,8 +70,7 @@ namespace coin {
              * @param index_previous The previous block index.
              */
             bool check_sync(
-                const sha256 & hash_block,
-                const std::shared_ptr<block_index> & index_previous
+                const sha256 & hash_block, const block_index * index_previous
             );
     
             /**
@@ -136,7 +137,7 @@ namespace coin {
             /**
              * Get last synchronized checkpoint (ppcoin).
              */
-            std::shared_ptr<block_index> get_last_sync_checkpoint();
+            const block_index * get_last_sync_checkpoint();
     
             /**
              * Sets the hash of the invalid checkpoint.

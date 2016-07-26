@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of vcash.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * vcash is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -82,11 +82,11 @@ tcp_connection::tcp_connection(
     , timer_ping_(ios)
     , timer_ping_timeout_(ios)
     , did_send_getblocks_(false)
+    , last_getblocks_index_begin_(0)
     , time_last_block_received_(std::time(0))
     , timer_delayed_stop_(ios)
     , timer_getblocks_(ios)
     , timer_addr_rebroadcast_(ios)
-    , time_last_getblocks_received_(0)
     , time_last_getblocks_sent_(0)
     , timer_cbstatus_(ios)
     , did_send_cbstatus_cbready_code_(false)
@@ -405,7 +405,7 @@ void tcp_connection::send_addr_message(const bool & local_address_only)
 }
 
 void tcp_connection::send_getblocks_message(
-    const std::shared_ptr<block_index> & index_begin, const sha256 & hash_end
+    const block_index * index_begin, const sha256 & hash_end
     )
 {
     /**
@@ -427,16 +427,18 @@ void tcp_connection::send_getblocks_message(
         }
         
         /**
-         * Only allow one getblocks message every 3 seconds per connection.
+         * Only allow one getblocks message every one seconds per connection.
          */
-        if (std::time(0) - time_last_getblocks_sent_ >= 3)
+        if (std::time(0) - time_last_getblocks_sent_ >= 1)
         {
             /**
              * Set the last time we sent a getblocks.
              */
             time_last_getblocks_sent_ = std::time(0);
             
-            last_getblocks_index_begin_ = index_begin;
+            last_getblocks_index_begin_ =
+                const_cast<block_index *> (index_begin)
+            ;
             last_getblocks_hash_end_ = hash_end;
             
             if (auto t = m_tcp_transport.lock())
@@ -1395,6 +1397,47 @@ void tcp_connection::send_getdata_message()
             (m_protocol_version_services & protocol::operation_mode_peer) == 1
             )
         {
+            /**
+             * Prevent duplicate requests for inv data.
+             */
+            static std::map<inventory_vector, std::time_t>
+                g_data_already_asked_for
+            ;
+
+            static std::mutex g_mutex_data_already_asked_for;
+
+            std::lock_guard<std::mutex> l1(g_mutex_data_already_asked_for);
+
+            auto it1 = g_data_already_asked_for.begin();
+
+            while (it1 != g_data_already_asked_for.end())
+            {
+                if (std::time(0) - it1->second > 3)
+                {
+                    it1 = g_data_already_asked_for.erase(it1);
+                }
+                else
+                {
+                    ++it1;
+                }
+            }
+
+            auto it2 = getdata_.begin();
+
+            while (it2 != getdata_.end())
+            {
+                if (g_data_already_asked_for.count(*it2) > 0)
+                {
+                    it2 = getdata_.erase(it2);
+                }
+                else
+                {
+                    g_data_already_asked_for[*it2] = std::time(0);
+
+                    ++it2;
+                }
+            }
+
             if (getdata_.size() > 0)
             {
                 /**
@@ -3048,159 +3091,134 @@ bool tcp_connection::handle_message(message & msg)
     }
     else if (msg.header().command == "getblocks")
     {
+        /**
+         * If we are a peer with an up-to-date blockchain handle the
+         * getblocks message.
+         */
         if (
-            (m_protocol_version_services &
-            protocol::operation_mode_peer) == 1 &&
-            std::time(0) - time_last_getblocks_received_ < 3
+            utility::is_initial_block_download() == false &&
+            globals::instance().operation_mode() ==
+            protocol::operation_mode_peer
             )
         {
+            /**
+             * Find the last block the sender has in the main chain.
+             */
+            auto index = block_locator(
+                msg.protocol_getblocks().hashes
+            ).get_block_index();
+            
+            /**
+             * Send the rest of the chain.
+             */
+            if (index)
+            {
+                index = index->block_index_next();
+            }
+            
+            /**
+             * We send 500 block hashes.
+             */
+            enum { default_blocks = 500 };
+            
+            /**
+             * The limit on the number of blocks to send.
+             */
+            std::int16_t limit = default_blocks;
+
             log_debug(
-                "TCP connection remote peer is sending getblocks too fast (" <<
-                (std::time(0) - time_last_getblocks_received_) <<
-                "), rate limiting."
+                "TCP connection getblocks " <<
+                (index ? index->height() : -1) << " to " <<
+                msg.protocol_getblocks().hash_stop.to_string(
+                ).substr(0, 20) << " limit " << limit << "."
             );
             
             /**
-             * Set the last time we got a getblocks.
+             * The block hashes to send.
              */
-            time_last_getblocks_received_ = std::time(0);
+            std::vector<sha256> block_hashes;
+            
+            for (; index; index = index->block_index_next())
+            {
+                if (
+                    index->get_block_hash() ==
+                    msg.protocol_getblocks().hash_stop
+                    )
+                {
+                    log_debug(
+                        "TCP connection getblocks stopping at " <<
+                        index->height() << " " <<
+                        index->get_block_hash().to_string().substr(0, 20)
+                        << "."
+                    );
+                    
+                    /**
+                     * Tell the downloading node about the latest block if
+                     * it's without risk of being rejected due to stake
+                     * connection check (ppcoin).
+                     */
+                    if (
+                        msg.protocol_getblocks().hash_stop !=
+                        globals::instance().hash_best_chain() &&
+                        index->time() + constants::min_stake_age >
+                        stack_impl::get_block_index_best()->time()
+                        )
+                    {
+                        /**
+                         * Insert the block hash.
+                         */
+                        block_hashes.push_back(
+                            globals::instance().hash_best_chain()
+                        );
+                    }
+                    
+                    break;
+                }
+                
+                /**
+                 * Insert the block hash.
+                 */
+                block_hashes.push_back(index->get_block_hash());
+                
+                if (--limit <= 0)
+                {
+                    /**
+                     * When this block is requested, we'll send an inv
+                     * that'll make them getblocks the next batch of
+                     * inventory.
+                     */
+                    log_debug(
+                        "TCP connection getblocks stopping at limit " <<
+                        index->height() << " " <<
+                        index->get_block_hash().to_string().substr(
+                        0, 20) << "."
+                    );
+
+                    /**
+                     * Set the hash continue.
+                     */
+                    m_hash_continue = index->get_block_hash();
+                    
+                    break;
+                }
+            }
+
+            if (block_hashes.size() > 0)
+            {
+                /**
+                 * Send an inv message with the block hashes.
+                 */
+                send_inv_message(
+                    inventory_vector::type_msg_block, block_hashes
+                );
+            }
         }
         else
         {
-            /**
-             * Set the last time we got a getblocks.
-             */
-            time_last_getblocks_received_ = std::time(0);
-            
-            /**
-             * If we are a peer with an up-to-date blockchain handle the
-             * getblocks message.
-             */
-            if (
-                utility::is_initial_block_download() == false &&
-                globals::instance().operation_mode() ==
-                protocol::operation_mode_peer
-                )
-            {
-                /**
-                 * Find the last block the sender has in the main chain.
-                 */
-                auto index = block_locator(
-                    msg.protocol_getblocks().hashes
-                ).get_block_index();
-                
-                /**
-                 * Send the rest of the chain.
-                 */
-                if (index)
-                {
-                    index = index->block_index_next();
-                }
-                
-                /**
-                 * We send 500 block hashes.
-                 */
-                enum { default_blocks = 500 };
-                
-                /**
-                 * The limit on the number of blocks to send.
-                 */
-                std::int16_t limit = default_blocks;
-
-                log_debug(
-                    "TCP connection getblocks " <<
-                    (index ? index->height() : -1) << " to " <<
-                    msg.protocol_getblocks().hash_stop.to_string(
-                    ).substr(0, 20) << " limit " << limit << "."
-                );
-                
-                /**
-                 * The block hashes to send.
-                 */
-                std::vector<sha256> block_hashes;
-                
-                for (; index; index = index->block_index_next())
-                {
-                    if (
-                        index->get_block_hash() ==
-                        msg.protocol_getblocks().hash_stop
-                        )
-                    {
-                        log_debug(
-                            "TCP connection getblocks stopping at " <<
-                            index->height() << " " <<
-                            index->get_block_hash().to_string().substr(0, 20)
-                            << "."
-                        );
-                        
-                        /**
-                         * Tell the downloading node about the latest block if
-                         * it's without risk of being rejected due to stake
-                         * connection check (ppcoin).
-                         */
-                        if (
-                            msg.protocol_getblocks().hash_stop !=
-                            globals::instance().hash_best_chain() &&
-                            index->time() + constants::min_stake_age >
-                            stack_impl::get_block_index_best()->time()
-                            )
-                        {
-                            /**
-                             * Insert the block hash.
-                             */
-                            block_hashes.push_back(
-                                globals::instance().hash_best_chain()
-                            );
-                        }
-                        
-                        break;
-                    }
-                    
-                    /**
-                     * Insert the block hash.
-                     */
-                    block_hashes.push_back(index->get_block_hash());
-                    
-                    if (--limit <= 0)
-                    {
-                        /**
-                         * When this block is requested, we'll send an inv
-                         * that'll make them getblocks the next batch of
-                         * inventory.
-                         */
-                        log_debug(
-                            "TCP connection getblocks stopping at limit " <<
-                            index->height() << " " <<
-                            index->get_block_hash().to_string().substr(
-                            0, 20) << "."
-                        );
-
-                        /**
-                         * Set the hash continue.
-                         */
-                        m_hash_continue = index->get_block_hash();
-                        
-                        break;
-                    }
-                }
-
-                if (block_hashes.size() > 0)
-                {
-                    /**
-                     * Send an inv message with the block hashes.
-                     */
-                    send_inv_message(
-                        inventory_vector::type_msg_block, block_hashes
-                    );
-                }
-            }
-            else
-            {
-                log_debug(
-                    "TCP connection (operation mode client or initial download)"
-                    " is dropping getblocks message."
-                );
-            }
+            log_debug(
+                "TCP connection (operation mode client or initial download)"
+                " is dropping getblocks message."
+            );
         }
     }
     else if (msg.header().command == "checkpoint")
@@ -3252,7 +3270,7 @@ bool tcp_connection::handle_message(message & msg)
         
         const auto & locator = msg.protocol_getheaders().locator;
         
-        std::shared_ptr<block_index> index;
+        block_index * index = 0;
         
         if (locator && locator->is_null())
         {

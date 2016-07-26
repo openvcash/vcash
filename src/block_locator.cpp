@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
  *
- * This file is part of vanillacoin.
+ * This file is part of vcash.
  *
- * vanillacoin is free software: you can redistribute it and/or modify
+ * vcash is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License with
  * additional permissions to the one published by the Free Software
  * Foundation, either version 3 of the License, or (at your option)
@@ -32,7 +32,7 @@ block_locator::block_locator()
     // ...
 }
 
-block_locator::block_locator(std::shared_ptr<block_index> index)
+block_locator::block_locator(const block_index * index)
     : data_buffer()
 {
     set(index);
@@ -116,24 +116,22 @@ bool block_locator::is_null()
     return m_have.size() == 0;
 }
 
-void block_locator::set(const std::shared_ptr<block_index> & index)
+void block_locator::set(const block_index * index)
 {
     m_have.clear();
     
     int step = 1;
     
-    const auto * index_tmp = index.get();
-    
-    while (index_tmp)
+    while (index)
     {
-        m_have.push_back(index_tmp->get_block_hash());
+        m_have.push_back(index->get_block_hash());
 
         /**
          * Exponentially larger steps back.
          */
-        for (int i = 0; index_tmp && i < step; i++)
+        for (auto i = 0; index && i < step; i++)
         {
-            index_tmp = index_tmp->block_index_previous().get();
+            index = index->block_index_previous();
         }
         
         if (m_have.size() > 10)
@@ -183,7 +181,7 @@ int block_locator::get_distance_back()
     return distance;
 }
 
-std::shared_ptr<block_index> block_locator::get_block_index()
+block_index * block_locator::get_block_index()
 {
     /**
      * Find the first block the caller has in the main chain.
