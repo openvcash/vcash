@@ -31,7 +31,7 @@
 #include <coin/hash.hpp>
 #include <coin/inventory_vector.hpp>
 #include <coin/sha256.hpp>
-#error "0.4.8 RC1 Merge in progress, please wait until complete."
+
 namespace coin {
 
 class alert;
