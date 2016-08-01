@@ -1865,6 +1865,8 @@ void stack_impl::stop()
         }
     }
     
+    globals::instance().io_service().stop();
+    
     /**
      * Reset the work.
      */
