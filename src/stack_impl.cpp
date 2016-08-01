@@ -1864,9 +1864,7 @@ void stack_impl::stop()
             i.second->set_block_index_next(0);
         }
     }
-    
-    globals::instance().io_service().stop();
-    
+
     /**
      * Reset the work.
      */
@@ -4898,7 +4896,7 @@ void stack_impl::loop()
     {
         try
         {
-            globals::instance().io_service().run();
+            globals::instance().io_service().run_one();
             
             if (work_ == 0)
             {
