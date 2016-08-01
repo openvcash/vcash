@@ -91,6 +91,11 @@ void rpc_manager::stop()
 {
     timer_.cancel();
     
+    if (m_rpc_server)
+    {
+        m_rpc_server->close();
+    }
+    
     std::lock_guard<std::recursive_mutex> l1(mutex_tcp_connections_);
     
     for (auto & i : m_tcp_connections)

@@ -257,7 +257,9 @@ void stack_impl::start()
      * Get the database cache size.
      */
     auto database_cache_size = m_configuration.database_cache_size();
-    
+#if (! defined _MSC_VER)
+#warning :TODO: Remove AFTER 0.4.8 final is released.
+#endif // _MSC_VER
     /**
      * For verion 0.4.8 RC we need to reset the database cache size to 25
      * Megabytes.
@@ -1862,12 +1864,6 @@ void stack_impl::stop()
             i.second->set_block_index_next(0);
         }
     }
-    
-    /**
-     * :FIXME: There is an io_service object that is not being cancelled so
-     * calling join will block preventing exit.
-     */
-    globals::instance().io_service().stop();
     
     /**
      * Reset the work.
