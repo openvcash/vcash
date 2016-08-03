@@ -35,12 +35,12 @@
 using namespace coin;
 
 std::uint64_t db_wallet::g_accounting_entry_number = 0;
+std::uint32_t db_wallet::g_wallet_updated = 0;
 
 db_wallet::db_wallet(
     const std::string & file_name, const std::string & file_mode
     )
     : db(file_name, file_mode)
-    , m_wallet_updated(0)
 {
     // ...
 }
@@ -450,7 +450,7 @@ bool db_wallet::backup(const wallet & w, const std::string & root_path)
              */
             if (
                 filesystem::copy_file(filesystem::data_path() + "wallet.dat",
-                "/sdcard/Android/data/net.vcash.vcash/wallet.dat"
+                "/sdcard/Android/data/net.vanillacoin.vanillacoin/wallet.dat"
                 ) == true
                 )
             {
@@ -850,7 +850,7 @@ bool db_wallet::read_key_value(
 
 bool db_wallet::write_name(const std::string & addr, const std::string & name)
 {
-    m_wallet_updated++;
+    g_wallet_updated++;
     
     return write(std::make_pair(std::string("name"), addr), name);
 }
@@ -913,7 +913,7 @@ bool db_wallet::write_account(const std::string & name, account & acct)
 
 bool db_wallet::erase_tx(const sha256 & val)
 {
-    m_wallet_updated++;
+    g_wallet_updated++;
     
     std::string key_prefix = "tx";
     
@@ -929,21 +929,21 @@ bool db_wallet::erase_tx(const sha256 & val)
 
 bool db_wallet::write_tx(const sha256 & val, transaction_wallet & tx_w)
 {
-    m_wallet_updated++;
+    g_wallet_updated++;
     
     return write(std::make_pair(std::string("tx"), val), tx_w);
 }
 
 bool db_wallet::write_orderposnext(const std::int64_t & value)
 {
-    m_wallet_updated++;
+    g_wallet_updated++;
     
     return write(std::string("orderposnext"), value);
 }
 
 bool db_wallet::write_defaultkey(const key_public & value)
 {
-    m_wallet_updated++;
+    g_wallet_updated++;
     
     return write(std::string("defaultkey"), value.bytes());
 }
@@ -952,7 +952,7 @@ bool db_wallet::write_key(
     const key_public & pub_key, const key::private_t & pri_key
     )
 {
-    m_wallet_updated++;
+    g_wallet_updated++;
     
     return write(
         std::make_pair(std::string("key"), pub_key.bytes()), pri_key, false
@@ -965,7 +965,7 @@ bool db_wallet::write_crypted_key(
     const bool & erase_unencrypted_key
     )
 {
-    m_wallet_updated++;
+    g_wallet_updated++;
     
     if (
         write(std::make_pair(std::string("ckey"), pub_key.bytes()),
@@ -988,14 +988,14 @@ bool db_wallet::write_master_key(
     const std::uint32_t & id, const key_wallet_master & key_master
     )
 {
-    m_wallet_updated++;
+    g_wallet_updated++;
     
     return write(std::make_pair(std::string("mkey"), id), key_master, true);
 }
 
 bool db_wallet::write_c_script(const ripemd160 & h, const script & script_redeem)
 {
-    m_wallet_updated++;
+    g_wallet_updated++;
     
     return write(
         std::make_pair(std::string("cscript"), h), script_redeem, false
@@ -1009,7 +1009,7 @@ bool db_wallet::read_bestblock(block_locator & val)
 
 bool db_wallet::write_bestblock(const block_locator & val)
 {
-    m_wallet_updated++;
+    g_wallet_updated++;
     
     return write(std::string("bestblock"), val);
 }
@@ -1029,14 +1029,14 @@ bool db_wallet::read_pool(const std::int64_t & pool, key_pool & keypool)
 
 bool db_wallet::write_pool(const std::int64_t & pool, key_pool & keypool)
 {
-    m_wallet_updated++;
+    g_wallet_updated++;
     
     return write(std::make_pair(std::string("pool"), pool), keypool);
 }
 
 bool db_wallet::erase_pool(const std::int64_t & pool)
 {
-    m_wallet_updated++;
+    g_wallet_updated++;
 
     std::string key_prefix = "pool";
     
@@ -1242,6 +1242,11 @@ void db_wallet::list_account_credit_debit(
 
         ptr_cursor->close();
     }
+}
+
+const std::uint32_t & db_wallet::wallet_updated()
+{
+    return g_wallet_updated;
 }
 
 bool db_wallet::is_key_type(const std::string & type)

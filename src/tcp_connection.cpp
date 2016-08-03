@@ -425,63 +425,85 @@ void tcp_connection::send_getblocks_message(
         {
             return;
         }
-        
+
         /**
-         * Only allow one getblocks message every one seconds per connection.
+         * Prevent duplicate getblocks.
          */
-        if (std::time(0) - time_last_getblocks_sent_ >= 1)
+        static std::map<sha256, std::time_t>
+            g_getblocks_already_asked_for
+        ;
+        
+        static std::mutex g_mutex_getblocks_already_asked_for;
+        
+        std::lock_guard<std::mutex> l1(g_mutex_getblocks_already_asked_for);
+        
+        auto it1 = g_getblocks_already_asked_for.begin();
+        
+        while (it1 != g_getblocks_already_asked_for.end())
         {
-            /**
-             * Set the last time we sent a getblocks.
-             */
-            time_last_getblocks_sent_ = std::time(0);
-            
-            last_getblocks_index_begin_ =
-                const_cast<block_index *> (index_begin)
-            ;
-            last_getblocks_hash_end_ = hash_end;
-            
-            if (auto t = m_tcp_transport.lock())
+            if (std::time(0) - it1->second > 8)
             {
-                /**
-                 * Allocate the message.
-                 */
-                message msg("getblocks");
-                
-                /**
-                 * Set the hashes.
-                 */
-                msg.protocol_getblocks().hashes =
-                    block_locator(index_begin).have()
-                ;
-                
-                /**
-                 * Set the stop hash.
-                 */
-                msg.protocol_getblocks().hash_stop = hash_end;
-                
-                log_none("TCP connection is sending getblocks.");
-                
-                /**
-                 * Encode the message.
-                 */
-                msg.encode();
-                
-                /**
-                 * Write the message.
-                 */
-                t->write(msg.data(), msg.size());
+                it1 = g_getblocks_already_asked_for.erase(it1);
             }
             else
             {
-                stop();
+                ++it1;
             }
+        }
+        
+        if (g_getblocks_already_asked_for.count(hash_end) > 0)
+        {
+            return;
         }
         else
         {
-            log_none(
-                "TCP connection tried to send getblocks message too soon."
-            );
+            g_getblocks_already_asked_for[hash_end] = std::time(0);
+        }
+
+        /**
+         * Set the last time we sent a getblocks.
+         */
+        time_last_getblocks_sent_ = std::time(0);
+        
+        last_getblocks_index_begin_ =
+            const_cast<block_index *> (index_begin)
+        ;
+        last_getblocks_hash_end_ = hash_end;
+        
+        if (auto t = m_tcp_transport.lock())
+        {
+            /**
+             * Allocate the message.
+             */
+            message msg("getblocks");
+            
+            /**
+             * Set the hashes.
+             */
+            msg.protocol_getblocks().hashes =
+                block_locator(index_begin).have()
+            ;
+            
+            /**
+             * Set the stop hash.
+             */
+            msg.protocol_getblocks().hash_stop = hash_end;
+            
+            log_none("TCP connection is sending getblocks.");
+            
+            /**
+             * Encode the message.
+             */
+            msg.encode();
+            
+            /**
+             * Write the message.
+             */
+            t->write(msg.data(), msg.size());
+        }
+        else
+        {
+            stop();
         }
     }
 }

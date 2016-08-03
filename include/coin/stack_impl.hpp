@@ -615,13 +615,6 @@ namespace coin {
             std::recursive_mutex mutex_callback_;
         
             /**
-             * The wallet flush timer.
-             */
-            boost::asio::basic_waitable_timer<
-                std::chrono::steady_clock
-            > timer_wallet_flush_;
-        
-            /**
              * The block status timer.
              */
             boost::asio::basic_waitable_timer<

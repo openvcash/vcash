@@ -82,7 +82,6 @@ big_number stack_impl::g_best_invalid_trust;
 
 stack_impl::stack_impl(coin::stack & owner)
     : stack_(owner)
-    , timer_wallet_flush_(globals::instance().io_service())
     , timer_status_block_(globals::instance().io_service())
     , timer_status_wallet_(globals::instance().io_service())
     , timer_status_blockchain_(globals::instance().io_service())
@@ -935,31 +934,7 @@ void stack_impl::start()
                          */
                         m_status_manager->insert(status);
                     }
-                    
-                    /**
-                     * Periodically flush the main wallet.
-                     * :FIXME: Move this into the wallet_manager so that it can
-                     * flush all wallets.
-                     */
-                    timer_wallet_flush_.expires_from_now(
-                        std::chrono::seconds(300)
-                    );
-                    timer_wallet_flush_.async_wait(
-                        globals::instance().strand().wrap(
-                            [this](boost::system::error_code ec)
-                            {
-                                if (ec)
-                                {
-                                    // ...
-                                }
-                                else
-                                {
-                                    globals::instance().wallet_main()->flush();
-                                }
-                            }
-                        )
-                    );
-            
+
                     auto * index_rescan = stack_impl::get_block_index_best();
 
                     /**
@@ -1067,13 +1042,16 @@ void stack_impl::start()
                 auto cores = std::thread::hardware_concurrency();
 
                 /**
-                 * Do not use more than 8 cores.
+                 * Do not use more than 4 cores.
                  */
-                if (cores >= 8)
+                if (cores >= 4)
                 {
-                    cores = 7;
+                    cores = 4;
                 }
-#if 1
+#if (! defined _MSC_VER)
+#warning :TODO: Use only the main thread (core) for (SPV) clients.
+#endif
+#if 0
                 /**
                  * We use only one IO core, everything else is processed in
                  * seperate threads or queues.
@@ -1827,11 +1805,6 @@ void stack_impl::stop()
     );
     
     /**
-     * Cancel the wallet flush timer.
-     */
-    timer_wallet_flush_.cancel();
-    
-    /**
      * Cancel the block status timer.
      */
     timer_status_block_.cancel();
@@ -1865,6 +1838,11 @@ void stack_impl::stop()
         }
     }
 
+    /**
+     * Stop the boost::asio::io_service.
+     */
+    globals::instance().io_service().stop();
+    
     /**
      * Reset the work.
      */
@@ -4896,7 +4874,7 @@ void stack_impl::loop()
     {
         try
         {
-            globals::instance().io_service().run_one();
+            globals::instance().io_service().run();
             
             if (work_ == 0)
             {

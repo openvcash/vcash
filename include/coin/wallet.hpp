@@ -908,11 +908,23 @@ namespace coin {
             bool m_is_file_backed;
         
         protected:
-            
+        
+            /**
+             * The flush timer handler.
+             */
+            void tick_flush(const boost::system::error_code &);
+        
             /**
              * The mutex.
              */
             mutable std::recursive_mutex mutex_;
+
+            /**
+             * The wallet flush timer.
+             */
+            boost::asio::basic_waitable_timer<
+                std::chrono::steady_clock
+            > timer_flush_;
         
             /**
              * The resend transactions timer.

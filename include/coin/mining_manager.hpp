@@ -119,9 +119,8 @@ namespace coin {
 
             /**
              * The main loop.
-             * @param is_proof_of_stake If true it is stake.
              */
-            void loop(const bool & is_proof_of_stake);
+            void loop();
         
             /**
              * The Proof-of-Stake timer handler.

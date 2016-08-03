@@ -21,6 +21,7 @@
 #include <chrono>
 #include <future>
 #include <stdexcept>
+#include <thread>
 
 #include <boost/lexical_cast.hpp>
 
@@ -58,6 +59,7 @@ wallet::wallet()
     , m_order_position_next(0)
     , m_master_key_max_id(0)
     , m_is_file_backed(true)
+    , timer_flush_(globals::instance().io_service())
     , resend_transactions_timer_(globals::instance().io_service())
     , zerotime_lock_queue_timer_(globals::instance().io_service())
     , time_last_resend_(0)
@@ -72,6 +74,7 @@ wallet::wallet(stack_impl & impl)
     , m_order_position_next(0)
     , m_master_key_max_id(0)
     , m_is_file_backed(true)
+    , timer_flush_(globals::instance().io_service())
     , resend_transactions_timer_(globals::instance().io_service())
     , zerotime_lock_queue_timer_(globals::instance().io_service())
     , time_last_resend_(0)
@@ -81,6 +84,17 @@ wallet::wallet(stack_impl & impl)
 
 void wallet::start()
 {
+    /**
+     * Periodically flush.
+     */
+    timer_flush_.expires_from_now(
+        std::chrono::seconds(8)
+    );
+    timer_flush_.async_wait(globals::instance().strand().wrap(
+        std::bind(&wallet::tick_flush, this,
+        std::placeholders::_1))
+    );
+    
     /**
      * Start the timer after a random time interval.
      */
@@ -134,6 +148,7 @@ void wallet::start()
 
 void wallet::stop()
 {
+    timer_flush_.cancel();
     resend_transactions_timer_.cancel();
     zerotime_lock_queue_timer_.cancel();
 }
@@ -141,6 +156,8 @@ void wallet::stop()
 void wallet::flush()
 {
     std::lock_guard<std::recursive_mutex> l1(mutex_);
+    
+    auto start = std::chrono::system_clock::now();
     
     auto reference_count = 0;
 
@@ -172,6 +189,12 @@ void wallet::flush()
             log_info("Wallet flushed to disk.");
         }
     }
+
+    std::chrono::duration<double> elapsed_seconds =
+        std::chrono::system_clock::now() - start
+    ;
+    
+    log_info("Wallet flush took " << elapsed_seconds.count() << " seconds.");
 }
 
 bool wallet::encrypt(const std::string & passphrase)
@@ -4869,4 +4892,56 @@ bool wallet::do_encrypt(const std::string & passphrase)
     }
     
     return true;
+}
+
+void wallet::tick_flush(const boost::system::error_code & ec)
+{
+    if (ec)
+    {
+        // ...
+    }
+    else
+    {
+        /**
+         * The last time the wallet was updated (written to).
+         */
+        static auto g_wallet_updated = db_wallet::wallet_updated();
+        
+        if (g_wallet_updated != db_wallet::wallet_updated())
+        {
+            log_info("Wallet database was updated, flushing.");
+            
+            g_wallet_updated = db_wallet::wallet_updated();
+            
+            /**
+             * Spawn a detached thread to perform the flush.
+             */
+            std::thread([this]()
+            {
+                /**
+                 * Periodically flush.
+                 */
+                flush();
+#if 0
+                /**
+                 * log_stat_print
+                 */
+                stack_impl::get_db_env()->get_DbEnv().log_stat_print(
+                    DB_STAT_ALL | DB_STAT_CLEAR | DB_STAT_ALLOC
+                );
+#endif
+            }).detach();
+        }
+    
+        /**
+         * Restart timer.
+         */
+        timer_flush_.expires_from_now(
+            std::chrono::seconds(8)
+        );
+        timer_flush_.async_wait(globals::instance().strand().wrap(
+            std::bind(&wallet::tick_flush, this,
+            std::placeholders::_1))
+        );
+    }
 }

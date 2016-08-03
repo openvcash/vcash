@@ -127,10 +127,10 @@ void db::close()
         
         if (m_DbTxn)
         {
-            m_DbTxn->abort();
-        
-            m_DbTxn = 0;
+            m_DbTxn->abort(), m_DbTxn = 0;
         }
+        
+        m_Db = 0;
         
         /**
          * Flush database activity from memory pool to disk log.

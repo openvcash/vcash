@@ -292,12 +292,17 @@ namespace coin {
                 std::list<accounting_entry> & entries
             );
         
+            /**
+             * The number of times the wallet has been updated.
+             */
+            static const std::uint32_t & wallet_updated();
+        
         private:
         
             /**
              * The number of times the wallet has been updated.
              */
-            std::uint32_t m_wallet_updated;
+            static std::uint32_t g_wallet_updated;
         
         protected:
         
