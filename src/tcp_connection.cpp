@@ -432,13 +432,13 @@ void tcp_connection::send_getblocks_message(
         static std::map<sha256, std::time_t>
             g_getblocks_already_asked_for
         ;
-        
+
         static std::mutex g_mutex_getblocks_already_asked_for;
-        
+
         std::lock_guard<std::mutex> l1(g_mutex_getblocks_already_asked_for);
-        
+
         auto it1 = g_getblocks_already_asked_for.begin();
-        
+
         while (it1 != g_getblocks_already_asked_for.end())
         {
             if (std::time(0) - it1->second > 8)
@@ -450,7 +450,7 @@ void tcp_connection::send_getblocks_message(
                 ++it1;
             }
         }
-        
+
         if (g_getblocks_already_asked_for.count(hash_end) > 0)
         {
             return;

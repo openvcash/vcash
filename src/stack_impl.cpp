@@ -292,6 +292,10 @@ void stack_impl::start()
         }
     }
     
+#if (defined USE_LEVELDB && USE_LEVELDB)
+    database_cache_size = 1;
+#endif // USE_LEVELDB
+    
     /**
      * Open the db_env.
      */
