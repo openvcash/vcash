@@ -27,7 +27,7 @@
 #include <coin/transaction.hpp>
 
 namespace coin {
-
+    
     /**
      * Implements a RAII script checker.
      */

@@ -24,8 +24,8 @@
 #include <cstdint>
 #include <deque>
 #include <map>
-#include <mutex>
 #include <set>
+#include <vector>
 
 #include <boost/asio.hpp>
 
@@ -40,8 +40,11 @@
 namespace coin {
 
     class block;
+    class block_merkle;
     class data_buffer;
     class script;
+    class transaction;
+    class transaction_bloom_filter;
     class wallet;
     
     /**
@@ -128,11 +131,21 @@ namespace coin {
             protocol::operation_mode_t & operation_mode();
         
             /**
-             * If true we are a client.
+             * Set if we are a (SPV) client.
              */
-            const bool & is_client() const
+            void set_client_spv(const bool & val)
+            {
+                assert(m_operation_mode == protocol::operation_mode_client);
+                
+                m_is_client_spv = val;
+            }
+        
+            /**
+             * If true we are a (SPV) client.
+             */
+            const bool & is_client_spv() const
             {                
-                return m_is_client;
+                return m_is_client_spv;
             }
         
             /**
@@ -185,8 +198,6 @@ namespace coin {
              */
             void set_best_block_height(const std::int32_t & value)
             {
-                std::lock_guard<std::mutex> l1(mutex_);
-                
                 m_best_block_height = value;
             }
         
@@ -195,8 +206,6 @@ namespace coin {
              */
             const std::int32_t & best_block_height() const
             {
-                std::lock_guard<std::mutex> l1(mutex_);
-                
                 return m_best_block_height;
             }
         
@@ -205,8 +214,6 @@ namespace coin {
              */
             std::map<sha256, block_index *> & block_indexes()
             {
-                std::lock_guard<std::mutex> l1(mutex_);
-                
                 return m_block_indexes;
             }
         
@@ -215,8 +222,6 @@ namespace coin {
              */
             void set_hash_best_chain(const sha256 & value)
             {
-                std::lock_guard<std::mutex> l1(mutex_);
-                
                 m_hash_best_chain = value;
             }
         
@@ -225,8 +230,6 @@ namespace coin {
              */
             sha256 & hash_best_chain()
             {
-                std::lock_guard<std::mutex> l1(mutex_);
-                
                 return m_hash_best_chain;
             }
         
@@ -236,8 +239,6 @@ namespace coin {
              */
             void set_block_index_fbbh_last(block_index * val)
             {
-                std::lock_guard<std::mutex> l1(mutex_);
-                
                 m_block_index_fbbh_last = val;
             }
         
@@ -246,8 +247,6 @@ namespace coin {
              */
             const block_index * block_index_fbbh_last() const
             {
-                std::lock_guard<std::mutex> l1(mutex_);
-                
                 return m_block_index_fbbh_last;
             }
         
@@ -290,8 +289,6 @@ namespace coin {
              */
             std::map<sha256, sha256> & proofs_of_stake()
             {
-                std::lock_guard<std::mutex> l1(mutex_);
-                
                 return m_proofs_of_stake;
             }
         
@@ -301,8 +298,6 @@ namespace coin {
              */
             void set_wallet_main(const std::shared_ptr<wallet> & val)
             {
-                std::lock_guard<std::mutex> l1(mutex_);
-                
                 m_wallet_main = val;
             }
         
@@ -311,8 +306,6 @@ namespace coin {
              */
             const std::shared_ptr<wallet> & wallet_main() const
             {
-                std::lock_guard<std::mutex> l1(mutex_);
-                
                 return m_wallet_main;
             }
         
@@ -321,8 +314,6 @@ namespace coin {
              */
             std::map<sha256, std::shared_ptr<block> > & orphan_blocks()
             {
-                std::lock_guard<std::mutex> l1(mutex_);
-                
                 return m_orphan_blocks;
             }
         
@@ -333,8 +324,6 @@ namespace coin {
                 sha256, std::shared_ptr<block>
             > & orphan_blocks_by_previous()
             {
-                std::lock_guard<std::mutex> l1(mutex_);
-                
                 return m_orphan_blocks_by_previous;
             }
 
@@ -345,8 +334,6 @@ namespace coin {
                 sha256, std::shared_ptr<data_buffer>
             > & orphan_transactions()
             {
-                std::lock_guard<std::mutex> l1(mutex_);
-                
                 return m_orphan_transactions;
             }
         
@@ -357,8 +344,6 @@ namespace coin {
                 sha256, std::map<sha256, std::shared_ptr<data_buffer> >
             > & orphan_transactions_by_previous()
             {
-                std::lock_guard<std::mutex> l1(mutex_);
-                
                 return m_orphan_transactions_by_previous;
             }
         
@@ -369,8 +354,6 @@ namespace coin {
                 std::pair<point_out, std::uint32_t>
             > & stake_seen_orphan()
             {
-                std::lock_guard<std::mutex> l1(mutex_);
-                
                 return m_stake_seen_orphan;
             }
         
@@ -379,8 +362,6 @@ namespace coin {
              */
             median_filter<std::uint32_t> & peer_block_counts()
             {
-                std::lock_guard<std::mutex> l1(mutex_);
-                
                 return m_peer_block_counts;
             }
         
@@ -389,8 +370,6 @@ namespace coin {
              */
             std::map<inventory_vector, data_buffer> & relay_invs()
             {
-                std::lock_guard<std::mutex> l1(mutex_);
-                
                 return m_relay_invs;
             }
         
@@ -401,8 +380,6 @@ namespace coin {
                 std::pair<std::int64_t, inventory_vector>
                 > & relay_inv_expirations()
             {
-                std::lock_guard<std::mutex> l1(mutex_);
-                
                 return m_relay_inv_expirations;
             }
         
@@ -559,6 +536,127 @@ namespace coin {
              */
             const std::uint8_t & zerotime_answers_minimum() const;
         
+            /**
+             * Sets the active tcp_connection identifier.
+             * @param val The value.
+             */
+            void set_spv_active_tcp_connection_identifier(
+                const std::uint32_t & val
+            );
+        
+            /**
+             * The (SPV) active tcp_connection identifier.
+             */
+            const std::uint32_t & spv_active_tcp_connection_identifier() const;
+        
+            /**
+             * The (SPV) block_merkle's
+             */
+            std::map<sha256, std::unique_ptr<block_merkle> > &
+                spv_block_merkles()
+            ;
+        
+            /**
+             * Sets the last (SPV) block we've received.
+             * @param val The block_merkle.
+             */
+            void set_spv_block_last(const block_merkle & val);
+        
+            /**
+             * Sets the last (SPV) block we've received.
+             * @param val The block_merkle.
+             */
+            void set_spv_block_last(const std::unique_ptr<block_merkle> & val);
+ 
+            /**
+             * The last (SPV) block_merkle we've received.
+             */
+            const std::unique_ptr<block_merkle> & spv_block_last() const;
+        
+            /**
+             * The (SPV) block_merkle orphans.
+             */
+            std::map<sha256, std::unique_ptr<block_merkle> >
+                & spv_block_merkle_orphans()
+            ;
+        
+            /**
+             * Sets the last (SPV) orphan block_merkle we've received.
+             * @param val The block_merkle.
+             */
+            void set_spv_block_orphan_last(const block_merkle & val);
+        
+            /**
+             * The last (SPV) orphan block_merkle we've received.
+             */
+            const std::unique_ptr<block_merkle> &
+                spv_block_orphan_last() const
+            ;
+
+            /**
+             * Sets the best (SPV) block height.
+             * @param value The value.
+             */
+            void set_spv_best_block_height(const std::int32_t & value);
+        
+            /**
+             * The best (SPV) block height.
+             */
+            const std::int32_t & spv_best_block_height() const;
+        
+            /**
+             * The SPV transaction_bloom_filter.
+             */
+            const std::unique_ptr<transaction_bloom_filter>
+                & spv_transaction_bloom_filter() const
+            ;
+        
+            /**
+             * Returns the (SPV) block locators by stepping back over
+             * previoiusly validated blocks in the chain.
+             */
+            std::vector<sha256> spv_block_locator_hashes();
+        
+            /**
+             * If true getblocks is used over getheaders.
+             * @param val The value.
+             */
+            void set_spv_use_getblocks(const bool & val);
+        
+            /**
+             * If true getblocks is used over getheaders.
+             */
+            const bool & spv_use_getblocks() const;
+        
+            /**
+             * Set the time our (SPV) wallet was created.
+             * @param val The std::time.
+             */
+            void set_spv_time_wallet_created(const std::time_t & val);
+        
+            /**
+             * The time our wallet was created.
+             */
+            const std::time_t spv_time_wallet_created() const;
+        
+            /**
+             * The (SPV) orphan transactions.
+             */
+            std::map<sha256, std::vector<transaction> > &
+                spv_block_merkle_orphan_transactions()
+            ;
+        
+            /**
+             * Resets the (SPV) transaction_bloom_filter to the current
+             * current environment.
+             */
+            void spv_reset_bloom_filter();
+
+            /**
+             * The false positive rate.
+             */
+            const double spv_false_positive_rate() const;
+    
         private:
         
             /**
@@ -587,9 +685,9 @@ namespace coin {
             protocol::operation_mode_t m_operation_mode;
         
             /**
-             * If true we are a client.
+             * If true we are a (SPV) client.
              */
-            bool m_is_client;
+            bool m_is_client_spv;
         
             /**
              * The version nonce (used to detect connections to ourselves).
@@ -739,12 +837,67 @@ namespace coin {
              */
             std::uint8_t m_zerotime_answers_minimum;
         
-        protected:
+            /**
+             * The (SPV) active tcp_connection identifier.
+             */
+            std::uint32_t m_spv_active_tcp_connection_identifier;
         
             /**
-             * The std::mutex (for containers only).
+             * The (SPV) block_merkle's
              */
-            mutable std::mutex mutex_;
+            std::map<sha256, std::unique_ptr<block_merkle> >
+                m_spv_block_merkles
+            ;
+        
+            /**
+             * The last (SPV) block_merkle we've received.
+             */
+            std::unique_ptr<block_merkle> m_spv_block_last;
+        
+            /**
+             * The (SPV) block_merkle orphans.
+             */
+            std::map<sha256, std::unique_ptr<block_merkle> >
+                m_spv_block_merkle_orphans
+            ;
+        
+            /**
+             * The last (SPV) orphan block_merkle we've received.
+             */
+            std::unique_ptr<block_merkle> m_spv_block_orphan_last;
+        
+            /**
+             * The (SPV) best block height.
+             */
+            mutable std::int32_t m_spv_best_block_height;
+        
+            /**
+             * The SPV transaction_bloom_filter.
+             */
+            std::unique_ptr<transaction_bloom_filter>
+                m_spv_transaction_bloom_filter
+            ;
+        
+            /**
+             * If true getblocks is used over getheaders.
+             */
+            bool m_spv_use_getblocks;
+        
+            /**
+             * The time our wallet was created.
+             */
+            std::time_t m_spv_time_wallet_created;
+        
+            /**
+             * The (SPV) block_merkle orphan transactions.
+             */
+            std::map<sha256, std::vector<transaction> >
+                m_spv_block_merkle_orphan_transactions
+            ;
+        
+        protected:
+        
+            // ...
     };
     
 }  // namespace coin

@@ -1245,7 +1245,7 @@ bool incentive_manager::vote(const std::string & wallet_address)
         const auto & vote_score = ivote.score();
         
         log_info(
-            "Incentive manager forming vote, "
+            "Incentve manager forming vote, "
             "calculated score = " << vote_score <<
             " for " <<
             ivote.address().substr(0, 8) << "."

@@ -444,6 +444,11 @@ namespace coin {
              */
             std::vector<recent_endpoint_t> recent_good_endpoints();
         
+            /**
+             * Prints.
+             */
+            void print();
+        
         private:
 
             /**

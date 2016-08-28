@@ -342,6 +342,15 @@ namespace coin {
             );
         
             /**
+             * Performs a database environment operation.
+             * @param request The json_rpc_request_t.
+             */
+            json_rpc_response_t json_databaseenv(
+                const json_rpc_request_t & request
+            );
+
+
+            /**
              * Encodes databasefind data into JSON format.
              * @param request The json_rpc_request_t.
              */

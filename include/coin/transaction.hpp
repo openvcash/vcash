@@ -61,12 +61,12 @@ namespace coin {
              * The number confirmations.
              */
             enum { confirmations = 3 };
-        
+    
             /**
              * The maximum encoded size in bytes.
              */
             enum { maxmimum_length = 300000 };
-    
+        
             /**
              * Constructor
              */
@@ -280,7 +280,6 @@ namespace coin {
                 const bool & strict_pay_to_script_hash = true,
                 const bool & check_signature = true,
                 std::vector<script_checker> * script_checker_checks = 0
-                
             );
         
             /**

@@ -69,6 +69,9 @@ LOCAL_SRC_FILES := \
 	../src/globals.cpp \
 	../src/hash.cpp \
 	../src/hc256.cpp \
+	../src/hd_configuration.cpp \
+	../src/hd_ecdsa.cpp \
+	../src/hd_keychain.cpp \
 	../src/http_transport.cpp \
 	../src/incentive.cpp \
 	../src/incentive_answer.cpp \

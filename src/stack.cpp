@@ -276,6 +276,14 @@ void stack::rpc_send(const std::string & command_line)
     }
 }
 
+void stack::rescan_chain()
+{
+    if (stack_impl_)
+    {
+        stack_impl_->rescan_chain();
+    }
+}
+
 void stack::set_configuration_wallet_transaction_history_maximum(
     const std::time_t & val
     )

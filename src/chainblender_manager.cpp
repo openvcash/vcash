@@ -369,7 +369,7 @@ void chainblender_manager::connect(const boost::asio::ip::tcp::endpoint & ep)
                                     if (tcp_connection_)
                                     {
                                         tcp_connection_->send_cbbroadcast_message(
-                                            *cbbroadcast
+                                            cbbroadcast
                                         );
                                     }
                                 }
@@ -646,7 +646,7 @@ void chainblender_manager::connect(const boost::asio::ip::tcp::endpoint & ep)
                             if (tcp_connection_)
                             {
                                 tcp_connection_->send_cbbroadcast_message(
-                                    *cbbroadcast
+                                    cbbroadcast
                                 );
                             }
                         }
@@ -1087,7 +1087,7 @@ void chainblender_manager::connect(const boost::asio::ip::tcp::endpoint & ep)
                                                 if (tcp_connection_)
                                                 {
                                                     tcp_connection_->send_cbbroadcast_message(
-                                                        *cbbroadcast
+                                                        cbbroadcast
                                                     );
                                                 }
                                                 
@@ -1549,7 +1549,7 @@ void chainblender_manager::do_tick_ecdhe(const std::uint32_t & interval)
             if (tcp_connection_)
             {
                 tcp_connection_->send_cbbroadcast_message(
-                    *cbbroadcast
+                    cbbroadcast
                 );
             }
             
@@ -1867,7 +1867,7 @@ void chainblender_manager::do_tick_tx(const std::uint32_t & interval)
                     if (tcp_connection_)
                     {
                         tcp_connection_->send_cbbroadcast_message(
-                            *session_.chainblender_broadcast_type_tx
+                            session_.chainblender_broadcast_type_tx
                         );
                     }
                 }
@@ -1898,7 +1898,7 @@ void chainblender_manager::do_tick_tx(const std::uint32_t & interval)
                 if (tcp_connection_)
                 {
                     tcp_connection_->send_cbbroadcast_message(
-                        *session_.chainblender_broadcast_type_tx
+                        session_.chainblender_broadcast_type_tx
                     );
                 }
             }
@@ -2851,7 +2851,7 @@ void chainblender_manager::broadcast_signatures(
          */
         if (tcp_connection_)
         {
-            tcp_connection_->send_cbbroadcast_message(*cbbroadcast);
+            tcp_connection_->send_cbbroadcast_message(cbbroadcast);
         }
     }
 }

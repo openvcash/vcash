@@ -162,6 +162,11 @@ namespace coin {
             void update_time(block_index & previous);
         
             /**
+             * Creates and returns the genesis block.
+             */
+            static block create_genesis();
+        
+            /**
              * Creates a block and fills it with transactions.
              * @param w The wallet.
              * @param proof_of_stake If true a Proof-of-Stake block will be
@@ -321,7 +326,7 @@ namespace coin {
              * worth of size history (median).
              */
             static std::size_t get_maximum_size_median220();
-        
+            
             /**
              * Gets the block index file at the given index.
              * @param file_index The file index.

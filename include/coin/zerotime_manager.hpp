@@ -110,6 +110,11 @@ namespace coin {
                 const zerotime_vote & ztvote
             );
         
+            /**
+             * Prints
+             */
+            void print();
+        
         private:
         
             /**

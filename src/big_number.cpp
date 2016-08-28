@@ -131,6 +131,13 @@ big_number::big_number(const std::vector<std::uint8_t> & vch)
     set_vector(vch);
 }
 
+big_number::big_number(const std::string & hex)
+{
+    BN_init(this);
+    
+    set_hex(hex);
+}
+
 big_number::~big_number()
 {
     BN_clear_free(this);
@@ -156,6 +163,11 @@ void big_number::decode(data_buffer & buffer)
     buffer.read_bytes(
         reinterpret_cast<char *>(&bytes[0]), bytes.size()
     );
+}
+
+bool big_number::is_zero() const
+{
+    return BN_is_zero(this);
 }
 
 void big_number::set_ulong(unsigned long n)
@@ -437,6 +449,24 @@ std::vector<std::uint8_t> big_number::get_vector() const
     return vch;
 }
 
+void big_number::set_vector_no_reverse(
+    const std::vector<std::uint8_t> & bytes
+    )
+{
+    BN_bin2bn(&bytes[0], bytes.size(), this);
+}
+
+std::vector<std::uint8_t> big_number::get_vector_no_reverse() const
+{
+    std::vector<std::uint8_t> ret;
+
+    ret.resize(BN_num_bytes(this));
+
+    BN_bn2bin(this, &ret[0]);
+
+    return ret;
+}
+
 big_number & big_number::set_compact(unsigned int val)
 {
     unsigned int size = val >> 24;
@@ -473,7 +503,7 @@ unsigned int big_number::get_compact() const
     return val;
 }
 
-void big_number::set_hex(const std::string& str)
+void big_number::set_hex(const std::string & str)
 {
     const char * psz = str.c_str();
     

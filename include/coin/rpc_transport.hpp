@@ -217,6 +217,8 @@ namespace coin {
             
         protected:
         
+            friend class rpc_connection;
+            
             /**
              * Set's up the socket for VoIP operation on iOS.
              */
@@ -230,7 +232,7 @@ namespace coin {
             /**
              * The boost::asio::strand.
              */
-            boost::asio::strand & strand_;
+            boost::asio::strand strand_;
 
             /**
              * The connect timeout timer.

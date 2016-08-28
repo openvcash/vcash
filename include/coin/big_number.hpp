@@ -178,6 +178,11 @@ namespace coin {
             explicit big_number(const std::vector<std::uint8_t> & vch);
     
             /**
+             * Constructor
+             */
+            explicit big_number(const std::string & hex);
+        
+            /**
              * Destructor
              */
             ~big_number();
@@ -358,6 +363,11 @@ namespace coin {
             }
         
             /**
+             * BN_is_zero
+             */
+            bool is_zero() const;
+        
+            /**
              * Sets ulong.
              * @param n The value.
              */
@@ -417,6 +427,18 @@ namespace coin {
              */
             std::vector<std::uint8_t> get_vector() const;
         
+            /**
+             * Sets the vector without reversing the input.
+             */
+            void set_vector_no_reverse(
+                const std::vector<std::uint8_t> & bytes
+            );
+        
+            /**
+             * Gets the vector without reversing the output.
+             */
+            std::vector<std::uint8_t> get_vector_no_reverse() const;
+    
             /**
              * Sets compact.
              * @param val The value.

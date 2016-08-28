@@ -117,14 +117,24 @@ namespace coin {
         protected:
         
             /**
+             * The boost::asio::io_service loop.
+             */
+            void loop();
+        
+            /**
+             * The std::thread.
+             */
+            std::thread thread_;
+        
+            /**
              * The boost::asio::io_service.
              */
-            boost::asio::io_service & io_service_;
-        
+            boost::asio::io_service io_service_;
+
             /**
              * The boost::asio::strand.
              */
-            boost::asio::strand & strand_;
+            boost::asio::strand strand_;
         
             /**
              * The stack_impl.

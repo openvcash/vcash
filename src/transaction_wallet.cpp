@@ -22,6 +22,7 @@
 
 #include <coin/chainblender.hpp>
 #include <coin/db_wallet.hpp>
+#include <coin/globals.hpp>
 #include <coin/message.hpp>
 #include <coin/database_stack.hpp>
 #include <coin/tcp_connection.hpp>
@@ -141,6 +142,16 @@ void transaction_wallet::encode(data_buffer & buffer)
         i.encode(buffer);
     }
     
+    /**
+     * If we are an (SPV) client set the block height as a value.
+     */
+    if (globals::instance().is_client_spv() == true)
+    {
+        auto block_height = spv_block_height();
+        
+        m_values["spv_block_height"] = std::to_string(block_height);
+    }
+    
     buffer.write_var_int(m_values.size());
     
     for (auto & i : m_values)
@@ -243,7 +254,7 @@ void transaction_wallet::decode(data_buffer & buffer)
     
     m_from_account = m_values["fromaccount"];
 
-    if (m_values.count("spent"))
+    if (m_values.count("spent") > 0)
     {
         for (auto & i : m_values["spent"])
         {
@@ -253,6 +264,19 @@ void transaction_wallet::decode(data_buffer & buffer)
     else
     {
         m_spent.assign(transaction_out().size(), is_spent);
+    }
+    
+    /**
+     * If we are an (SPV) client set the block height from the value.
+     */
+    if (globals::instance().is_client_spv() == true)
+    {
+        if (m_values.count("spv_block_height") > 0)
+        {
+            auto block_height = std::stoi(m_values["spv_block_height"]);
+            
+            set_spv_block_height(block_height);
+        }
     }
     
     /**
@@ -315,11 +339,13 @@ void transaction_wallet::get_amounts(
     {
         if (get_blocks_to_maturity() > 0)
         {
-            generated_immature = wallet_->get_credit(*this);
+            generated_immature =
+                wallet_->get_credit(*this) - wallet_->get_debit(*this)
+            ;
         }
         else
         {
-            generated_mature = get_credit();
+            generated_mature = get_credit() - get_debit();
         }
         
         return;
@@ -470,11 +496,95 @@ void transaction_wallet::add_supporting_transactions(db_tx & tx_db)
                 tx = *wallet_previous[hash];
             }
             else if (
-                globals::instance().is_client() == false &&
+                globals::instance().is_client_spv() == false &&
                 tx_db.read_disk_transaction(hash, tx)
                 )
             {
                 // ...
+            }
+            else
+            {
+                log_error(
+                    "Transaction wallet, add supporting transactions failed, "
+                    "unsupported transaction."
+                );
+                
+                continue;
+            }
+
+            auto depth = tx.set_merkle_branch();
+            
+            m_previous_transactions.push_back(tx);
+
+            if (depth < copy_depth)
+            {
+                for (auto & txin : tx.transactions_in())
+                {
+                    work_queue.push_back(txin.previous_out().get_hash());
+                }
+            }
+        }
+    }
+
+    /**
+     * Reverse the previous transactions.
+     */
+    std::reverse(
+        m_previous_transactions.begin(), m_previous_transactions.end()
+    );
+}
+
+void transaction_wallet::spv_add_supporting_transactions()
+{
+    assert(globals::instance().is_client_spv() == true);
+    
+    /**
+     * Clear the previois transactions.
+     */
+    m_previous_transactions.clear();
+
+    const int copy_depth = 3;
+    
+    if (set_merkle_branch() < copy_depth)
+    {
+        std::vector<sha256> work_queue;
+        
+        for (auto & tx_in : transactions_in())
+        {
+            work_queue.push_back(tx_in.previous_out().get_hash());
+        }
+        
+        std::map<sha256, const transaction_merkle *> wallet_previous;
+        
+        std::set<sha256> already_done;
+        
+        for (auto i = 0; i < work_queue.size(); i++)
+        {
+            sha256 hash = work_queue[i];
+            
+            if (already_done.count(hash) > 0)
+            {
+                continue;
+            }
+            
+            already_done.insert(hash);
+
+            transaction_merkle tx;
+            
+            auto it = wallet_->transactions().find(hash);
+            
+            if (it != wallet_->transactions().end())
+            {
+                tx = it->second;
+                
+                for (auto & tx_previous : it->second.previous_transactions())
+                {
+                    wallet_previous[tx_previous.get_hash()] = &tx_previous;
+                }
+            }
+            else if (wallet_previous.count(hash) > 0)
+            {
+                tx = *wallet_previous[hash];
             }
             else
             {
@@ -967,18 +1077,61 @@ void transaction_wallet::relay_wallet_transaction(
     }
 }
 
-void transaction_wallet::relay_wallet_zerotime_lock(
-    const std::shared_ptr<tcp_connection_manager> & connection_manager,
-    const bool & use_udp
+void transaction_wallet::spv_relay_wallet_transaction(
+    const std::shared_ptr<tcp_connection_manager> & connection_manager
     )
 {
-   db_tx tx_db("r");
-   
-   relay_wallet_zerotime_lock(tx_db, connection_manager, use_udp);
+    if ((is_coin_base() || is_coin_stake()) == false)
+    {
+        auto hash_tx = get_hash();
+
+        log_debug(
+            "Transaction wallet is relaying " <<
+            hash_tx.to_string().substr(0, 10) << "."
+        );
+        
+        /**
+         * Allocate the inventory_vector.
+         */
+        inventory_vector inv(inventory_vector::type_msg_tx, hash_tx);
+        
+        /**
+         * Allocate the data_buffer.
+         */
+        data_buffer buffer;
+        
+        /**
+         * Cast ourselves to our base.
+         */
+        transaction & tx = *reinterpret_cast<transaction *> (this);
+        
+        /**
+         * Encode the transaction.
+         */
+        tx.encode(buffer);
+        
+        /**
+         * Relay the transaction over TCP.
+         */
+        for (auto & i : connection_manager->tcp_connections())
+        {
+            if (auto t = i.second.lock())
+            {
+                /**
+                 * Send the transaction.
+                 */
+                t->send_tx_message(tx);
+                
+                /**
+                 * Send the inventory.
+                 */
+                t->send_relayed_inv_message(inv, buffer);
+            }
+        }
+    }
 }
 
 void transaction_wallet::relay_wallet_zerotime_lock(
-    db_tx & tx_db,
     const std::shared_ptr<tcp_connection_manager> & connection_manager,
     const bool & use_udp
     )

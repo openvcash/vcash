@@ -38,7 +38,7 @@ rpc_transport::rpc_transport(
     , m_read_timeout(0)
     , m_write_timeout(0)
     , io_service_(ios)
-    , strand_(s)
+    , strand_(ios)
     , connect_timeout_timer_(ios)
     , read_timeout_timer_(ios)
     , write_timeout_timer_(ios)

@@ -30,6 +30,7 @@
 #include <coin/address_manager.hpp>
 #include <coin/database_stack.hpp>
 #include <coin/data_buffer.hpp>
+#include <coin/globals.hpp>
 #include <coin/hash.hpp>
 #include <coin/incentive_answer.hpp>
 #include <coin/filesystem.hpp>
@@ -513,7 +514,8 @@ void address_manager::save()
      * Write the new.
      */
     for (
-        auto it = address_info_map_.begin(); it != address_info_map_.end(); ++it
+        auto it = address_info_map_.begin();
+        it != address_info_map_.end(); ++it
         )
     {
         if (nids == number_new_)
@@ -562,7 +564,8 @@ void address_manager::save()
      * Write the tried.
      */
     for (
-        auto it = address_info_map_.begin(); it != address_info_map_.end(); ++it
+        auto it = address_info_map_.begin();
+        it != address_info_map_.end(); ++it
         )
     {
         if (nids == number_tried_)
@@ -1309,6 +1312,17 @@ std::vector<address_manager::recent_endpoint_t>
     return ret;
 }
 
+void address_manager::print()
+{
+    log_debug("m_recent_good_endpoints = " << m_recent_good_endpoints.size());
+    log_debug("key_ = " << key_.size());
+    log_debug("address_info_map_ = " << address_info_map_.size());
+    log_debug("network_address_map_ = " << network_address_map_.size());
+    log_debug("buckets_new_ = " << buckets_new_.size());
+    log_debug("buckets_tried_ = " << buckets_tried_.size());
+    log_debug("probed_endpoints_ = " << probed_endpoints_.size());
+}
+
 std::int32_t address_manager::select_tried(const std::uint32_t & bucket_index)
 {
     std::lock_guard<std::recursive_mutex> l1(mutex_);
@@ -1475,7 +1489,13 @@ void address_manager::tick(const boost::system::error_code & ec)
     {
         std::lock_guard<std::recursive_mutex> l1(mutex_);
         
-        if (utility::is_initial_block_download() == false)
+        auto is_initial_block_download =
+            globals::instance().is_client_spv() ?
+            utility::is_spv_initial_block_download() :
+            utility::is_initial_block_download()
+        ;
+        
+        if (is_initial_block_download == false)
         {
             /**
              * Only keep recent good endpoints that are less than N hours old.
@@ -1604,7 +1624,9 @@ void address_manager::tick(const boost::system::error_code & ec)
             
             std::random_shuffle(endpoints.begin(), endpoints.end());
 
-            enum { max_probes_total = 64 };
+            auto max_probes_total =
+                globals::instance().is_client_spv() == true ? 3 : 64
+            ;
             
             if (endpoints.size() > max_probes_total)
             {
@@ -1878,7 +1900,9 @@ void address_manager::tick(const boost::system::error_code & ec)
             /**
              * The number of minimum good endpoints to maintain.
              */
-            enum { min_good_endpoints = 36 };
+            auto min_good_endpoints =
+                globals::instance().is_client_spv() == true ? 6 : 36
+            ;
             
             auto interval = 8;
             
@@ -1940,5 +1964,10 @@ void address_manager::tick(const boost::system::error_code & ec)
                 std::bind(&address_manager::tick, this, std::placeholders::_1))
             );
         }
+        
+        /**
+         * Print
+         */
+        print();
     }
 }

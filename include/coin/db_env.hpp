@@ -105,11 +105,12 @@ namespace coin {
              * @param file_name The file name.
              */
             void checkpoint_lsn(const std::string & file_name);
-        
+
             /**
              * Flushes.
+             * @param detach_db If true the database will be detached.
              */
-            void flush();
+            void flush(const bool & detach_db = false);
         
             /**
              * The DbEnv.
@@ -129,7 +130,7 @@ namespace coin {
             /**
              * The std::mutex.
              */
-            std::recursive_mutex & mutex_DbEnv();
+            static std::recursive_mutex & mutex_DbEnv();
         
             /**
              * txn_begin
@@ -157,7 +158,7 @@ namespace coin {
             /**
              * The m_DbEnv std::recursive_mutex.
              */
-            std::recursive_mutex m_mutex_DbEnv;
+            static std::recursive_mutex g_mutex_DbEnv;
         
         protected:
         

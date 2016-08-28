@@ -74,6 +74,9 @@ SOURCES =
     globals
 	hash
     hc256
+    hd_configuration
+    hd_ecdsa
+    hd_keychain
 	http_transport
 	incentive
 	incentive_answer

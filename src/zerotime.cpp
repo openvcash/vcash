@@ -21,6 +21,7 @@
 #include <cassert>
 
 #include <coin/address.hpp>
+#include <coin/block_merkle.hpp>
 #include <coin/globals.hpp>
 #include <coin/hash.hpp>
 #include <coin/logger.hpp>
@@ -255,13 +256,25 @@ std::int16_t zerotime::calculate_score(const key_public & public_key)
     /**
      * Get the best block index.
      */
-    auto index = utility::find_block_index_by_height(
-        globals::instance().best_block_height()
-    );
+    block_index * index = 0;
     
-    if (index)
+    if (globals::instance().is_client_spv() == false)
     {
-        const auto & hash_block = index->get_block_hash();
+        index = utility::find_block_index_by_height(
+            globals::instance().best_block_height()
+        );
+    }
+    
+    if (
+        index || (globals::instance().is_client_spv() == true &&
+        globals::instance().spv_block_last())
+        )
+    {
+        const auto & hash_block =
+            globals::instance().is_client_spv() == true ?
+            globals::instance().spv_block_last()->get_hash() :
+            index->get_block_hash()
+        ;
 
         if (public_key.is_valid())
         {
@@ -314,21 +327,56 @@ std::int16_t zerotime::calculate_score(const zerotime_vote & ztvote)
 	std::int16_t ret = -1;
 
 	if (
+        globals::instance().is_client_spv() == false &&
         ztvote.block_height() == 0 ||
         ztvote.block_height() > globals::instance().best_block_height()
         )
 	{
         // ...
 	}
+	else if (
+        globals::instance().is_client_spv() == true &&
+        ztvote.block_height() == 0 ||
+        ztvote.block_height() > globals::instance().spv_best_block_height()
+        )
+	{
+        // ...
+	}
 	else
 	{
-        auto index = utility::find_block_index_by_height(
-            ztvote.block_height()
-        );
+        /**
+         * Get the best block_index.
+         */
+        block_index * index = 0;
         
-        if (index)
+        /**
+         * Get the best block_merkle (for SPV).
+         */
+        std::unique_ptr<block_merkle> merkle_block;
+        
+        if (globals::instance().is_client_spv() == false)
         {
-            const auto & hash_block = index->get_block_hash();
+            index = utility::find_block_index_by_height(ztvote.block_height());
+        }
+        else
+        {
+            for (auto & i : globals::instance().spv_block_merkles())
+            {
+                if (i.second && i.second->height() == ztvote.block_height())
+                {
+                    merkle_block.reset(new block_merkle(*i.second));
+                    
+                    break;
+                }
+            }
+        }
+        
+        if (index || merkle_block)
+        {
+            const auto & hash_block =
+                merkle_block ? merkle_block->get_hash() :
+                index->get_block_hash()
+            ;
             
             if (hash_block == ztvote.hash_block())
             {
@@ -397,4 +445,12 @@ bool zerotime::verify(
     return
         k.set_public_key(public_key) && k.verify(hash_value, signature)
     ;
+}
+
+void zerotime::print()
+{
+    log_debug("m_locked_inputs = " << m_locked_inputs.size());
+    log_debug("m_locks = " << m_locks.size());
+    log_debug("m_votes = " << m_votes.size());
+    log_debug("m_confirmations = " << m_confirmations.size());
 }

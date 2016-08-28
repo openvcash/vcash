@@ -19,7 +19,6 @@
  */
 
 #include <coin/block.hpp>
-#include <coin/constants.hpp>
 #include <coin/data_buffer.hpp>
 #include <coin/hash.hpp>
 #include <coin/merkle_tree_partial.hpp>
@@ -109,6 +108,11 @@ bool merkle_tree_partial::decode(data_buffer & buffer)
     is_invalid_ = false;
     
     return true;
+}
+
+const std::uint32_t & merkle_tree_partial::total_transactions() const
+{
+    return m_total_transactions;
 }
 
 sha256 merkle_tree_partial::calculate_hash(

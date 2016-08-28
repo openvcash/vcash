@@ -314,7 +314,7 @@ bool incentive_vote::verify(data_buffer & buffer)
         {
             ret = true;
             
-            log_debug(
+            log_none(
                 "Incentive vote verified value (" <<
                 hash_value.to_string().substr(0, 8) << ")."
             );

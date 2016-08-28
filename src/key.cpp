@@ -477,12 +477,12 @@ key::secret_t key::get_secret(bool & compressed) const
     
     const BIGNUM * bn = EC_KEY_get0_private_key(m_EC_KEY);
     
-    auto num_bytes = BN_num_bytes(bn);
-    
     if (bn == 0)
     {
         throw std::runtime_error("EC_KEY_get0_private_key failed");
     }
+    
+    auto num_bytes = BN_num_bytes(bn);
     
     auto n = BN_bn2bin(bn, &ret[32 - num_bytes]);
     

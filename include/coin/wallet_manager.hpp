@@ -105,6 +105,15 @@ namespace coin {
             void on_transaction_updated(const sha256 & val);
         
             /**
+             * Called when a transaction has been updated.
+             * @param height The height of the block the transaction is in.
+             * @param val The sha256.
+             */
+            void on_spv_transaction_updated(
+                const std::int32_t & height, const sha256 & hash_tx
+            );
+        
+            /**
              * Called when inventory has changed.
              * @param val The sha256.
              */

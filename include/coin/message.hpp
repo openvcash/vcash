@@ -454,7 +454,22 @@ namespace coin {
              * Creates a block.
              */
             data_buffer create_block();
+ 
+            /**
+             * Creates a filterload.
+             */
+            data_buffer create_filterload();
         
+            /**
+             * Creates a filteradd.
+             */
+            data_buffer create_filteradd();
+        
+            /**
+             * Creates a filterclear.
+             */
+            data_buffer create_filterclear();
+  
             /**
              * Creates a merkleblock.
              */

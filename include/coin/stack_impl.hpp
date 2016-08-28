@@ -44,6 +44,7 @@ namespace coin {
     class alert_manager;
     class block;
     class block_index;
+    class block_merkle;
     class chainblender_manager;
     class database_stack;
     class db_env;
@@ -184,6 +185,11 @@ namespace coin {
             void rpc_send(const std::string & command_line);
         
             /**
+             * Rescans the chain.
+             */
+            void rescan_chain();
+            
+            /**
              * Sets the wallet.transaction.history.maximum
              * @param val The value.
              */
@@ -253,6 +259,17 @@ namespace coin {
             );
         
             /**
+             * Saves the (SPV) block_merkle's.
+             */
+            void spv_block_merkles_save();
+        
+            /**
+             * Loads the (SPV) block_merkle's.
+             * @param trys The number of recursive trys,
+             */
+            void spv_block_merkles_load(std::uint8_t & trys);
+        
+            /**
              * The configuration.
              */
             configuration & get_configuration();
@@ -313,7 +330,12 @@ namespace coin {
              * The incentive_manager.
              */
             std::shared_ptr<incentive_manager> & get_incentive_manager();
-        
+
+            /**
+             * The main std::recursive_mutex.
+             */
+            static std::recursive_mutex & mutex();
+
             /**
              * The db_env
              */
@@ -321,7 +343,6 @@ namespace coin {
         
             /**
              * Set's the genesis block.
-             * @param val The block_index.
              */
             static void set_block_index_genesis(block_index * val);
         
@@ -410,6 +431,31 @@ namespace coin {
                 const std::map<std::string, std::string> & pairs
             );
         
+            /**
+             * Called when an (SPV) merkleblock is received.
+             * @param connection The tcp_connection.
+             * @param merkle_block The block_merkle.
+             * @param transactions_received The transactions we've received that
+             * match the current block_merkle's transaction hashes.
+             */
+            void on_spv_merkle_block(
+                const std::shared_ptr<tcp_connection> & connection,
+                block_merkle & merkle_block,
+                const std::vector<transaction> & transactions_received
+            );
+        
+            /**
+             * Sets the (SPV) block height with time and filtered transaction
+             * hashes.
+             * @param height The height.
+             * @param time The time.
+             @ @param hashes_tx The (matched) transaction hashes.
+             */
+            void set_spv_block_height(
+                const std::int32_t & height, const std::time_t & time,
+                const std::vector<sha256> & hashes_tx
+            );
+            
         private:
         
             /**
@@ -426,6 +472,12 @@ namespace coin {
              * Called periodically to inform about blockchain.
              */
             void on_status_blockchain();
+        
+            /**
+             * Called periodically to perform maintenance on the database
+             * environment.
+             */
+            void on_database_env();
         
             /**
              * The local endpoint.
@@ -501,6 +553,11 @@ namespace coin {
              * The incentive_manager.
              */
             std::shared_ptr<incentive_manager> m_incentive_manager;
+
+            /**
+             * The main std::recursive_mutex.
+             */
+            static std::recursive_mutex g_mutex;
         
             /**
              * The db_env
@@ -634,6 +691,20 @@ namespace coin {
             boost::asio::basic_waitable_timer<
                 std::chrono::steady_clock
             > timer_status_wallet_;
+        
+            /**
+             * The database environment timer.
+             */
+            boost::asio::basic_waitable_timer<
+                std::chrono::steady_clock
+            > timer_database_env_;
+        
+            /**
+             * The (SPV) block_merkle's save timer.
+             */
+            boost::asio::basic_waitable_timer<
+                std::chrono::steady_clock
+            > timer_block_merkles_save_;
     };
     
 } // namespace coin

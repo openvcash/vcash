@@ -23,6 +23,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <thread>
 #include <vector>
 
 #include <boost/asio.hpp>
@@ -73,13 +74,6 @@ namespace coin {
             const boost::asio::ip::tcp::endpoint local_endpoint() const;
         
             /**
-             * The tcp_transport's.
-             */
-            const std::vector< std::weak_ptr<tcp_transport> > &
-                tcp_transports() const
-            ;
-        
-            /**
              * Runs the test case.
              * @param ios The boost::asio::io_service.
              * @param s The boost::asio::strand.
@@ -87,7 +81,7 @@ namespace coin {
             static int run_test(
                 boost::asio::io_service & ios, boost::asio::strand & s
             );
-        
+
         private:
         
             /**
@@ -116,7 +110,7 @@ namespace coin {
             std::vector< std::weak_ptr<tcp_transport> > m_tcp_transports;
         
         protected:
-        
+
             /**
              * The boost::asio::io_service.
              */
@@ -143,11 +137,6 @@ namespace coin {
             boost::asio::basic_waitable_timer<
                 std::chrono::steady_clock
             > transports_timer_;
-        
-            /**
-             * The tcp transports mutex.
-             */
-            mutable std::recursive_mutex tcp_transports_mutex_;
     };
 
 } // namespace coin

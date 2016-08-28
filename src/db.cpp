@@ -57,6 +57,11 @@ db::db(const std::string & file_name, const std::string & file_mode
         flags |= DB_CREATE;
     }
     
+    /**
+     * Make sure no other threads can access the db_env for this scope.
+     */
+    std::lock_guard<std::recursive_mutex> l1(db_env::mutex_DbEnv());
+    
     if (stack_impl::get_db_env()->open() == false)
     {
         throw std::runtime_error("database environment failed to open");
@@ -154,15 +159,23 @@ void db::close()
         {
             minutes = 5;
         }
-        
-        /**
-         * -dblogsize
-         */
-        stack_impl::get_db_env()->get_DbEnv().txn_checkpoint(
-            minutes ? 100 * 1024 : 0, minutes, 0
-        );
 
-        --stack_impl::get_db_env()->file_use_counts()[m_file_name];
+        /**
+         * Make sure no other threads can access the db_env for this scope.
+         */
+        std::lock_guard<std::recursive_mutex> l1(db_env::mutex_DbEnv());
+    
+        if (stack_impl::get_db_env())
+        {
+            /**
+             * -dblogsize
+             */
+            stack_impl::get_db_env()->get_DbEnv().txn_checkpoint(
+                minutes ? 100 * 1024 : 0, minutes, 0
+            );
+
+            --stack_impl::get_db_env()->file_use_counts()[m_file_name];
+        }
     }
 }
 

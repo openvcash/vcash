@@ -89,12 +89,12 @@ void rpc_manager::start()
 
 void rpc_manager::stop()
 {
-    timer_.cancel();
-    
     if (m_rpc_server)
     {
         m_rpc_server->close();
     }
+    
+    timer_.cancel();
     
     std::lock_guard<std::recursive_mutex> l1(mutex_tcp_connections_);
     

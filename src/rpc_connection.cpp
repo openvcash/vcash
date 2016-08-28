@@ -35,6 +35,7 @@
 #include <coin/key_store_crypto.hpp>
 #include <coin/chainblender_manager.hpp>
 #include <coin/database_stack.hpp>
+#include <coin/db_env.hpp>
 #include <coin/db_tx.hpp>
 #include <coin/incentive.hpp>
 #include <coin/incentive_manager.hpp>
@@ -65,7 +66,7 @@ rpc_connection::rpc_connection(
     stack_impl & owner, std::shared_ptr<rpc_transport> transport
     )
     : io_service_(ios)
-    , strand_(s)
+    , strand_(transport->strand_)
     , stack_impl_(owner)
     , rpc_transport_(transport)
 {
@@ -120,13 +121,6 @@ bool rpc_connection::is_transport_valid()
 
 void rpc_connection::on_read(const char * buf, const std::size_t & len)
 {
-    /**
-     * RPC requests are handled first come first serve (one at a time).
-     */
-    static std::recursive_mutex g_mutex;
-    
-    std::lock_guard<std::recursive_mutex> l1(g_mutex);
-    
     if (buffer_.size() > 0)
     {
         buffer_ += std::string(buf, len);
@@ -531,6 +525,10 @@ bool rpc_connection::handle_json_rpc_request(
         {
             response = json_checkwallet(request);
         }
+        else if (request.method == "databaseenv")
+        {
+            response = json_databaseenv(request);
+        }
         else if (request.method == "databasefind")
         {
             response = json_databasefind(request);
@@ -781,7 +779,7 @@ bool rpc_connection::send_json_rpc_response(
         http_response += "Content-Length: " +
             std::to_string(body.size()) + "\r\n"
         ;
-        http_response += "Server: XVC JSON-RPC 2.0\r\n";
+        http_response += "Server: vcash JSON-RPC 2.0\r\n";
         http_response += "\r\n";
         
         http_response += body;
@@ -902,7 +900,7 @@ bool rpc_connection::send_json_rpc_responses(
         http_response += "Content-Length: " +
             std::to_string(body.size()) + "\r\n"
         ;
-        http_response += "Server: XVC JSON-RPC 2.0\r\n";
+        http_response += "Server: vcash JSON-RPC 2.0\r\n";
         http_response += "\r\n";
         
         http_response += body;
@@ -1351,6 +1349,103 @@ rpc_connection::json_rpc_response_t rpc_connection::json_encryptwallet(
         
         /**
          * error_code_misc_error
+         */
+        return json_rpc_response_t{
+            boost::property_tree::ptree(), pt_error, request.id
+        };
+    }
+
+    return ret;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_databaseenv(
+    const json_rpc_request_t & request
+    )
+{
+    json_rpc_response_t ret;
+
+    try
+    {
+        if (request.params.size() == 1)
+        {
+            /**
+             * Get the command parameter.
+             */
+            auto param_command =
+                request.params.front().second.get<std::string> ("")
+            ;
+
+            if (param_command == "stat")
+            {
+                /**
+                 * Make sure no other threads can access the db_env for this
+                 * scope.
+                 */
+                std::lock_guard<std::recursive_mutex> l1(
+                    db_env::mutex_DbEnv()
+                );
+                
+                auto start = std::chrono::system_clock::now();
+                
+                if (stack_impl::get_db_env())
+                {
+                    stack_impl::get_db_env()->get_DbEnv().stat_print(
+                        DB_STAT_ALL
+                    );
+                }
+
+                std::chrono::duration<double> elapsed_seconds =
+                    std::chrono::system_clock::now() - start
+                ;
+
+                log_info(
+                    "Database environment stat took " <<
+                    elapsed_seconds.count() << " seconds."
+                );
+
+                ret.result.put("", "null");
+            }
+            else
+            {
+                auto pt_error = create_error_object(
+                    error_code_invalid_parameter, "invalid parameter"
+                );
+
+                /**
+                 * error_code_invalid_parameter
+                 */
+                return json_rpc_response_t{
+                    boost::property_tree::ptree(), pt_error, request.id
+                };
+            }
+        }
+        else
+        {
+            auto pt_error = create_error_object(
+                error_code_invalid_params, "invalid parameter count"
+            );
+
+            /**
+             * error_code_invalid_params
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
+        }
+    }
+    catch (std::exception & e)
+    {
+        log_error(
+            "RPC Connection failed to create json_databaseenv, what = " <<
+            e.what() << "."
+        );
+
+        auto pt_error = create_error_object(
+            error_code_internal_error, e.what()
+        );
+
+        /**
+         * error_code_internal_error
          */
         return json_rpc_response_t{
             boost::property_tree::ptree(), pt_error, request.id
@@ -5028,6 +5123,8 @@ rpc_connection::json_rpc_response_t rpc_connection::json_sendmany(
                  */
                 std::set<std::int64_t> filter;
                 
+                std::lock_guard<std::recursive_mutex> l1(stack_impl::mutex());
+                
                 /**
                  * Create the transaction.
                  */
@@ -5278,6 +5375,8 @@ rpc_connection::json_rpc_response_t rpc_connection::json_sendtoaddress(
                  * Use any coins.
                  */
                 auto use_only_chainblended = false;
+                
+                std::lock_guard<std::recursive_mutex> l1(stack_impl::mutex());
                 
                 auto result =
                     globals::instance().wallet_main(

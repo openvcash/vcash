@@ -22,6 +22,7 @@
 
 #include <boost/algorithm/string.hpp>
 
+#include <coin/globals.hpp>
 #include <coin/http_transport.hpp>
 #include <coin/logger.hpp>
 #include <coin/network.hpp>
@@ -36,12 +37,11 @@ using namespace coin;
 rpc_server::rpc_server(
     boost::asio::io_service & ios, boost::asio::strand & s, stack_impl & owner
     )
-    : io_service_(ios)
-    , strand_(s)
+    : strand_(io_service_)
     , stack_impl_(owner)
-    , acceptor_ipv4_(ios)
-    , acceptor_ipv6_(ios)
-    , transports_timer_(ios)
+    , acceptor_ipv4_(io_service_)
+    , acceptor_ipv6_(io_service_)
+    , transports_timer_(io_service_)
 {
     // ...
 }
@@ -50,7 +50,7 @@ bool rpc_server::open(const std::uint16_t & port)
 {
     assert(!acceptor_ipv4_.is_open());
     assert(!acceptor_ipv6_.is_open());
-    
+
     log_info("RPC server is opening with port = " << port << ".");
     
     boost::system::error_code ec;
@@ -234,20 +234,26 @@ bool rpc_server::open(const std::uint16_t & port)
      */
     do_ipv6_accept();
     
+    /**
+     * Allocate the thread.
+     */
+    thread_ = std::thread(&rpc_server::loop, this);
+
     return true;
 }
 
 void rpc_server::close()
 {
-    auto self(shared_from_this());
+    acceptor_ipv4_.close();
+    acceptor_ipv6_.close();
+    transports_timer_.cancel();
     
-    io_service_.post(strand_.wrap(
-        [this, self]()
+    if (thread_.joinable())
     {
-        acceptor_ipv4_.close();
-        acceptor_ipv6_.close();
-        transports_timer_.cancel();
-    }));
+        thread_.join();
+    }
+    
+    io_service_.reset();
 }
 
 void rpc_server::set_on_accept(
@@ -389,6 +395,24 @@ void rpc_server::do_tick(const std::uint32_t & seconds)
             do_tick(seconds);
         }
     }));
+}
+
+void rpc_server::loop()
+{
+    while (
+        globals::instance().state() == globals::state_starting ||
+        globals::instance().state() == globals::state_started
+        )
+    {
+        try
+        {
+            io_service_.run();
+        }
+        catch (const boost::system::system_error & e)
+        {
+            log_error("RPC server caught exception, what = " << e.what());
+        }
+    }
 }
 
 int rpc_server::run_test(

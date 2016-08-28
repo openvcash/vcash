@@ -172,7 +172,9 @@ namespace coin {
              * @param tx_db The db_tx.
              * @param index_new The new block_index.
              */
-            static bool reorganize(db_tx & tx_db, block_index * index_new);
+            static bool reorganize(
+                db_tx & tx_db, block_index * index_new
+            );
         
         private:
         

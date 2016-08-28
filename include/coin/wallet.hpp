@@ -31,6 +31,8 @@
 #include <coin/address.hpp>
 #include <coin/destination.hpp>
 #include <coin/db_wallet.hpp>
+#include <coin/hd_configuration.hpp>
+#include <coin/hd_keychain.hpp>
 #include <coin/key_public.hpp>
 #include <coin/key_store_crypto.hpp>
 #include <coin/key_wallet_master.hpp>
@@ -321,6 +323,15 @@ namespace coin {
              */
             void on_transaction_updated(const sha256 & val);
 
+            /**
+             * Called when a transaction has been updated.
+             * @param height The height of the block the transaction is in.
+             * @param val The sha256.
+             */
+            void on_spv_transaction_updated(
+                const std::int32_t & height, const sha256 & hash_tx
+            );
+        
             /**
              * Called when inventory has changed.
              * @param val The sha256.
@@ -770,6 +781,45 @@ namespace coin {
              */
             const std::int64_t & order_position_next() const;
         
+            /**
+             * Sets the timestamp.
+             * @param val The value.
+             */
+            void set_timestamp(const std::time_t & val);
+        
+            /**
+             * The timestamp.
+             */
+            const std::time_t & timestamp() const;
+
+            /**
+             * Sets the HD key master.
+             * @param k The key.
+             * @param do_add_key If true the key will be added to the wallet.
+             * @param write_to_database If true it is written to the database.
+             */
+            bool set_hd_key_master(
+                const key & k,
+                const bool & do_add_key = true,
+                const bool & write_to_database = true
+            );
+        
+            /**
+             * The hd_configuration.
+             */
+            const hd_configuration & get_hd_configuration() const;
+        
+            /**
+             * Sets the hd_configuration.
+             * @param hd_config The hd_configuration.
+             * @param write_to_database If true the hd_configuration will be
+             * written to the database.
+             */
+            bool set_hd_configuration(
+                const hd_configuration & hd_config,
+                const bool & write_to_database
+            );
+        
             /** 
              * Reads an order position.
              * @param order_position The order position.
@@ -819,6 +869,11 @@ namespace coin {
             static std::pair<bool, std::string> get_account_address(
                 wallet & w, const std::string & name, address & addr_out
             );
+        
+            /**
+             * Prints.
+             */
+            void print();
         
         private:
         
@@ -883,6 +938,21 @@ namespace coin {
             mutable std::int64_t m_order_position_next;
         
             /**
+             * The timestamp.
+             */
+            std::time_t m_timestamp;
+        
+            /**
+             * The hd_configuration.
+             */
+            hd_configuration m_hd_configuration;
+        
+            /**
+             * The hd_keychain.
+             */
+            hd_keychain m_hd_keychain;
+        
+            /**
              * The default public key.
              */
             mutable key_public m_key_public_default;
@@ -918,7 +988,8 @@ namespace coin {
              * The mutex.
              */
             mutable std::recursive_mutex mutex_;
-
+        
+        
             /**
              * The wallet flush timer.
              */

@@ -22,6 +22,7 @@
 
 #include <coin/block.hpp>
 #include <coin/block_index.hpp>
+#include <coin/block_merkle.hpp>
 #include <coin/globals.hpp>
 #include <coin/hash.hpp>
 #include <coin/point_out.hpp>
@@ -172,11 +173,50 @@ bool utility::is_initial_block_download()
         g_index_last_best = stack_impl::get_block_index_best();
         g_last_update = std::time(0);
     }
-    
+
     return
         std::time(0) - g_last_update < 10 &&
         stack_impl::get_block_index_best()->time() <
-        std::time(0) - 24 * 60 * 60
+        std::time(0) - 1 * 60 * 60
+    ;
+}
+
+bool utility::is_spv_initial_block_download()
+{
+    if (
+        globals::instance().spv_block_last() == 0 ||
+        globals::instance().spv_best_block_height() <
+        checkpoints::instance().get_total_blocks_estimate()
+        )
+    {
+        return true;
+    }
+    
+    static std::time_t g_last_update;
+    static std::unique_ptr<block_merkle> g_block_merkle_last_best;
+
+    if (g_block_merkle_last_best == nullptr)
+    {
+        g_block_merkle_last_best.reset(
+            new block_merkle(*globals::instance().spv_block_last())
+        );
+        g_last_update = std::time(0);
+    }
+    else if (
+        globals::instance().spv_block_last()->get_hash() !=
+        g_block_merkle_last_best->get_hash()
+        )
+    {
+        g_block_merkle_last_best.reset(
+            new block_merkle(*globals::instance().spv_block_last())
+        );
+        g_last_update = std::time(0);
+    }
+
+    return
+        std::time(0) - g_last_update < 10 &&
+        globals::instance().spv_block_last()->block_header().timestamp <
+        std::time(0) - 1 * 60 * 60
     ;
 }
 
@@ -468,7 +508,9 @@ std::uint32_t utility::compute_min_stake(
     return compute_max_bits(constants::proof_of_stake_limit, base, time);
 }
 
-std::uint32_t utility::get_target_spacing(const block_index * index_last)
+std::uint32_t utility::get_target_spacing(
+    const block_index * index_last
+    )
 {
     return constants::work_and_stake_target_spacing;
 }

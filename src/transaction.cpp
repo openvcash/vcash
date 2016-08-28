@@ -27,9 +27,9 @@
 #include <coin/hash.hpp>
 #include <coin/logger.hpp>
 #include <coin/reward.hpp>
-#include <coin/script_checker.hpp>
 #include <coin/time.hpp>
 #include <coin/transaction.hpp>
+#include <coin/script_checker.hpp>
 #include <coin/transaction_pool.hpp>
 #include <coin/utility.hpp>
 
@@ -656,6 +656,8 @@ std::pair<bool, std::string> transaction::accept_to_transaction_pool(
 
 bool transaction::read_from_disk(const transaction_position & position)
 {
+    assert(globals::instance().is_client_spv() == false);
+    
     auto f = block::file_open(position.file_index(), 0, "rb");
     
     if (f)
@@ -1109,7 +1111,7 @@ bool transaction::connect_inputs(
                     );
                     
                     /**
-                     * If we were passed a script_checker array use it.
+                     * If we were passsed a script_checker array use it.
                      */
                     if (script_checker_checks)
                     {

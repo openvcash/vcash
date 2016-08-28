@@ -123,6 +123,11 @@ namespace coin {
             void add_supporting_transactions(db_tx & tx_db);
         
             /**
+             * Adds supporting transactions.
+             */
+            void spv_add_supporting_transactions();
+        
+            /**
              * Accepts a wallet transaction.
              * @param tx_db The db_tx.
              */
@@ -235,23 +240,20 @@ namespace coin {
             );
         
             /**
-             * Relays a zerotime_lock for the wallet transaction.
+             * Relays a wallet transaction.
              * @param connection_manager The tcp_connection_manager.
-             * @param use_udp If true it will be broadcast over UDP.
              */
-            void relay_wallet_zerotime_lock(
+            void spv_relay_wallet_transaction(
                 const std::shared_ptr<tcp_connection_manager> &
-                connection_manager, const bool & use_udp
+                connection_manager
             );
         
             /**
              * Relays a zerotime_lock for the wallet transaction.
-             * @param tx_db The db_tx.
              * @param connection_manager The tcp_connection_manager.
              * @param use_udp If true it will be broadcast over UDP.
              */
             void relay_wallet_zerotime_lock(
-                db_tx & tx_db,
                 const std::shared_ptr<tcp_connection_manager> &
                 connection_manager, const bool & use_udp
             );

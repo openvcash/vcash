@@ -37,6 +37,7 @@ namespace coin {
     class block_locator;
     class data_buffer;
     class db_env;
+    class hd_configuration;
     class key_pool;
     class key_public;
     class key_wallet_master;
@@ -175,6 +176,12 @@ namespace coin {
             bool write_orderposnext(const std::int64_t & value);
         
             /**
+             * Writes the timestamp.
+             * @param value The value.
+             */
+            bool write_timestamp(const std::time_t & value);
+        
+            /**
              * Writes the default key.
              * @param value the key_public.
              */
@@ -275,6 +282,12 @@ namespace coin {
              * @param entry The accounting_entry.
              */
             bool write_accounting_entry(accounting_entry & entry);
+        
+            /**
+             * Writes the hd_configuration.
+             * @param val The value.
+             */
+            bool write_hd_configuration(const hd_configuration & val);
         
             /**
              * Gets the given account's credit and debit.

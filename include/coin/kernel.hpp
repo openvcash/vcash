@@ -110,8 +110,8 @@ namespace coin {
              * @param modifier_time The modifier time.
              */
             static bool get_last_stake_modifier(
-                const block_index * index, std::uint64_t & stake_modifier,
-                std::int64_t & modifier_time
+                const block_index * index,
+                std::uint64_t & stake_modifier, std::int64_t & modifier_time
             );
 
             /**

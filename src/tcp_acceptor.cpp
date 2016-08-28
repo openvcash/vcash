@@ -34,9 +34,9 @@ tcp_acceptor::tcp_acceptor(
     )
     : io_service_(ios)
     , strand_(s)
-    , acceptor_ipv4_(ios)
-    , acceptor_ipv6_(ios)
-    , transports_timer_(ios)
+    , acceptor_ipv4_(io_service_)
+    , acceptor_ipv6_(io_service_)
+    , transports_timer_(io_service_)
 {
     // ...
 }
@@ -165,7 +165,7 @@ bool tcp_acceptor::open(const std::uint16_t & port)
      * Start the tick timer.
      */
     do_tick(1);
-    
+
     return true;
 }
 
@@ -197,21 +197,11 @@ const boost::asio::ip::tcp::endpoint tcp_acceptor::local_endpoint() const
     ;
 }
 
-const std::vector< std::weak_ptr<tcp_transport> > &
-    tcp_acceptor::tcp_transports() const
-{
-    std::lock_guard<std::recursive_mutex> l(tcp_transports_mutex_);
-    
-    return m_tcp_transports;
-}
-
 void tcp_acceptor::do_ipv4_accept()
 {
     auto self(shared_from_this());
     
     auto t = std::make_shared<tcp_transport>(io_service_, strand_);
-    
-    std::lock_guard<std::recursive_mutex> l(tcp_transports_mutex_);
     
     m_tcp_transports.push_back(t);
     
@@ -229,17 +219,29 @@ void tcp_acceptor::do_ipv4_accept()
                 boost::asio::ip::tcp::endpoint remote_endpoint =
                     t->socket().remote_endpoint()
                 ;
-                
-                log_debug("Accepting tcp connection from " << remote_endpoint);
-                
+
                 /**
                  * Callback
                  */
-                m_on_accept(t);
+                if (m_on_accept)
+                {
+                    log_info(
+                        "Accepting tcp connection from " << remote_endpoint
+                    );
+                    
+                    m_on_accept(t);
+                }
+                else
+                {
+                    log_info(
+                        "Dropping tcp connection from " << remote_endpoint <<
+                        " no handler set."
+                    );
+                }
             }
             catch (std::exception & e)
             {
-                log_none("TCP acceptor remote_endpoint, what = " << e.what());
+                log_error("TCP acceptor remote_endpoint, what = " << e.what());
             }
             
             do_ipv4_accept();
@@ -252,8 +254,6 @@ void tcp_acceptor::do_ipv6_accept()
     auto self(shared_from_this());
     
     auto t = std::make_shared<tcp_transport>(io_service_, strand_);
-    
-    std::lock_guard<std::recursive_mutex> l(tcp_transports_mutex_);
     
     m_tcp_transports.push_back(t);
     
@@ -301,8 +301,6 @@ void tcp_acceptor::do_tick(const std::uint32_t & seconds)
         }
         else
         {
-            std::lock_guard<std::recursive_mutex> l(tcp_transports_mutex_);
-            
             auto it = m_tcp_transports.begin();
             
             while (it != m_tcp_transports.end())

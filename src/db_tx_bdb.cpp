@@ -623,7 +623,7 @@ bool db_tx::read_disk_transaction(
     const sha256 & hash, transaction & tx, transaction_index & index
     )
 {
-    assert(globals::instance().is_client() == false);
+    assert(globals::instance().is_client_spv() == false);
     
     tx.set_null();
     
@@ -937,8 +937,10 @@ bool db_tx::write_checkpoint_public_key(const std::string & val)
 
 bool db_tx::reorganize(db_tx & tx_db, block_index * index_new)
 {
-    log_debug("Db Tx reorganize started.");
+    log_info("Db Tx reorganize started.");
 
+    auto start = std::chrono::system_clock::now();
+    
     /**
      * Find the fork.
      */
@@ -1009,7 +1011,8 @@ bool db_tx::reorganize(db_tx & tx_db, block_index * index_new)
         "Db Tx reorganize is disconnecting " << to_disconnect.size() <<
         " blocks; " << fork->get_block_hash().to_string().substr(0, 20) <<
         ".." << stack_impl::get_block_index_best()->get_block_hash().to_string(
-        ).substr() << ".");
+        ).substr() << "."
+    );
     
     log_info(
         "Db Tx reorganize is connecting " << to_connect.size() << " blocks; " <<
@@ -1155,8 +1158,17 @@ bool db_tx::reorganize(db_tx & tx_db, block_index * index_new)
     {
         transaction_pool::instance().remove(i);
     }
+    
+    std::chrono::duration<double> elapsed_seconds =
+        std::chrono::system_clock::now() - start
+    ;
+    
+    log_info(
+        "Db Tx reorganize took " << elapsed_seconds.count() <<
+        " seconds."
+    );
 
-    log_debug("Db Tx reorganize finished.");
+    log_info("Db Tx reorganize finished.");
     
     return true;
 }

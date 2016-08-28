@@ -149,6 +149,18 @@ void wallet_manager::on_transaction_updated(const sha256 & val)
     }
 }
 
+void wallet_manager::on_spv_transaction_updated(
+    const std::int32_t & height, const sha256 & hash_tx
+    )
+{
+    std::lock_guard<std::mutex> l1(mutex_);
+    
+    for (auto & i : m_wallets)
+    {
+        i->on_spv_transaction_updated(height, hash_tx);
+    }
+}
+
 void wallet_manager::on_inventory(const sha256 & val)
 {
     std::lock_guard<std::mutex> l1(mutex_);

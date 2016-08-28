@@ -215,7 +215,7 @@ bool transaction_bloom_filter::contains(const point_out & out_point) const
     out_point_copy.encode();
     
     return contains(
-        std::vector<std::uint8_t>(out_point_copy.data(),
+        std::vector<std::uint8_t> (out_point_copy.data(),
         out_point_copy.data() + out_point_copy.size())
     );
 }

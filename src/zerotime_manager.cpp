@@ -82,7 +82,7 @@ void zerotime_manager::vote(
      */
     if (
         globals::instance().is_zerotime_enabled() &&
-        globals::instance().is_client() == false &&
+        globals::instance().is_client_spv() == false &&
         globals::instance().operation_mode() == protocol::operation_mode_peer
         )
     {
@@ -325,9 +325,30 @@ void zerotime_manager::handle_answer(
                 /**
                  * Inform the wallet that the transacton was updated.
                  */
-                wallet_manager::instance().on_transaction_updated(
-                    ztanswer.hash_tx()
-                );
+                if (globals::instance().is_client_spv() == true)
+                {
+                    if (
+                        globals::instance().wallet_main()->transactions(
+                        ).count(ztanswer.hash_tx()) > 0
+                        )
+                    {
+                        const auto & wtx =
+                            globals::instance().wallet_main()->transactions()[
+                            ztanswer.hash_tx()]
+                        ;
+                        
+                        wallet_manager::instance(
+                            ).on_spv_transaction_updated(
+                            wtx.spv_block_height(), ztanswer.hash_tx()
+                        );
+                    }
+                }
+                else
+                {
+                    wallet_manager::instance().on_transaction_updated(
+                        ztanswer.hash_tx()
+                    );
+                }
             }
         }
         else
@@ -349,12 +370,11 @@ void zerotime_manager::handle_vote(
     {
         const auto & hash_tx = ztvote.hash_tx();
         const auto & vote_score = ztvote.score();
-        
+
         /**
          * The vote score must be at least zero.
          */
         if (
-            vote_score > -1 &&
             vote_score <= (constants::test_net == true ?
             std::numeric_limits<std::int16_t>::max() :
             std::numeric_limits<std::int16_t>::max() / 16)
@@ -374,12 +394,12 @@ void zerotime_manager::handle_vote(
             /**
              * We require at least 15% of the K closest votes.
              */
-            enum { safe_percentage = constants::test_net ? 8 : 15 };
+            enum { safe_percentage = constants::test_net ? 8 : 15 };;
 
             std::vector<std::int16_t> vote_scores;
 
             auto it = votes.begin();
-
+            
             while (it != votes.end())
             {
                 if (
@@ -403,13 +423,17 @@ void zerotime_manager::handle_vote(
             /**
              * Get our best block height.
              */
-            auto block_height = globals::instance().best_block_height();
+            auto block_height =
+                globals::instance().is_client_spv() == true ?
+                globals::instance().spv_best_block_height() :
+                globals::instance().best_block_height()
+            ;
 
             /**
              * Get the K closest scores to the block height.
              */
             auto kclosest = k_closest(vote_scores, block_height, zerotime::k);
-
+            
             auto percentage =
                 (static_cast<double> (kclosest.size()) /
                 static_cast<double> (zerotime::k) * 100.0f)
@@ -529,14 +553,32 @@ void zerotime_manager::handle_vote(
                                                 ).zerotime_answers_minimum()
                                             ;
                                             
-                                            /**
-                                             * Inform the wallet that the
-                                             * transacton was updated.
-                                             */
-                                            wallet_manager::instance(
-                                                ).on_transaction_updated(
-                                                i2.second.hash_tx()
-                                            );
+                                            if (
+                                                globals::instance(
+                                                ).is_client_spv() == true
+                                                )
+                                            {
+                                                /**
+                                                 * Inform the wallet that the
+                                                 * transacton was updated.
+                                                 */
+                                                wallet_manager::instance(
+                                                    ).on_spv_transaction_updated(
+                                                    wtx.spv_block_height(),
+                                                    i2.second.hash_tx()
+                                                );
+                                            }
+                                            else
+                                            {
+                                                /**
+                                                 * Inform the wallet that the
+                                                 * transacton was updated.
+                                                 */
+                                                wallet_manager::instance(
+                                                    ).on_transaction_updated(
+                                                    i2.second.hash_tx()
+                                                );
+                                            }
                                         }
                                     }
                                     else
@@ -559,14 +601,32 @@ void zerotime_manager::handle_vote(
                                             ).zerotime_answers_minimum()
                                         ;
                                         
-                                        /**
-                                         * Inform the wallet that the
-                                         * transacton was updated.
-                                         */
-                                        wallet_manager::instance(
-                                            ).on_transaction_updated(
-                                            i2.second.hash_tx()
-                                        );
+                                        if (
+                                            globals::instance(
+                                            ).is_client_spv() == true
+                                            )
+                                        {
+                                            /**
+                                             * Inform the wallet that the
+                                             * transacton was updated.
+                                             */
+                                            wallet_manager::instance(
+                                                ).on_spv_transaction_updated(
+                                                wtx.spv_block_height(),
+                                                i2.second.hash_tx()
+                                            );
+                                        }
+                                        else
+                                        {
+                                            /**
+                                             * Inform the wallet that the
+                                             * transacton was updated.
+                                             */
+                                            wallet_manager::instance(
+                                                ).on_transaction_updated(
+                                                i2.second.hash_tx()
+                                            );
+                                        }
                                     }
                                 }
 
@@ -585,6 +645,20 @@ void zerotime_manager::handle_vote(
             }
         }
     }
+}
+
+void zerotime_manager::print()
+{
+    log_debug("questions_ = " << questions_.size());
+    log_debug("zerotime_answers_tcp_ = " << zerotime_answers_tcp_.size());
+    log_debug(
+        "questioned_tcp_endpoints_ = " << questioned_tcp_endpoints_.size()
+    );
+    log_debug(
+        "question_queue_tcp_endpoints_ = " <<
+        question_queue_tcp_endpoints_.size()
+    );
+    log_debug("safe_percentages_ = " << safe_percentages_.size());
 }
 
 void zerotime_manager::do_tick(const std::uint32_t & interval)
@@ -674,6 +748,16 @@ void zerotime_manager::do_tick(const std::uint32_t & interval)
                     }
                 }
             }
+            
+            /**
+             * Prints
+             */
+            print();
+            
+            /**
+             * Print
+             */
+            zerotime::instance().print();
 
             /**
              * Start the timer.

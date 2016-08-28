@@ -21,11 +21,7 @@
 #ifndef COIN_DB_TX_HPP
 #define COIN_DB_TX_HPP
 
-#if (defined __ANDROID__)
 #define USE_LEVELDB 0
-#else
-#define USE_LEVELDB 0
-#endif //
 
 #if (defined USE_LEVELDB && USE_LEVELDB)
     // ...

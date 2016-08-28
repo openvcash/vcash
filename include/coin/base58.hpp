@@ -73,8 +73,11 @@ namespace coin {
 
             /**
              * to_string
+             * @param include_version If true the version will be included.
              */
-            const std::string to_string() const;
+            const std::string to_string(
+                const bool & include_version = true
+            ) const;
 
             /**
              * compare_to

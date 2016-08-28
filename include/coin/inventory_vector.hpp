@@ -97,6 +97,12 @@ namespace coin {
             bool decode(data_buffer & buffer);
 
             /**
+             * Sets the type.
+             * @param val.
+             */
+            void set_type(const type_t & val);
+        
+            /**
              * The type.
              */
             const type_t & type() const;
@@ -130,6 +136,12 @@ namespace coin {
                 db_tx & tx_db, const inventory_vector & inv
             );
 
+            /**
+             * Checks if we already have the transaction.
+             * @param inv The inventory_vector.
+             */
+            static bool spv_already_have(const inventory_vector & inv);
+        
             /**
              * operator ==
              */

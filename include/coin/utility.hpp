@@ -289,9 +289,14 @@ namespace coin {
             }
         
             /**
-             * Returns true if no blocks have been downloaded.
+             * Returns true if we are behind on the ledger.
              */
             static bool is_initial_block_download();
+        
+            /**
+             * Returns true if we are behind on the ledger.
+             */
+            static bool is_spv_initial_block_download();
 
             /**
              * Returns true if if is a chain file.

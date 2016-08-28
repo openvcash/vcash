@@ -401,11 +401,27 @@ bool tcp_connection_manager::is_connected()
 
 std::size_t tcp_connection_manager::minimum_tcp_connections()
 {
-    return
-        globals::instance().operation_mode() ==
-        protocol::operation_mode_peer ?
-        (utility::is_initial_block_download() ? 3 : 8) : 6
-    ;
+    /**
+     * SPV clients download the headers from a single peer until the last
+     * checkpoint is near at which point we increase the connection count
+     * to 3 peers and switch to getblocks. When connected to three peers we
+     * only download from one of them rotating as needed but accept blocks
+     * from all connections that advertise them.
+     */
+    if (globals::instance().is_client_spv() == true)
+    {
+        if (
+            globals::instance().spv_block_last() == 0 ||
+            globals::instance().spv_use_getblocks() == false
+            )
+        {
+            return 1;
+        }
+    
+        return 3;
+    }
+
+    return utility::is_initial_block_download() ? 3 : 8;
 }
 
 const std::time_t & tcp_connection_manager::time_last_inbound() const
@@ -527,7 +543,7 @@ void tcp_connection_manager::tick(const boost::system::error_code & ec)
                     ++it;
                 }
                 else
-                {
+                {    
                     connection->stop();
                     
                     it = m_tcp_connections.erase(it);
@@ -542,7 +558,11 @@ void tcp_connection_manager::tick(const boost::system::error_code & ec)
         /**
          * Get if we are in initial download.
          */
-        auto is_initial_block_download = utility::is_initial_block_download();
+        auto is_initial_block_download =
+            globals::instance().is_client_spv() ?
+            utility::is_spv_initial_block_download() :
+            utility::is_initial_block_download()
+        ;
 
         if (is_initial_block_download == false)
         {

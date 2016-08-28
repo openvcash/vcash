@@ -178,20 +178,23 @@ void message::encode()
         else if (m_header.command == "filterload")
         {
             /**
-             * We are not a BIP-0037 (lite client).
+             * Create the filterload.
              */
+            m_payload = create_filterload();
         }
         else if (m_header.command == "filteradd")
         {
             /**
-             * We are not a BIP-0037 (lite client).
+             * Create the filteradd.
              */
+            m_payload = create_filteradd();
         }
         else if (m_header.command == "filterclear")
         {
             /**
-             * We are not a BIP-0037 (lite client).
+             * Create the filterclear.
              */
+            m_payload = create_filterclear();
         }
         else if (m_header.command == "merkleblock")
         {
@@ -361,7 +364,10 @@ void message::decode()
      */
     m_header.magic = read_uint32();
     
-    log_none("Message got header magic = " << m_header.magic << ".");
+    log_none(
+        "Message got header magic = " << m_header.magic << ", verified = " <<
+        verify_header_magic() << "."
+    );
     
     if (verify_header_magic() == false)
     {
@@ -673,9 +679,20 @@ void message::decode()
         }
         else if (m_header.command == "headers")
         {
-            /**
-             * :TODO: Implement for headers-first initial download.
-             */
+            auto count = read_var_int();
+            
+            if (count > 0)
+            {
+                for (auto i = 0; i < count; i++)
+                {
+                    block block_header;
+                    
+                    if (block_header.decode(*this, true) == true)
+                    {
+                        m_protocol_headers.headers.push_back(block_header);
+                    }
+                }
+            }
         }
         else if (m_header.command == "checkpoint")
         {
@@ -1383,7 +1400,7 @@ data_buffer message::create_version()
     if (
         globals::instance().operation_mode() ==
         protocol::operation_mode_client &&
-        globals::instance().is_client() == true
+        globals::instance().is_client_spv() == true
         )
     {
         comments.push_back("SPV Client");
@@ -1432,7 +1449,20 @@ data_buffer message::create_version()
     /**
      * Set the payload start height.
      */
-    m_protocol_version.start_height = globals::instance().best_block_height();
+    if (globals::instance().is_client_spv() == true)
+    {
+        m_protocol_version.start_height =
+            globals::instance().spv_best_block_height() < 0 ? 0 :
+            globals::instance().spv_best_block_height()
+        ;
+    }
+    else
+    {
+        m_protocol_version.start_height =
+            globals::instance().best_block_height() < 0 ? 0 :
+            globals::instance().best_block_height()
+        ;
+    }
     
     /**
      * Set the nonce.
@@ -1769,6 +1799,44 @@ data_buffer message::create_block()
     {
         m_protocol_block.blk->encode(ret);
     }
+    
+    return ret;
+}
+
+data_buffer message::create_filterload()
+{
+    data_buffer ret;
+    
+    if (m_protocol_filterload.filterload)
+    {
+        m_protocol_filterload.filterload->encode(ret);
+    }
+    
+    return ret;
+}
+
+data_buffer message::create_filteradd()
+{
+    data_buffer ret;
+    
+    ret.write_var_int(m_protocol_filteradd.filteradd.size());
+    
+    if (m_protocol_filteradd.filteradd.size() > 0)
+    {
+        ret.write_bytes(
+            reinterpret_cast<const char *> (&m_protocol_filteradd.filteradd[0]),
+            m_protocol_filteradd.filteradd.size()
+        );
+    }
+
+    return ret;
+}
+
+data_buffer message::create_filterclear()
+{
+    data_buffer ret;
+    
+    // ...
     
     return ret;
 }

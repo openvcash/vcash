@@ -165,6 +165,11 @@ namespace coin {
                 const sha256 & hash_value,
                 const std::vector<std::uint8_t> & signature
             );
+        
+            /**
+             * Prints
+             */
+            void print();
 
         private:
         

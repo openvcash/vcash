@@ -120,7 +120,7 @@ void block_locator::set(const block_index * index)
 {
     m_have.clear();
     
-    int step = 1;
+    std::int32_t step = 1;
     
     while (index)
     {

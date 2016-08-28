@@ -25,6 +25,7 @@ using namespace coin;
 transaction_merkle::transaction_merkle()
     : transaction()
     , m_index(-1)
+    , m_spv_block_height(0)
 {
     // ...
 }
@@ -32,6 +33,7 @@ transaction_merkle::transaction_merkle()
 transaction_merkle::transaction_merkle(const transaction & tx)
     : transaction(tx)
     , m_index(-1)
+    , m_spv_block_height(0)
 {
     // ...
 }
@@ -82,7 +84,7 @@ std::pair<bool, std::string> transaction_merkle::accept_to_memory_pool(
     db_tx & tx_db
     )
 {
-    if (globals::instance().is_client())
+    if (globals::instance().is_client_spv() == true)
     {
         if (is_in_main_chain() == false && client_connect_inputs() == false)
         {
@@ -104,4 +106,14 @@ std::pair<bool, std::string> transaction_merkle::accept_to_memory_pool()
     db_tx tx_db("r");
     
     return accept_to_memory_pool(tx_db);
+}
+
+void transaction_merkle::set_spv_block_height(const std::int32_t & val)
+{
+    m_spv_block_height = val;
+}
+
+const std::int32_t & transaction_merkle::spv_block_height() const
+{
+    return m_spv_block_height;
 }

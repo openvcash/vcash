@@ -27,6 +27,7 @@
 
 #include <coin/globals.hpp>
 #include <coin/logger.hpp>
+#include <coin/tcp_acceptor.hpp>
 #include <coin/tcp_transport.hpp>
 
 using namespace coin;
@@ -211,9 +212,9 @@ tcp_transport::tcp_transport(
     , m_time_last_write(0)
     , io_service_(ios)
     , strand_(s)
-    , connect_timeout_timer_(ios)
-    , read_timeout_timer_(ios)
-    , write_timeout_timer_(ios)
+    , connect_timeout_timer_(io_service_)
+    , read_timeout_timer_(io_service_)
+    , write_timeout_timer_(io_service_)
 #if (defined __IPHONE_OS_VERSION_MAX_ALLOWED)
     , readStreamRef_(0)
     , writeStreamRef_(0)
@@ -306,7 +307,7 @@ tcp_transport::tcp_transport(
      */
     m_ssl_context->set_options(
         boost::asio::ssl::context::default_workarounds | 
-        boost::asio::ssl::context::no_sslv2 | 
+        boost::asio::ssl::context::no_sslv2 |
         boost::asio::ssl::context::single_dh_use
     );
 
@@ -491,6 +492,11 @@ void tcp_transport::start()
         {
             if (ec)
             {
+                log_error(
+                    "TCP transport handshake failed, message = " <<
+                    ec.message() << "."
+                );
+                
                 /**
                  * Stop.
                  */

@@ -64,8 +64,6 @@ std::int64_t reward::get_proof_of_work_ppcoin(
     const sha256 & hash_previous
     )
 {
-    // :TODO: get_proof_of_work_ppcoin
-    
     return -1;
 }
 

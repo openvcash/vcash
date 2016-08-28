@@ -64,6 +64,11 @@ namespace coin {
              */
             bool decode(data_buffer & buffer);
         
+            /**
+             * The total number of transaction.
+             */
+            const std::uint32_t & total_transactions() const;
+        
         private:
         
             /**
@@ -82,6 +87,8 @@ namespace coin {
             std::vector<bool> m_flags;
         
         protected:
+        
+            friend class block_merkle;
         
             /**
              * Calculates the hash given height, position and txids.

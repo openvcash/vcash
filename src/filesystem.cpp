@@ -303,7 +303,7 @@ std::string filesystem::home_path()
 {
     std::string ret;
 #if (defined __ANDROID__)
-    std::string bundle_id = "net.vanillacoin.vanillacoin";
+    std::string bundle_id = "net.vcash.vcash";
     ret = "/data/data/" + bundle_id;
 #else
     if (std::getenv("HOME"))

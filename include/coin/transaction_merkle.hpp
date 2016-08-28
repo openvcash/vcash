@@ -117,6 +117,47 @@ namespace coin {
              */
             int get_depth_in_main_chain(const bool & is_zerotime = true) const
             {
+                if (globals::instance().is_client_spv() == true)
+                {
+                    int ret = -1;
+                    
+                    ret =
+                        globals::instance().spv_best_block_height() -
+                        m_spv_block_height + 1
+                    ;
+                    
+                    if (m_spv_block_height <= 0)
+                    {
+                        ret = 0;
+                    }
+                    
+                    /**
+                     * ZeroTime protected transactions act as if they have a
+                     * single confirmation.
+                     */
+                    if (
+                        globals::instance().is_zerotime_enabled() && is_zerotime
+                        )
+                    {
+                        if (ret < 1)
+                        {
+                            if (
+                                zerotime::instance().confirmations()[
+                                get_hash()] >= globals::instance(
+                                ).zerotime_answers_minimum()
+                                )
+                            {
+                                /**
+                                 * Use the configured ZeroTime depth.
+                                 */
+                                ret = globals::instance().zerotime_depth();
+                            }
+                        }
+                    }
+                    
+                    return ret > -1 ? ret : 0;
+                }
+                
                 block_index * index_out = 0;
                 
                 return get_depth_in_main_chain(index_out, is_zerotime);
@@ -258,7 +299,7 @@ namespace coin {
              */
             int set_merkle_branch(block * blk = 0)
             {
-                if (globals::instance().is_client())
+                if (globals::instance().is_client_spv() == true)
                 {
                     if (m_block_hash == 0)
                     {
@@ -394,6 +435,17 @@ namespace coin {
                 return m_index;
             }
         
+            /**
+             * Sets the (SPV) block height.
+             * @param val The value.
+             */
+            void set_spv_block_height(const std::int32_t & val);
+        
+            /**
+             * The (SPV) block height.
+             */
+            const std::int32_t & spv_block_height() const;
+        
         private:
         
             /**
@@ -416,6 +468,12 @@ namespace coin {
              */
             mutable bool m_merkle_verified;
     
+            /**
+             * Ths (SPV) block height.
+             * @note This is not an encoded/decoded variable.
+             */
+            std::int32_t m_spv_block_height;
+            
         protected:
         
             // ...

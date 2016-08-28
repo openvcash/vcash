@@ -168,7 +168,7 @@ bool kernel::compute_next_stake_modifier(
         m_modifier_interval - selection_interval
     ;
     
-    const auto * index_tmp = index_previous;
+    auto * index_tmp = index_previous;
     
     while (index_tmp && index_tmp->time() >= selection_interval_start)
     {
@@ -381,7 +381,7 @@ std::int64_t kernel::get_stake_modifier_selection_interval_section(
     const std::int32_t & section
     )
 {
-    assert(section >= 0 && section < 64);
+    assert (section >= 0 && section < 64);
     
     std::int64_t ret =
         kernel::instance().get_modifier_interval() *

@@ -89,6 +89,11 @@ bool inventory_vector::decode(data_buffer & buffer)
     return true;
 }
 
+void inventory_vector::set_type(const type_t & val)
+{
+    m_type = val;
+}
+
 const inventory_vector::type_t & inventory_vector::type() const
 {
     return m_type;
@@ -154,6 +159,60 @@ bool inventory_vector::already_have(
             return
                 globals::instance().block_indexes().count(inv.hash()) ||
                 globals::instance().orphan_blocks().count(inv.hash())
+            ;
+        }
+        break;
+        case type_msg_ztlock:
+        {
+            return zerotime::instance().locks().count(inv.hash()) > 0;
+        }
+        break;
+        case type_msg_ztvote:
+        {
+            return zerotime::instance().votes().count(inv.hash()) > 0;
+        }
+        break;
+        case type_msg_ivote:
+        {
+            return incentive::instance().votes().count(inv.hash()) > 0;
+        }
+        break;
+        default:
+        break;
+    }
+    
+    return true;
+}
+
+bool inventory_vector::spv_already_have(const inventory_vector & inv)
+{
+    switch (inv.type())
+    {
+        case type_error:
+        {
+            // ...
+        }
+        break;
+        case type_msg_tx:
+        {
+            auto tx_in_map = transaction_pool::instance().exists(inv.hash());
+            
+            return
+                tx_in_map ||
+                globals::instance().orphan_transactions().count(inv.hash()) > 0
+            ;
+        }
+        break;
+        case type_msg_block:
+        case type_msg_filtered_block_nonstandard:
+        {
+            /**
+             * We exclude orphans here because of the way they are handled
+             * differently. Adding them here using the current design would
+             * stall the initial synchronisation
+             */
+            return
+                globals::instance().spv_block_merkles().count(inv.hash())
             ;
         }
         break;

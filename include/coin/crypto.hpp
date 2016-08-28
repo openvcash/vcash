@@ -27,6 +27,7 @@
 #include <random>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
@@ -194,18 +195,18 @@ namespace coin {
                
                 return ret;
             }
-        
+
             /**
              * Calculates the HMAC-512 of the value given key.
-             * @param value The value.
              * @Param key The key.
+             * @param value The value.
              */
             static std::string hmac_sha512(
-                const std::string & value, const std::string & key
+                const std::string & key, const std::string & value
                 )
             {
                 std::uint8_t * digest = HMAC(
-                    EVP_sha512(), key.data(), key.size(),
+                    EVP_sha512(), key.data(), static_cast<int> (key.size()),
                     (std::uint8_t *)value.data(), value.size(), NULL, NULL
                 );
 
@@ -217,6 +218,24 @@ namespace coin {
                 }
                 
                 return std::string(hex, 64 * 2);
+            }
+        
+            /**
+             * Calculates the HMAC-512 of the value given key.
+             * @param value The key.
+             * @Param key The value.
+             */
+            static std::vector<std::uint8_t> hmac_sha512(
+                const std::vector<std::uint8_t> & key,
+                const std::vector<std::uint8_t> & value
+                )
+            {
+                std::uint8_t * digest = HMAC(
+                    EVP_sha512(), &key[0], static_cast<int> (key.size()),
+                    &value[0], value.size(), NULL, NULL
+                );
+                
+                return std::vector<std::uint8_t> (digest, digest + 64);
             }
         
         private:

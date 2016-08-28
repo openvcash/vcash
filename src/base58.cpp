@@ -320,9 +320,12 @@ bool base58::set_string(const std::string & value)
     return true;
 }
 
-const std::string base58::to_string() const
+const std::string base58::to_string(const bool & include_version) const
 {
-    std::vector<std::uint8_t> vch(1, m_version);
+    auto vch = include_version ?
+        std::vector<std::uint8_t> (1, m_version) :
+        std::vector<std::uint8_t> ()
+    ;
     
     vch.insert(vch.end(), m_data.begin(), m_data.end());
     

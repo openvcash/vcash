@@ -101,10 +101,25 @@ checkpoints::checkpoints()
     m_checkpoints[388800] = sha256(
         "000000000000d7233c8735ecc5006fcd1aa4ecaf7c4525208c1459c9f4d21517"
     );
+    m_checkpoints[400000] = sha256(
+        "000000000000bed29e0493ec2ae5cb4622542b3b574c6e69a30dbcc25bd003a9"
+    );
+    m_checkpoints[404500] = sha256(
+        "000000000001ec481b7427f43e57ea46a0e51b13c2d0395a6d0c2d7f15de2be1"
+    );
     m_checkpoints[409500] = sha256(
         "0000000000004899e0ca41b2af07c371226cab9fd3b269016195f5db2327ad14"
     );
-
+    m_checkpoints[410267] = sha256(
+        "1144741b1fdf0f1336c9d398b69fcb74e81727697946b5295d296ccb8dd78a5b"
+    );
+    m_checkpoints[410776] = sha256(
+        "0000000000017a405efcae2f2ac7a22f0b205d8a200ff1171f83cbeae62acb27"
+    );
+    m_checkpoints[463158] = sha256(
+        "18c4b4b23c9783d2cd32436b333991f973a37897d1f501aa8d2a108770819840"
+    );
+    
     m_checkpoints_test_net[0] = block::get_hash_genesis_test_net();
 }
 
@@ -447,11 +462,31 @@ std::map<std::int32_t, std::pair<sha256, std::time_t> >
         "000000000000d7233c8735ecc5006fcd1aa4ecaf7c4525208c1459c9f4d21517"),
         1462809732
     );
+    ret[400000] = std::make_pair(sha256(
+        "000000000000bed29e0493ec2ae5cb4622542b3b574c6e69a30dbcc25bd003a9"),
+        1464073422
+    );
+    ret[404500] = std::make_pair(sha256(
+        "000000000001ec481b7427f43e57ea46a0e51b13c2d0395a6d0c2d7f15de2be1"),
+        1464586438
+    );
     ret[409500] = std::make_pair(sha256(
         "0000000000004899e0ca41b2af07c371226cab9fd3b269016195f5db2327ad14"),
         1465150759
     );
-
+    ret[410267] = std::make_pair(sha256(
+        "1144741b1fdf0f1336c9d398b69fcb74e81727697946b5295d296ccb8dd78a5b"),
+        1465236780
+    );
+    ret[410776] = std::make_pair(sha256(
+        "0000000000017a405efcae2f2ac7a22f0b205d8a200ff1171f83cbeae62acb27"),
+        1465294865
+    );
+    ret[463158] = std::make_pair(sha256(
+        "18c4b4b23c9783d2cd32436b333991f973a37897d1f501aa8d2a108770819840"),
+        1471224073
+    );
+    
     return ret;
 }
 

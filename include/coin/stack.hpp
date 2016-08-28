@@ -153,6 +153,11 @@ namespace coin {
             void rpc_send(const std::string & command_line);
         
             /**
+             * Rescans the chain.
+             */
+            void rescan_chain();
+        
+            /**
              * Sets the wallet.transaction.history.maximum
              * @param val The value.
              */
