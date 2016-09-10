@@ -202,7 +202,8 @@ void print_cipher_list(const SSL * s)
 #endif // USE_TLS
 
 tcp_transport::tcp_transport(
-    boost::asio::io_service & ios, boost::asio::strand & s
+    boost::asio::io_service & ios, boost::asio::strand & s,
+    const bool & use_static_ssl_context
     )
     : m_state(state_disconnected)
     , m_close_after_writes(false)
@@ -222,6 +223,11 @@ tcp_transport::tcp_transport(
 {
 #if (defined USE_TLS && USE_TLS)
 
+    /**
+     * The static boost::asio::ssl::context.
+     */
+    static std::shared_ptr<boost::asio::ssl::context> g_ssl_context;
+    
     /**
      * This key/pair is safe in public hands. It is for web browser
      * compatibility (testing) and serves no other purpose.
@@ -295,96 +301,199 @@ tcp_transport::tcp_transport(
         "-----END DH PARAMETERS-----\n"
     };
     
-    /**
-     * Allocate the boost::asio::ssl::context.
-     */
-    m_ssl_context.reset(
-        new boost::asio::ssl::context(boost::asio::ssl::context::tlsv1)
-    );
-    
-    /** 
-     * Set the options.
-     */
-    m_ssl_context->set_options(
-        boost::asio::ssl::context::default_workarounds | 
-        boost::asio::ssl::context::no_sslv2 |
-        boost::asio::ssl::context::single_dh_use
-    );
-
-    /**
-     * Use a certificate chain.
-     */
-    use_certificate_chain(m_ssl_context->impl(), chain_buf);
-
-    /** 
-     * Use a private key.
-     */
-    use_private_key(m_ssl_context->impl(), key_buf);
-
-    /**
-     * Use temporary Diffie-Hellman paramaters.
-     */
-    use_tmp_dh(m_ssl_context->impl(), tmp_dh_buf);
-    
-    /**
-     * Replace with SSL_CTX_set_ecdh_auto when supported.
-     */
-    EC_KEY * ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
-    
-    /**
-     * Set the temporary Elliptic Curve Diffie-Hellman.
-     */
-    if (ecdh)
+    if (use_static_ssl_context == true)
     {
-        if (SSL_CTX_set_tmp_ecdh(m_ssl_context->impl(), ecdh) != 1)
+        if (g_ssl_context == nullptr)
         {
-            log_error("TCP transport failed to set SSL_CTX_set_tmp_ecdh.");
+            /**
+             * Allocate the boost::asio::ssl::context.
+             */
+            g_ssl_context.reset(
+                new boost::asio::ssl::context(boost::asio::ssl::context::tlsv1)
+            );
+            
+            /** 
+             * Set the options.
+             */
+            g_ssl_context->set_options(
+                boost::asio::ssl::context::default_workarounds | 
+                boost::asio::ssl::context::no_sslv2 |
+                boost::asio::ssl::context::single_dh_use
+            );
+
+            /**
+             * Use a certificate chain.
+             */
+            use_certificate_chain(g_ssl_context->impl(), chain_buf);
+
+            /** 
+             * Use a private key.
+             */
+            use_private_key(g_ssl_context->impl(), key_buf);
+
+            /**
+             * Use temporary Diffie-Hellman paramaters.
+             */
+            use_tmp_dh(g_ssl_context->impl(), tmp_dh_buf);
+            
+            /**
+             * Replace with SSL_CTX_set_ecdh_auto when supported.
+             */
+            EC_KEY * ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+            
+            /**
+             * Set the temporary Elliptic Curve Diffie-Hellman.
+             */
+            if (ecdh)
+            {
+                if (SSL_CTX_set_tmp_ecdh(g_ssl_context->impl(), ecdh) != 1)
+                {
+                    log_error(
+                        "TCP transport failed to set SSL_CTX_set_tmp_ecdh."
+                    );
+                }
+                
+                EC_KEY_free(ecdh);
+            }
+
+            /**
+             * Allocate the cipher list.
+             */
+            std::string cipher_list;
+            
+            /**
+             * Create the cipher list.
+             * + TLS_ECDH_RSA_WITH_AES_256_SHA         ECDHE-RSA-AES256-SHA
+             * + TLS_ECDH_anon_WITH_RC4_128_SHA        AECDH-RC4-SHA
+             * + TLS_ECDH_anon_WITH_3DES_EDE_CBC_SHA   AECDH-DES-CBC3-SHA
+             * + TLS_ECDH_anon_WITH_AES_128_CBC_SHA    AECDH-AES128-SHA
+             * + TLS_ECDH_anon_WITH_AES_256_CBC_SHA    AECDH-AES256-SHA
+             */
+            cipher_list += "ECDHE-RSA-AES256-SHA";
+            cipher_list += " ";
+            cipher_list += "AECDH-RC4-SHA";
+            cipher_list += " ";
+            cipher_list += "AECDH-DES-CBC3-SHA";
+            cipher_list += " ";
+            cipher_list += "AECDH-AES128-SHA";
+            cipher_list += " ";
+            cipher_list += "AECDH-AES256-SHA";
+            cipher_list += " ";
+            
+            /**
+             * Set the cipher list.
+             */
+            if (
+                SSL_CTX_set_cipher_list(g_ssl_context->impl(),
+                cipher_list.c_str()) != 1
+                )
+            {
+                log_error("SSL_CTX_set_cipher_list failed.");
+            }
         }
-        
-        EC_KEY_free(ecdh);
-    }
 
-    /**
-     * Allocate the cipher list.
-     */
-    std::string cipher_list;
-    
-    /**
-     * Create the cipher list.
-     * + TLS_ECDH_RSA_WITH_AES_256_SHA         ECDHE-RSA-AES256-SHA
-     * + TLS_ECDH_anon_WITH_RC4_128_SHA        AECDH-RC4-SHA
-     * + TLS_ECDH_anon_WITH_3DES_EDE_CBC_SHA   AECDH-DES-CBC3-SHA
-     * + TLS_ECDH_anon_WITH_AES_128_CBC_SHA    AECDH-AES128-SHA
-     * + TLS_ECDH_anon_WITH_AES_256_CBC_SHA    AECDH-AES256-SHA
-     */
-    cipher_list += "ECDHE-RSA-AES256-SHA";
-    cipher_list += " ";
-    cipher_list += "AECDH-RC4-SHA";
-    cipher_list += " ";
-    cipher_list += "AECDH-DES-CBC3-SHA";
-    cipher_list += " ";
-    cipher_list += "AECDH-AES128-SHA";
-    cipher_list += " ";
-    cipher_list += "AECDH-AES256-SHA";
-    cipher_list += " ";
-    
-    /**
-     * Set the cipher list.
-     */
-    if (
-        SSL_CTX_set_cipher_list(m_ssl_context->impl(), cipher_list.c_str()) != 1
-        )
+        /**
+         * Allocate the socket.
+         */
+        m_socket.reset(
+            new boost::asio::ssl::stream<boost::asio::ip::tcp::socket> (
+            ios, *g_ssl_context))
+        ;
+    }
+    else
     {
-        log_error("SSL_CTX_set_cipher_list failed.");
-    }
+        /**
+         * Allocate the boost::asio::ssl::context.
+         */
+        m_ssl_context.reset(
+            new boost::asio::ssl::context(boost::asio::ssl::context::tlsv1)
+        );
+        
+        /** 
+         * Set the options.
+         */
+        m_ssl_context->set_options(
+            boost::asio::ssl::context::default_workarounds | 
+            boost::asio::ssl::context::no_sslv2 |
+            boost::asio::ssl::context::single_dh_use
+        );
 
-    /**
-     * Allocate the socket.
-     */
-    m_socket.reset(
-        new boost::asio::ssl::stream<boost::asio::ip::tcp::socket> (
-        ios, *m_ssl_context))
-    ;
+        /**
+         * Use a certificate chain.
+         */
+        use_certificate_chain(m_ssl_context->impl(), chain_buf);
+
+        /** 
+         * Use a private key.
+         */
+        use_private_key(m_ssl_context->impl(), key_buf);
+
+        /**
+         * Use temporary Diffie-Hellman paramaters.
+         */
+        use_tmp_dh(m_ssl_context->impl(), tmp_dh_buf);
+        
+        /**
+         * Replace with SSL_CTX_set_ecdh_auto when supported.
+         */
+        EC_KEY * ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+        
+        /**
+         * Set the temporary Elliptic Curve Diffie-Hellman.
+         */
+        if (ecdh)
+        {
+            if (SSL_CTX_set_tmp_ecdh(m_ssl_context->impl(), ecdh) != 1)
+            {
+                log_error("TCP transport failed to set SSL_CTX_set_tmp_ecdh.");
+            }
+            
+            EC_KEY_free(ecdh);
+        }
+
+        /**
+         * Allocate the cipher list.
+         */
+        std::string cipher_list;
+        
+        /**
+         * Create the cipher list.
+         * + TLS_ECDH_RSA_WITH_AES_256_SHA         ECDHE-RSA-AES256-SHA
+         * + TLS_ECDH_anon_WITH_RC4_128_SHA        AECDH-RC4-SHA
+         * + TLS_ECDH_anon_WITH_3DES_EDE_CBC_SHA   AECDH-DES-CBC3-SHA
+         * + TLS_ECDH_anon_WITH_AES_128_CBC_SHA    AECDH-AES128-SHA
+         * + TLS_ECDH_anon_WITH_AES_256_CBC_SHA    AECDH-AES256-SHA
+         */
+        cipher_list += "ECDHE-RSA-AES256-SHA";
+        cipher_list += " ";
+        cipher_list += "AECDH-RC4-SHA";
+        cipher_list += " ";
+        cipher_list += "AECDH-DES-CBC3-SHA";
+        cipher_list += " ";
+        cipher_list += "AECDH-AES128-SHA";
+        cipher_list += " ";
+        cipher_list += "AECDH-AES256-SHA";
+        cipher_list += " ";
+        
+        /**
+         * Set the cipher list.
+         */
+        if (
+            SSL_CTX_set_cipher_list(m_ssl_context->impl(),
+            cipher_list.c_str()) != 1
+            )
+        {
+            log_error("SSL_CTX_set_cipher_list failed.");
+        }
+
+        /**
+         * Allocate the socket.
+         */
+        m_socket.reset(
+            new boost::asio::ssl::stream<boost::asio::ip::tcp::socket> (
+            ios, *m_ssl_context))
+        ;
+    }
     
     /**
      * Set the verify mode.

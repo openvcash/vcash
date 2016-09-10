@@ -200,48 +200,56 @@ const boost::asio::ip::tcp::endpoint tcp_acceptor::local_endpoint() const
 void tcp_acceptor::do_ipv4_accept()
 {
     auto self(shared_from_this());
-    
-    auto t = std::make_shared<tcp_transport>(io_service_, strand_);
+
+    auto t = std::make_shared<tcp_transport> (io_service_, strand_, true);
     
     m_tcp_transports.push_back(t);
     
     acceptor_ipv4_.async_accept(t->socket(), strand_.wrap(
         [this, self, t](boost::system::error_code ec)
     {
-        if (ec)
+        if (acceptor_ipv4_.is_open() == true)
         {
-            // ...
-        }
-        else
-        {
-            try
+            if (ec)
             {
-                boost::asio::ip::tcp::endpoint remote_endpoint =
-                    t->socket().remote_endpoint()
-                ;
-
-                /**
-                 * Callback
-                 */
-                if (m_on_accept)
-                {
-                    log_info(
-                        "Accepting tcp connection from " << remote_endpoint
-                    );
-                    
-                    m_on_accept(t);
-                }
-                else
-                {
-                    log_info(
-                        "Dropping tcp connection from " << remote_endpoint <<
-                        " no handler set."
-                    );
-                }
+                log_error(
+                    "TCP acceptor accept failed, message = " <<
+                    ec.message() << "."
+                );
             }
-            catch (std::exception & e)
+            else
             {
-                log_error("TCP acceptor remote_endpoint, what = " << e.what());
+                try
+                {
+                    boost::asio::ip::tcp::endpoint remote_endpoint =
+                        t->socket().remote_endpoint()
+                    ;
+
+                    /**
+                     * Callback
+                     */
+                    if (m_on_accept)
+                    {
+                        log_info(
+                            "Accepting tcp connection from " << remote_endpoint
+                        );
+                        
+                        m_on_accept(t);
+                    }
+                    else
+                    {
+                        log_info(
+                            "Dropping tcp connection from " <<
+                            remote_endpoint << " no handler set."
+                        );
+                    }
+                }
+                catch (std::exception & e)
+                {
+                    log_error(
+                        "TCP acceptor remote_endpoint, what = " << e.what()
+                    );
+                }
             }
             
             do_ipv4_accept();
@@ -252,36 +260,46 @@ void tcp_acceptor::do_ipv4_accept()
 void tcp_acceptor::do_ipv6_accept()
 {
     auto self(shared_from_this());
-    
-    auto t = std::make_shared<tcp_transport>(io_service_, strand_);
+
+    auto t = std::make_shared<tcp_transport> (io_service_, strand_, true);
     
     m_tcp_transports.push_back(t);
     
     acceptor_ipv6_.async_accept(t->socket(), strand_.wrap(
         [this, self, t](boost::system::error_code ec)
     {
-        if (ec)
+        if (acceptor_ipv6_.is_open() == true)
         {
-            // ...
-        }
-        else
-        {
-            try
+            if (ec)
             {
-                boost::asio::ip::tcp::endpoint remote_endpoint =
-                    t->socket().remote_endpoint()
-                ;
-                
-                log_debug("Accepting tcp connection from " << remote_endpoint);
-            
-                /**
-                 * Callback
-                 */
-                m_on_accept(t);
+                log_error(
+                    "TCP acceptor accept failed, message = " <<
+                    ec.message() << "."
+                );
             }
-            catch (std::exception & e)
+            else
             {
-                log_none("TCP acceptor remote_endpoint, what = " << e.what());
+                try
+                {
+                    boost::asio::ip::tcp::endpoint remote_endpoint =
+                        t->socket().remote_endpoint()
+                    ;
+                    
+                    log_debug(
+                        "Accepting tcp connection from " << remote_endpoint
+                    );
+                
+                    /**
+                     * Callback
+                     */
+                    m_on_accept(t);
+                }
+                catch (std::exception & e)
+                {
+                    log_error(
+                        "TCP acceptor remote_endpoint, what = " << e.what()
+                    );
+                }
             }
             
             do_ipv6_accept();

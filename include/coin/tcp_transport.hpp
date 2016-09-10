@@ -55,16 +55,20 @@ namespace coin {
                 state_connecting,
                 state_connected,
             } state_t;
-        
+
             /**
              * Constructor
              * @param ios The boost::asio::io_service.
              * @param s The boost::asio::strand.
+             * @pram use_static_ssl_context If true the connection is most
+             * likely incoming and will use a staticially allocated 
+             * boost::asio::ssl::context.
              */
             tcp_transport(
-                boost::asio::io_service & ios, boost::asio::strand & s
+                boost::asio::io_service & ios, boost::asio::strand & s,
+                const bool & use_static_ssl_context = true
             );
-
+        
             /**
              * Destructor
              */

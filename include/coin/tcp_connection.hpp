@@ -44,6 +44,7 @@ namespace coin {
     class block_merkle;
     class checkpoint_sync;
     class incentive_answer;
+    class incentive_collaterals;
     class message;
     class stack_impl;
     class tcp_transport;
@@ -526,6 +527,19 @@ namespace coin {
             void send_ivote_message(const incentive_vote & ivote);
         
             /**
+             * Sends an isync message.
+             */
+            void send_isync_message();
+        
+            /**
+             * Sends a icols message.
+             * @param icols The incentive_collaterals.
+             */
+            void send_icols_message(
+                const incentive_collaterals & icols
+            );
+        
+            /**
              * Sends a cbjoin message.
              * @param cbjoin The chainblender_join message.
              */
@@ -631,6 +645,12 @@ namespace coin {
              * @param interval The interval.
              */
             void do_send_cbstatus(const std::uint32_t & interval);
+        
+            /**
+             * The isync timer handler.
+             * @param interval The interval.
+             */
+            void do_send_isync(const std::uint32_t & interval);
     
             /**
              * Inserts a seen inventor_vector object.
@@ -965,6 +985,18 @@ namespace coin {
              * The seen inventory_vector object set.
              */
             std::deque<inventory_vector> inventory_vectors_seen_queue_;
+        
+            /**
+             * The isync timer.
+             */
+            boost::asio::basic_waitable_timer<
+                std::chrono::steady_clock
+            > timer_isync_;
+        
+            /**
+             * If true we sent an isync message.
+             */
+            bool did_send_isync_;
     };
     
 } // namespace coin

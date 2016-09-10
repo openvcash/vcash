@@ -637,7 +637,7 @@ void database_stack::on_broadcast(
                                         )->validate_collateral(*ivote) == false
                                         )
                                     {
-                                        log_debug(
+                                        log_info(
                                             "Database stack (UDP) is dropping "
                                             "ivote invalid collateral."
                                         );

@@ -199,10 +199,6 @@ std::vector<sha256> globals::spv_block_locator_hashes()
 {
     std::vector<sha256> ret;
 
-    /**
-     * ZeroLedger
-     */
-
     ret.push_back(
         (constants::test_net ?
         block::get_hash_genesis_test_net() : block::get_hash_genesis())

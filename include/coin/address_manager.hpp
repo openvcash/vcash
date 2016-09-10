@@ -38,6 +38,7 @@
 
 namespace coin {
 
+    class message;
     class stack_impl;
     
     /**
@@ -314,6 +315,15 @@ namespace coin {
              */
             void save();
  
+             /**
+             * Handles a message.
+             * @param ep The boost::asio::ip::tcp::endpoint.
+             * @param msg The message.
+             */
+            bool handle_message(
+                const boost::asio::ip::tcp::endpoint & ep, message & msg
+            );
+        
             /**
              * Finds address_info_t from a protocol::network_address_t.
              * @param addr The protocol::network_address_t.

@@ -105,7 +105,7 @@ namespace coin {
              * @param file_name The file name.
              */
             void checkpoint_lsn(const std::string & file_name);
-
+        
             /**
              * Flushes.
              * @param detach_db If true the database will be detached.

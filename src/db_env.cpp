@@ -102,6 +102,10 @@ bool db_env::open(const std::int32_t & cache_size)
         {
             flags |= DB_PRIVATE;
         }
+        else if (true)
+        {
+            flags |= DB_PRIVATE;
+        }
         
         std::lock_guard<std::recursive_mutex> l1(g_mutex_DbEnv);
         

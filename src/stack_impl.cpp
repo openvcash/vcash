@@ -4390,7 +4390,7 @@ void stack_impl::on_spv_merkle_block(
     )
 {
     /**
-     * ZeroLedger
+     * ZeroLedger :-)
      */
 }
 
@@ -4400,23 +4400,8 @@ void stack_impl::set_spv_block_height(
     )
 {
     /**
-     * Post the operation onto the boost::asio::io_service.
+     * ZeroLedger :-)
      */
-    globals::instance().io_service().post(
-        globals::instance().strand().wrap(
-        [this, height, hashes_tx]()
-    {
-        /**
-         * Inform the wallet manager that transactions may have been updated.
-         */
-        for (auto & i : hashes_tx)
-        {
-            /**
-             * Inform the wallet manager.
-             */
-            wallet_manager::instance().on_spv_transaction_updated(height, i);
-        }
-    }));
 }
 
 void stack_impl::on_status_block()
