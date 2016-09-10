@@ -43,12 +43,12 @@ SOURCES =
 	alert_unsigned
 	base58
 	big_number
-        blake256
+    blake256
 	block
 	block_index
 	block_index_disk
-        block_locator
-        block_merkle
+    block_locator
+    block_merkle
 	chainblender
     chainblender_broadcast
     chainblender_join
@@ -80,8 +80,10 @@ SOURCES =
 	http_transport
 	incentive
 	incentive_answer
+    incentive_collaterals
 	incentive_manager
 	incentive_question
+    incentive_sync
 	incentive_vote
 	inventory_vector
 	kernel
