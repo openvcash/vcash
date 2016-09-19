@@ -297,6 +297,7 @@ void transaction_wallet::decode(data_buffer & buffer)
 
 void transaction_wallet::initialize(const wallet * ptr_wallet)
 {
+    clear();
     wallet_ = ptr_wallet;
     m_previous_transactions.clear();
     m_values.clear();
@@ -1357,7 +1358,7 @@ bool transaction_wallet::is_confirmed() const
     
     work_queue.push_back(this);
     
-    for (unsigned int i = 0; i < work_queue.size(); i++)
+    for (auto i = 0; i < work_queue.size(); i++)
     {
         const auto * ptr = work_queue[i];
 
@@ -1394,6 +1395,18 @@ bool transaction_wallet::is_confirmed() const
             work_queue.push_back(
                 previous_transactions[i.previous_out().get_hash()]
             );
+        }
+
+        /**
+         * When using a wallet file under ZeroLedger you will lose your
+         * m_previous_transactions which can cause this to loop indefinately
+         * when that wallet is copied and used by a blockchain peer. We limit
+         * the dependencies to at most 8 paying to ourselves, otherwise we
+         * consider it to be confirmed.
+         */
+        if (i >= 8)
+        {
+            return true;
         }
     }
     

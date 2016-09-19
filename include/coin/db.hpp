@@ -296,6 +296,8 @@ namespace coin {
 
                 data_buffer key_data;
 
+                key_data.reserve(1000);
+                
                 key_data.write_var_int(k1.size());
                 key_data.write_bytes(k1.data(), k1.size());
                 key_data.write_var_int(k2.size());
@@ -308,6 +310,8 @@ namespace coin {
                 
                 data_buffer value_data;
 
+                value_data.reserve(10000);
+                
                 value_data.write_var_int(value.size());
                 value_data.write_bytes(value.data(), value.size());
 
@@ -353,6 +357,8 @@ namespace coin {
                 auto k2 = key.second;
                 
                 data_buffer key_data;
+                
+                key_data.reserve(1000);
 
                 key_data.write_var_int(k1.size());
                 key_data.write_bytes(k1.data(), k1.size());
@@ -365,6 +371,8 @@ namespace coin {
                 
                 data_buffer value_data;
 
+                value_data.reserve(10000);
+                
                 value.encode(value_data);
 
                 Dbt dat_value(
@@ -410,6 +418,8 @@ namespace coin {
                 
                 data_buffer key_data;
 
+                key_data.reserve(1000);
+                
                 key_data.write_var_int(k1.size());
                 key_data.write_bytes(k1.data(), k1.size());
                 key_data.write_int64(k2);
@@ -421,6 +431,8 @@ namespace coin {
                 
                 data_buffer value_data;
 
+                value_data.reserve(10000);
+                
                 value.encode(value_data);
 
                 Dbt dat_value(
@@ -466,6 +478,8 @@ namespace coin {
                 
                 data_buffer key_data;
 
+                key_data.reserve(1000);
+                
                 key_data.write_var_int(k1.size());
                 key_data.write_bytes(k1.data(), k1.size());
                 key_data.write_uint32(k2);
@@ -477,6 +491,8 @@ namespace coin {
                 
                 data_buffer value_data;
 
+                value_data.reserve(10000);
+                
                 value.encode(value_data);
 
                 Dbt dat_value(
@@ -584,6 +600,8 @@ namespace coin {
                 
                 data_buffer key_data;
 
+                key_data.reserve(1000);
+                
                 key_data.write_var_int(k1.size());
                 key_data.write_bytes(k1.data(), k1.size());
                 key_data.write_var_int(k2.size());
@@ -598,6 +616,8 @@ namespace coin {
                 
                 data_buffer value_data;
 
+                value_data.reserve(10000);
+                
                 value_data.write_var_int(value.size());
                 value_data.write_bytes(
                     reinterpret_cast<const char *>(&value[0]), value.size()
@@ -642,6 +662,8 @@ namespace coin {
                 
                 data_buffer key_data;
 
+                key_data.reserve(1000);
+                
                 key_data.write_var_int(key.size());
                 key_data.write((void *)key.data(), key.size());
 
@@ -652,6 +674,8 @@ namespace coin {
                 
                 data_buffer value_data;
 
+                value_data.reserve(10000);
+                
                 value_data.write_var_int(value.size());
                 value_data.write_bytes(
                     reinterpret_cast<const char *>(&value[0]), value.size()
@@ -697,6 +721,8 @@ namespace coin {
                 
                 data_buffer key_data;
 
+                key_data.reserve(1000);
+                
                 key_data.write_var_int(key.size());
                 key_data.write((void *)key.data(), key.size());
 
@@ -707,6 +733,8 @@ namespace coin {
 
                 data_buffer value_data;
 
+                value_data.reserve(10000);
+                
                 value_data.write(
                     const_cast<void *> (static_cast<const void *> (&value)),
                     sizeof(value)
@@ -767,6 +795,8 @@ namespace coin {
                 auto k2 = key.second;
                 
                 data_buffer key_data;
+                
+                key_data.reserve(1000);
 
                 key_data.write_var_int(k1.size());
                 key_data.write_bytes(k1.data(), k1.size());
@@ -821,6 +851,8 @@ namespace coin {
                 
                 data_buffer buffer;
 
+                buffer.reserve(1000);
+                
                 buffer.write_var_int(key.size());
                 buffer.write_bytes(key.data(), key.size());
     

@@ -611,6 +611,8 @@ bool db_tx::contains_transaction(const sha256 & hash)
     
     data_buffer buffer;
 
+    buffer.reserve(1000);
+    
     buffer.write_var_int(key_tx.size());
     buffer.write_bytes(key_tx.data(), key_tx.size());
     
@@ -666,6 +668,8 @@ bool db_tx::read_transaction_index(
     
     data_buffer buffer;
 
+    buffer.reserve(1000);
+    
     buffer.write_var_int(key_tx.size());
     buffer.write_bytes(key_tx.data(), key_tx.size());
     
@@ -687,6 +691,8 @@ bool db_tx::erase_transaction_index(const transaction & tx) const
     
     data_buffer buffer;
 
+    buffer.reserve(1000);
+    
     buffer.write_var_int(key_tx.size());
     buffer.write_bytes(key_tx.data(), key_tx.size());
     
@@ -1242,6 +1248,8 @@ bool db_tx::write_string(
 
     data_buffer key_data;
 
+    key_data.reserve(1000);
+    
     key_data.write_var_int(key.size());
     key_data.write((void *)key.data(), key.size());
 
@@ -1275,6 +1283,8 @@ bool db_tx::read_sha256(const std::string & key, sha256 & value)
      */
     data_buffer key_data;
 
+    key_data.reserve(1000);
+    
     key_data.write_var_int(key.size());
     key_data.write((void *)key.c_str(), key.size());
 
@@ -1317,6 +1327,8 @@ bool db_tx::write_sha256(
 
     data_buffer key_data;
 
+    key_data.reserve(1000);
+    
     key_data.write_var_int(key.size());
     key_data.write((void *)key.c_str(), key.size());
 
@@ -1326,6 +1338,8 @@ bool db_tx::write_sha256(
 
     data_buffer value_data;
 
+    value_data.reserve(10000);
+    
     value_data.write_sha256(value);
 
     Dbt dat_value(
@@ -1355,6 +1369,8 @@ bool db_tx::read_big_number(const std::string & key, big_number & value)
      */
     data_buffer key_data;
 
+    key_data.reserve(1000);
+    
     key_data.write_var_int(key.size());
     key_data.write((void *)key.c_str(), key.size());
 
@@ -1448,6 +1464,8 @@ bool db_tx::write(const T1 & key, T2 & value, const bool & overwrite)
 
     data_buffer key_data;
 
+    key_data.reserve(1000);
+    
     key_data.write_var_int(key.size());
     key_data.write((void *)key.data(), key.size());
 
@@ -1457,6 +1475,8 @@ bool db_tx::write(const T1 & key, T2 & value, const bool & overwrite)
     
     data_buffer value_data;
 
+    value_data.reserve(10000);
+    
     value.encode(value_data);
 
     Dbt dat_value(
@@ -1490,6 +1510,8 @@ bool db_tx::write(
     
     data_buffer key_data;
 
+    key_data.reserve(1000);
+    
     key_data.write_var_int(k1.size());
     key_data.write_bytes(k1.data(), k1.size());
     key_data.write_sha256(k2);
@@ -1500,6 +1522,8 @@ bool db_tx::write(
     
     data_buffer value_data;
 
+    value_data.reserve(10000);
+    
     value.encode(value_data);
 
     Dbt dat_value(
