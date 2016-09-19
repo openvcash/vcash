@@ -645,7 +645,7 @@ namespace protocol {
             "ztlock",
             "ztvote",
             "ivote",
-#if 1 /* BIP-0037 */
+#if 1 /* BIP-0037 nonstandard */
             "filtered block nonstandard",
 #endif
             "unkown",
