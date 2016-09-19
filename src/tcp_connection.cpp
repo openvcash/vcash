@@ -1012,7 +1012,7 @@ void tcp_connection::on_read(const char * buf, const std::size_t & len)
                 {
                     comments.push_back("Unknown");
                 }
-#if (defined __MSC_VER)
+#if (defined _MSC_VER)
                 comments.push_back("Windows");
 #elif (defined __ANDROID__)
                 comments.push_back("Android");
