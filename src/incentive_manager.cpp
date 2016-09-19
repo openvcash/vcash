@@ -294,6 +294,14 @@ bool incentive_manager::handle_message(
                 for (auto & i : icols->collaterals())
                 {
                     /**
+                     * Skip nodes older than ours.
+                     */
+                    if (i.protocol_version < protocol::version)
+                    {
+                        continue;
+                    }
+                    
+                    /**
                      * @note We do not need to validate that the wallet address
                      * and public key belong to the tx_in because of the
                      * probing process.
