@@ -447,7 +447,7 @@ key_public wallet::generate_new_key()
         else
         {
             /**
-             * :TODO: Make this an ivar.
+             * Make this an ivar.
              */
             static auto did_set_hd_key_master = false;
             
