@@ -52,6 +52,8 @@ configuration::configuration()
     , m_chainblender_debug_options(false)
     , m_chainblender_use_common_output_denominations(true)
     , m_database_cache_size(db_env::default_cache_size)
+    , m_wallet_deterministic(false)
+    , m_db_private(false)
 {
     // ...
 }
@@ -263,6 +265,30 @@ bool configuration::load()
             "Configuration read database.cache_size = " <<
             m_database_cache_size << "."
         );
+        
+        /**
+         * Get the wallet.deterministic.
+         */
+        m_wallet_deterministic = std::stoi(pt.get(
+            "wallet.deterministic",
+            std::to_string(m_wallet_deterministic))
+        );
+        
+        log_debug(
+            "Configuration read wallet.deterministic = " <<
+            m_wallet_deterministic << "."
+        );
+        
+        /**
+         * Get the database.private.
+         */
+        m_db_private = std::stoi(pt.get(
+            "database.private", std::to_string(m_db_private))
+        );
+        
+        log_debug(
+            "Configuration read database.private = " << m_db_private << "."
+        );
     }
     catch (std::exception & e)
     {
@@ -391,6 +417,20 @@ bool configuration::save()
         );
         
         /**
+         * Put the wallet.deterministic into property tree.
+         */
+        pt.put(
+            "wallet.deterministic", std::to_string(m_wallet_deterministic)
+        );
+        
+        /**
+         * Put the database.private into property tree.
+         */
+        pt.put(
+            "database.private", std::to_string(m_db_private)
+        );
+        
+        /**
          * The std::stringstream.
          */
         std::stringstream ss;
@@ -504,4 +544,24 @@ void configuration::set_database_cache_size(const std::uint32_t & val)
 const std::uint32_t & configuration::database_cache_size() const
 {
     return m_database_cache_size;
+}
+
+void configuration::set_wallet_deterministic(const bool & val)
+{
+    m_wallet_deterministic = val;
+}
+
+const bool & configuration::wallet_deterministic() const
+{
+    return m_wallet_deterministic;
+}
+
+void configuration::set_db_private(const bool & val)
+{
+    m_db_private = val;
+}
+
+const bool & configuration::db_private() const
+{
+    return m_db_private;
 }

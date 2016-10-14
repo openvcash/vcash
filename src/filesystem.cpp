@@ -27,6 +27,7 @@
 
 #include <coin/constants.hpp>
 #include <coin/filesystem.hpp>
+#include <coin/globals.hpp>
 #include <coin/logger.hpp>
 
 using namespace coin;
@@ -269,6 +270,12 @@ std::string filesystem::data_path()
     ret = home_path();
     ret += "." + bundle_id + "/data/";
 #endif
+
+    if (globals::instance().is_client_spv() == true)
+    {
+        ret += "client/";
+    }
+
     return ret;
 }
 

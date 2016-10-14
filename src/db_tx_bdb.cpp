@@ -45,11 +45,7 @@ using namespace coin;
 #else
 
 db_tx::db_tx(const std::string & file_mode)
-    : db(
-        globals::instance().operation_mode() ==
-        protocol::operation_mode_client ?
-        "block-index-client.dat" : "block-index-peer.dat", file_mode
-        )
+    : db("block-index-peer.dat", file_mode)
 {
     // ...
 }

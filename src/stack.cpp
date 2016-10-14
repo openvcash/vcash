@@ -165,6 +165,11 @@ void stack::broadcast_alert(const std::map<std::string, std::string> & pairs)
     }
 }
 
+bool stack::wallet_exists(const bool & is_client)
+{
+    return stack_impl::wallet_exists(is_client);
+}
+
 void stack::wallet_encrypt(const std::string & passphrase)
 {
     if (stack_impl_)
@@ -237,6 +242,20 @@ void stack::wallet_zerotime_lock(const std::string & tx_id)
     {
         throw std::runtime_error("Stack is not allocated");
     }
+}
+
+std::string stack::wallet_hd_keychain_seed()
+{
+    if (stack_impl_)
+    {
+        return stack_impl_->wallet_hd_keychain_seed();
+    }
+    else
+    {
+        throw std::runtime_error("Stack is not allocated");
+    }
+    
+    return std::string();
 }
 
 void stack::chainblender_start()

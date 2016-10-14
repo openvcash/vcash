@@ -1600,7 +1600,7 @@ void address_manager::tick(const boost::system::error_code & ec)
                 ;
             }
             
-            log_info("Address manager recent good endpoints:\n" << ss.str());
+            log_debug("Address manager recent good endpoints:\n" << ss.str());
             
             /**
              * If we have not been able to probe an endpoint after N hours

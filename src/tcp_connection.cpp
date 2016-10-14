@@ -278,14 +278,6 @@ void tcp_connection::send_getblocks_message(
                 globals::instance().spv_use_getblocks() == true
             ;
             
-            if (
-                should_send_spv_getblocks &&
-                m_identifier == globals::instance(
-                ).spv_active_tcp_connection_identifier())
-            {
-                should_send_spv_getblocks = true;
-            }
-            
             if (should_send_spv_getblocks == true)
             {
                 if (auto t = m_tcp_transport.lock())
@@ -317,11 +309,7 @@ void tcp_connection::send_getblocks_message(
                      */
                     msg.encode();
                     
-                    if (
-                        m_identifier == globals::instance(
-                        ).spv_active_tcp_connection_identifier() &&
-                        utility::is_spv_initial_block_download() == true
-                        )
+                    if (utility::is_spv_initial_block_download() == true)
                     {
                         auto self(shared_from_this());
                         
@@ -349,7 +337,7 @@ void tcp_connection::send_getblocks_message(
                                 /**
                                  * Stop
                                  */
-                                stop();
+                                do_stop();
                             }
                         }));
                     }
@@ -985,7 +973,9 @@ void tcp_connection::on_read(const char * buf, const std::size_t & len)
                         /**
                          * Call stop
                          */
-                        stop();
+                        do_stop();
+                        
+                        return;
                     }
                 }
             }
@@ -1019,7 +1009,7 @@ void tcp_connection::on_read(const char * buf, const std::size_t & len)
 #elif (defined __IPHONE_OS_VERSION_MAX_ALLOWED)
                 comments.push_back("iOS");
 #elif (defined __APPLE__)
-                comments.push_back("Mac OS X");
+                comments.push_back("macOS");
 #elif (defined __linux__)
                 comments.push_back("Linux");
 #endif
@@ -1209,7 +1199,7 @@ void tcp_connection::do_start(const boost::asio::ip::tcp::endpoint ep)
                                          * The connection has timed out, call
                                          * stop.
                                          */
-                                        stop();
+                                        do_stop();
                                     }
                                 }
                             )
@@ -2614,25 +2604,6 @@ bool tcp_connection::handle_message(message & msg)
     }
     
     std::lock_guard<std::recursive_mutex> l1(stack_impl::mutex());
-    
-    if (globals::instance().is_client_spv() == true)
-    {
-        if (spv_block_merkle_current_ && msg.header().command != "tx")
-        {
-            log_debug(
-                "TCP connection detected invalid block_merkle, "
-                "expected = " <<
-                spv_block_merkle_current_->transactions_matched().size() <<
-                ", got = " << spv_transactions_current_.size() << ", returning."
-            );
-            
-            spv_block_merkle_current_ = nullptr;
-            
-            spv_transactions_current_.clear();
-        
-            return false;
-        }
-    }
 
     if (msg.header().command == "verack")
     {
@@ -2652,7 +2623,7 @@ bool tcp_connection::handle_message(message & msg)
             /**
              * Stop
              */
-            stop();
+            do_stop();
             
             return false;
         }
@@ -2690,7 +2661,7 @@ bool tcp_connection::handle_message(message & msg)
                     /**
                      * Stop
                      */
-                    stop();
+                    do_stop();
                     
                     return false;
                 }
@@ -2817,7 +2788,7 @@ bool tcp_connection::handle_message(message & msg)
                                          * The connection has timed out, call
                                          * stop.
                                          */
-                                        stop();
+                                        do_stop();
                                     }
                                 }
                             )
@@ -3452,11 +3423,110 @@ bool tcp_connection::handle_message(message & msg)
             else
             {
                 /**
-                 * ZeroLedger :-)
+                 * Find the last block in the inventory vector.
                  */
+                auto last_block = static_cast<std::uint32_t> (-1);
+
+                /**
+                 * If the type is of inventory_vector::type_msg_block
+                 * set it to
+                 * inventory_vector::type_msg_filtered_block_nonstandard
+                 * so the remote node does not send blocks in response
+                 * to our getdata requests but instead merkleblocks.
+                 */
+                for (auto & i : msg.protocol_inv().inventory)
+                {
+                    if (i.type() == inventory_vector::type_msg_block)
+                    {
+                        i.set_type(
+                            inventory_vector::
+                            type_msg_filtered_block_nonstandard
+                        );
+                    }
+                }
+                
+                for (auto i = 0; i < msg.protocol_inv().inventory.size(); i++)
+                {
+                    if (
+                        msg.protocol_inv().inventory[
+                        msg.protocol_inv().inventory.size() - 1 - i].type() ==
+                        inventory_vector::type_msg_filtered_block_nonstandard
+                        )
+                    {
+                        last_block = static_cast<std::uint32_t> (
+                            msg.protocol_inv().inventory.size() - 1 - i
+                        );
+                        
+                        break;
+                    }
+                }
+                
+                auto index = 0;
+                
+                auto inventory = msg.protocol_inv().inventory;
+                
+                for (auto & i : inventory)
+                {
+                    log_none("SPV inv already_have = " << already_have);
+                    
+                    if (inventory_vector::spv_already_have(i) == false)
+                    {
+                        /**
+                         * :TODO: Filter out INV's that (SPV) clients do not
+                         * need to know about.
+                         */
+                        if (globals::instance().spv_use_getblocks() == true)
+                        {
+                            /**
+                             * Ask for the data.
+                             */
+                            getdata_.push_back(i);
+                         }
+                    }
+                    else if (index == last_block)
+                    {
+                        // ...
+                    }
+                    
+                    /**
+                     * Inform the wallet manager.
+                     */
+                    wallet_manager::instance().on_inventory(i.hash());
+                    
+                    index++;
+                }
             }
         }
+
+        /**
+         * Set the first and last hash.
+         */
+        std::vector<sha256> hashes;
         
+        if (globals::instance().is_client_spv() == true)
+        {
+            /**
+             * If we got 500 block hashes request the next 500 block hashes.
+             */
+            if (getdata_.size() > 1)
+            {
+                should_send_spv_getblocks = true;
+                
+                /**
+                 * Get the first block header.
+                 */
+                auto hash_first = getdata_.front().hash();
+                
+                /**
+                 * Get the last block header.
+                 */
+                auto hash_last = getdata_.back().hash();
+                
+                hashes.push_back(hash_last);
+                hashes.push_back(hash_first);
+            }
+        }
+
         /**
          * If we are an (SPV) client add any matched transaction hashes
          * from the merkle block to the next getdata message.
@@ -3475,7 +3545,7 @@ bool tcp_connection::handle_message(message & msg)
             
             spv_transactions_matched_.clear();
         }
-
+        
         /**
          * If we have some getdata send it now.
          */
@@ -3489,18 +3559,12 @@ bool tcp_connection::handle_message(message & msg)
             should_send_spv_getblocks == true
             )
         {
-            /**
-             * Get the block_locator hashes.
-             */
-            const auto & block_locator_hashes =
-                globals::instance().spv_block_locator_hashes()
-            ;
 
             /**
              * Allocate the block_locator with the last and
              * first hash.
              */
-            block_locator locator(block_locator_hashes);
+            block_locator locator(hashes);
 
             /**
              * Send the getblocks message.
@@ -4091,7 +4155,7 @@ bool tcp_connection::handle_message(message & msg)
                         block_locator locator(hashes);
                         
                         /**
-                         * Send the next getheaders message.
+                         * Send the next getblocks message.
                          */
                         send_getblocks_message(sha256(), locator);
                     }
@@ -4283,7 +4347,7 @@ bool tcp_connection::handle_message(message & msg)
                         /**
                          * Post the operation onto the boost::asio::io_service.
                          */
-                        globals::instance().strand().dispatch(
+                        io_service_.post(strand_.wrap(
                             [this, self, merkle_block, transactions_received]()
                         {
                             /**
@@ -4294,7 +4358,7 @@ bool tcp_connection::handle_message(message & msg)
                                 *const_cast<block_merkle *> (&merkle_block),
                                 transactions_received
                             );
-                        });
+                        }));
                         
                         spv_block_merkle_current_ = nullptr;
                         spv_transactions_current_.clear();
@@ -4302,7 +4366,22 @@ bool tcp_connection::handle_message(message & msg)
                 }
                 else
                 {
-                    wallet_manager::instance().sync_with_wallets(*tx, 0, true);
+                    wallet_manager::instance().sync_with_wallets(
+                        *tx, 0, true
+                    );
+
+                    auto self(shared_from_this());
+                    
+                    /**
+                     * Post the operation onto the boost::asio::io_service.
+                     */
+                    io_service_.post(strand_.wrap(
+                        [this, tx]()
+                    {
+                        /**
+                         * ZeroLedger :-)
+                         */
+                    }));
                 }
                 
                 /**
@@ -4562,95 +4641,9 @@ bool tcp_connection::handle_message(message & msg)
         
         if (msg.protocol_merkleblock().merkleblock)
         {
-            log_none(
-                "Connection received merkleblock " <<
-                msg.protocol_merkleblock().merkleblock->get_hash().to_string(
-                ).substr(0, 20)
-                << "."
-            );
-            
             /**
-             * Allocate an inventory_vector.
+             * ZeroLedger :-)
              */
-            inventory_vector inv(
-                inventory_vector::type_msg_filtered_block_nonstandard,
-                msg.protocol_merkleblock().merkleblock->get_hash()
-            );
-            
-            insert_inventory_vector_seen(inv);
-            
-            /**
-             * Cancel the (SPV) getblocks timeout timer.
-             */
-            timer_spv_getblocks_timeout_.cancel();
-            
-            /**
-             * Set the time we received a block.
-             */
-            time_last_block_received_ = std::time(0);
-            
-            if (
-                msg.protocol_merkleblock().merkleblock->transactions_matched(
-                ).size() > 0
-                )
-            {
-                /**
-                 * Set the current block_merkle (only if it has matched
-                 * transactions).
-                 */
-                spv_block_merkle_current_.reset(new block_merkle(
-                    *msg.protocol_merkleblock().merkleblock)
-                );
-            }
-            else
-            {
-                block_merkle merkle_block(
-                    *msg.protocol_merkleblock().merkleblock
-                );
-                
-                /**
-                 * This block_merkle has no matching received transactions.
-                 */
-                std::vector<transaction> transactions_received;
-                
-                auto self(shared_from_this());
-                
-                /**
-                 * Post the operation onto the boost::asio::io_service.
-                 */
-                globals::instance().strand().dispatch(
-                    [this, self, merkle_block, transactions_received]()
-                {
-                    /**
-                     * Callback
-                     */
-                    stack_impl_.on_spv_merkle_block(
-                        self, *const_cast<block_merkle *> (&merkle_block),
-                        transactions_received
-                    );
-                });
-            }
-            
-            if (
-                msg.protocol_merkleblock().merkleblock->is_valid_spv() == true
-                )
-            {
-                /**
-                 * Copy the hashes of the matched transactions from the
-                 * merkle block.
-                 */
-                for (
-                    auto & i : msg.protocol_merkleblock(
-                    ).merkleblock->transactions_matched()
-                    )
-                {
-                    spv_transactions_matched_.insert(i.second);
-                }
-            }
-            else
-            {
-                log_error("TCP connection got invalid merkleblock message.");
-            }
         }
     }
     else if (msg.header().command == "filterload")
@@ -5866,22 +5859,25 @@ void tcp_connection::do_ping(const boost::system::error_code & ec)
                         /**
                          * The connection has timed out, call stop.
                          */
-                        stop();
+                        do_stop();
                     }
                 }
             )
         );
-    
-        /**
-         * Send a ping message every interval_ping seconds.
-         */
-        send_ping_message();
         
-        timer_ping_.expires_from_now(std::chrono::seconds(interval_ping));
-        timer_ping_.async_wait(strand_.wrap(
-            std::bind(&tcp_connection::do_ping, self,
-            std::placeholders::_1))
-        );
+        if (m_state == state_started)
+        {
+            /**
+             * Send a ping message every interval_ping seconds.
+             */
+            send_ping_message();
+            
+            timer_ping_.expires_from_now(std::chrono::seconds(interval_ping));
+            timer_ping_.async_wait(strand_.wrap(
+                std::bind(&tcp_connection::do_ping, self,
+                std::placeholders::_1))
+            );
+        }
     }
 }
 
@@ -5921,7 +5917,7 @@ void tcp_connection::do_send_getblocks(const boost::system::error_code & ec)
             /**
              * Call stop.
              */
-            stop();
+            do_stop();
             
             return;
         }
@@ -5933,19 +5929,9 @@ void tcp_connection::do_send_getblocks(const boost::system::error_code & ec)
                     globals::instance().spv_use_getblocks() == true
                 ;
                 
-                if (
-                    should_send_spv_getblocks &&
-                    m_identifier == globals::instance(
-                    ).spv_active_tcp_connection_identifier())
-                {
-                    should_send_spv_getblocks = true;
-                }
-
                 if (should_send_spv_getblocks == true)
                 {
                     if (
-                        m_identifier == globals::instance(
-                        ).spv_active_tcp_connection_identifier() &&
                         globals::instance().spv_best_block_height() <
                         stack_impl_.peer_block_count() &&
                         std::time(0) - time_last_block_received_ >= 60
@@ -5959,37 +5945,9 @@ void tcp_connection::do_send_getblocks(const boost::system::error_code & ec)
                         /**
                          * We've stalled.
                          */
-                        stop();
+                        do_stop();
                         
                         return;
-                    }
-                    else if (
-                        std::time(0) - time_last_block_received_ >=
-                        (constants::work_and_stake_target_spacing * 2) ||
-                        (utility::is_spv_initial_block_download() &&
-                        std::time(0) - time_last_block_received_ > 8)
-                        )
-                    {
-                        if (globals::instance().spv_use_getblocks() == true)
-                        {
-                            /**
-                             * Get the block_locator hashes.
-                             */
-                            const auto & block_locator_hashes =
-                                globals::instance().spv_block_locator_hashes()
-                            ;
-                            
-                            /**
-                             * Allocate the block_locator with the last and
-                             * first hash.
-                             */
-                            block_locator locator(block_locator_hashes);
-                            
-                            /**
-                             * Send the getblocks message.
-                             */
-                            send_getblocks_message(sha256(), locator);
-                        }
                     }
                 }
             }
@@ -6009,13 +5967,13 @@ void tcp_connection::do_send_getblocks(const boost::system::error_code & ec)
                     /**
                      * We've stalled.
                      */
-                    stop();
+                    do_stop();
                     
                     return;
                 }
                 else if (
                     (std::time(0) - time_last_block_received_ >=
-                    (constants::work_and_stake_target_spacing * 2)) ||
+                    (constants::work_and_stake_target_spacing * 3)) ||
                     (utility::is_initial_block_download() == true &&
                     std::time(0) - time_last_block_received_ >=
                     constants::work_and_stake_target_spacing * 3)
@@ -6041,24 +5999,27 @@ void tcp_connection::do_send_getblocks(const boost::system::error_code & ec)
                 }
             }
             
-            auto self(shared_from_this());
-            
-            /**
-             * Start the getblocks timer.
-             */
-            if (globals::instance().is_client_spv() == true)
+            if (m_state == state_started)
             {
-                timer_getblocks_.expires_from_now(std::chrono::seconds(8));
+                auto self(shared_from_this());
+                
+                /**
+                 * Start the getblocks timer.
+                 */
+                if (globals::instance().is_client_spv() == true)
+                {
+                    timer_getblocks_.expires_from_now(std::chrono::seconds(8));
+                }
+                else
+                {
+                    timer_getblocks_.expires_from_now(std::chrono::seconds(8));
+                }
+                
+                timer_getblocks_.async_wait(strand_.wrap(
+                    std::bind(&tcp_connection::do_send_getblocks, self,
+                    std::placeholders::_1))
+                );
             }
-            else
-            {
-                timer_getblocks_.expires_from_now(std::chrono::seconds(8));
-            }
-            
-            timer_getblocks_.async_wait(strand_.wrap(
-                std::bind(&tcp_connection::do_send_getblocks, self,
-                std::placeholders::_1))
-            );
         }
     }
 }
@@ -6325,16 +6286,19 @@ void tcp_connection::do_send_getheaders(const boost::system::error_code & ec)
              */
             if (utility::is_spv_initial_block_download() == true)
             {
-                auto self(shared_from_this());
-                
-                /**
-                 * Start the getheaders timer.
-                 */
-                timer_getheaders_.expires_from_now(std::chrono::seconds(8));
-                timer_getheaders_.async_wait(strand_.wrap(
-                    std::bind(&tcp_connection::do_send_getheaders, self,
-                    std::placeholders::_1))
-                );
+                if (m_state == state_started)
+                {
+                    auto self(shared_from_this());
+                    
+                    /**
+                     * Start the getheaders timer.
+                     */
+                    timer_getheaders_.expires_from_now(std::chrono::seconds(8));
+                    timer_getheaders_.async_wait(strand_.wrap(
+                        std::bind(&tcp_connection::do_send_getheaders, self,
+                        std::placeholders::_1))
+                    );
+                }
             }
         }
     }

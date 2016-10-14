@@ -222,11 +222,7 @@ bool utility::is_spv_initial_block_download()
 
 bool utility::is_chain_file(const std::string & file_name)
 {
-    return
-        file_name == (globals::instance().operation_mode() ==
-        protocol::operation_mode_client ?
-        "block-index-client.dat" : "block-index-peer.dat")
-    ;
+    return file_name == "block-index-peer.dat";
 }
 
 sha256 utility::get_orphan_root(const std::shared_ptr<block> & blk)

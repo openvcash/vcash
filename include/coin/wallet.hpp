@@ -820,6 +820,11 @@ namespace coin {
                 const bool & write_to_database
             );
         
+            /**
+             * Gets the hd_keychain seed.
+             */
+            std::string hd_keychain_seed();
+        
             /** 
              * Reads an order position.
              * @param order_position The order position.

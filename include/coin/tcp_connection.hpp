@@ -942,11 +942,6 @@ namespace coin {
             ;
         
             /**
-             * The hash of the last SPV block.
-             */
-            sha256 spv_hash_block_last_;
-        
-            /**
              * The transaction hashes from merkle block matches,
              */
             std::set<sha256> spv_transactions_matched_;

@@ -327,22 +327,10 @@ namespace coin {
 
 			void write(void * data, const std::size_t & len)
 			{
-                /**
-                 * :TODO:Time these to see which is faster.
-                 */
-#if 1
                 m_data.insert(
                     m_data.end(), reinterpret_cast<char *>(data),
                     reinterpret_cast<char *>(data) + len
                 );
-#else
-				m_data.resize(m_data.size() + len);
-
-                if (m_data.size() > 0)
-                {
-                    std::memcpy(&m_data[0] + m_data.size() - len, data, len);
-                }
-#endif
 			}
         
             /**

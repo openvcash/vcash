@@ -61,6 +61,7 @@ globals::globals()
     , m_spv_best_block_height(-1)
     , m_spv_use_getblocks(false)
     , m_spv_time_wallet_created(std::time(0))
+    , m_db_private(false)
 {
     /**
      * P2SH (BIP16 support) can be removed eventually.
@@ -199,6 +200,31 @@ std::vector<sha256> globals::spv_block_locator_hashes()
 {
     std::vector<sha256> ret;
 
+    std::int32_t step = 1, start = 0;
+    
+    const auto * block_last = globals::instance().spv_block_last().get();
+
+    while (block_last && block_last->height() > 0)
+    {
+        ret.push_back(block_last->get_hash());
+
+        /**
+         * Exponentially larger steps back.
+         */
+        for (auto i = 0; block_last && i < step; i++)
+        {
+            block_last =
+                m_spv_block_merkles[block_last->block_header(
+                ).hash_previous_block].get()
+            ;
+        }
+        
+        if (++start > 10)
+        {
+            step *= 2;
+        }
+    }
+
     ret.push_back(
         (constants::test_net ?
         block::get_hash_genesis_test_net() : block::get_hash_genesis())
@@ -234,6 +260,16 @@ std::map<sha256, std::vector<transaction> > &
     globals::spv_block_merkle_orphan_transactions()
 {
     return m_spv_block_merkle_orphan_transactions;
+}
+
+void globals::set_db_private(const bool & val)
+{
+    m_db_private = val;
+}
+
+const bool & globals::db_private() const
+{
+    return m_db_private;
 }
 
 void globals::spv_reset_bloom_filter()

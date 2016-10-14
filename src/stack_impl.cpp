@@ -279,6 +279,28 @@ void stack_impl::start()
     m_status_manager->insert(status);
     
     /**
+     * Set the globals::db_private.
+     */
+    if (globals::instance().is_client_spv() == true)
+    {
+        /**
+         * (SPV) clients always use db_private.
+         */
+        m_configuration.set_db_private(true);
+        
+        /**
+         * Save the configuration to disk.
+         */
+        m_configuration.save();
+
+        globals::instance().set_db_private(m_configuration.db_private());
+    }
+    else
+    {
+        globals::instance().set_db_private(m_configuration.db_private());
+    }
+    
+    /**
      * Get the database cache size.
      */
     auto database_cache_size = m_configuration.database_cache_size();
@@ -290,7 +312,17 @@ void stack_impl::start()
     {
         if (database_cache_size > 1)
         {
-            database_cache_size = 1;
+            /**
+             * Reset the database.cache_size to 1.
+             */
+            m_configuration.set_database_cache_size(1);
+            
+            /**
+             * Save the configuration to disk.
+             */
+            m_configuration.save();
+        
+            database_cache_size = m_configuration.database_cache_size();
         }
     }
     
@@ -314,7 +346,7 @@ void stack_impl::start()
         /**
          * Set the status value.
          */
-        status["value"] = "Loading ledger";
+        status["value"] = "Loading index";
 
         /**
          * Callback
@@ -402,7 +434,7 @@ void stack_impl::start()
                 success || m_configuration.blockchain_pruning() == true
                 )
             {
-                log_info("Stack loaded ledger index.");
+                log_info("Stack loaded index.");
                 
                 /**
                  * Allocate the status.
@@ -417,7 +449,7 @@ void stack_impl::start()
                 /**
                  * Set the status value.
                  */
-                status["value"] = "Loaded ledger index";
+                status["value"] = "Loaded index";
 
                 /**
                  * Callback
@@ -425,11 +457,19 @@ void stack_impl::start()
                 m_status_manager->insert(status);
                 
                 /**
+                 * Always use deterministic wallets in SPV mode.
+                 */
+                if (globals::instance().is_client_spv() == true)
+                {
+                    m_configuration.set_wallet_deterministic(true);
+                }
+                
+                /**
                  * Check that the wallet.dat file exists.
                  */
                 std::ifstream ifs(filesystem::data_path() + "/wallet.dat");
             
-                bool exists = false;
+                auto exists = false;
                 
                 if (ifs.good() == true)
                 {
@@ -630,11 +670,6 @@ void stack_impl::start()
                     /**
                      * -upgradewallet
                      */
-
-                    /**
-                     * :TODO: Use configuration and globals.
-                     */
-                    auto configuration_instance_wallet_hd = false;
                     
                     /**
                      * If this is the first run we need to create a wallet.
@@ -647,7 +682,7 @@ void stack_impl::start()
 						db_wallet wallet_db("wallet.dat");
 
                        /**
-                        * Set the creation timestamp (minus one day).
+                        * Set the creation timestamp.
                         */
                         globals::instance().wallet_main()->set_timestamp(
                             std::time(0)
@@ -670,16 +705,114 @@ void stack_impl::start()
                          */
                         std::srand(static_cast<std::uint32_t> (std::clock()));
 
+                        /**
+                         * If we got the argument wallet-seed we need to make
+                         * sure to set the wallet.deterministric to true
+                         * in the configuration if it is false.
+                         */
+                        if (m_configuration.args().count("wallet-seed") > 0)
+                        {
+                            /**
+                             * If the configuration wallet.deterministic is
+                             * false set it to true and save the
+                             * configuration.
+                             */
+                            if (
+                                m_configuration.wallet_deterministic(
+                                ) == false
+                                )
+                            {
+                                /**
+                                 * Set the wallet.deterministic to true.
+                                 */
+                                m_configuration.set_wallet_deterministic(
+                                    true
+                                );
+                                
+                                /**
+                                 * Save the configuration.
+                                 */
+                                m_configuration.save();
+                            }
+                        }
+                        
                         if (
-                            configuration_instance_wallet_hd &&
+                            m_configuration.wallet_deterministic() == true &&
                             globals::instance().wallet_main(
                             )->get_hd_configuration().id_key_master(
                             ).is_empty() == true
                             )
                         {
                             key k;
-                            
-                            k.make_new_key(true);
+
+                            /**
+                             * If we have the wallet-seed param restore the
+                             * HD key master from it, otherwise generate a new
+                             * HD key master.
+                             */
+                            if (m_configuration.args().count("wallet-seed") > 0)
+                            {
+                                /**
+                                 * Since we are restoring set the wallet
+                                 * timestamp to 28 days ago.
+                                 * :TODO: The "rescan date" needs to be
+                                 * configurable and these two lines can be
+                                 * removed.
+                                 */
+                                globals::instance().wallet_main()->set_timestamp(
+                                    std::time(0) - 28 * 24 * 60 * 60)
+                                ;
+                                db_wallet("wallet.dat").write_timestamp(
+                                    std::time(0) - 28 * 24 * 60 * 60
+                                );
+                        
+                                auto wallet_seed =
+                                    m_configuration.args()["wallet-seed"]
+                                ;
+                                
+                                /**
+                                 * Clear the wallet-seed from memory.
+                                 */
+                                m_configuration.args().erase("wallet-seed");
+                                
+                                /**
+                                 * Allocate an empty private key.
+                                 */
+                                key::secret_t secret;
+            
+                                secret = utility::from_hex(wallet_seed);
+                                
+                                try
+                                {
+                                    k.set_secret(secret, true);
+                                }
+                                catch (std::exception & e)
+                                {
+                                    log_error(
+                                        "Stack, failed to restore wallet, "
+                                        "invalid seed, what = " <<
+                                        e.what() << "."
+                                    );
+
+                                    std::abort();
+                                }
+                                
+                                assert(k.is_valid());
+                                
+                                if (k.is_valid() == false)
+                                {
+                                    log_error(
+                                        "Stack, failed to restore wallet, "
+                                        "invalid seed."
+                                    );
+                                    
+                                    std::abort();
+                                }
+                            }
+                            else
+                            {
+                                k.make_new_key(true);
+                            }
                             
                             if (
                                 globals::instance().wallet_main(
@@ -775,7 +908,7 @@ void stack_impl::start()
                         }
                     }
                     
-                    if (configuration_instance_wallet_hd == true)
+                    if (m_configuration.wallet_deterministic() == true)
                     {
                         if (
                             globals::instance().wallet_main(
@@ -2653,6 +2786,20 @@ void stack_impl::broadcast_alert(
     }));
 }
 
+bool stack_impl::wallet_exists(const bool & is_client)
+{
+    auto path = filesystem::data_path();
+    
+    if (is_client == true)
+    {
+        path += "client/";
+    }
+    
+    std::ifstream ifs(path + "wallet.dat");
+
+    return ifs.good();
+}
+
 void stack_impl::wallet_encrypt(const std::string & passphrase)
 {
     globals::instance().io_service().post(
@@ -2846,6 +2993,16 @@ bool stack_impl::wallet_is_locked(const std::uint32_t & wallet_id)
 void stack_impl::wallet_zerotime_lock(const std::string & tx_id)
 {
     globals::instance().wallet_main()->zerotime_lock(sha256(tx_id));
+}
+
+std::string stack_impl::wallet_hd_keychain_seed()
+{
+    if (globals::instance().wallet_main()->is_locked() == false)
+    {
+        return globals::instance().wallet_main()->hd_keychain_seed();
+    }
+    
+    return std::string();
 }
 
 void stack_impl::chainblender_start()
@@ -3864,18 +4021,21 @@ void stack_impl::spv_block_merkles_load(std::uint8_t & trys)
   
         auto size = f->size();
         
-        auto bytes = buffer_blocks.read_bytes(size);
-        
         std::uint32_t checksum = 0;
         
-        std::memcpy(
-            &checksum, &bytes[size - sizeof(checksum)], sizeof(checksum)
-        );
+        if (size > 0)
+        {
+            auto bytes = buffer_blocks.read_bytes(size);
+            
+            std::memcpy(
+                &checksum, &bytes[size - sizeof(checksum)], sizeof(checksum)
+            );
 
-        buffer_blocks = data_buffer(
-            reinterpret_cast<const char *> (&bytes[0]),
-            bytes.size() - sizeof(checksum)
-        );
+            buffer_blocks = data_buffer(
+                reinterpret_cast<const char *> (&bytes[0]),
+                bytes.size() - sizeof(checksum)
+            );
+        }
 
         /**
          * Calculate the checksum of all encoded block_merkles and compare
@@ -4400,8 +4560,23 @@ void stack_impl::set_spv_block_height(
     )
 {
     /**
-     * ZeroLedger :-)
+     * Post the operation onto the boost::asio::io_service.
      */
+    globals::instance().io_service().post(
+        globals::instance().strand().wrap(
+        [this, height, hashes_tx]()
+    {
+        /**
+         * Inform the wallet manager that transactions may have been updated.
+         */
+        for (auto & i : hashes_tx)
+        {
+            /**
+             * Inform the wallet manager.
+             */
+            wallet_manager::instance().on_spv_transaction_updated(height, i);
+        }
+    }));
 }
 
 void stack_impl::on_status_block()
@@ -4935,28 +5110,7 @@ void stack_impl::create_directories()
     /**
      * Create blockchain directory.
      */
-    if (
-        globals::instance().operation_mode() == protocol::operation_mode_client
-        )
-    {
-        path_data = path_data + "blockchain/";
-        
-        result = filesystem::create_path(path_data);
-        
-        log_info("Stack creating path = " << path_data << ".");
-        
-        if (result == 0 || result == filesystem::error_already_exists)
-        {
-            log_none("Stack, path already exists.");
-        }
-        else
-        {
-            throw std::runtime_error("failed to create path " + path_data);
-        }
-        
-        path_data += "client/";
-    }
-    else
+    if (globals::instance().is_client_spv() == false)
     {
         path_data = path_data + "blockchain/";
         

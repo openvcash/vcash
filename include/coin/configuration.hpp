@@ -263,6 +263,30 @@ namespace coin {
              */
             const std::uint32_t & database_cache_size() const;
         
+            /**
+             * Sets if the wallet is deterministic.
+             * @param val The value.
+             */
+            void set_wallet_deterministic(const bool & val);
+        
+            /**
+             * If true the wallet is deterministic.
+             */
+            const bool & wallet_deterministic() const;
+        
+            /**
+             * If true the database will not be memory mapped, instead held
+             * into memory.
+             * @param val The value.
+             */
+            void set_db_private(const bool & val);
+        
+            /**
+             * If true the database will not be memory mapped, instead held
+             * into memory.
+             */
+            const bool & db_private() const;
+        
         private:
         
             /** 
@@ -341,6 +365,17 @@ namespace coin {
              * The database cache size.
              */
             std::uint32_t m_database_cache_size;
+        
+            /**
+             * If true the wallet is deterministic.
+             */
+            bool m_wallet_deterministic;
+
+            /**
+             * If true the database will not be memory mapped, instead held
+             * into memory.
+             */
+            bool m_db_private;
         
         protected:
         

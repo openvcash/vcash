@@ -166,6 +166,15 @@ namespace coin {
             stack_impl & stack_impl_;
         
             /**
+             * The state.
+             */
+            enum
+            {
+                state_stopped,
+                state_started,
+            } state_;
+        
+            /**
              * The timer.
              */
             boost::asio::basic_waitable_timer<

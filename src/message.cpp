@@ -1518,7 +1518,7 @@ data_buffer message::create_version()
 #elif (defined __IPHONE_OS_VERSION_MAX_ALLOWED)
     comments.push_back("iOS");
 #elif (defined __APPLE__)
-    comments.push_back("Mac OS X");
+    comments.push_back("macOS");
 #elif (defined __linux__)
     comments.push_back("Linux");
 #endif

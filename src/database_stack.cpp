@@ -47,6 +47,7 @@ database_stack::database_stack(
     : io_service_(ios)
     , strand_(s)
     , stack_impl_(owner)
+    , state_(state_stopped)
     , timer_(ios)
 {
     // ...
@@ -116,6 +117,8 @@ void database_stack::start(const std::uint16_t & port, const bool & is_client)
         std::bind(&database_stack::tick, self,
         std::placeholders::_1))
     );
+    
+    state_ = state_started;
 }
 
 void database_stack::join(
@@ -129,20 +132,25 @@ void database_stack::join(
 
 void database_stack::stop()
 {
-    /**
-     * Cancel the timer.
-     */
-    timer_.cancel();
+    if (state_ == state_started)
+    {
+        /**
+         * Cancel the timer.
+         */
+        timer_.cancel();
 
 #if (defined USE_DATABASE_STACK && USE_DATABASE_STACK)
-    /**
-     * Do not stop the database on test networks.
-     */
-    if (constants::test_net == false)
-    {
-        database::stack::stop();
-    }
+        /**
+         * Do not stop the database on test networks.
+         */
+        if (constants::test_net == false)
+        {
+            database::stack::stop();
+        }
 #endif // USE_DATABASE_STACK
+
+        state_ = state_stopped;
+    }
 }
 
 std::uint16_t database_stack::broadcast(const std::vector<std::uint8_t> & val)

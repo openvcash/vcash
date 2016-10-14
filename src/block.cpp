@@ -3540,8 +3540,6 @@ std::size_t block::get_maximum_size_median220()
         return std::numeric_limits<std::size_t>::max();
     }
     
-    return std::numeric_limits<std::size_t>::max();
-    
     /**
      * 128 Kilobytes
      */
@@ -3657,18 +3655,7 @@ std::string block::get_file_path(const std::uint32_t & file_index)
 {
     std::stringstream ss;
     
-    std::string block_path;
-    
-    if (
-        globals::instance().operation_mode() == protocol::operation_mode_client
-        )
-    {
-        block_path = "blockchain/client/";
-    }
-    else
-    {
-        block_path = "blockchain/peer/";
-    }
+    std::string block_path = "blockchain/peer/";
     
     ss <<
         filesystem::data_path() << block_path <<

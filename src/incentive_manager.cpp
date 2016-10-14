@@ -352,7 +352,7 @@ bool incentive_manager::handle_message(
                             ).acceptable(tx).first == true
                             )
                         {
-                            log_info(
+                            log_debug(
                                 "Incentive manager validated isync "
                                 "collateral " << i.wallet_address << "."
                             );

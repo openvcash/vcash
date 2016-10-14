@@ -102,11 +102,8 @@ bool db_env::open(const std::int32_t & cache_size)
         {
             flags |= DB_PRIVATE;
         }
-        else if (true)
+        else if (globals::instance().db_private() == true)
         {
-#if (! defined _MSC_VER)
-#warning :TODO: This needs to be in configuration, on by default
-#endif // _MSC_VER
             flags |= DB_PRIVATE;
         }
         

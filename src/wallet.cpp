@@ -447,7 +447,7 @@ key_public wallet::generate_new_key()
         else
         {
             /**
-             * Make this an ivar.
+             * :TODO: Make this an ivar.
              */
             static auto did_set_hd_key_master = false;
             
@@ -4627,6 +4627,36 @@ bool wallet::set_hd_configuration(
     m_hd_configuration = hd_config;
     
     return true;
+}
+
+std::string wallet::hd_keychain_seed()
+{
+    std::string ret;
+    
+    /**
+     * Allocate the key.
+     */
+    key k;
+    
+    if (m_hd_configuration.id_key_master().is_empty() == false)
+	{
+        if (get_key(m_hd_configuration.id_key_master(), k) == false)
+        {
+            log_error("wallet::generate_new_key(): Key master not found");
+        }
+        else
+        {
+            auto compressed = false;
+            
+            const std::vector<std::uint8_t> seed = k.get_secret(compressed);
+            
+            ret = utility::hex_string(seed);
+            
+            log_info("Wallet, seed = " << ret << ".");
+   	     }
+	}
+    
+    return ret;
 }
 
 void wallet::read_order_position(

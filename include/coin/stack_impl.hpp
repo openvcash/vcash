@@ -151,6 +151,11 @@ namespace coin {
             const boost::asio::ip::tcp::endpoint & local_endpoint() const;
         
             /**
+             * If true a wallet file exists.
+             */
+            static bool wallet_exists(const bool & is_client);
+            
+            /**
              * If true the wallet is crypted.
              * @param wallet_id The wallet id.
              */
@@ -167,6 +172,11 @@ namespace coin {
              * @param tx_id The transaction id.
              */
             void wallet_zerotime_lock(const std::string & tx_id);
+        
+            /**
+             * Get's the wallet HD keychain seed (if configured).
+             */
+            std::string wallet_hd_keychain_seed();
         
             /**
              * Starts chainblender.

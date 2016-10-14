@@ -647,6 +647,17 @@ namespace coin {
             ;
         
             /**
+             * Set's DB_PRIVATE flag.
+             * @param val The value.
+             */
+            void set_db_private(const bool & val);
+        
+            /**
+             * If true the DB_PRIVATE flag should be used.
+             */
+            const bool & db_private() const;
+        
+            /**
              * Resets the (SPV) transaction_bloom_filter to the current
              * current environment.
              */
@@ -894,6 +905,11 @@ namespace coin {
             std::map<sha256, std::vector<transaction> >
                 m_spv_block_merkle_orphan_transactions
             ;
+        
+            /**
+             * If true the DB_PRIVATE flag should be used.
+             */
+            bool m_db_private;
         
         protected:
         
