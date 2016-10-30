@@ -537,6 +537,10 @@ bool rpc_connection::handle_json_rpc_request(
         {
             response = json_databasestore(request);
         }
+        else if (request.method == "dumphdseed")
+        {
+            response = json_dumphdseed(request);
+        }
         else if (request.method == "dumpprivkey")
         {
             response = json_dumpprivkey(request);
@@ -1590,6 +1594,90 @@ rpc_connection::json_rpc_response_t rpc_connection::json_databasestore(
                 boost::property_tree::ptree(), pt_error, request.id
             };
         }
+    }
+    catch (std::exception & e)
+    {
+        auto pt_error = create_error_object(
+            error_code_internal_error, e.what()
+        );
+        
+        /**
+         * error_code_internal_error
+         */
+        return json_rpc_response_t{
+            boost::property_tree::ptree(), pt_error, request.id
+        };
+    }
+    
+    return ret;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_dumphdseed(
+    const json_rpc_request_t & request
+    )
+{
+    json_rpc_response_t ret;
+    
+    /**
+     * Set the id from the request.
+     */
+    ret.id = request.id;
+    
+    try
+    {            
+        /**
+         * Make sure the wallet is unlocked.
+         */
+        if (globals::instance().wallet_main()->is_locked())
+        {
+            auto pt_error = create_error_object(
+                error_code_wallet_unlock_needed, "wallet is locked"
+            );
+                
+            /**
+             * error_code_wallet_unlock_needed
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
+        }
+        else if (globals::instance().wallet_unlocked_mint_only())
+        {
+            auto pt_error = create_error_object(
+                error_code_wallet_unlock_needed,
+                "wallet is unlocked for minting only"
+            );
+                
+            /**
+             * error_code_wallet_unlock_needed
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
+        }
+        else if (stack_impl_.get_configuration().wallet_deterministic(
+                 ) == false) 
+        {
+            auto pt_error = create_error_object(
+                error_code_wallet_error,
+                "wallet is not deterministic"
+            );
+                
+            /**
+             * error_code_wallet_error
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
+        }
+            
+	auto wallet_seed = globals::instance().wallet_main()->hd_keychain_seed();
+
+        ret.result.put(
+            "", wallet_seed,
+            rpc_json_parser::translator<std::string> ()
+        );
+        
     }
     catch (std::exception & e)
     {

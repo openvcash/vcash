@@ -365,6 +365,14 @@ namespace coin {
             json_rpc_response_t json_databasestore(
                 const json_rpc_request_t & request
             );
+
+            /**
+             * Encodes hd seed into JSON format.
+             * @param request The json_rpc_request_t.
+             */
+            json_rpc_response_t json_dumphdseed(
+                const json_rpc_request_t & request
+            );
         
             /**
              * Encodes dumpprivkey data into JSON format.
