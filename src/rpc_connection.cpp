@@ -537,9 +537,9 @@ bool rpc_connection::handle_json_rpc_request(
         {
             response = json_databasestore(request);
         }
-        else if (request.method == "dumphdseed")
+        else if (request.method == "dumpwalletseed")
         {
-            response = json_dumphdseed(request);
+            response = json_dumpwalletseed(request);
         }
         else if (request.method == "dumpprivkey")
         {
@@ -1612,7 +1612,7 @@ rpc_connection::json_rpc_response_t rpc_connection::json_databasestore(
     return ret;
 }
 
-rpc_connection::json_rpc_response_t rpc_connection::json_dumphdseed(
+rpc_connection::json_rpc_response_t rpc_connection::json_dumpwalletseed(
     const json_rpc_request_t & request
     )
 {
@@ -1628,7 +1628,7 @@ rpc_connection::json_rpc_response_t rpc_connection::json_dumphdseed(
         /**
          * Make sure the wallet is unlocked.
          */
-        if (globals::instance().wallet_main()->is_locked())
+        if (globals::instance().wallet_main()->is_locked() == true)
         {
             auto pt_error = create_error_object(
                 error_code_wallet_unlock_needed, "wallet is locked"
@@ -1641,7 +1641,7 @@ rpc_connection::json_rpc_response_t rpc_connection::json_dumphdseed(
                 boost::property_tree::ptree(), pt_error, request.id
             };
         }
-        else if (globals::instance().wallet_unlocked_mint_only())
+        else if (globals::instance().wallet_unlocked_mint_only() == true)
         {
             auto pt_error = create_error_object(
                 error_code_wallet_unlock_needed,
@@ -1655,12 +1655,12 @@ rpc_connection::json_rpc_response_t rpc_connection::json_dumphdseed(
                 boost::property_tree::ptree(), pt_error, request.id
             };
         }
-        else if (stack_impl_.get_configuration().wallet_deterministic(
-                 ) == false) 
+        else if (
+            stack_impl_.get_configuration().wallet_deterministic() == false
+            )
         {
             auto pt_error = create_error_object(
-                error_code_wallet_error,
-                "wallet is not deterministic"
+                error_code_wallet_error, "wallet is not deterministic"
             );
                 
             /**
@@ -1671,7 +1671,9 @@ rpc_connection::json_rpc_response_t rpc_connection::json_dumphdseed(
             };
         }
             
-	auto wallet_seed = globals::instance().wallet_main()->hd_keychain_seed();
+        auto wallet_seed =
+            globals::instance().wallet_main()->hd_keychain_seed()
+        ;
 
         ret.result.put(
             "", wallet_seed,
