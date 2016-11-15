@@ -140,6 +140,17 @@ namespace coin {
              */
             std::size_t get_percentage(const std::uint32_t & height);
 
+            /**
+             * If true we must not reserve the collateral from Proof-of-Stake.
+             * @param val The value.
+             */
+            void set_should_stake_collateral(const bool & val);
+        
+            /**
+             * If true we must not reserve the collateral from Proof-of-Stake.
+             */
+            const bool & should_stake_collateral() const;
+        
         private:
         
             /**
@@ -168,6 +179,11 @@ namespace coin {
              * The runners up.
              */
             std::map<std::uint32_t, std::set<std::string> > m_runners_up;
+        
+            /**
+             * If true we must not reserve the collateral from Proof-of-Stake.
+             */
+            bool m_should_stake_collateral;
         
         protected:
         

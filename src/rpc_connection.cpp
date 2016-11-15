@@ -589,6 +589,10 @@ bool rpc_connection::handle_json_rpc_request(
         {
             response = json_getdifficulty(request);
         }
+        if (request.method == "incentive")
+        {
+            response = json_incentive(request);
+        }
         else if (request.method == "getincentiveinfo")
         {
             response.result = json_getincentiveinfo();
@@ -3205,6 +3209,106 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getblocktemplate(
         };
     }
     
+    return ret;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_incentive(
+    const json_rpc_request_t & request
+    )
+{
+    json_rpc_response_t ret;
+
+    if (globals::instance().is_chainblender_enabled() == true)
+    {
+        try
+        {
+            if (request.params.size() == 1)
+            {
+                /**
+                 * Get the command parameter.
+                 */
+                auto param_command =
+                    request.params.front().second.get<std::string> ("")
+                ;
+                
+                if (param_command == "info")
+                {
+                    ret.result.put(
+                        "", "use getincentiveinfo",
+                        rpc_json_parser::translator<std::string> ()
+                    );
+                }
+                else if (param_command == "stake")
+                {
+                    /**
+                     * Set that we should allow the collateral deposit to
+                     * enter Proof-of-Stake.
+                     */
+                    incentive::instance().set_should_stake_collateral(true);
+                    
+                    ret.result.put("", "null");
+                }
+                else
+                {
+                    auto pt_error = create_error_object(
+                        error_code_invalid_parameter, "invalid parameter"
+                    );
+                    
+                    /**
+                     * error_code_invalid_parameter
+                     */
+                    return json_rpc_response_t{
+                        boost::property_tree::ptree(), pt_error, request.id
+                    };
+                }
+            }
+            else
+            {
+                auto pt_error = create_error_object(
+                    error_code_invalid_params, "invalid parameter count"
+                );
+                
+                /**
+                 * error_code_invalid_params
+                 */
+                return json_rpc_response_t{
+                    boost::property_tree::ptree(), pt_error, request.id
+                };
+            }
+        }
+        catch (std::exception & e)
+        {
+            log_error(
+                "RPC Connection failed to create json_incentive, what = " <<
+                e.what() << "."
+            );
+            
+            auto pt_error = create_error_object(
+                error_code_internal_error, e.what()
+            );
+            
+            /**
+             * error_code_internal_error
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
+        }
+    }
+    else
+    {
+        auto pt_error = create_error_object(
+            error_code_method_not_found, "method not found"
+        );
+        
+        /**
+         * error_code_method_not_found
+         */
+        return json_rpc_response_t{
+            boost::property_tree::ptree(), pt_error, request.id
+        };
+    }
+
     return ret;
 }
 

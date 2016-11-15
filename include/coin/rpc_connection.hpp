@@ -462,7 +462,15 @@ namespace coin {
                 const json_rpc_request_t & request
             );
         
-           /**
+            /**
+             * Performs a incentive operation.
+             * @param request The json_rpc_request_t.
+             */
+            json_rpc_response_t json_incentive(
+                const json_rpc_request_t & request
+            );
+        
+            /**
              * Encodes getincentiveinfo data into JSON format.
              */
             boost::property_tree::ptree json_getincentiveinfo();

@@ -3504,27 +3504,36 @@ bool wallet::create_coin_stake(
      */
     if (m_stack_impl && globals::instance().is_incentive_enabled())
     {
-        auto collateral_balance =
-            m_stack_impl->get_incentive_manager()->collateral_balance()
-        ;
-        
-        auto index_previous = stack_impl::get_block_index_best();
-        
-        /**
-         * Get the collateral.
-         */
-        auto collateral =
-            incentive::instance().get_collateral(
-            index_previous ? index_previous->height() + 1 : 0)
-        ;
-        
-        if (collateral_balance >= collateral)
+        if (incentive::instance().should_stake_collateral() == false)
         {
-            reserve_balance += collateral_balance * constants::coin;
+            auto collateral_balance =
+                m_stack_impl->get_incentive_manager()->collateral_balance()
+            ;
             
+            auto index_previous = stack_impl::get_block_index_best();
+            
+            /**
+             * Get the collateral.
+             */
+            auto collateral =
+                incentive::instance().get_collateral(
+                index_previous ? index_previous->height() + 1 : 0)
+            ;
+            
+            if (collateral_balance >= collateral)
+            {
+                reserve_balance += collateral_balance * constants::coin;
+                
+                log_info(
+                    "Wallet (create coin stake) has reserve balance of " <<
+                    utility::format_money(reserve_balance) << "."
+                );
+            }
+        }
+        else
+        {
             log_info(
-                "Wallet (create coin stake) has reserve balance of " <<
-                utility::format_money(reserve_balance) << "."
+                "Wallet (create coin stake) has no reserve balance."
             );
         }
     }
@@ -4591,7 +4600,7 @@ bool wallet::set_hd_key_master(
     
     hd_keychain::set_versions(0x0488ADE4, 0x0488B21E);
 
-    log_info(
+    log_debug(
         "Wallet, set_hd_key_master seed = " << utility::hex_string(seed) << "."
     );
 
@@ -4652,7 +4661,7 @@ std::string wallet::hd_keychain_seed()
             
             ret = utility::hex_string(seed);
             
-            log_info("Wallet, seed = " << ret << ".");
+            log_debug("Wallet, seed = " << ret << ".");
    	     }
 	}
     
@@ -4921,9 +4930,21 @@ void wallet::resend_transactions_tick(const boost::system::error_code & ec)
                                 );
                             }
 
-                            /**
-                             * :TOOD: Relay expired zerotime_lock objects.
-                             */
+                            if (globals::instance().is_client_spv() == true)
+                            {
+                                /**
+                                 * We always perform ZeroTime locking on (SPV)
+                                 * client transactions.
+                                 */
+                                zerotime_lock(wtx.get_hash());
+                            }
+                            else
+                            {
+                                /**
+                                 * :TODO: If sent as ZeroTime perform a lock if
+                                 * still not yet in a block.
+                                 */
+                            }
                         }
                         else
                         {

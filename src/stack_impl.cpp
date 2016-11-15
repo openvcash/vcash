@@ -2480,30 +2480,40 @@ void stack_impl::send_coins(
              * Allocate the transaction_wallet.
              */
             transaction_wallet wtx(globals::instance().wallet_main().get());
-            
+        
             /**
              * Check if ZeroTime should be used.
              */
             auto use_zerotime = false;
-            
-            auto it = wallet_values.find("zerotime");
-            
-            if (it != wallet_values.end())
+        
+            /**
+             * (SPV) clients always use ZeroTime regardless of configuration.
+             */
+            if (globals::instance().is_client_spv() == true)
             {
-                use_zerotime = it->second == "1";
+                use_zerotime = true;
+            }
+            else
+            {
+                auto it = wallet_values.find("zerotime");
                 
-                if (use_zerotime)
+                if (it != wallet_values.end())
                 {
-                    log_info("Stack is sending coins with ZeroTime.");
+                    use_zerotime = it->second == "1";
                 }
             }
-            
+
+            if (use_zerotime)
+            {
+                log_info("Stack is sending coins with ZeroTime.");
+            }
+        
             /**
              * Check if only Blended coins should be used.
              */
             auto use_only_chainblended = false;
             
-            it = wallet_values.find("blended");
+            auto it = wallet_values.find("blended");
             
             if (it != wallet_values.end())
             {
@@ -4165,6 +4175,18 @@ void stack_impl::spv_block_merkles_load(std::uint8_t & trys)
                 }
             }
             
+            if (blocks_loaded <= 1)
+            {
+                log_warn(
+                    "Stack didn't seem to load enough blocks(" <<
+                    blocks_loaded << "), restarting from genesis."
+                );
+            
+                globals::instance().set_spv_block_last(nullptr);
+                globals::instance().set_spv_best_block_height(0);
+                globals::instance().spv_block_merkles().clear();
+            }
+            
             log_debug(
                 "Stack loaded blocks, best height = " <<
                 globals::instance().spv_best_block_height() << "."
@@ -4415,6 +4437,7 @@ double stack_impl::difficulty(block_index * index) const
                 for (auto & i : globals::instance().spv_block_merkles())
                 {
                     if (
+                        i.second &&
                         i.second->height() > block_height &&
                         i.second->block_header().nonce != 0
                         )
@@ -4550,7 +4573,7 @@ void stack_impl::on_spv_merkle_block(
     )
 {
     /**
-     * ZeroLedger :-)
+     * ZeroLedger
      */
 }
 
