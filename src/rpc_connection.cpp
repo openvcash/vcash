@@ -589,7 +589,7 @@ bool rpc_connection::handle_json_rpc_request(
         {
             response = json_getdifficulty(request);
         }
-        if (request.method == "incentive")
+        else if (request.method == "incentive")
         {
             response = json_incentive(request);
         }
