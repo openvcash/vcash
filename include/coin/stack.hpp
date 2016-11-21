@@ -147,6 +147,12 @@ namespace coin {
             std::string wallet_hd_keychain_seed();
         
             /**
+             * Generates a new wallet address.
+             * @param label The label.
+             */
+            void wallet_generate_address(const std::string & label);
+        
+            /**
              * Starts chainblender.
              */
             void chainblender_start();

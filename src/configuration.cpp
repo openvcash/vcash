@@ -52,7 +52,7 @@ configuration::configuration()
     , m_chainblender_debug_options(false)
     , m_chainblender_use_common_output_denominations(true)
     , m_database_cache_size(db_env::default_cache_size)
-    , m_wallet_deterministic(false)
+    , m_wallet_deterministic(true)
     , m_db_private(false)
 {
     // ...

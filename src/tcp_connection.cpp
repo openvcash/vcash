@@ -1828,7 +1828,7 @@ void tcp_connection::send_getheaders_message(
                         /**
                          * Stop
                          */
-                        stop();
+                        do_stop();
                     }
                 }));
     
@@ -3506,7 +3506,7 @@ bool tcp_connection::handle_message(message & msg)
         if (globals::instance().is_client_spv() == true)
         {
             /**
-             * If we got 500 block hashes request the next 500 block hashes.
+             * If we got > 1 block hashes request the next 500 block hashes.
              */
             if (getdata_.size() > 1)
             {
@@ -4058,7 +4058,7 @@ bool tcp_connection::handle_message(message & msg)
     }
     else if (msg.header().command == "headers")
     {
-        log_none("Got headers");
+        log_none("Got headers = " << msg.protocol_headers().headers.size());
         
         /**
          * Set the last time we got a headers.
@@ -4072,15 +4072,15 @@ bool tcp_connection::handle_message(message & msg)
             )
         {
             /**
-             * Cancel the (SPV) getheaders timeout timer.
-             */
-            timer_spv_getheader_timeout_.cancel();
-            
-            /**
              * Make sure we have some headers.
              */
             if (msg.protocol_headers().headers.size() > 0)
             {
+                /**
+                 * Cancel the (SPV) getheaders timeout timer.
+                 */
+                timer_spv_getheader_timeout_.cancel();
+            
                 /**
                  * Get the time of the last block header.
                  */
@@ -4192,9 +4192,39 @@ bool tcp_connection::handle_message(message & msg)
             else
             {
                 /**
-                 * We expect at least 2000 headers, any less and we ignore the
-                 * message.
+                 * We expect at least 1 header, any less and we switch to
+                 * getblocks.
                  */
+                globals::instance().set_spv_use_getblocks(true);
+                
+                log_info(
+                    "TCP connection is switching to (SPV) getblocks because we "
+                    "got 0 headers."
+                );
+            
+                /**
+                 * Send a getblocks message.
+                 */
+                if (globals::instance().spv_use_getblocks() == true)
+                {
+                    /**
+                     * Get the block_locator hashes.
+                     */
+                    const auto & block_locator_hashes =
+                        globals::instance().spv_block_locator_hashes()
+                    ;
+                    
+                    /**
+                     * Allocate the block_locator with the last and
+                     * first hash.
+                     */
+                    block_locator locator(block_locator_hashes);
+                    
+                    /**
+                     * Send the getblocks message.
+                     */
+                    send_getblocks_message(sha256(), locator);
+                }
             }
             
             auto self(shared_from_this());
@@ -4305,84 +4335,32 @@ bool tcp_connection::handle_message(message & msg)
              */
             if (globals::instance().is_client_spv() == true)
             {
-                if (spv_block_merkle_current_)
+                wallet_manager::instance().sync_with_wallets(
+                    *tx, 0, true
+                );
+
+                auto self(shared_from_this());
+                
+                /**
+                 * Post the operation onto the boost::asio::io_service.
+                 */
+                io_service_.post(strand_.wrap(
+                    [this, tx]()
                 {
-                    spv_transactions_current_[tx->get_hash()] = *tx;
-                    
-                    if (
-                        spv_transactions_current_.size() ==
-                        spv_block_merkle_current_->transactions_matched().size()
-                        )
-                    {
-                        /**
-                         * Collect the transactions we've received that belong
-                         * to the current block.
-                         */
-                        std::vector<transaction> transactions_received;
-                    
-                        for (auto & i : spv_transactions_current_)
-                        {
-                            transactions_received.push_back(i.second);
-                        }
-                        
-                        /**
-                         * Inform the wallet_manager of each received
-                         * transaction.
-                         */
-                        for (auto & i : transactions_received)
-                        {
-                            wallet_manager::instance().sync_with_wallets(
-                                i, 0, true
-                            );
-                        }
-
-                        /**
-                         * Copy the merkle_block so it's lifetime survives the
-                         * post operation.
-                         */
-                        block_merkle merkle_block(*spv_block_merkle_current_);
-
-                        auto self(shared_from_this());
-                        
-                        /**
-                         * Post the operation onto the boost::asio::io_service.
-                         */
-                        io_service_.post(strand_.wrap(
-                            [this, self, merkle_block, transactions_received]()
-                        {
-                            /**
-                             * Callback
-                             */
-                            stack_impl_.on_spv_merkle_block(
-                                self,
-                                *const_cast<block_merkle *> (&merkle_block),
-                                transactions_received
-                            );
-                        }));
-                        
-                        spv_block_merkle_current_ = nullptr;
-                        spv_transactions_current_.clear();
-                    }
-                }
-                else
-                {
-                    wallet_manager::instance().sync_with_wallets(
-                        *tx, 0, true
-                    );
-
-                    auto self(shared_from_this());
-                    
                     /**
-                     * Post the operation onto the boost::asio::io_service.
+                     * :TODO: We are using the best block height (which is
+                     * most likely correct), instead we need to find the
+                     * block_merkle with the transaction and use that
+                     * height.
                      */
-                    io_service_.post(strand_.wrap(
-                        [this, tx]()
+                    if (utility::is_spv_initial_block_download() == true)
                     {
-                        /**
-                         * ZeroLedger :-)
-                         */
-                    }));
-                }
+                        wallet_manager::instance().on_spv_transaction_updated(
+                            globals::instance().spv_best_block_height(),
+                            tx->get_hash()
+                        );
+                    }
+                }));
                 
                 /**
                  * Allocate the inventory_vector.
@@ -4641,9 +4619,79 @@ bool tcp_connection::handle_message(message & msg)
         
         if (msg.protocol_merkleblock().merkleblock)
         {
+            log_none(
+                "Connection received merkleblock " <<
+                msg.protocol_merkleblock().merkleblock->get_hash().to_string(
+                ).substr(0, 20)
+                << "."
+            );
+            
             /**
-             * ZeroLedger :-)
+             * Allocate an inventory_vector.
              */
+            inventory_vector inv(
+                inventory_vector::type_msg_filtered_block_nonstandard,
+                msg.protocol_merkleblock().merkleblock->get_hash()
+            );
+            
+            insert_inventory_vector_seen(inv);
+            
+            /**
+             * Cancel the (SPV) getblocks timeout timer.
+             */
+            timer_spv_getblocks_timeout_.cancel();
+            
+            /**
+             * Set the time we received a block.
+             */
+            time_last_block_received_ = std::time(0);
+
+            block_merkle merkle_block(
+                *msg.protocol_merkleblock().merkleblock
+            );
+            
+            /**
+             * This block_merkle has no matching received transactions.
+             */
+            std::vector<transaction> transactions_received;
+            
+            auto self(shared_from_this());
+            
+            /**
+             * Post the operation onto the boost::asio::io_service.
+             */
+            globals::instance().strand().dispatch(
+                [this, self, merkle_block, transactions_received]()
+            {
+                /**
+                 * Callback
+                 */
+                stack_impl_.on_spv_merkle_block(
+                    self, *const_cast<block_merkle *> (&merkle_block),
+                    transactions_received
+                );
+            });
+            
+            if (
+                msg.protocol_merkleblock().merkleblock->is_valid_spv() == true
+                )
+            {
+                /**
+                 * Copy the hashes of the matched transactions from the
+                 * merkle block.
+                 */
+                for (
+                    auto & i : msg.protocol_merkleblock(
+                    ).merkleblock->transactions_matched()
+                    )
+                {
+                    spv_transactions_matched_.insert(i.second);
+                }
+            }
+            else
+            {
+                log_error("TCP connection got invalid merkleblock message.");
+            }
         }
     }
     else if (msg.header().command == "filterload")

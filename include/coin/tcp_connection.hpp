@@ -945,17 +945,6 @@ namespace coin {
              * The transaction hashes from merkle block matches,
              */
             std::set<sha256> spv_transactions_matched_;
-        
-            /**
-             * The current block_merkle we are processing.
-             */
-            std::unique_ptr<block_merkle> spv_block_merkle_current_;
-        
-            /**
-             * The current transaction's we are processing as part of the
-             * current block_merkle.
-             */
-            std::map<sha256, transaction> spv_transactions_current_;
 
             /**
              * The (SPV) getheaders timeout timer.

@@ -281,8 +281,6 @@ void globals::spv_reset_bloom_filter()
     
     if (m_wallet_main->is_crypted() == true)
     {
-        assert(m_wallet_main->is_locked() == false);
-        
         elements += m_wallet_main->crypted_keys().size();
     }
     else
@@ -313,53 +311,19 @@ void globals::spv_reset_bloom_filter()
              */
             for (auto & i : m_wallet_main->crypted_keys())
             {
-                const auto & key_id = i.first;
-                
-                key k;
-                
-                if (m_wallet_main->get_key(key_id, k) == true)
-                {
-                    auto compressed = false;
-                    
-                    auto s = k.get_secret(compressed);
- 
-                    if (m_wallet_main->address_book().count(key_id) > 0)
-                    {
-                        k.set_secret(s, compressed);
-                        
-                        auto pub_key = k.get_public_key();
+                auto pub_key = i.second.first;
 
-                        auto hash = pub_key.get_id();
-                        
-                        m_spv_transaction_bloom_filter->insert(
-                            std::vector<std::uint8_t> (&hash.digest()[0],
-                            &hash.digest()[0] + ripemd160::digest_length)
-                        );
-                        
-                        log_info(
-                            "Reset bloom filter for (crypted) address " <<
-                            address(key_id).to_string() << "."
-                        );
-                    }
-                    else
-                    {
-                        k.set_secret(s, compressed);
-                        
-                        auto pub_key = k.get_public_key();
-
-                        auto hash = pub_key.get_id();
-                        
-                        m_spv_transaction_bloom_filter->insert(
-                            std::vector<std::uint8_t> (&hash.digest()[0],
-                            &hash.digest()[0] + ripemd160::digest_length)
-                        );
-                        
-                        log_info(
-                            "Reset bloom filter for (crypted) address " <<
-                            address(key_id).to_string() << "."
-                        );
-                    }
-                }
+                auto hash = pub_key.get_id();
+                
+                m_spv_transaction_bloom_filter->insert(
+                    std::vector<std::uint8_t> (&hash.digest()[0],
+                    &hash.digest()[0] + ripemd160::digest_length)
+                );
+                
+                log_info(
+                    "Reset bloom filter for (crypted) address " <<
+                    address(hash).to_string() << "."
+                );
             }
         }
         else

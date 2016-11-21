@@ -3015,6 +3015,54 @@ std::string stack_impl::wallet_hd_keychain_seed()
     return std::string();
 }
 
+void stack_impl::wallet_generate_address(const std::string & label)
+{
+    globals::instance().io_service().post(globals::instance().strand().wrap(
+        [this, label]()
+    {
+        if (label == "*")
+        {
+            log_error(
+                "Stack failed to generate wallet address, invalid account "
+                "name = " << label << "."
+            );
+            
+            return;
+        }
+        
+        /**
+         * If the wallet is not locked, top up the key pool.
+         */
+        if (globals::instance().wallet_main()->is_locked() == false)
+        {
+            globals::instance().wallet_main()->top_up_key_pool();
+        }
+        
+        /**
+         * Allocate the public key.
+         */
+        key_public pub_key;
+        
+        if (
+            globals::instance().wallet_main()->get_key_from_pool(
+            pub_key, false) == false
+            )
+        {
+            log_error(
+                "Stack failed to generate wallet address, keypool ran out."
+            );
+        }
+        else
+        {
+            const auto & key_id = pub_key.get_id();
+            
+            globals::instance().wallet_main()->set_address_book_name(
+                key_id, label
+            );
+        }
+    }));
+}
+
 void stack_impl::chainblender_start()
 {
     if (m_chainblender_manager)
@@ -4573,7 +4621,7 @@ void stack_impl::on_spv_merkle_block(
     )
 {
     /**
-     * ZeroLedger
+     * ZeroLedger :-)
      */
 }
 

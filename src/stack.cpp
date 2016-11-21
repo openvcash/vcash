@@ -258,6 +258,18 @@ std::string stack::wallet_hd_keychain_seed()
     return std::string();
 }
 
+void stack::wallet_generate_address(const std::string & label)
+{
+    if (stack_impl_)
+    {
+        stack_impl_->wallet_generate_address(label);
+    }
+    else
+    {
+        throw std::runtime_error("Stack is not allocated");
+    }
+}
+
 void stack::chainblender_start()
 {
     if (stack_impl_)
