@@ -60,11 +60,6 @@ void status_manager::stop()
 
 void status_manager::insert(const std::map<std::string, std::string> & pairs)
 {
-#if (defined __linux__ && !defined __ANDROID__)
-    /**
-     * Ignore status updates on linux (until there is a UI).
-     */
-#else
     io_service_.post(strand_.wrap(
         [this, pairs]()
     {
@@ -80,7 +75,6 @@ void status_manager::insert(const std::map<std::string, std::string> & pairs)
             do_tick(interval_callback);
         }
     }));
-#endif // __linux__
 }
 
 void status_manager::do_tick(const std::uint32_t & interval)
