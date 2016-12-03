@@ -43,6 +43,7 @@ incentive_manager::incentive_manager(
     )
     : m_collateral_is_valid(false)
     , m_collateral_balance(0.0f)
+    , m_collateralized_nodes(0)
     , io_service_(ios)
     , strand_(s)
     , stack_impl_(owner)
@@ -395,6 +396,11 @@ bool incentive_manager::handle_message(
 const double & incentive_manager::collateral_balance() const
 {
     return m_collateral_balance;
+}
+
+const std::uint32_t & incentive_manager::collateralized_nodes() const
+{
+    return m_collateralized_nodes;
 }
 
 bool incentive_manager::validate_collateral(const incentive_vote & ivote)
@@ -914,6 +920,8 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
                                     }
                                 }
                             }
+                            
+                            m_collateralized_nodes = collaterals_.size();
                             
                             log_info(
                                 "Incentive manager has " <<

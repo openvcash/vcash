@@ -87,6 +87,11 @@ namespace coin {
             const double & collateral_balance() const;
         
             /**
+             * The collateralized nodes count.
+             */
+            const std::uint32_t & collateralized_nodes() const;
+
+            /**
              * Validates the collateral for a incentive_vote.
              * @param ivote The incentive_vote.
              */
@@ -132,6 +137,11 @@ namespace coin {
              * The collateral balance.
              */
             double m_collateral_balance;
+
+            /**
+             * The collateralized nodes count.
+             */
+            std::uint32_t m_collateralized_nodes;
         
         protected:
         

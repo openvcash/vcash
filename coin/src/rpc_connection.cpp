@@ -3718,6 +3718,10 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getnetworkinfo(
             ret.result.put(
                 "udp.port", stack_impl_.get_configuration().network_port_tcp()
             );
+            ret.result.put(
+                "collateralized",
+                stack_impl_.get_incentive_manager()->collateralized_nodes()
+            );
         }
         catch (...)
         {
