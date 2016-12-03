@@ -259,6 +259,7 @@ void probe_manager::tick_post(const boost::system::error_code & ec)
          */
         write_json(ss, pt, false);
         
+#if 0
         auto url =
             "http://v.cash/network/post.php?token="
             "1234567891011121314151617181920"
@@ -288,6 +289,22 @@ void probe_manager::tick_post(const boost::system::error_code & ec)
                 // ...
             }
         }, 80);
+#else
+        /**
+         * Open the output file stream.
+         */
+        std::ofstream ofs("peers.json");
+        
+        /**
+         * Write the json.
+         */
+        ofs << ss.str();
+        
+        /**
+         * Flush to disk.
+         */
+        ofs.flush();
+#endif
 
         /**
          * Start the timer.
