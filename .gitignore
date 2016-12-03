@@ -1,0 +1,10 @@
+deps/boost/
+deps/db/
+deps/openssl/
+deps/leveldb/bin/
+coin/bin/
+coin/test/bin/
+crawler/bin/
+crawler/test/bin/
+database/bin/
+database/test/bin/

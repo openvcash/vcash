@@ -10,30 +10,30 @@ lib iphlpapi : : <name>iphlpapi ;
 lib pthread : : <name>pthread <link>shared ;
 
 lib crypto : : <name>crypto <link>static
-  <search>./../deps/openssl
-  <search>./../deps/openssl/lib
+  <search>./../../deps/openssl
+  <search>./../../deps/openssl/lib
   <search>/usr/local/ssl/lib
 ;
 lib ssl : : <name>ssl <link>static
-  <search>./../deps/openssl
-  <search>./../deps/openssl/lib
-  <search>./../deps/platforms/osx/openssl/lib
-  <search>./../deps/windows/osx/openssl/lib
+  <search>./../../deps/openssl
+  <search>./../../deps/openssl/lib
+  <search>./../../deps/platforms/osx/openssl/lib
+  <search>./../../deps/platforms/windows/openssl/lib
   <search>/usr/local/ssl/lib
 ;
 
 lib db : : <name>db <link>static
-  <search>./../deps/db/lib
-  <search>./../deps/platforms/osx/db/build_unix
-  <search>./../deps/platforms/osx/db/lib
-  <search>./../deps/platforms/windows/db/build_unix
+  <search>./../../deps/db/lib
+  <search>./../../deps/platforms/osx/db/build_unix
+  <search>./../../deps/platforms/osx/db/lib
+  <search>./../../deps/platforms/windows/db/build_windows
 ;
 
 lib db_cxx : : <name>db_cxx <link>static
-  <search>./../deps/platforms/osx/db/build_unix
-  <search>./../deps/platforms/osx/db/lib
-  <search>./../deps/platforms/windows/db/build_unix
-  <search>./../deps/db/lib
+  <search>./../../deps/platforms/osx/db/build_unix
+  <search>./../../deps/platforms/osx/db/lib
+  <search>./../../deps/platforms/windows/db/build_windows
+  <search>./../../deps/db/lib
 ;
 
 lib dl : : <name>dl <link>shared ;
@@ -95,7 +95,7 @@ project stack
 
 exe stack
     : # sources
-    main.cpp ./..//coin /boost//system ./../database//database ./../deps/leveldb
+    main.cpp ./..//coin /boost//system ./../../database//database ./../../deps/leveldb
     : <link>static
     : <conditional>@linking
 	: # usage requirements

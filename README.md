@@ -55,7 +55,7 @@ For Linux:
 
 bjam toolset=gcc cxxflags=-std=gnu++0x release
 
-cd test
+cd coin/test/
 
 bjam toolset=gcc cxxflags=-std=gnu++0x release
 
@@ -63,7 +63,7 @@ For Mac OS X:
 
 bjam toolset=clang cxxflags="-std=c++11 -stdlib=libc++" linkflags="-stdlib=libc++" release
 
-cd test
+cd coin/test/
 
 bjam toolset=clang cxxflags="-std=c++11 -stdlib=libc++" linkflags="-stdlib=libc++" release
 
@@ -71,7 +71,7 @@ For Windows:
 
 bjam.exe toolset=msvc link=static runtime-link=static release
 
-cd test
+cd coin\test\
 
 bjam.exe toolset=msvc link=static runtime-link=static release
 ```
