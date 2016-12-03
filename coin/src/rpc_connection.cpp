@@ -6879,6 +6879,13 @@ boost::property_tree::ptree rpc_connection::received_to_ptree(
         }
     }
     
+    if (ret.size() == 0)
+    {
+        ret.push_back(
+            std::make_pair("", boost::property_tree::ptree())
+        );
+    }
+    
     return ret;
 }
 
