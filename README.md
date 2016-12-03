@@ -16,7 +16,7 @@ The easiest way to build for Ubuntu or similar Linux distributions is by using t
 https://github.com/xCoreDev/azure-quickstart-templates/blob/master/blockchain/scripts/vcash.sh
 
 Usage:
-```curl -s https://github.com/xCoreDev/azure-quickstart-templates/blob/master/blockchain/scripts/vcash.sh | bash /dev/stdin From_Source```
+```curl -s https://raw.githubusercontent.com/xCoreDev/azure-quickstart-templates/master/blockchain/scripts/vcash.sh | bash /dev/stdin From_Source```
 
 All other Linux distributions can use:
 
