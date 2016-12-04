@@ -42,6 +42,7 @@ configuration::configuration()
     : m_network_port_tcp(protocol::default_tcp_port)
     , m_network_tcp_inbound_maximum(network::tcp_inbound_maximum)
     , m_network_udp_enable(true)
+    , m_rpc_port(protocol::default_rpc_port)
     , m_wallet_transaction_history_maximum(wallet::configuration_interval_history)
     , m_wallet_keypool_size(wallet::configuration_keypool_size)
     , m_zerotime_depth(zerotime::depth)
@@ -132,6 +133,19 @@ bool configuration::load()
             m_network_udp_enable << "."
         );
         
+        /**
+         * Get the rpc.port
+         */
+        m_rpc_port = std::stoul(
+            pt.get("rpc.port",
+            std::to_string(protocol::default_rpc_port))
+        );
+        
+        log_debug(
+            "Configuration read rpc.port = " <<
+            m_rpc_port << "."
+        );
+
         /**
          * Get the wallet.transaction.history.maximum.
          */
@@ -341,6 +355,11 @@ bool configuration::save()
         );
 
         /**
+         * Put the rpc.port into property tree.
+         */
+        pt.put("rpc.port", std::to_string(m_rpc_port));
+
+        /**
          * Put the wallet.transaction.history.maximum into property tree.
          */
         pt.put(
@@ -512,6 +531,16 @@ void configuration::set_network_udp_enable(const bool & val)
 const bool & configuration::network_udp_enable() const
 {
     return m_network_udp_enable;
+}
+
+void configuration::set_rpc_port(const std::uint16_t & val)
+{
+    m_rpc_port = val;
+}
+
+const std::uint16_t & configuration::rpc_port() const
+{
+    return m_rpc_port;
 }
 
 void configuration::set_chainblender_debug_options(const bool & val)

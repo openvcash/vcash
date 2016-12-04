@@ -98,6 +98,16 @@ namespace coin {
              * If true network UDP support is enabled.
              */
             const bool & network_udp_enable() const;
+
+            /**
+             * Sets the network RPC port.
+             */
+            void set_rpc_port(const std::uint16_t & val);
+
+            /**
+             * The network RPC port.
+             */
+            const std::uint16_t & rpc_port() const;
         
             /**
              * Sets the bootstrap nodes.
@@ -308,6 +318,11 @@ namespace coin {
              * If true network UDP support is enabled.
              */
             bool m_network_udp_enable;
+
+            /**
+             * The network RPC port.
+             */
+            std::uint16_t m_rpc_port;
 
             /**
              * The bootstrap nodes.

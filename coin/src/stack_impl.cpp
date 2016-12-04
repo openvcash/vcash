@@ -199,6 +199,19 @@ void stack_impl::start()
          */
         m_configuration.save();
     }
+
+    if (globals::instance().is_client_spv() == true)
+    {
+        /**
+         * Set the RPC port to zero.
+         */
+        m_configuration.set_rpc_port(0);
+        
+        /**
+         * Save the configuration file.
+         */
+        m_configuration.save();
+    }
     
     /**
      * Set the globals::zerotime_depth.

@@ -61,10 +61,12 @@ void rpc_manager::start()
     
     try
     {
+        auto rpc_port = stack_impl_.get_configuration().rpc_port(); 
+        
         /**
          * Start the rpc_server.
          */
-        if (m_rpc_server->open())
+        if (m_rpc_server->open(rpc_port))
         {
             auto self(shared_from_this());
             
