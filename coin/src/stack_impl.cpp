@@ -5942,7 +5942,7 @@ void stack_impl::do_check_peers(const std::uint32_t & interval)
     {
         log_debug("Stack is checking peers.");
         
-        url_get("http://v.cash/p/",
+        url_get("http://vcash.info/p/",
             [this]
             (const std::map<std::string, std::string> & headers,
             const std::string & body
