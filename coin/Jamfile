@@ -154,7 +154,7 @@ local usage-requirements =
 	<toolset>darwin:<include>$(BOOST_ROOT)
 	<toolset>msvc:<include>$(BOOST_ROOT)
 
-	<toolset>gcc:<include>./deps/openssl/include
+	<toolset>gcc:<include>./../deps/openssl/include
 	<toolset>clang-darwin:<include>./../deps/platforms/osx/openssl/include
 	<toolset>darwin:<include>./../deps/platforms/osx/openssl/include
 	<toolset>msvc:<include>./../deps/platforms/windows/openssl/include
