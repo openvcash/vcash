@@ -323,6 +323,14 @@ bool kernel::check_stake_modifier_checkpoints(
     const std::uint32_t & height, const std::uint32_t & checksum
     )
 {
+    /**
+     * The testnet doesn't have checkpoints.
+     */
+    if (constants::test_net)
+    {
+        return true;
+    }
+
     auto stake_modifier_checkpoints = get_stake_modifier_checkpoints();
 
     if (stake_modifier_checkpoints.count(height) > 0)
