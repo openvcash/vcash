@@ -1,0 +1,91 @@
+
+import modules ;
+import os ;
+
+ECHO "OS =" [ os.name ] ;
+
+BOOST_ROOT = [ modules.peek : BOOST_ROOT ] ;
+
+if [ os.name ] = MACOSX
+{
+	BOOST_ROOT = ./../deps/boost ;
+}
+else if [ os.name ] = NT
+{
+	BOOST_ROOT = ./../deps/boost ;
+}
+else if [ os.name ] = LINUX
+{
+	BOOST_ROOT = ./../deps/boost ;
+}
+else
+{
+	if ! $(BOOST_ROOT)
+	{
+		BOOST_ROOT = ./../deps/boost ;
+	}
+}
+
+ECHO "BOOST_ROOT =" $(BOOST_ROOT) ;
+
+if $(BOOST_ROOT)
+{
+	use-project /boost : $(BOOST_ROOT) ;
+}
+
+SOURCES =
+	database_stack
+	http_transport
+	probe_manager
+	stack
+	stack_impl
+;
+
+local usage-requirements = 
+	<include>./include
+	<include>./../database/include
+    <include>./../deps
+	<toolset>gcc:<include>$(BOOST_ROOT)
+	<toolset>clang-darwin:<include>$(BOOST_ROOT)
+	<toolset>darwin:<include>$(BOOST_ROOT)
+	<toolset>msvc:<include>$(BOOST_ROOT)
+	<toolset>msvc,<variant>debug:<include>$(BOOST_ROOT)/build/debug/include
+	<toolset>msvc,<variant>release:<include>$(BOOST_ROOT)/build/release/include
+	<toolset>gcc:<include>./../deps/openssl/include
+	<toolset>clang-darwin:<include>./../deps/platforms/osx/openssl/include
+	<toolset>darwin:<include>./../deps/platforms/osx/openssl/include
+	<toolset>msvc:<include>./../deps/platforms/windows/openssl/include
+	<variant>release:<define>NDEBUG
+	<define>_FILE_OFFSET_BITS=64
+	<toolset>clang-darwin:<define>BOOST_NO_CXX11_NUMERIC_LIMITS
+	<toolset>msvc:<define>_UNICODE
+	<toolset>msvc:<define>UNICODE
+	<toolset>msvc:<cxxflags>/Zc:wchar_t
+	<toolset>msvc:<cxxflags>/Zc:forScope
+	<toolset>msvc:<define>_SCL_SECURE_NO_DEPRECATE
+	<toolset>msvc:<define>_CRT_SECURE_NO_DEPRECATE
+	<toolset>msvc:<define>_WIN32_WINNT=0x0501
+    <toolset>msvc:<define>BOOST_ALL_NO_LIB=1
+	<toolset>msvc,<variant>release:<linkflags>/OPT:ICF=5
+	<toolset>msvc,<variant>release:<linkflags>/OPT:REF
+;
+
+
+lib crawler
+
+	: # sources
+	src/$(SOURCES).cpp
+
+	: # requirements
+	<threading>multi
+	$(usage-requirements)
+
+	: # default build
+	<link>static
+
+	: # usage requirements
+	$(usage-requirements)
+	;
+
+
+project crawler ;
