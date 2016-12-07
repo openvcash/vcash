@@ -765,6 +765,7 @@ void message::decode()
         }
         else if (m_header.command == "alert")
         {
+#if 0
             /**
              * Allocate the alert.
              */
@@ -786,6 +787,7 @@ void message::decode()
                  */
                 m_protocol_alert.a.reset();
             }
+#endif
         }
         else if (m_header.command == "filterload")
         {
