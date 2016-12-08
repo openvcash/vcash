@@ -95,7 +95,7 @@ project stack
 
 exe stack
     : # sources
-    main.cpp ./..//coin /boost//system ./../../database//database ./../../deps/leveldb
+    main.cpp ./..//coin /boost//system ./../../database//database
     : <link>static
     : <conditional>@linking
 	: # usage requirements
