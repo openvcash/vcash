@@ -116,8 +116,8 @@ bool alert::check_signature() const
      * The alert (test net) public key.
      */
     static std::string key_public_alert_test_net =
-        "041ebbc925a9470ce61e264385d025f2b7f7601682d7ff9474639a2c082643f36d8ab"
-        "192c07306389cc6e59867952f7fa2a44daa15379dfbfdd8c206f224ab66bd"
+        "042295c99698809c868b66676ff037c050a62755aefedac31daa0792d1afba73a2505"
+        "82d34019ce2412683d7c982abbdc2a44e85f9e384ddc6266ae76dac7b3927"
     ;
 
     key k;

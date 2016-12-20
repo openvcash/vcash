@@ -20,6 +20,7 @@
 
 #include <coin/block.hpp>
 #include <coin/checkpoint_sync.hpp>
+#include <coin/constants.hpp>
 #include <coin/key.hpp>
 #include <coin/key_public.hpp>
 #include <coin/hash.hpp>
@@ -38,10 +39,17 @@ const std::string checkpoint_sync::g_master_public_key =
     "b6db13fd5a50368c1f24096495eb473be801e5c919b0668a2f7acf74ed291"
 ;
 
+const std::string checkpoint_sync::g_master_testnet_public_key =
+    "04b8d49de838594c2289037043e5330f12f4cb98f0a2f0cda90a2a957c3358c95480b"
+    "b6db13fd5a50368c1f24096495eb473be801e5c919b0668a2f7acf74ed291"
+;
+
 /**
  * ppcoin
  */
 std::string checkpoint_sync::g_master_private_key = "";
+
+std::string checkpoint_sync::g_master_testnet_private_key = "";
 
 void checkpoint_sync::encode()
 {
@@ -107,12 +115,20 @@ bool checkpoint_sync::is_null() const
 
 const std::string & checkpoint_sync::master_public_key()
 {
-    return g_master_public_key;
+    return 
+        constants::test_net ?
+        g_master_testnet_public_key :
+        g_master_public_key
+    ;
 }
 
 const std::string & checkpoint_sync::master_private_key()
 {
-    return g_master_private_key;
+    return 
+        constants::test_net ?
+        g_master_testnet_private_key :
+        g_master_private_key
+    ;
 }
 
 void checkpoint_sync::set_message(const std::vector<std::uint8_t> & val)

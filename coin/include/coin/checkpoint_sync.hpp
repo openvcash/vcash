@@ -80,11 +80,21 @@ namespace coin {
              * The master public key.
              */
             static const std::string & master_public_key();
+
+            /**
+             * The master testnet public key.
+             */
+            static const std::string & master_testnet_public_key();
         
             /**
              * The master private key.
              */
             static const std::string & master_private_key();
+
+            /**
+             * The master testnet private key.
+             */
+            static const std::string & master_testnet_private_key();
         
             /**
              * Sets the message.
@@ -132,11 +142,21 @@ namespace coin {
              * The master public key.
              */
             static const std::string g_master_public_key;
+
+            /**
+             * The master testnet public key.
+             */
+            static const std::string g_master_testnet_public_key;
         
             /**
              * The master private key.
              */
             static std::string g_master_private_key;
+
+            /**
+             * The master testnet private key.
+             */
+            static std::string g_master_testnet_private_key;
 
             /**
              * The message.
