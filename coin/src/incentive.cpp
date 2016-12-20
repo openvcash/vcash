@@ -234,10 +234,27 @@ bool incentive::verify(
 std::size_t incentive::get_collateral(const std::uint32_t & height)
 {
     std::size_t ret = 0;
-    
-    if (height > 220000 + (222 * 1) * 0)
+
+    std::size_t incentive_collaterlal = 0;
+
+    std::uint32_t incentive_height = 0;
+
+    if (constants::test_net == true)
     {
-        ret = 9999;
+        incentive_collaterlal = 999;
+
+        incentive_height = 600;
+    }
+    else
+    {
+        incentive_collaterlal = 9999;
+
+        incentive_height = 220000;
+    }
+    
+    if (height > incentive_height + (222 * 1) * 0)
+    {
+        ret = incentive_collaterlal;
     }
     else
     {
@@ -250,164 +267,181 @@ std::size_t incentive::get_collateral(const std::uint32_t & height)
 std::size_t incentive::get_percentage(const std::uint32_t & height)
 {
     std::size_t ret = 0;
+
+    std::uint32_t incentive_height = 0;
+
+    std::uint32_t incentive_height_start = 0;
+
+    if (constants::test_net == true)
+    {
+        incentive_height = 600;
+
+        incentive_height_start = 500;
+    }
+    else
+    {
+        incentive_height = 220000;
+
+        incentive_height_start = 210000;
+    }
     
-    if (height > 220000 + (222 * 38) * 38)
+    if (height > incentive_height + (222 * 38) * 38)
     {
         ret = 40;
     }
-    else if (height > 220000 + (222 * 37) * 37)
+    else if (height > incentive_height + (222 * 37) * 37)
     {
         ret = 39;
     }
-    else if (height > 220000 + (222 * 36) * 36)
+    else if (height > incentive_height + (222 * 36) * 36)
     {
         ret = 38;
     }
-    else if (height > 220000 + (222 * 35) * 35)
+    else if (height > incentive_height + (222 * 35) * 35)
     {
         ret = 37;
     }
-    else if (height > 220000 + (222 * 34) * 34)
+    else if (height > incentive_height + (222 * 34) * 34)
     {
         ret = 36;
     }
-    else if (height > 220000 + (222 * 33) * 33)
+    else if (height > incentive_height + (222 * 33) * 33)
     {
         ret = 35;
     }
-    else if (height > 220000 + (222 * 32) * 32)
+    else if (height > incentive_height + (222 * 32) * 32)
     {
         ret = 34;
     }
-    else if (height > 220000 + (222 * 31) * 31)
+    else if (height > incentive_height + (222 * 31) * 31)
     {
         ret = 33;
     }
-    else if (height > 220000 + (222 * 30) * 30)
+    else if (height > incentive_height + (222 * 30) * 30)
     {
         ret = 32;
     }
-    else if (height > 220000 + (222 * 29) * 29)
+    else if (height > incentive_height + (222 * 29) * 29)
     {
         ret = 31;
     }
-    else if (height > 220000 + (222 * 28) * 28)
+    else if (height > incentive_height + (222 * 28) * 28)
     {
         ret = 30;
     }
-    else if (height > 220000 + (222 * 27) * 27)
+    else if (height > incentive_height + (222 * 27) * 27)
     {
         ret = 29;
     }
-    else if (height > 220000 + (222 * 26) * 26)
+    else if (height > incentive_height + (222 * 26) * 26)
     {
         ret = 28;
     }
-    else if (height > 220000 + (222 * 25) * 25)
+    else if (height > incentive_height + (222 * 25) * 25)
     {
         ret = 27;
     }
-    else if (height > 220000 + (222 * 24) * 24)
+    else if (height > incentive_height + (222 * 24) * 24)
     {
         ret = 26;
     }
-    else if (height > 220000 + (222 * 23) * 23)
+    else if (height > incentive_height + (222 * 23) * 23)
     {
         ret = 25;
     }
-    else if (height > 220000 + (222 * 22) * 22)
+    else if (height > incentive_height + (222 * 22) * 22)
     {
         ret = 24;
     }
-    else if (height > 220000 + (222 * 21) * 21)
+    else if (height > incentive_height + (222 * 21) * 21)
     {
         ret = 23;
     }
-    else if (height > 220000 + (222 * 20) * 20)
+    else if (height > incentive_height + (222 * 20) * 20)
     {
         ret = 22;
     }
-    else if (height > 220000 + (222 * 19) * 19)
+    else if (height > incentive_height + (222 * 19) * 19)
     {
         ret = 21;
     }
-    else if (height > 220000 + (222 * 18) * 18)
+    else if (height > incentive_height + (222 * 18) * 18)
     {
         ret = 20;
     }
-    else if (height > 220000 + (222 * 17) * 17)
+    else if (height > incentive_height + (222 * 17) * 17)
     {
         ret = 19;
     }
-    else if (height > 220000 + (222 * 16) * 16)
+    else if (height > incentive_height + (222 * 16) * 16)
     {
         ret = 18;
     }
-    else if (height > 220000 + (222 * 15) * 15)
+    else if (height > incentive_height + (222 * 15) * 15)
     {
         ret = 17;
     }
-    else if (height > 220000 + (222 * 14) * 14)
+    else if (height > incentive_height + (222 * 14) * 14)
     {
         ret = 16;
     }
-    else if (height > 220000 + (222 * 13) * 13)
+    else if (height > incentive_height + (222 * 13) * 13)
     {
         ret = 15;
     }
-    else if (height > 220000 + (222 * 12) * 12)
+    else if (height > incentive_height + (222 * 12) * 12)
     {
         ret = 14;
     }
-    else if (height > 220000 + (222 * 11) * 11)
+    else if (height > incentive_height + (222 * 11) * 11)
     {
         ret = 13;
     }
-    else if (height > 220000 + (222 * 10) * 10)
+    else if (height > incentive_height + (222 * 10) * 10)
     {
         ret = 12;
     }
-    else if (height > 220000 + (222 * 9) * 9)
+    else if (height > incentive_height + (222 * 9) * 9)
     {
         ret = 11;
     }
-    else if (height > 220000 + (222 * 8) * 8)
+    else if (height > incentive_height + (222 * 8) * 8)
     {
         ret = 10;
     }
-    else if (height > 220000 + (222 * 7) * 7)
+    else if (height > incentive_height + (222 * 7) * 7)
     {
         ret = 9;
     }
-    else if (height > 220000 + (222 * 6) * 6)
+    else if (height > incentive_height + (222 * 6) * 6)
     {
         ret = 8;
     }
-    else if (height > 220000 + (222 * 5) * 5)
+    else if (height > incentive_height + (222 * 5) * 5)
     {
         ret = 7;
     }
-    else if (height > 220000 + (222 * 4) * 4)
+    else if (height > incentive_height + (222 * 4) * 4)
     {
         ret = 6;
     }
-    else if (height > 220000 + (222 * 3) * 3)
+    else if (height > incentive_height + (222 * 3) * 3)
     {
         ret = 5;
     }
-    else if (height > 220000 + (222 * 2) * 2)
+    else if (height > incentive_height + (222 * 2) * 2)
     {
         ret = 4;
     }
-    else if (height > 220000 + (222 * 1) * 1)
+    else if (height > incentive_height + (222 * 1) * 1)
     {
         ret = 3;
     }
-    else if (height > 220000 + (222 * 1) * 0)
+    else if (height > incentive_height + (222 * 1) * 0)
     {
         ret = 2;
     }
-    else if (height > 210000)
+    else if (height > incentive_height_start)
     {
         ret = 1;
     }
