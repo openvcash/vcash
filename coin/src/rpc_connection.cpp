@@ -625,6 +625,10 @@ bool rpc_connection::handle_json_rpc_request(
         {
             response = json_getpeerinfo(request);
         }
+        else if (request.method == "getrawmempool")
+        {
+            response = json_getrawmempool(request);
+        }
         else if (request.method == "getrawtransaction")
         {
             response = json_getrawtransaction(request);
@@ -3902,6 +3906,137 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getpeerinfo(
         else
         {
             ret.result.put("", "null");
+        }
+    }
+    catch (std::exception & e)
+    {
+        auto pt_error = create_error_object(
+            error_code_internal_error, e.what()
+        );
+        
+        /**
+         * error_code_internal_error
+         */
+        return json_rpc_response_t{
+            boost::property_tree::ptree(), pt_error, request.id
+        };
+    }
+    
+    return ret;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_getrawmempool(
+    const json_rpc_request_t & request
+    )
+{
+    json_rpc_response_t ret;
+    
+    /**
+     * Set the id from the request.
+     */
+    ret.id = request.id;
+    
+    try
+    {
+        if (request.params.size() == 0 || request.params.size() == 1)
+        {
+            bool verbose = false;
+            
+            if (request.params.size() == 1)
+            {
+                /**
+                 * Get the verbose parameter.
+                 */
+                auto param_verbose =
+                    request.params.front().second.get<std::string> ("")
+                ;
+                
+                if (param_verbose == "true")
+                {
+                    verbose = true;
+                }
+            }
+
+            if (verbose)
+            {
+                auto transactions = transaction_pool::instance().transactions();
+
+                /**
+                 * Put transactions into property tree.
+                 */
+                for (auto it = transactions.begin(); it != transactions.end(); ++it)
+                {
+                    boost::property_tree::ptree pt_child;
+
+                    boost::property_tree::ptree pt_child_info;
+
+                    auto & tx = it->second;
+
+                    pt_child_info.put("size", tx.get_size());
+
+                    pt_child_info.put("time", tx.time());
+
+                    if (globals::instance().is_zerotime_enabled())
+                    {        
+                        /**
+                         * Check if we already have this zerotime lock.
+                         */
+                        if (
+                            zerotime::instance().locks().count(tx.get_hash()) > 0
+                            )
+                        {
+                            pt_child_info.put("ztlock", true);
+                        }
+                        else
+                        {
+                            pt_child_info.put("ztlock", false);
+                        }
+                    }
+                    
+                    ret.result.push_back(std::make_pair(tx.get_hash().to_string(), pt_child_info));
+                }
+            }
+            else
+            {
+                std::vector<sha256> hashes;
+
+                transaction_pool::instance().query_hashes(hashes);
+
+                /**
+                 * Put hashes into property tree.
+                 */
+                for (auto & i : hashes)
+                {
+                    boost::property_tree::ptree pt_child;
+
+                    pt_child.put(
+                        "", i.to_string(),
+                        rpc_json_parser::translator<std::string> ()
+                    );
+
+                    ret.result.push_back(std::make_pair("", pt_child));
+                }
+            }
+
+            if (ret.result.size() == 0)
+            {
+                boost::property_tree::ptree pt_empty;
+
+                ret.result.push_back(std::make_pair("", pt_empty));
+            }
+        }
+        else
+        {
+            auto pt_error = create_error_object(
+                error_code_invalid_params, "invalid parameter count"
+            );
+            
+            /**
+             * error_code_invalid_params
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
         }
     }
     catch (std::exception & e)

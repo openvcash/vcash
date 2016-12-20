@@ -521,6 +521,14 @@ namespace coin {
             );
         
             /**
+             * Encodes getrawmempool data into JSON format.
+             * @param request The json_rpc_request_t.
+             */
+            json_rpc_response_t json_getrawmempool(
+                const json_rpc_request_t & request
+            );
+        
+            /**
              * Encodes getrawtransaction data into JSON format.
              * @param request The json_rpc_request_t.
              */
