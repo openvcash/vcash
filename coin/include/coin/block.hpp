@@ -131,6 +131,11 @@ namespace coin {
              * Get the sha256 (genesis) hash for the test net.
              */
             static sha256 get_hash_genesis_test_net();
+
+            /**
+             * Returns the block size.
+             */
+            std::int64_t get_size();
         
             /**
              * The block header.

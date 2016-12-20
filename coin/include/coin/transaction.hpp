@@ -107,6 +107,11 @@ namespace coin {
              * Gets the hash.
              */
             sha256 get_hash() const;
+
+            /**
+             * Gets the size.
+             */
+            std::int64_t get_size() const;
         
             /**
              * The string representation.

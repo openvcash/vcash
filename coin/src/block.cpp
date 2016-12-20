@@ -262,6 +262,28 @@ sha256 block::get_hash_genesis_test_net()
     return ret;
 }
 
+std::int64_t block::get_size()
+{
+    std::int64_t ret = 0;
+    
+    /**
+     * Allocate a temporary buffer to determine the size of the block in bytes.
+     */
+    data_buffer buffer;
+    
+    /**
+     * Encode ourselves into the buffer.
+     */
+    encode(buffer);
+    
+    ret = buffer.size();
+    
+    /**
+     * Return the buffer size.
+     */
+    return ret;
+}
+
 block::header_t & block::header()
 {
     return m_header;

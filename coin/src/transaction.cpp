@@ -194,6 +194,28 @@ sha256 transaction::get_hash() const
     );
 }
 
+std::int64_t transaction::get_size() const
+{
+    std::int64_t ret = 0;
+    
+    /**
+     * Allocate the buffer.
+     */
+    data_buffer buffer;
+    
+    /**
+     * Encode the buffer.
+     */
+    encode(buffer);
+
+    ret = buffer.size();
+    
+    /**
+     * Return the buffer size.
+     */
+    return ret;
+}
+
 std::string transaction::to_string()
 {
     std::string str;
