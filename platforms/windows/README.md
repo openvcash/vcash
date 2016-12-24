@@ -13,7 +13,7 @@ Tested on Windows 8.1/10 x64 with MSVC14 (Visual Studio 2015)
 - Visual Studio 2015
 - Boost 1.57: https://sourceforge.net/projects/boost/files/boost/1.57.0/
 - Berkeley DB 6.1.29: http://download.oracle.com/berkeley-db/db-6.1.29.NC.zip
-- OpenSSL 1.0.1u: https://www.npcglib.org/~stathis/downloads/openssl-1.0.1u-vs2015.7z (Manual build instructions: https://www.npcglib.org/~stathis/blog/precompiled-openssl/)
+- OpenSSL 1.0.1u: https://www.npcglib.org/~stathis/downloads/openssl-1.0.1u-vs2015.7z ([Manual build instructions](https://www.npcglib.org/~stathis/blog/precompiled-openssl/))
 - Vcash sources: https://github.com/xCoreDev/vcash/archive/master.zip
 
 #### Preparation
@@ -29,7 +29,7 @@ Tested on Windows 8.1/10 x64 with MSVC14 (Visual Studio 2015)
 - Rename the .\deps\db-6.1.29.NC\ folder to .\deps\db\ (Example: C:\vcash-master\deps\db\\)
 
 ##### OpenSSL
-- un7z openssl-1.0.1u-vs2015.7z to the .\deps\ folder (Example: C:\vcash-master\deps\openssl-1.0.1u-vs2015\\)
+- Un7z openssl-1.0.1u-vs2015.7z to the .\deps\ folder (Example: C:\vcash-master\deps\openssl-1.0.1u-vs2015\\)
 - Rename the .\deps\openssl-1.0.1u-vs2015\ folder to .\deps\openssl\ (Example: C:\vcash-master\deps\openssl\\)
 
 #### Build dependencies
