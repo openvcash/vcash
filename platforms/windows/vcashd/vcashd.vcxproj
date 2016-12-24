@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -26,26 +26,26 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -77,8 +77,8 @@
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\..\..\deps\boost\stage\win32\lib\;..\..\..\deps\db\build_windows\Win32\Static Release\;..\..\..\deps\openssl\OpenSSL-Win32\lib\VC\static\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libboost_system-vc120-mt-s-1_57.lib;libeay32MT.lib;ssleay32MT.lib;libdb61s.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\..\deps\boost\stage\win32\lib\;..\..\..\deps\db\build_windows\Win32\Static Release\;..\..\..\deps\openssl\lib\</AdditionalLibraryDirectories>
+      <AdditionalDependencies>libboost_system-vc140-mt-s-1_57.lib;libeay32MT.lib;ssleay32MT.lib;libdb61s.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -92,8 +92,8 @@
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\..\..\deps\boost\stage\x64\lib\;..\..\..\deps\db\build_windows\x64\Static Release\;..\..\..\deps\openssl\OpenSSL-Win64\lib\VC\static\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libboost_system-vc120-mt-s-1_57.lib;libeay32MT.lib;ssleay32MT.lib;libdb61s.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\..\deps\boost\stage\x64\lib\;..\..\..\deps\db\build_windows\x64\Static Release\;..\..\..\deps\openssl\lib64\</AdditionalLibraryDirectories>
+      <AdditionalDependencies>libboost_system-vc140-mt-s-1_57.lib;libeay32MT.lib;ssleay32MT.lib;libdb61s.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -111,8 +111,8 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>..\..\..\deps\boost\stage\win32\lib\;..\..\..\deps\db\build_windows\Win32\Static Release\;..\..\..\deps\openssl\OpenSSL-Win32\lib\VC\static\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libboost_system-vc120-mt-s-1_57.lib;libeay32MT.lib;ssleay32MT.lib;libdb61s.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\..\deps\boost\stage\win32\lib\;..\..\..\deps\db\build_windows\Win32\Static Release\;..\..\..\deps\openssl\lib\</AdditionalLibraryDirectories>
+      <AdditionalDependencies>libboost_system-vc140-mt-s-1_57.lib;libeay32MT.lib;ssleay32MT.lib;libdb61s.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -130,8 +130,8 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>..\..\..\deps\boost\stage\x64\lib\;..\..\..\deps\db\build_windows\x64\Static Release\;..\..\..\deps\openssl\OpenSSL-Win64\lib\VC\static\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libboost_system-vc120-mt-s-1_57.lib;libeay32MT.lib;ssleay32MT.lib;libdb61s.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\..\deps\boost\stage\x64\lib\;..\..\..\deps\db\build_windows\x64\Static Release\;..\..\..\deps\openssl\lib64\</AdditionalLibraryDirectories>
+      <AdditionalDependencies>libboost_system-vc140-mt-s-1_57.lib;libeay32MT.lib;ssleay32MT.lib;libdb61s.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
