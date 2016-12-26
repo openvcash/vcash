@@ -601,6 +601,14 @@ namespace coin {
             );
         
             /**
+             * Performs a sendfrom operation.
+             * @param request The json_rpc_request_t.
+             */
+            json_rpc_response_t json_sendfrom(
+                const json_rpc_request_t & request
+            );
+        
+            /**
              * Performs a sendmany operation.
              * @param request The json_rpc_request_t.
              */

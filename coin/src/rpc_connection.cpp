@@ -665,6 +665,10 @@ bool rpc_connection::handle_json_rpc_request(
         {
             response = json_submitblock(request);
         }
+        else if (request.method == "sendfrom")
+        {
+            response = json_sendfrom(request);
+        }
         else if (request.method == "sendmany")
         {
             response = json_sendmany(request);
@@ -5145,6 +5149,280 @@ rpc_connection::json_rpc_response_t rpc_connection::json_repairwallet(
     {
         log_error(
             "RPC Connection failed to create json_repairwallet, what = " <<
+            e.what() << "."
+        );
+        
+        auto pt_error = create_error_object(
+            error_code_internal_error, e.what()
+        );
+        
+        /**
+         * error_code_internal_error
+         */
+        return json_rpc_response_t{
+            boost::property_tree::ptree(), pt_error, request.id
+        };
+    }
+
+    return ret;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_sendfrom(
+    const json_rpc_request_t & request
+    )
+{
+    rpc_connection::json_rpc_response_t ret;
+
+    try
+    {
+        if (request.params.size() >= 3 && request.params.size() <= 6)
+        {
+            std::string account;
+            std::string address_dest;
+            std::int64_t amount = 0;
+            boost::property_tree::ptree pt_minconf;
+            std::string comment;
+            std::string comment_to;
+            
+            auto index = 0;
+            
+            for (auto & i : request.params)
+            {
+                if (index == 0)
+                {
+                    account = i.second.get<std::string> ("");
+                }
+                else if (index == 1)
+                {
+                    address_dest = i.second.get<std::string> ("");
+                }
+                else if (index == 2)
+                {
+                    double value = i.second.get<double> ("");
+                    
+                    if (value <= 0.0 || value > constants::max_money_supply)
+                    {
+                        auto pt_error = create_error_object(
+                            error_code_type_error, "invalid amount"
+                        );
+                        
+                        /**
+                         * error_code_type_error
+                         */
+                        return json_rpc_response_t{
+                            boost::property_tree::ptree(), pt_error, request.id
+                        };
+                    }
+                    
+                    /**
+                     * Round the amount.
+                     */
+                    amount = static_cast<std::int64_t> (
+                        (value * constants::coin) > 0 ?
+                        (value * constants::coin) + 0.5 :
+                        (value * constants::coin) - 0.5
+                    );
+                    
+                    if (utility::money_range(amount) == false)
+                    {
+                        auto pt_error = create_error_object(
+                            error_code_type_error, "invalid amount"
+                        );
+                        
+                        /**
+                         * error_code_type_error
+                         */
+                        return json_rpc_response_t{
+                            boost::property_tree::ptree(), pt_error, request.id
+                        };
+                    }
+                }
+                else if (index == 3)
+                {
+                    pt_minconf = i.second;
+                }
+                else if (index == 4)
+                {
+                    comment = i.second.get<std::string> ("");
+                }
+                else if (index == 5)
+                {
+                    comment_to = i.second.get<std::string> ("");
+                }
+
+                index++;
+            }
+
+
+            if (amount < constants::min_txout_amount)
+            {
+                auto pt_error = create_error_object(
+                    error_code_amount_too_small, "amount too small"
+                );
+                
+                /**
+                 * error_code_amount_too_small
+                 */
+                return json_rpc_response_t{
+                    boost::property_tree::ptree(), pt_error, request.id
+                };
+            }
+
+            /**
+             * Get the minimum depth in the main chain.
+             */
+            auto minimum_depth_in_main_chain =
+                pt_minconf.get<std::uint32_t> ("minconf", 1
+            );
+
+            /**
+             * Allocate the transaction.
+             */
+            transaction_wallet wtx;
+
+            /**
+             * Set the from account.
+             */
+            wtx.set_from_account(account);
+
+            /**
+             * Set the key/value pairs.
+             */
+            if (comment.size() > 0)
+            {
+                wtx.values()["comment"] = comment;
+            }
+            
+            if (comment_to.size() > 0)
+            {
+                wtx.values()["to"] = comment_to;
+            }
+            
+            if (globals::instance().wallet_main()->is_locked())
+            {
+                auto pt_error = create_error_object(
+                    error_code_wallet_unlock_needed, "wallet is locked"
+                );
+                
+                /**
+                 * error_code_wallet_unlock_needed
+                 */
+                return json_rpc_response_t{
+                    boost::property_tree::ptree(), pt_error, request.id
+                };
+            }
+            else if (globals::instance().wallet_unlocked_mint_only())
+            {
+                auto pt_error = create_error_object(
+                    error_code_wallet_unlock_needed,
+                    "wallet is unlocked for minting only"
+                );
+                
+                /**
+                 * error_code_wallet_unlock_needed
+                 */
+                return json_rpc_response_t{
+                    boost::property_tree::ptree(), pt_error, request.id
+                };
+            }
+            else
+            {
+                address addr(address_dest);
+                
+                if (addr.is_valid() == false)
+                {
+                    auto pt_error = create_error_object(
+                        error_code_invalid_address_or_key, "invalid address"
+                    );
+                    
+                    /**
+                     * error_code_invalid_address_or_key
+                     */
+                    return json_rpc_response_t{
+                        boost::property_tree::ptree(), pt_error, request.id
+                    };
+                }
+    
+                /**
+                 * Get the account balance.
+                 */
+                std::int64_t balance = wallet::get_account_balance(
+                    account, minimum_depth_in_main_chain
+                );
+
+                if (amount > balance)
+                {
+                    auto pt_error = create_error_object(
+                        error_code_wallet_insufficient_funds,
+                        "insufficient funds"
+                    );
+                    
+                    /**
+                     * error_code_wallet_insufficient_funds
+                     */
+                    return json_rpc_response_t{
+                        boost::property_tree::ptree(), pt_error, request.id
+                    };
+                }
+
+                /**
+                 * Do not use ZeroTime over RPC.
+                 */
+                auto use_zerotime = false;
+                
+                /**
+                 * Use any coins.
+                 */
+                auto use_only_chainblended = false;
+                
+                std::lock_guard<std::recursive_mutex> l1(stack_impl::mutex());
+                
+                auto result =
+                    globals::instance().wallet_main(
+                    )->send_money_to_destination(addr.get(), amount, wtx,
+                    use_zerotime, use_only_chainblended
+                );
+                
+                if (result.first)
+                {
+                    ret.result.put(
+                        "", wtx.get_hash().to_string(),
+                        rpc_json_parser::translator<std::string> ()
+                    );
+                }
+                else
+                {
+                    auto pt_error = create_error_object(
+                        error_code_wallet_error, result.second
+                    );
+                    
+                    /**
+                     * error_code_wallet_error
+                     */
+                    return json_rpc_response_t{
+                        boost::property_tree::ptree(), pt_error, request.id
+                    };
+                }
+            }
+        }
+        else
+        {
+            auto pt_error = create_error_object(
+                error_code_invalid_params, "invalid parameter count"
+            );
+            
+            /**
+             * error_code_invalid_params
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
+        }
+    }
+    catch (std::exception & e)
+    {
+        log_error(
+            "RPC Connection failed to create json_sendfrom, what = " <<
             e.what() << "."
         );
         
