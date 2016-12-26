@@ -671,6 +671,14 @@ namespace coin {
             json_rpc_response_t json_walletpassphrasechange(
                 const json_rpc_request_t & request
             );
+
+            /**
+             * Locks the transaction if ZeroTime is enabled.
+             * @param request The json_rpc_request_t.
+             */
+            json_rpc_response_t json_ztlock(
+                const json_rpc_request_t & request
+            );
         
             /**
              * Encodes a transaction_wallet into a boost::property_tree::ptree.

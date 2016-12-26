@@ -697,6 +697,10 @@ bool rpc_connection::handle_json_rpc_request(
         {
             response = json_validateaddress(request);
         }
+        else if (request.method == "ztlock")
+        {
+            response = json_ztlock(request);
+        }
         else
         {
             response.error = create_error_object(
@@ -6663,6 +6667,126 @@ rpc_connection::json_rpc_response_t
         ret.result.put("", "null");
     }
     
+    return ret;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_ztlock(
+    const json_rpc_request_t & request
+    )
+{
+    rpc_connection::json_rpc_response_t ret;
+
+    try
+    {
+        if (request.params.size() == 1)
+        {
+            auto param_txid =
+                request.params.front().second.get<std::string> ("");
+
+            sha256 hash_txid(param_txid);
+
+            if (globals::instance().is_zerotime_enabled())
+            {
+                if (transaction_pool::instance().exists(hash_txid))
+                {
+                    if (zerotime::instance().locks().count(hash_txid) == 0)
+                    {
+                        const auto & transactions =
+                            globals::instance().wallet_main()->transactions()
+                        ;
+
+                        auto it = transactions.find(hash_txid);
+                        
+                        if (it != transactions.end())
+                        {
+                            globals::instance().wallet_main()->zerotime_lock(hash_txid);
+
+                            ret.result.put("", "null");
+                        }
+                        else
+                        {
+                            auto pt_error = create_error_object(
+                                error_code_invalid_params, "transaction not present in the wallet"
+                            );
+                            
+                            /**
+                             * error_code_invalid_params
+                             */
+                            return json_rpc_response_t{
+                                boost::property_tree::ptree(), pt_error, request.id
+                            };
+                        }
+                    }
+                    else
+                    {
+                        auto pt_error = create_error_object(
+                            error_code_invalid_params, "transaction already locked"
+                        );
+                        
+                        /**
+                         * error_code_invalid_params
+                         */
+                        return json_rpc_response_t{
+                            boost::property_tree::ptree(), pt_error, request.id
+                        };
+                    }
+                }
+                else
+                {
+                    auto pt_error = create_error_object(
+                        error_code_invalid_params, "transaction not present in the pool"
+                    );
+                    
+                    /**
+                     * error_code_invalid_params
+                     */
+                    return json_rpc_response_t{
+                        boost::property_tree::ptree(), pt_error, request.id
+                    };
+                }
+            }
+            else
+            {
+                auto pt_error = create_error_object(
+                    error_code_invalid_params, "zerotime is not enabled"
+                );
+                
+                /**
+                 * error_code_invalid_params
+                 */
+                return json_rpc_response_t{
+                    boost::property_tree::ptree(), pt_error, request.id
+                };
+            }
+        }
+        else
+        {
+            auto pt_error = create_error_object(
+                error_code_invalid_params, "invalid parameter count"
+            );
+            
+            /**
+             * error_code_invalid_params
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
+        }
+    }
+    catch (std::exception & e)
+    {
+        auto pt_error = create_error_object(
+            error_code_internal_error, e.what()
+        );
+        
+        /**
+         * error_code_internal_error
+         */
+        return json_rpc_response_t{
+            boost::property_tree::ptree(), pt_error, request.id
+        };
+    }
+
     return ret;
 }
 
