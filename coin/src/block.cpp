@@ -1790,7 +1790,9 @@ bool block::check_block(
                     /**
                      * The incentive enforcement block number.
                      */
-                    enum { incentive_enforcement = 220000 };
+                    enum { incentive_enforcement = (constants::test_net ?
+                        600 : 220000)
+                    };
 
                     if (
                         index_previous &&
