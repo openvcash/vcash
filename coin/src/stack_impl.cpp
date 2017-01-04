@@ -3140,7 +3140,7 @@ void stack_impl::rpc_send(const std::string & command_line)
             /**
              * The url.
              */
-            auto url = "http://localhost";
+            auto url = "http://127.0.0.1";
 
             /**
              * The headers.
