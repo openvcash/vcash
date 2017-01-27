@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2016 John Connor
+ * Copyright (c) 2016-2017 The Vcash developers
  *
  * This file is part of vcash.
  *

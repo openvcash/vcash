@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2013-2016 John Connor (BM-NC49AxAjcqVcF5jNPu85Rb8MJ2d9JqZt)
+ * Copyright (c) 2013-2016 John Connor
+ * Copyright (c) 2016-2017 The Vcash developers
  *
  * This file is part of vcash.
  *
@@ -17,6 +18,7 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
+
 #include <coin/point_in.hpp>
 #include <coin/transaction.hpp>
 
