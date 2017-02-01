@@ -39,9 +39,10 @@ using namespace coin;
 #define ERRNO GetLastError()
 static int _mkdir(const char * path)
 {
-    std::wstring directory(path, path + strlen(path));
-
-    return SHCreateDirectoryEx(0, directory.c_str(), 0);
+    int t_len =  MultiByteToWideChar(CP_ACP, 0, path, -1, NULL, 0);
+    wchar_t* w_path = new wchar_t[t_len];
+    MultiByteToWideChar(CP_ACP, 0, path, -1, w_path, t_len);
+    return SHCreateDirectoryEx(0, w_path, 0);
 }
 #define CREATE_DIRECTORY(P) _mkdir(P)
 
@@ -280,6 +281,28 @@ std::string filesystem::data_path()
     return ret;
 }
 
+#if (defined _MSC_VER)
+std::wstring filesystem::w_data_path()
+{
+    std::string bundle_id = constants::client_name;
+    std::wstring w_bundle_id(bundle_id.begin(), bundle_id.end());
+
+    if (constants::test_net == true)
+    {
+        w_bundle_id += L"TestNet";
+    }
+
+    std::wstring ret;
+    ret += _wgetenv(L"APPDATA");
+    ret += L"\\" + w_bundle_id + L"\\";
+    if (globals::instance().is_client_spv() == true)
+    {
+        ret += L"client/";
+    }
+    return ret;
+}
+#endif
+
 std::string filesystem::data_path_old()
 {
     std::string bundle_id = "Vanillacoin";
@@ -334,9 +357,5 @@ std::string filesystem::home_path()
         ret = ".";
     }
 #endif // __ANDROID__
-#if (defined _MSC_VER)
-    return ret + "\\";
-#else
     return ret + "/";
-#endif
 }

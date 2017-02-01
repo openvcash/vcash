@@ -85,13 +85,14 @@ bool db_env::open(const std::int32_t & cache_size)
         log_info("Database environment log path = " << log_path << ".");
         
         filesystem::create_path(log_path);
-        
-        auto errfile_path = data_path + "db.log";
-        
-        log_info("Database environment err path = " << errfile_path << ".");
-        
+
         log_info("Database environment cache size = " << cache_size << ".");
-        
+
+#if (defined _MSC_VER)
+        std::wstring w_data_path = filesystem::w_data_path();
+        std::wstring w_log_path = w_data_path + L"database";
+#endif
+
         std::int32_t flags = 0;
         
         flags |=
@@ -113,7 +114,14 @@ bool db_env::open(const std::int32_t & cache_size)
         /**
          * set_lg_dir
          */
+#if (defined _MSC_VER)
+        int t_len = WideCharToMultiByte(CP_UTF8, 0, &w_log_path[0], (int)w_log_path.size(), NULL, 0, NULL, NULL);
+        std::string utf8_log_path(t_len, 0);
+        WideCharToMultiByte(CP_UTF8, 0, &w_log_path[0], (int)w_log_path.size(), &utf8_log_path[0], t_len, NULL, NULL);
+        m_DbEnv.set_lg_dir(utf8_log_path.c_str());
+#else
         m_DbEnv.set_lg_dir(log_path.c_str());
+#endif
         
         /**
          * Configure according to the cache size.
@@ -143,7 +151,14 @@ bool db_env::open(const std::int32_t & cache_size)
         m_DbEnv.set_flags(DB_TXN_WRITE_NOSYNC, 1);
         m_DbEnv.log_set_config(DB_LOG_AUTO_REMOVE, 1);
 
+#if (defined _MSC_VER)
+        int t_len_2 = WideCharToMultiByte(CP_UTF8, 0, &w_data_path[0], (int)w_data_path.size(), NULL, 0, NULL, NULL);
+        std::string utf8_data_path(t_len_2, 0);
+        WideCharToMultiByte(CP_UTF8, 0, &w_data_path[0], (int)w_data_path.size(), &utf8_data_path[0], t_len_2, NULL, NULL);
+        auto ret = m_DbEnv.open(utf8_data_path.c_str(), flags, S_IRUSR | S_IWUSR);
+#else
         auto ret = m_DbEnv.open(data_path.c_str(), flags, S_IRUSR | S_IWUSR);
+#endif
         
         if (ret != 0)
         {
