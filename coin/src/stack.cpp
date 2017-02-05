@@ -65,19 +65,19 @@ void stack::start(const std::map<std::string, std::string> & args)
         else
         {
             stack_impl_->get_configuration().bootstrap_nodes().push_back(
-                std::make_pair("51.254.142.137", 35784)
+                std::make_pair("138.197.3.126", 35409)
             );
             stack_impl_->get_configuration().bootstrap_nodes().push_back(
-                std::make_pair("51.254.142.138", 48376)
+                std::make_pair("188.166.249.85", 58589)
             );
             stack_impl_->get_configuration().bootstrap_nodes().push_back(
-                std::make_pair("159.203.93.108", 35533)
+                std::make_pair("185.14.185.144", 38495)
             );
             stack_impl_->get_configuration().bootstrap_nodes().push_back(
-                std::make_pair("188.226.141.13", 51985)
+                std::make_pair("163.172.142.82", 34621)
             );
             stack_impl_->get_configuration().bootstrap_nodes().push_back(
-                std::make_pair("128.199.172.194", 47547)
+                std::make_pair("62.210.105.218", 55864)
             );
         }
 
