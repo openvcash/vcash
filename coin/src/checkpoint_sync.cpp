@@ -36,13 +36,13 @@ using namespace coin;
  * ppcoin
  */
 const std::string checkpoint_sync::g_master_public_key =
-    "04b8d49de838594c2289037043e5330f12f4cb98f0a2f0cda90a2a957c3358c95480b"
-    "b6db13fd5a50368c1f24096495eb473be801e5c919b0668a2f7acf74ed291"
+    "04d4cd98de3d4ab395f8f9bc364cbb21656a48a8332e74645ba8519089baa3d3ce131"
+    "ca19ee235562501602e792fc84d4944afb89a9e60fcfb41894f0f4709bcc0"
 ;
 
 const std::string checkpoint_sync::g_master_testnet_public_key =
-    "04b8d49de838594c2289037043e5330f12f4cb98f0a2f0cda90a2a957c3358c95480b"
-    "b6db13fd5a50368c1f24096495eb473be801e5c919b0668a2f7acf74ed291"
+    "04068f0cd169a6747d47ab26ffecdc53d748ba4944bab21f421ba9e6e58cdb2056e9e"
+    "7d204171db019a90fd8f8bdede914f11a73a658431c8f222e9d299ce5d7b1"
 ;
 
 /**
