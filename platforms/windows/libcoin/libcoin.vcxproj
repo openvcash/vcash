@@ -186,10 +186,8 @@
     <ClInclude Include="..\..\..\coin\include\coin\http_transport.hpp" />
     <ClInclude Include="..\..\..\coin\include\coin\incentive.hpp" />
     <ClInclude Include="..\..\..\coin\include\coin\incentive_answer.hpp" />
-    <ClInclude Include="..\..\..\coin\include\coin\incentive_collaterals.hpp" />
     <ClInclude Include="..\..\..\coin\include\coin\incentive_manager.hpp" />
     <ClInclude Include="..\..\..\coin\include\coin\incentive_question.hpp" />
-    <ClInclude Include="..\..\..\coin\include\coin\incentive_sync.hpp" />
     <ClInclude Include="..\..\..\coin\include\coin\incentive_vote.hpp" />
     <ClInclude Include="..\..\..\coin\include\coin\inventory_vector.hpp" />
     <ClInclude Include="..\..\..\coin\include\coin\kernel.hpp" />
@@ -309,10 +307,8 @@
     <ClCompile Include="..\..\..\coin\src\http_transport.cpp" />
     <ClCompile Include="..\..\..\coin\src\incentive.cpp" />
     <ClCompile Include="..\..\..\coin\src\incentive_answer.cpp" />
-    <ClCompile Include="..\..\..\coin\src\incentive_collaterals.cpp" />
     <ClCompile Include="..\..\..\coin\src\incentive_manager.cpp" />
     <ClCompile Include="..\..\..\coin\src\incentive_question.cpp" />
-    <ClCompile Include="..\..\..\coin\src\incentive_sync.cpp" />
     <ClCompile Include="..\..\..\coin\src\incentive_vote.cpp" />
     <ClCompile Include="..\..\..\coin\src\inventory_vector.cpp" />
     <ClCompile Include="..\..\..\coin\src\kernel.cpp" />

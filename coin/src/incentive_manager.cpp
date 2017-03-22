@@ -24,7 +24,6 @@
 #include <coin/destination.hpp>
 #include <coin/globals.hpp>
 #include <coin/incentive.hpp>
-#include <coin/incentive_collaterals.hpp>
 #include <coin/incentive_manager.hpp>
 #include <coin/key.hpp>
 #include <coin/logger.hpp>
@@ -115,7 +114,6 @@ bool incentive_manager::handle_message(
             {
                 is_vote_valid = false;
             }
-
             /**
              * Check that the block height is close to ours (within two
              * blocks).
@@ -166,7 +164,6 @@ bool incentive_manager::handle_message(
                 votes_[ivote->block_height() + 2][ivote->address()].push_back(
                     *ivote
                 );
-
                 auto incentive_votes = votes_[ivote->block_height() + 2];
                 
                 std::stringstream ss;
@@ -214,7 +211,6 @@ bool incentive_manager::handle_message(
                         i.second.size() << "\n"
                     ;
                 }
-
                 if (
                     incentive::instance().runners_up().count(
                     ivote->block_height() + 2) > 0
@@ -229,7 +225,6 @@ bool incentive_manager::handle_message(
                 }
                 
                 log_debug(ss.str());
-
                 /**
                  * Check if they won.
                  */
@@ -252,7 +247,6 @@ bool incentive_manager::handle_message(
                         ivote->block_height() + 2].second = winner
                     ;
                 }
-
                 ss.clear();
                 
                 ss << "all votes:\n";
@@ -280,105 +274,6 @@ bool incentive_manager::handle_message(
             else
             {
                 log_none("Incentive manager is dropping invalid vote.");
-            }
-        }
-        else if (msg.header().command == "icols")
-        {
-            /**
-             * Get the incentive_collaterals.
-             */
-            auto icols = msg.protocol_icols().icols;
-            
-            if (icols)
-            {
-                std::lock_guard<std::mutex> l1(mutex_collaterals_);
-                
-                for (auto & i : icols->collaterals())
-                {
-                    /**
-                     * Skip nodes older than ours.
-                     */
-                    if (i.protocol_version < protocol::version)
-                    {
-                        continue;
-                    }
-                    
-                    /**
-                     * @note We do not need to validate that the wallet address
-                     * and public key belong to the tx_in because of the
-                     * probing process.
-                     */
-                    
-                    /**
-                     * Check that the coins are not spent by
-                     * forming a transaction to ourselves and
-                     * checking it's validity.
-                     */
-                    address addr(
-                        incentive::instance().get_key(
-                        ).get_public_key().get_id()
-                    );
-
-                    script script_collateral;
-                    
-                    script_collateral.set_destination(
-                        addr.get()
-                    );
-
-                    transaction tx;
-                    
-                    auto index_previous =
-                        stack_impl::get_block_index_best()
-                    ;
-                    
-                    /**
-                     * Get the collateral.
-                     */
-                    auto collateral =
-                        incentive::instance().get_collateral(
-                        index_previous ?
-                        index_previous->height() + 1 : 0)
-                    ;
-
-                    transaction_out vout = transaction_out(
-                        collateral * constants::coin,
-                        script_collateral
-                    );
-                    tx.transactions_in().push_back(i.tx_in);
-                    tx.transactions_out().push_back(vout);
-
-                    try
-                    {
-                        if (
-                            transaction_pool::instance(
-                            ).acceptable(tx).first == true
-                            )
-                        {
-                            log_debug(
-                                "Incentive manager validated isync "
-                                "collateral " << i.wallet_address << "."
-                            );
-                            
-                            /**
-                             * Set the time in the random past so we probe this
-                             * node soon.
-                             */
-                            collaterals_[
-                                i.wallet_address].first =
-                                std::time(0) - (std::rand() % (60 * 60))
-                            ;
-                            collaterals_[
-                                i.wallet_address].second =
-                                static_cast<std::uint32_t> (
-                                collateral)
-                            ;
-                        }
-                    }
-                    catch (...)
-                    {
-                        // ...
-                    }
-                }
             }
         }
         else
@@ -438,59 +333,6 @@ bool incentive_manager::validate_collateral(const incentive_vote & ivote)
         else
         {
             ret = false;
-        }
-    }
-    
-    return ret;
-}
-
-std::shared_ptr<incentive_collaterals>
-    incentive_manager::get_incentive_collaterals(
-    const std::set<std::string> & filter,
-    const std::size_t & maximum_collaterals
-    )
-{
-    auto ret = std::make_shared<incentive_collaterals> ();
-    
-    /**
-     * Get the recent good endpoints.
-     */
-    auto recent_good_endpoints =
-        stack_impl_.get_address_manager()->recent_good_endpoints()
-    ;
-    
-    for (auto & i : collaterals_)
-    {
-        /**
-         * Iterate the recent good endpoints looking for a matching wallet
-         * address that is not in the filter. If it is not found in the filter
-         * and we are below the maximum_collaterals insert it into the
-         * incentive_collaterals collaterals.
-         */
-        for (auto & j : recent_good_endpoints)
-        {
-            const auto & wallet_address = i.first;
-            
-            /**
-             * If the filter contains the wallet address skip it.
-             */
-            if (
-                wallet_address == j.wallet_address &&
-                filter.count(wallet_address) == 0
-                )
-            {
-                if (ret)
-                {
-                    ret->collaterals().insert(j);
-                    
-                    if (ret->collaterals().size() >= maximum_collaterals)
-                    {
-                        return ret;
-                    }
-                }
-                
-                break;
-            }
         }
     }
     

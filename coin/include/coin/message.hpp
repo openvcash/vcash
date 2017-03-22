@@ -233,16 +233,6 @@ namespace coin {
             protocol::ivote_t & protocol_ivote();
         
             /**
-             * The protocol isync structure.
-             */
-            protocol::isync_t & protocol_isync();
-
-            /**
-             * The protocol icols structure.
-             */
-            protocol::icols_t & protocol_icols();
-        
-            /**
              * The protocol cbbroadcast structure.
              */
             protocol::cbbroadcast_t & protocol_cbbroadcast();
@@ -390,16 +380,6 @@ namespace coin {
             protocol::ivote_t m_protocol_ivote;
         
             /**
-             * The protocol isync structure.
-             */
-            protocol::isync_t m_protocol_isync;
-
-            /**
-             * The protocol icols structure.
-             */
-            protocol::icols_t m_protocol_icols;
-        
-            /**
              * The protocol cbbroadcast structure.
              */
             protocol::cbbroadcast_t m_protocol_cbbroadcast;
@@ -540,16 +520,6 @@ namespace coin {
              * Creates an ivote.
              */
             data_buffer create_ivote();
-        
-            /**
-             * Creates an isync.
-             */
-            data_buffer create_isync();
-        
-            /**
-             * Creates an icols.
-             */
-            data_buffer create_icols();
         
             /**
              * Creates an cbbroadcast.

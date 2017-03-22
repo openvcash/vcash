@@ -162,7 +162,11 @@ namespace coin {
              */
             const bool is_incentive_enabled() const
             {
+#if 1
+                return false;
+#else
                 return m_operation_mode == protocol::operation_mode_peer;
+#endif
             }
         
             /**

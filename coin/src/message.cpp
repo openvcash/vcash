@@ -37,8 +37,6 @@
 #include <coin/globals.hpp>
 #include <coin/hash.hpp>
 #include <coin/incentive_answer.hpp>
-#include <coin/incentive_collaterals.hpp>
-#include <coin/incentive_sync.hpp>
 #include <coin/incentive_question.hpp>
 #include <coin/incentive_vote.hpp>
 #include <coin/inventory_vector.hpp>
@@ -254,20 +252,6 @@ void message::encode()
              * Create the iquestion.
              */
             m_payload = create_iquestion();
-        }
-        else if (m_header.command == "isync")
-        {
-            /**
-             * Create the isync.
-             */
-            m_payload = create_isync();
-        }
-        else if (m_header.command == "icols")
-        {
-            /**
-             * Create the icols.
-             */
-            m_payload = create_icols();
         }
         else if (m_header.command == "cbbroadcast")
         {
@@ -1041,56 +1025,6 @@ void message::decode()
                 m_protocol_ivote.ivote.reset();
             }
         }
-        else if (m_header.command == "isync")
-        {
-            /**
-             * Allocate the ivote.
-             */
-            m_protocol_isync.isync = std::make_shared<incentive_sync> ();
-            
-            /**
-             * Decode the isync.
-             */
-            if (m_protocol_isync.isync->decode(*this))
-            {
-                // ...
-            }
-            else
-            {
-                log_error("Message failed to decode isync.");
-                
-                /**
-                 * Deallocate the isync.
-                 */
-                m_protocol_isync.isync.reset();
-            }
-        }
-        else if (m_header.command == "icols")
-        {
-            /**
-             * Allocate the icols.
-             */
-            m_protocol_icols.icols =
-                std::make_shared<incentive_collaterals> ()
-            ;
-            
-            /**
-             * Decode the icols.
-             */
-            if (m_protocol_icols.icols->decode(*this))
-            {
-                // ...
-            }
-            else
-            {
-                log_error("Message failed to decode icols.");
-                
-                /**
-                 * Deallocate the icols.
-                 */
-                m_protocol_icols.icols.reset();
-            }
-        }
         else if (m_header.command == "cbbroadcast")
         {
             /**
@@ -1377,16 +1311,6 @@ protocol::iquestion_t & message::protocol_iquestion()
 protocol::ivote_t & message::protocol_ivote()
 {
     return m_protocol_ivote;
-}
-
-protocol::isync_t & message::protocol_isync()
-{
-    return m_protocol_isync;
-}
-
-protocol::icols_t & message::protocol_icols()
-{
-    return m_protocol_icols;
 }
 
 protocol::cbbroadcast_t & message::protocol_cbbroadcast()
@@ -2056,30 +1980,6 @@ data_buffer message::create_ivote()
     if (m_protocol_ivote.ivote)
     {
         m_protocol_ivote.ivote->encode(ret);
-    }
-    
-    return ret;
-}
-
-data_buffer message::create_isync()
-{
-    data_buffer ret;
-    
-    if (m_protocol_isync.isync)
-    {
-        m_protocol_isync.isync->encode(ret);
-    }
-    
-    return ret;
-}
-
-data_buffer message::create_icols()
-{
-    data_buffer ret;
-    
-    if (m_protocol_icols.icols)
-    {
-        m_protocol_icols.icols->encode(ret);
     }
     
     return ret;

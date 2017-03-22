@@ -80,10 +80,8 @@ SOURCES =
 	http_transport
 	incentive
 	incentive_answer
-    incentive_collaterals
 	incentive_manager
 	incentive_question
-    incentive_sync
 	incentive_vote
 	inventory_vector
 	kernel

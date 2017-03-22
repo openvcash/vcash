@@ -37,7 +37,6 @@
 
 namespace coin {
 
-    class incentive_collaterals;
     class key;
     class key_public;
     class message;
@@ -97,17 +96,6 @@ namespace coin {
              * @param ivote The incentive_vote.
              */
             bool validate_collateral(const incentive_vote & ivote);
-
-            /**
-             * Returns the incentive_collaterals objects.
-             * @param filter The wallet addresses to exclude.
-             * @param maximum_collaterals The maximum number of collaterals
-             * to include in the returned incentive_collaterals object.
-             */
-            std::shared_ptr<incentive_collaterals> get_incentive_collaterals(
-                const std::set<std::string> & filter,
-                const std::size_t & maximum_collaterals = 64
-            );
 
         private:
         
