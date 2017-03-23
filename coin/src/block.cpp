@@ -2549,6 +2549,24 @@ bool block::accept_block(
     }
 
     /**
+     * Reject block header version < 6 after block 635000.
+     */
+    if (
+        m_header.version < 6 &&
+        ((constants::test_net == false && height > 635000) ||
+        (constants::test_net == true && height > 30))
+        )
+    {
+        log_error(
+            "Block, accept block failed, rejected block header version < 6."
+        );
+    
+        return false;
+    }
+
+    /**
+    
+    /**
      * Enforce rule that the coinbase starts with serialized block height.
      */
     script expect = script() << height;
