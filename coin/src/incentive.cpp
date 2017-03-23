@@ -28,7 +28,6 @@ using namespace coin;
 std::mutex incentive::mutex_;
 
 incentive::incentive()
-    : m_should_stake_collateral(false)
 {
     // ...
 }
@@ -460,14 +459,4 @@ std::size_t incentive::get_percentage(const std::uint32_t & height)
     }
     
     return ret;
-}
-
-void incentive::set_should_stake_collateral(const bool & val)
-{
-    m_should_stake_collateral = val;
-}
-
-const bool & incentive::should_stake_collateral() const
-{
-    return m_should_stake_collateral;
 }

@@ -3505,34 +3505,24 @@ bool wallet::create_coin_stake(
      */
     if (m_stack_impl && globals::instance().is_incentive_enabled())
     {
-        if (incentive::instance().should_stake_collateral() == false)
+        auto collateral_balance =
+            m_stack_impl->get_incentive_manager()->collateral_balance()
+        ;
+        
+        auto index_previous = stack_impl::get_block_index_best();
+        
+        /**
+         * Get the collateral.
+         */
+        auto collateral =
+            incentive::instance().get_collateral(
+            index_previous ? index_previous->height() + 1 : 0)
+        ;
+        
+        if (collateral_balance >= collateral)
         {
-            auto collateral_balance =
-                m_stack_impl->get_incentive_manager()->collateral_balance()
-            ;
-            
-            auto index_previous = stack_impl::get_block_index_best();
-            
-            /**
-             * Get the collateral.
-             */
-            auto collateral =
-                incentive::instance().get_collateral(
-                index_previous ? index_previous->height() + 1 : 0)
-            ;
-            
-            if (collateral_balance >= collateral)
-            {
-                reserve_balance += collateral_balance * constants::coin;
-                
-                log_info(
-                    "Wallet (create coin stake) has reserve balance of " <<
-                    utility::format_money(reserve_balance) << "."
-                );
-            }
-        }
-        else
-        {
+            reserve_balance += collateral_balance * constants::coin;
+
             log_info(
                 "Wallet (create coin stake) has no reserve balance."
             );

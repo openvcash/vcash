@@ -811,7 +811,7 @@ void mining_manager::check_work(
     /**
      * Post the operation onto the boost::asio::io_service.
      */
-    io_service_.post(strand_.wrap([this, blk, is_proof_of_stake]()
+    io_service_.post(strand_.wrap([this, blk]()
     {
         /**
          * Process the block.
@@ -824,18 +824,6 @@ void mining_manager::check_work(
         {
             log_info("Mining manager processed block, accepted.");
             
-            /**
-             * If this is a Proof-of-Stake block and node incentives are
-             * enabled set that we should no longer stake the collateral.
-             */
-            if (is_proof_of_stake == true)
-            {
-                if (globals::instance().is_incentive_enabled() == true)
-                {
-                    incentive::instance().set_should_stake_collateral(false);
-                }
-            }
-        
             /**
              * If we are a client node broadcast the block to all connected
              * peers, otherwise an INV was sent in process_block above.
