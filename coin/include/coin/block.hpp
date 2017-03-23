@@ -67,7 +67,7 @@ namespace coin {
             /**
              * The current version.
              */
-            enum { current_version = 6 };
+            enum { current_version = 5 };
 
             /**
              * Constructor

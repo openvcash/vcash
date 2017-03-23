@@ -53,8 +53,11 @@ void database_stack::start(const std::uint16_t & port, const bool & is_client)
     /**
      * Add the hard-coded bootstrap contacts.
      */
-    contacts.push_back(std::make_pair("n01.vcashproject.org", 35409));
-    contacts.push_back(std::make_pair("n02.vcashproject.org", 58589));
+    contacts.push_back(std::make_pair("n01.vcash.info", 35409));
+    contacts.push_back(std::make_pair("n02.vcash.info", 58589));
+    contacts.push_back(std::make_pair("n03.vcash.info", 38495));
+    contacts.push_back(std::make_pair("n04.vcash.info", 34621));
+    contacts.push_back(std::make_pair("n05.vcash.info", 55864));
     
     /**
      * Set the port.

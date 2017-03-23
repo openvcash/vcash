@@ -188,10 +188,16 @@
     <ClInclude Include="..\..\..\coin\include\coin\incentive_answer.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\coin\include\coin\incentive_collaterals.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\..\coin\include\coin\incentive_manager.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\coin\include\coin\incentive_question.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\coin\include\coin\incentive_sync.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\coin\include\coin\incentive_vote.hpp">
@@ -547,10 +553,16 @@
     <ClCompile Include="..\..\..\coin\src\incentive_answer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\coin\src\incentive_collaterals.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\coin\src\incentive_manager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\coin\src\incentive_question.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\coin\src\incentive_sync.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\coin\src\incentive_vote.cpp">

@@ -38,7 +38,9 @@
 #include <coin/globals.hpp>
 #include <coin/incentive.hpp>
 #include <coin/incentive_answer.hpp>
+#include <coin/incentive_collaterals.hpp>
 #include <coin/incentive_manager.hpp>
+#include <coin/incentive_sync.hpp>
 #include <coin/incentive_question.hpp>
 #include <coin/incentive_vote.hpp>
 #include <coin/logger.hpp>
@@ -98,6 +100,8 @@ tcp_connection::tcp_connection(
     , did_send_cbstatus_cbready_code_(false)
     , timer_spv_getheader_timeout_(io_service_)
     , timer_spv_getblocks_timeout_(io_service_)
+    , timer_isync_(io_service_)
+    , did_send_isync_(false)
 {
     // ...
 }
@@ -1338,6 +1342,7 @@ void tcp_connection::do_stop()
     timer_delayed_stop_.cancel();
     timer_spv_getheader_timeout_.cancel();
     timer_spv_getblocks_timeout_.cancel();
+    timer_isync_.cancel();
     
     m_state = state_stopped;
 }
@@ -2121,6 +2126,124 @@ void tcp_connection::send_ivote_message(const incentive_vote & ivote)
     }
 }
 
+void tcp_connection::send_isync_message()
+{
+    if (globals::instance().is_incentive_enabled() == true)
+    {
+        /**
+         * Only send an isync message if the remote node is a peer.
+         */
+        if (
+            (m_protocol_version_services & protocol::operation_mode_peer) == 1
+            )
+        {
+            if (auto t = m_tcp_transport.lock())
+            {
+                /**
+                 * Allocate the message.
+                 */
+                message msg("isync");
+
+                /**
+                 * Get the recent good endpoints.
+                 */
+                auto recent_good_endpoints =
+                    stack_impl_.get_address_manager(
+                    )->recent_good_endpoints()
+                ;
+
+                std::set<std::string> filter;
+                
+                /**
+                 * Iterate the recent good endpoints looking for wallet
+                 * addresses we already have collateral for.
+                 */
+                for (auto & i : recent_good_endpoints)
+                {
+                    filter.insert(i.wallet_address);
+                }
+                
+                /**
+                 * Set the isync.
+                 */
+                msg.protocol_isync().isync =
+                    std::make_shared<incentive_sync> (filter)
+                ;
+                
+                log_info(
+                    "TCP connection is sending isync, filter size = " <<
+                    msg.protocol_isync().isync->filter().size() << "."
+                );
+
+                /**
+                 * Encode the message.
+                 */
+                msg.encode();
+                
+                /**
+                 * Write the message.
+                 */
+                t->write(msg.data(), msg.size());
+            }
+            else
+            {
+                stop();
+            }
+        }
+    }
+}
+
+void tcp_connection::send_icols_message(
+    const incentive_collaterals & icols
+    )
+{
+    if (globals::instance().is_incentive_enabled())
+    {
+        /**
+         * Only send an icols message if the remote node is a peer.
+         */
+        if (
+            (m_protocol_version_services & protocol::operation_mode_peer) == 1
+            )
+        {
+            if (auto t = m_tcp_transport.lock())
+            {
+                /**
+                 * Allocate the message.
+                 */
+                message msg("icols");
+
+                /**
+                 * Set the icols.
+                 */
+                msg.protocol_icols().icols =
+                    std::make_shared<incentive_collaterals> (icols)
+                ;
+                
+                log_info(
+                    "TCP connection is sending " <<
+                    msg.protocol_icols().icols->collaterals().size() <<
+                    " icols ."
+                );
+
+                /**
+                 * Encode the message.
+                 */
+                msg.encode();
+                
+                /**
+                 * Write the message.
+                 */
+                t->write(msg.data(), msg.size());
+            }
+            else
+            {
+                stop();
+            }
+        }
+    }
+}
+
 void tcp_connection::send_cbjoin_message(const chainblender_join & cbjoin)
 {
     if (globals::instance().is_chainblender_enabled())
@@ -2853,6 +2976,14 @@ bool tcp_connection::handle_message(message & msg)
                 }
 
                 /**
+                 * Send isync message.
+                 */
+                if (m_direction == direction_outgoing)
+                {
+                    do_send_isync(8);
+                }
+                
+                /**
                  * If we are an (SPV) client send a filterfload message before
                  * sending a getheaders or getblocks message.
                  */
@@ -3368,9 +3499,6 @@ bool tcp_connection::handle_message(message & msg)
             }
         }
 
-#if (!defined _MSC_VER)
-        #warning :TODO: if this works we need to make sure no tx or other hashes are included, why would they?
-#endif
         /**
          * Set the first and last hash.
          */
@@ -3381,9 +3509,6 @@ bool tcp_connection::handle_message(message & msg)
             /**
              * If we got > 1 block hashes request the next 500 block hashes.
              */
-#if (!defined _MSC_VER)
-        #warning :TODO: log and see what size is good, we may get 447 blocks, not exactly 500 or very few
-#endif
             if (getdata_.size() > 1)
             {
                 should_send_spv_getblocks = true;
@@ -5148,6 +5273,95 @@ bool tcp_connection::handle_message(message & msg)
             }
         }
     }
+    else if (msg.header().command == "isync")
+    {
+        log_info("TCP connection got isync.");
+        
+        if (
+            globals::instance().is_incentive_enabled() == true &&
+            incentive::instance().get_key().is_null() == false
+            )
+        {
+            if (utility::is_initial_block_download() == false)
+            {
+                const auto & isync = msg.protocol_isync().isync;
+                
+                if (isync)
+                {
+                    /**
+                     * Get some icols.
+                     */
+                    auto icols =
+                        stack_impl_.get_incentive_manager(
+                        )->get_incentive_collaterals(isync->filter())
+                    ;
+                    
+                    /**
+                     * Send the icols message.
+                     */
+                    send_icols_message(*icols);
+                }
+            }
+        }
+    }
+    else if (msg.header().command == "icols")
+    {
+        log_info("TCP connection got icols.");
+
+        /**
+         * If we did not send an isync message consider it unsolicited SPAM and
+         * drop them.
+         */
+        if (did_send_isync_ == true)
+        {
+            /**
+             * Ignore icols if they did not originate from a peer.
+             */
+            if (
+                (m_protocol_version_services &
+                protocol::operation_mode_peer) == 1
+                )
+            {
+                if (
+                    globals::instance().is_incentive_enabled() == true &&
+                    incentive::instance().get_key().is_null() == false
+                    )
+                {
+                    if (utility::is_initial_block_download() == false)
+                    {
+                        const auto & icols = msg.protocol_icols().icols;
+                        
+                        if (icols)
+                        {
+                            log_info(
+                                "TCP connection got " <<
+                                icols->collaterals().size() << " icols."
+                            );
+                            
+                            if (auto transport = m_tcp_transport.lock())
+                            {
+                                /**
+                                 * Inform the incentive_manager.
+                                 */
+                                stack_impl_.get_incentive_manager(
+                                    )->handle_message(transport->socket(
+                                    ).remote_endpoint(), msg
+                                );
+
+                                /**
+                                 * Inform the address_manager.
+                                 */
+                                stack_impl_.get_address_manager(
+                                    )->handle_message(transport->socket(
+                                    ).remote_endpoint(), msg
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
     else if (msg.header().command == "cbbroadcast")
     {
         log_info("TCP connection got cbbroadcast.");
@@ -5606,12 +5820,6 @@ bool tcp_connection::handle_message(message & msg)
     }
     else if (msg.header().command == "alert")
     {
-#if (!defined _MSC_VER)
-        #warning :TODO: ignore alerts (remove them)
-#endif
-    
-        return true;
-  
         if (msg.protocol_alert().a)
         {
             log_debug(
@@ -6360,6 +6568,79 @@ void tcp_connection::do_send_cbstatus(const std::uint32_t & interval)
             do_send_cbstatus(2);
         })
     );
+}
+
+void tcp_connection::do_send_isync(const std::uint32_t & interval)
+{
+    auto self(shared_from_this());
+    
+    /**
+     * Start the isync timer.
+     */
+    timer_isync_.expires_from_now(std::chrono::seconds(interval));
+    timer_isync_.async_wait(strand_.wrap(
+        [this, self] (const boost::system::error_code & ec)
+    {
+        if (ec)
+        {
+            // ...
+        }
+        else
+        {
+            if (
+                utility::is_initial_block_download() == false &&
+                globals::instance().is_incentive_enabled() == true
+                )
+            {
+                static auto g_isync_sent = 0;
+                static auto g_isync_time_last_sent = std::time(0);
+                
+                auto should_send_isync = false;
+                
+                /**
+                 * Only send an isync message 8 times every 3 hours or
+                 * on initial connection up to 8 times.
+                 */
+                if (std::time(0) - g_isync_time_last_sent >= 3 * 60 * 60)
+                {
+                    did_send_isync_ = false;
+                    
+                    g_isync_sent = 0;
+                    
+                    should_send_isync = true;
+                }
+                else if (g_isync_sent < 8 && did_send_isync_ == false)
+                {
+                    should_send_isync = true;
+                }
+                
+                if (should_send_isync == true)
+                {
+                    did_send_isync_ = true;
+                    
+                    g_isync_sent++;
+
+                    log_info(
+                        "TCP connection " << m_identifier << " is sending "
+                        "isync message, globally sent = " << g_isync_sent << "."
+                    );
+                    
+                    g_isync_time_last_sent = std::time(0);
+                    
+                    send_isync_message();
+                }
+                
+                /**
+                 * Double the interval each time.
+                 */
+                do_send_isync(g_isync_sent * 2);
+            }
+            else
+            {
+                do_send_isync(8);
+            }
+        }
+    }));
 }
 
 bool tcp_connection::insert_inventory_vector_seen(const inventory_vector & inv)

@@ -44,7 +44,9 @@ class chainblender_join;
 class chainblender_leave;
 class chainblender_status;
 class incentive_answer;
+class incentive_collaterals;
 class incentive_question;
+class incentive_sync;
 class incentive_vote;
 class transaction;
 class transaction_bloom_filter;
@@ -58,7 +60,7 @@ namespace protocol {
         /**
          * The version.
          */
-        enum { version = 60060 };
+        enum { version = 60052 };
 
         /**
          * The minimum version.
@@ -860,6 +862,22 @@ namespace protocol {
         {
             std::shared_ptr<incentive_question> iquestion;
         } iquestion_t;
+    
+        /**
+         * The isync structure.
+         */
+        typedef struct
+        {
+            std::shared_ptr<incentive_sync> isync;
+        } isync_t;
+
+        /**
+         * The icols structure.
+         */
+        typedef struct
+        {
+            std::shared_ptr<incentive_collaterals> icols;
+        } icols_t;
     
         /**
          * The cbjoin structure.

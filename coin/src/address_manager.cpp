@@ -34,6 +34,7 @@
 #include <coin/globals.hpp>
 #include <coin/hash.hpp>
 #include <coin/incentive_answer.hpp>
+#include <coin/incentive_collaterals.hpp>
 #include <coin/filesystem.hpp>
 #include <coin/logger.hpp>
 #include <coin/message.hpp>
@@ -675,12 +676,62 @@ bool address_manager::handle_message(
 {
     std::lock_guard<std::recursive_mutex> l1(mutex_);
     
-    /**
-     * Handle any messages here.
-     */
-    if (msg.header().command == "")
+    if (msg.header().command == "icols")
     {
-        // ...
+        if (globals::instance().is_incentive_enabled())
+        {
+            /**
+             * Get the incentive_collaterals.
+             */
+            auto icols = msg.protocol_icols().icols;
+            
+            if (icols)
+            {
+                for (auto & i : icols->collaterals())
+                {                    
+                    /**
+                     * If we do not have a recent good endpoint matching the
+                     * collateral address add it.
+                     */
+                    if (m_recent_good_endpoints.count(i.addr) == 0)
+                    {
+                        recent_endpoint_t recent;
+                        
+                        recent.addr = i.addr;
+                        recent.wallet_address = i.wallet_address;
+                        recent.public_key = i.public_key;
+                        recent.tx_in = i.tx_in;
+                        
+                        recent.time =
+                            std::time(0) + std::rand() % (5 * 60)
+                        ;
+                        recent.protocol_version = i.protocol_version;
+                        recent.protocol_version_user_agent =
+                            i.protocol_version_user_agent
+                        ;
+                        recent.protocol_version_services =
+                            i.protocol_version_services
+                        ;
+                        recent.protocol_version_start_height =
+                            i.protocol_version_start_height
+                        ;
+                        
+                        m_recent_good_endpoints[i.addr] = recent;
+                        
+                        boost::asio::ip::tcp::endpoint ep(
+                            i.addr.ipv4_mapped_address(), i.addr.port
+                        );
+                    
+                        /**
+                         * Set that the endpoint was probed.
+                         */
+                        probed_endpoints_[ep] =
+                            std::time(0) + std::rand() % (5 * 60)
+                        ;
+                    }
+                }
+            }
+        }
     }
     
     return true;
