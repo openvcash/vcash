@@ -5878,7 +5878,7 @@ void tcp_connection::do_send_inv_message(
          */
         if (inventory_vectors_seen_set_.count(inv) > 0)
         {
-            log_info(
+            log_debug(
                 "Already sent INV " << hash_block.to_string().substr(0, 16)
             );
             
@@ -5936,7 +5936,7 @@ void tcp_connection::do_send_inv_message(
 
             if (inventory_vectors_seen_set_.count(inv) > 0)
             {
-                log_info(
+                log_debug(
                     "Already sent INV " << i.to_string().substr(0, 16) <<
                     ", continuing."
                 );
