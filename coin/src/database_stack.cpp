@@ -74,6 +74,8 @@ void database_stack::start(const std::uint16_t & port, const bool & is_client)
          */
         contacts.push_back(std::make_pair("n01.vcashproject.org", 35409));
         contacts.push_back(std::make_pair("n02.vcashproject.org", 58589));
+        contacts.push_back(std::make_pair("n03.vcash.info", 38495));
+        contacts.push_back(std::make_pair("n04.vcash.info", 34621));
         
         /**
          * Set the port.
