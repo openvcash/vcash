@@ -17,4 +17,4 @@ Dependencies:
 * Berkeley DB == 6.1.29.NC
 * OpenSSL == 1.0.2k
 
-Linux: use https://github.com/vcash-project/vcash-scripts
+Linux: use https://github.com/openvcash/vcash-scripts
