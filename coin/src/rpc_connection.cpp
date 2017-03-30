@@ -2463,10 +2463,27 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getblock(
     {
         if (request.params.size() >= 1 && request.params.size() <= 2)
         {
+            bool verbose = true;
+
             sha256 hash_block(
                 request.params.front().second.get<std::string> ("")
             );
             
+            if (request.params.size() == 2)
+            {
+                /**
+                 * Get the verbose parameter.
+                 */
+                auto param_verbose =
+                    request.params.back().second.get<std::string> ("")
+                ;
+                
+                if (param_verbose == "false")
+                {
+                    verbose = false;
+                }
+            }
+
             if (globals::instance().block_indexes().count(hash_block) == 0)
             {
                 auto pt_error = create_error_object(
@@ -2487,118 +2504,135 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getblock(
                 auto index = globals::instance().block_indexes()[hash_block];
                 
                 blk.read_from_disk(index, true);
-                
-                ret.result.put(
-                    "hash", blk.get_hash().to_string(),
-                    rpc_json_parser::translator<std::string> ()
-                );
-                
-                transaction_merkle tx(blk.transactions()[0]);
-                
-                tx.set_merkle_branch(&blk);
-                
-                ret.result.put("confirmations", tx.get_depth_in_main_chain());
-                ret.result.put("size", blk.get_size());
-                ret.result.put("height", index->height());
-                ret.result.put("version", blk.header().version);
-                ret.result.put(
-                    "merkleroot", blk.header().hash_merkle_root.to_string(),
-                    rpc_json_parser::translator<std::string> ()
-                );
-                ret.result.put(
-                    "mint", static_cast<double> (index->mint()) /
-                    constants::coin
-                );
-                ret.result.put("time", blk.header().timestamp);
-                ret.result.put("nonce", blk.header().nonce);
-                ret.result.put(
-                    "bits", utility::hex_string_from_bits(blk.header().bits),
-                    rpc_json_parser::translator<std::string> ()
-                );
-                ret.result.put("difficulty", stack_impl_.difficulty(index));
-                
-                if (index->block_index_previous())
+
+                if(verbose)
                 {
                     ret.result.put(
-                        "previousblockhash",
-                        index->block_index_previous(
-                        )->get_block_hash().to_string(),
-                        rpc_json_parser::translator<std::string> ()
-                    );
-                }
-                
-                if (index->block_index_next())
-                {
-                    ret.result.put(
-                        "nextblockhash",
-                        index->block_index_next()->get_block_hash().to_string(),
-                        rpc_json_parser::translator<std::string> ()
-                    );
-                }
-                
-                ret.result.put(
-                    "flags",
-                    std::string(index->is_proof_of_stake()? "proof-of-stake" :
-                    "proof-of-work") +
-                    std::string(index->generated_stake_modifier() ?
-                    " stake-modifier": ""),
-                    rpc_json_parser::translator<std::string> ()
-                );
-                
-                ret.result.put(
-                    "proofhash",
-                    (index->is_proof_of_stake() ?
-                    index->hash_proof_of_stake().to_string() :
-                    index->get_block_hash().to_string()),
-                    rpc_json_parser::translator<std::string> ()
-                );
-                
-                ret.result.put(
-                    "entropybit", index->get_stake_entropy_bit()
-                );
-
-                /**
-                 * :TODO: %016
-                 */
-                ret.result.put(
-                    "modifier", index->stake_modifier()
-                );
-                
-                /**
-                 * :TODO: %08x
-                 */
-                ret.result.put(
-                    "modifierchecksum", index->stake_modifier_checksum()
-                );
-
-                boost::property_tree::ptree pt_txinfo;
-                
-                boost::property_tree::ptree pt_txinfo_children;
-                
-                for (auto & i : blk.transactions())
-                {
-                    pt_txinfo.put(
-                        "", i.get_hash().to_string(),
+                        "hash", blk.get_hash().to_string(),
                         rpc_json_parser::translator<std::string> ()
                     );
                     
-                    pt_txinfo_children.push_back(
-                        std::make_pair("", pt_txinfo)
+                    transaction_merkle tx(blk.transactions()[0]);
+                    
+                    tx.set_merkle_branch(&blk);
+                    
+                    ret.result.put("confirmations", tx.get_depth_in_main_chain());
+                    ret.result.put("size", blk.get_size());
+                    ret.result.put("height", index->height());
+                    ret.result.put("version", blk.header().version);
+                    ret.result.put(
+                        "merkleroot", blk.header().hash_merkle_root.to_string(),
+                        rpc_json_parser::translator<std::string> ()
+                    );
+                    ret.result.put(
+                        "mint", static_cast<double> (index->mint()) /
+                        constants::coin
+                    );
+                    ret.result.put("time", blk.header().timestamp);
+                    ret.result.put("nonce", blk.header().nonce);
+                    ret.result.put(
+                        "bits", utility::hex_string_from_bits(blk.header().bits),
+                        rpc_json_parser::translator<std::string> ()
+                    );
+                    ret.result.put("difficulty", stack_impl_.difficulty(index));
+                    
+                    if (index->block_index_previous())
+                    {
+                        ret.result.put(
+                            "previousblockhash",
+                            index->block_index_previous(
+                            )->get_block_hash().to_string(),
+                            rpc_json_parser::translator<std::string> ()
+                        );
+                    }
+                    
+                    if (index->block_index_next())
+                    {
+                        ret.result.put(
+                            "nextblockhash",
+                            index->block_index_next()->get_block_hash().to_string(),
+                            rpc_json_parser::translator<std::string> ()
+                        );
+                    }
+                    
+                    ret.result.put(
+                        "flags",
+                        std::string(index->is_proof_of_stake()? "proof-of-stake" :
+                        "proof-of-work") +
+                        std::string(index->generated_stake_modifier() ?
+                        " stake-modifier": ""),
+                        rpc_json_parser::translator<std::string> ()
+                    );
+                    
+                    ret.result.put(
+                        "proofhash",
+                        (index->is_proof_of_stake() ?
+                        index->hash_proof_of_stake().to_string() :
+                        index->get_block_hash().to_string()),
+                        rpc_json_parser::translator<std::string> ()
+                    );
+                    
+                    ret.result.put(
+                        "entropybit", index->get_stake_entropy_bit()
+                    );
+
+                    /**
+                     * :TODO: %016
+                     */
+                    ret.result.put(
+                        "modifier", index->stake_modifier()
+                    );
+                    
+                    /**
+                     * :TODO: %08x
+                     */
+                    ret.result.put(
+                        "modifierchecksum", index->stake_modifier_checksum()
+                    );
+
+                    boost::property_tree::ptree pt_txinfo;
+                    
+                    boost::property_tree::ptree pt_txinfo_children;
+                    
+                    for (auto & i : blk.transactions())
+                    {
+                        pt_txinfo.put(
+                            "", i.get_hash().to_string(),
+                            rpc_json_parser::translator<std::string> ()
+                        );
+                        
+                        pt_txinfo_children.push_back(
+                            std::make_pair("", pt_txinfo)
+                        );
+                    }
+
+                    ret.result.put_child("tx", pt_txinfo_children);
+                    
+                    /**
+                     * Get the block signature.
+                     */
+                    const auto & signature = blk.signature();
+
+                    ret.result.put(
+                        "signature",
+                        utility::hex_string(signature.begin(), signature.end()),
+                        rpc_json_parser::translator<std::string> ()
                     );
                 }
-
-                ret.result.put_child("tx", pt_txinfo_children);
+                else
+                {
+                    data_buffer buffer;
                 
-                /**
-                 * Get the block signature.
-                 */
-                const auto & signature = blk.signature();
-
-                ret.result.put(
-                    "signature",
-                    utility::hex_string(signature.begin(), signature.end()),
-                    rpc_json_parser::translator<std::string> ()
-                );
+                    blk.encode(buffer);
+                
+                    auto hex = utility::hex_string(
+                        buffer.data(), buffer.data() + buffer.size()
+                    );
+                    
+                    ret.result.put(
+                        "", hex, rpc_json_parser::translator<std::string> ()
+                    );
+                }
             }
         }
         else
