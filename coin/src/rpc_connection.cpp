@@ -4554,28 +4554,35 @@ rpc_connection::json_rpc_response_t rpc_connection::json_importprivkey(
                 addr, label
             );
 
-            if (globals::instance().wallet_main()->add_key(k) == false)
+            if (globals::instance().wallet_main()->have_key(addr) == false)
             {
-                auto pt_error = create_error_object(
-                    error_code_wallet_error, "failed to add key to wallet"
-                );
-                
-                /**
-                 * error_code_wallet_error
-                 */
-                return json_rpc_response_t{
-                    boost::property_tree::ptree(), pt_error, request.id
-                };
+                if (globals::instance().wallet_main()->add_key(k) == false)
+                {
+                    auto pt_error = create_error_object(
+                        error_code_wallet_error, "failed to add key to wallet"
+                    );
+                    
+                    /**
+                     * error_code_wallet_error
+                     */
+                    return json_rpc_response_t{
+                        boost::property_tree::ptree(), pt_error, request.id
+                    };
+                }
+                else
+                {
+                    globals::instance().wallet_main()->scan_for_transactions(
+                        stack_impl::get_block_index_genesis(), true
+                    );
+                    globals::instance().wallet_main(
+                        )->reaccept_wallet_transactions()
+                    ;
+
+                    ret.result.put("", "null");
+                }
             }
             else
             {
-                globals::instance().wallet_main()->scan_for_transactions(
-                    stack_impl::get_block_index_genesis(), true
-                );
-                globals::instance().wallet_main(
-                    )->reaccept_wallet_transactions()
-                ;
-
                 ret.result.put("", "null");
             }
         }
