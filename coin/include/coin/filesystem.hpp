@@ -65,7 +65,7 @@ namespace coin {
             static std::string data_path();
 
 #if (defined _MSC_VER)
-	    static std::wstring w_data_path();
+            static std::wstring w_data_path();
 #endif
 
             /** 

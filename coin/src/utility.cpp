@@ -45,12 +45,12 @@ utility::disk_info_t utility::disk_info(const std::string & path)
 #if (defined _MSC_VER)
     ULARGE_INTEGER avail, total, free;
     
-    int t_len =  MultiByteToWideChar(CP_ACP, 0, path.c_str(), -1, NULL, 0);
-    wchar_t* w_path = new wchar_t[t_len];
-    MultiByteToWideChar(CP_ACP, 0, path.c_str(), -1, w_path, t_len);
+    DWORD len = MultiByteToWideChar(CP_ACP, 0, path.c_str(), -1, NULL, 0);
+    std::unique_ptr<wchar_t> w_path(new wchar_t[len]);
+    MultiByteToWideChar(CP_ACP, 0, path.c_str(), -1, w_path.get(), len);
     
     if (
-        ::GetDiskFreeSpaceExW(w_path, &avail, &total, &free) != 0
+        ::GetDiskFreeSpaceExW(w_path.get(), &avail, &total, &free) != 0
         )
     {
         ret.capacity =

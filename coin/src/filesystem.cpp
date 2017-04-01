@@ -39,10 +39,10 @@ using namespace coin;
 #define ERRNO GetLastError()
 static int _mkdir(const char * path)
 {
-    int t_len =  MultiByteToWideChar(CP_ACP, 0, path, -1, NULL, 0);
-    wchar_t* w_path = new wchar_t[t_len];
-    MultiByteToWideChar(CP_ACP, 0, path, -1, w_path, t_len);
-    return SHCreateDirectoryEx(0, w_path, 0);
+    DWORD len = MultiByteToWideChar(CP_ACP, 0, path, -1, NULL, 0);
+    std::unique_ptr<wchar_t> w_path(new wchar_t[len]);
+    MultiByteToWideChar(CP_ACP, 0, path, -1, w_path.get(), len);
+    return SHCreateDirectoryEx(0, w_path.get(), 0);
 }
 #define CREATE_DIRECTORY(P) _mkdir(P)
 
