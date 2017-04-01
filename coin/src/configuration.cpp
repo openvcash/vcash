@@ -458,7 +458,7 @@ bool configuration::save()
         /**
          * Write property tree to json file.
          */
-        write_json(ss, pt, false);
+        write_json(ss, pt, true);
         
         /**
          * Open the output file stream.
