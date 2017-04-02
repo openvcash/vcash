@@ -303,33 +303,6 @@ std::wstring filesystem::w_data_path()
 }
 #endif
 
-std::string filesystem::data_path_old()
-{
-    std::string bundle_id = "Vanillacoin";
-    
-    if (constants::test_net == true)
-    {
-        bundle_id += "TestNet";
-    }
-    
-    std::string ret;
-#if (defined _MSC_VER)
-    ret += getenv("APPDATA");
-    ret += "\\" + bundle_id + "\\";
-#elif (defined __APPLE__)
-    ret = home_path();
-    ret += "Library/";
-    ret += "Application Support/";
-    ret += bundle_id + "/";
-#elif (defined __ANDROID__)
-    ret = home_path() + "data/";
-#else
-    ret = home_path();
-    ret += "." + bundle_id + "/data/";
-#endif
-    return ret;
-}
-
 std::string filesystem::home_path()
 {
     std::string ret;

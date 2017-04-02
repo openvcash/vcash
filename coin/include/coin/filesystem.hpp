@@ -67,11 +67,6 @@ namespace coin {
 #if (defined _MSC_VER)
             static std::wstring w_data_path();
 #endif
-
-            /** 
-             * The (old) user data directory.
-             */
-            static std::string data_path_old();
         
         private:
         

@@ -5118,60 +5118,7 @@ void stack_impl::create_directories()
     
     if (result == 0 || result == filesystem::error_already_exists)
     {
-        /**
-         * Migration of data path from Vanillcoin to Vcash (can be removed in
-         * future versions).
-         */
-#if 1
-        /**
-         * Get the old data path.
-         */
-        auto path_data_old = filesystem::data_path_old();
-        
-        /**
-         * Get the old path contents.
-         */
-        auto path_contents_old = filesystem::path_contents(path_data_old);
-        
-        /**
-         * If we have contents we need to migrate.
-         */
-        if (path_contents_old.size() > 0)
-        {
-            for (auto & i : path_contents_old)
-            {
-                /**
-                 * Skip files we do not care about.
-                 */
-                if (i == "." || i == "..")
-                {
-                    continue;
-                }
-                
-                log_info("Stack environment migrating " << i << ".");
-                
-                /**
-                 * Rename the file to the new path.
-                 */
-                auto rc = std::rename(
-                    (path_data_old + i).c_str(), (path_data + i).c_str()
-                );
-                
-                if (rc)
-                {
-                    log_error(
-                        "Stack environment migrate rename " << i << " failed."
-                    );
-                }
-                else
-                {
-                    log_info(
-                        "Stack environment migrate rename " << i << " success"
-                    );
-                }
-            }
-        }
-#endif
+        log_none("Stack, path already exists.");
     }
     else
     {
