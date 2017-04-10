@@ -633,7 +633,7 @@ std::shared_ptr<block> block::create_new(
                 time_search - last_coinstake_search_time, tx_coinstake)
                 )
             {
-				if (
+                if (
                     tx_coinstake.time() >= std::max(
                     index_previous->get_median_time_past() + 1,
                     index_previous->time() - constants::max_clock_drift)
@@ -1395,19 +1395,19 @@ bool block::connect_block(
         }
     }
 
-	sha256 hash_previous = 0;
-	
+    sha256 hash_previous = 0;
+    
     if (pindex->block_index_previous())
-	{
-		hash_previous = pindex->block_index_previous()->get_block_hash();
-	}
+    {
+        hash_previous = pindex->block_index_previous()->get_block_hash();
+    }
 
-	if (
+    if (
         m_transactions[0].get_value_out() >
         reward::get_proof_of_work(pindex->height(), fees, hash_previous)
         )
     {
-		return false;
+        return false;
     }
 
     /**
@@ -2085,25 +2085,46 @@ bool block::check_block(
                                         "from ???."
                                     );
                                 }
-                                
+
                                 /**
-                                 * We have winners but got a block with an
-                                 * empty reward, clear the winner and reject
-                                 * the block.
+                                 * Keep the current winner and increase
+                                 * Denial-of-Service score to avoid incentive
+                                 * raping.
                                  */
-                                incentive::instance().winners().erase(
-                                    index_previous->height() + 1
-                                );
-                                
-                                /**
-                                 * Set the Denial-of-Service score for the
-                                 * connection.
-                                 */
-                                if (connection)
+                                if (index_previous->height() + 1 >= 658000)
                                 {
-                                    connection->set_dos_score(
-                                        connection->dos_score() + 1
+                                    /**
+                                     * Set the Denial-of-Service score for the
+                                     * connection and reject the block.
+                                     */
+                                    if (connection)
+                                    {
+                                        connection->set_dos_score(
+                                            connection->dos_score() + 50
+                                        );
+                                    }
+                                }
+                                else
+                                {
+                                    /**
+                                     * We have winners but got a block with an
+                                     * empty reward, clear the winner and reject
+                                     * the block.
+                                     */
+                                    incentive::instance().winners().erase(
+                                        index_previous->height() + 1
                                     );
+                                    
+                                    /**
+                                     * Set the Denial-of-Service score for the
+                                     * connection.
+                                     */
+                                    if (connection)
+                                    {
+                                        connection->set_dos_score(
+                                            connection->dos_score() + 1
+                                        );
+                                    }
                                 }
 
                                 /**
@@ -2381,7 +2402,7 @@ bool block::accept_block(
      */
     enum { block_height_pause_even_pow = 136400 };
     
-	if (
+    if (
         is_proof_of_work() &&
         (height > block_height_pause_pow && height < block_height_resume_pow)
         )
@@ -2415,7 +2436,7 @@ bool block::accept_block(
         }
     }
     
-	if (is_proof_of_work() && height > constants::pow_cutoff_block)
+    if (is_proof_of_work() && height > constants::pow_cutoff_block)
     {
         log_error(
             "Block, accept block failed, no PoW block allowed anymore, "
