@@ -41,7 +41,7 @@ namespace database {
             /**
              * The version.
              */
-            enum { version = 10003 };
+            enum { version = 10004 };
         
             /**
              * The minimum version.
