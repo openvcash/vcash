@@ -538,6 +538,10 @@ bool rpc_connection::handle_json_rpc_request(
         {
             response = json_databasestore(request);
         }
+        else if (request.method == "decoderawtransaction")
+        {
+            response = json_decoderawtransaction(request);
+        }
         else if (request.method == "dumpwalletseed")
         {
             response = json_dumpwalletseed(request);
@@ -1620,6 +1624,88 @@ rpc_connection::json_rpc_response_t rpc_connection::json_databasestore(
         return json_rpc_response_t{
             boost::property_tree::ptree(), pt_error, request.id
         };
+    }
+    
+    return ret;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_decoderawtransaction(
+    const json_rpc_request_t & request
+    )
+{
+    rpc_connection::json_rpc_response_t ret;
+
+    try
+    {
+        if (request.params.size() == 1)
+        {
+            /**
+             * Decode the tx data.
+             */
+            auto data(
+                utility::from_hex(
+                request.params.front().second.get<std::string> (""))
+            );
+
+            /**
+             * Copy the decoded data into the buffer.
+             */
+            data_buffer buffer(
+                reinterpret_cast<const char *>(&data[0]), data.size()
+            );
+
+            /**
+             * Allocate the transaction.
+             */
+            transaction tx;
+        
+            /**
+             * Try to decode the buffer.
+             */
+            if (tx.decode(buffer))
+            {
+                auto transactions = transaction_to_ptree(tx, 0);
+                    
+                for (auto & i : transactions)
+                {
+                    ret.result.push_back(std::make_pair(i.first, i.second));
+                }
+            }
+            else
+            {
+                auto pt_error = create_error_object(
+                    error_code_deserialization_error, "failed to decode transaction"
+                );
+                
+                /**
+                 * error_code_deserialization_error
+                 */
+                return json_rpc_response_t{
+                    boost::property_tree::ptree(), pt_error, request.id
+                };
+            }
+
+        }
+        else
+        {
+            auto pt_error = create_error_object(
+                error_code_misc_error, "invalid parameter count"
+            );
+            
+            /**
+             * error_code_misc_error
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
+        }
+    }
+    catch (std::exception & e)
+    {
+        log_error(
+            "RPC Connection failed to create json_decoderawtransaction, what = " <<
+            e.what() << "."
+        );
     }
     
     return ret;

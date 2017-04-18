@@ -368,6 +368,14 @@ namespace coin {
             );
         
             /**
+             * Encodes decoderawtransaction data into JSON format.
+             * @param request The json_rpc_request_t.
+             */
+            json_rpc_response_t json_decoderawtransaction(
+                const json_rpc_request_t & request
+            );
+        
+            /**
              * Encodes wallet seed into JSON format.
              * @param request The json_rpc_request_t.
              */
