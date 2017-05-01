@@ -3741,6 +3741,10 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getnetworkinfo(
                 "collateralized",
                 stack_impl_.get_incentive_manager()->collateralized_nodes()
             );
+            ret.result.put(
+                "relayfee",
+                static_cast<double> (constants::min_relay_tx_fee) / constants::coin
+            );
         }
         catch (...)
         {
