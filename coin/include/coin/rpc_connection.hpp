@@ -261,6 +261,13 @@ namespace coin {
                             rpc_json_parser::translator<std::string> ()
                         );
                         
+                        pt.put(
+                            "hex", utility::hex_string(
+                            subscript.begin(),
+                            subscript.end()),
+                            rpc_json_parser::translator<std::string> ()
+                        );
+                        
                         boost::property_tree::ptree pt_addresses;
                         
                         for (auto & i : addresses)
