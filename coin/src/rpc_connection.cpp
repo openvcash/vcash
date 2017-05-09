@@ -3515,6 +3515,7 @@ boost::property_tree::ptree rpc_connection::json_getinfo()
         );
         ret.put("port", stack_impl_.get_configuration().network_port_tcp());
         ret.put("difficulty", stack_impl_.difficulty());
+        ret.put("testnet", constants::test_net);
         ret.put(
             "keypoolsize",
             globals::instance().wallet_main()->get_key_pool().size()
@@ -3522,6 +3523,10 @@ boost::property_tree::ptree rpc_connection::json_getinfo()
         ret.put(
             "paytxfee",
             static_cast<double> (constants::min_tx_fee) / constants::coin
+        );
+        ret.put(
+            "relayfee",
+            static_cast<double> (constants::min_relay_tx_fee) / constants::coin
         );
         
         /**
