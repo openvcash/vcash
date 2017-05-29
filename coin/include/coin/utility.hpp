@@ -261,6 +261,12 @@ namespace coin {
             }
         
             /**
+             * Returns true if Hexadecimal.
+             * @param val The std::string.
+             */
+            static bool is_hex(const std::string & val);
+
+            /**
              * Converts from hexidecimal bytes.
              * @param val The std::string.
              */
