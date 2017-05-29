@@ -828,7 +828,9 @@ bool db_wallet::read_key_value(
         
         if (len > 0)
         {
-            script s(len);
+            script s;
+
+            s.resize(len);
             
             buffer_value.read_bytes(reinterpret_cast<char *> (&s[0]), s.size());
 
