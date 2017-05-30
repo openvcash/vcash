@@ -650,6 +650,10 @@ bool rpc_connection::handle_json_rpc_request(
         {
             response = json_importprivkey(request);
         }
+        else if (request.method == "listaccounts")
+        {
+            response = json_listaccounts(request);
+        }
         else if (request.method == "listtransactions")
         {
             response = json_listtransactions(request);
@@ -4934,6 +4938,113 @@ rpc_connection::json_rpc_response_t rpc_connection::json_listsinceblock(
             error_code_internal_error, e.what()
         );
         
+        /**
+         * error_code_internal_error
+         */
+        return json_rpc_response_t{
+            boost::property_tree::ptree(), pt_error, request.id
+        };
+    }
+
+    return ret;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_listaccounts(
+    const json_rpc_request_t & request
+    )
+{
+    json_rpc_response_t ret;
+
+    try
+    {
+        if (request.params.size() <= 1)
+        {
+
+            std::int32_t minconf = 1;
+
+            if (request.params.size() == 1)
+            {
+                minconf = request.params.front().second.get<std::int32_t> ("");
+            }
+            
+            std::map<std::string, std::int64_t> accounts;
+
+            /**
+             * Get the address book from the main wallet.
+             */
+            const auto & address_book =
+                globals::instance().wallet_main()->address_book()
+            ;
+            
+            for (auto & i : address_book)
+            {
+                const auto & addr = i.first;
+                
+                const auto & acct = i.second;
+                
+                if (
+                    script::is_mine(*globals::instance().wallet_main(),
+                    addr) == true
+                    )
+                {
+                    accounts[acct] = 0;
+                }
+            }
+
+            for (auto & i : accounts)
+            {
+                const auto & acct = i.first;
+
+                accounts[acct] = wallet::get_account_balance(
+                    acct, minconf
+                );
+                if (acct == "")
+                {
+                    boost::property_tree::ptree pt_default;
+
+                    pt_default.put(
+                        "", 
+                        static_cast<double> (accounts[acct]) / 
+                        constants::coin
+                    );
+                    
+                    ret.result.push_back(std::make_pair("", pt_default));
+                }
+                else
+                {
+                    ret.result.put(
+                        acct, 
+                        static_cast<double> (accounts[acct]) / 
+                        constants::coin
+                    );
+                }
+            }
+        }
+        else
+        {
+            auto pt_error = create_error_object(
+                error_code_invalid_params, "invalid parameter count"
+            );
+                
+            /**
+             * error_code_invalid_params
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
+        }
+    }
+    catch (std::exception & e)
+    {
+        log_error(
+            "RPC Connection failed to create json_listaccounts, what = " <<
+            e.what() << "."
+        );
+            
+        auto pt_error = create_error_object(
+            error_code_internal_error, e.what()
+        );
+            
         /**
          * error_code_internal_error
          */

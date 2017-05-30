@@ -577,6 +577,14 @@ namespace coin {
             );
         
             /**
+             * Performs a listaccounts operation.
+             * @param request The json_rpc_request_t.
+             */
+            json_rpc_response_t json_listaccounts(
+                const json_rpc_request_t & request
+            );
+        
+            /**
              * Encodes listblocksince data into JSON format.
              * @param request The json_rpc_request_t.
              */
