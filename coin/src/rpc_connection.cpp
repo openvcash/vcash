@@ -566,6 +566,10 @@ bool rpc_connection::handle_json_rpc_request(
         {
             response = json_getaccountaddress(request);
         }
+        else if (request.method == "getaddressesbyaccount")
+        {
+            response = json_getaddressesbyaccount(request);
+        }
         else if (request.method == "backupwallet")
         {
             response = json_backupwallet(request);
@@ -2282,6 +2286,89 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getaccountaddress(
                         boost::property_tree::ptree(), pt_error, request.id
                     };
                 }
+            }
+        }
+        else
+        {
+            auto pt_error = create_error_object(
+                error_code_invalid_params, "invalid parameter count"
+            );
+            
+            /**
+             * error_code_invalid_params
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
+        }
+    }
+    catch (std::exception & e)
+    {
+        auto pt_error = create_error_object(
+            error_code_internal_error, e.what()
+        );
+        
+        /**
+         * error_code_internal_error
+         */
+        return json_rpc_response_t{
+            boost::property_tree::ptree(), pt_error, request.id
+        };
+    }
+    
+    return ret;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_getaddressesbyaccount(
+    const json_rpc_request_t & request
+    )
+{
+    json_rpc_response_t ret;
+    
+    /**
+     * Set the id from the request.
+     */
+    ret.id = request.id;
+    
+    try
+    {
+        if (request.params.size() == 1)
+        {
+            /**
+             * Get the account parameter.
+             */
+            auto account =
+                request.params.front().second.get<std::string> ("")
+            ;
+                
+            const auto & address_book =
+                globals::instance().wallet_main()->address_book()
+            ;
+                
+            for (auto & i : address_book)
+            {
+                const auto & addr = i.first;
+                    
+                const auto & acct = i.second;
+
+                if (acct == account)
+                {
+                    boost::property_tree::ptree pt_child;
+
+                    pt_child.put(
+                        "", address(addr).to_string(),
+                        rpc_json_parser::translator<std::string> ()
+                    );
+
+                    ret.result.push_back(std::make_pair("", pt_child));
+                }
+            }
+                
+            if (ret.result.size() == 0)
+            {
+                boost::property_tree::ptree pt_empty;
+
+                ret.result.push_back(std::make_pair("", pt_empty));
             }
         }
         else
