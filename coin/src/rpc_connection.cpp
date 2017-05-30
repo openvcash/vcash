@@ -43,6 +43,7 @@
 #include <coin/incentive_vote.hpp>
 #include <coin/key_reserved.hpp>
 #include <coin/logger.hpp>
+#include <coin/message.hpp>
 #include <coin/mining_manager.hpp>
 #include <coin/network.hpp>
 #include <coin/protocol.hpp>
@@ -59,6 +60,7 @@
 #include <coin/transaction_out.hpp>
 #include <coin/transaction_pool.hpp>
 #include <coin/utility.hpp>
+#include <coin/wallet_manager.hpp>
 
 using namespace coin;
 
@@ -681,6 +683,10 @@ bool rpc_connection::handle_json_rpc_request(
         else if (request.method == "sendmany")
         {
             response = json_sendmany(request);
+        }
+        else if (request.method == "sendrawtransaction")
+        {
+            response = json_sendrawtransaction(request);
         }
         else if (request.method == "sendtoaddress")
         {
@@ -6060,6 +6066,188 @@ rpc_connection::json_rpc_response_t rpc_connection::json_sendmany(
         };
     }
 
+    return ret;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_sendrawtransaction(
+    const json_rpc_request_t & request
+    )
+{
+    rpc_connection::json_rpc_response_t ret;
+
+    try
+    {
+        if (request.params.size() == 1)
+        {
+            /**
+             * Decode the tx data.
+             */
+            auto data(
+                utility::from_hex(
+                request.params.front().second.get<std::string> (""))
+            );
+
+            /**
+             * Copy the decoded data into the buffer.
+             */
+            data_buffer buffer(
+                reinterpret_cast<const char *>(&data[0]), data.size()
+            );
+
+            /**
+             * Allocate the transaction.
+             */
+            transaction tx;
+
+            /**
+             * Try to decode the buffer.
+             */
+            if (tx.decode(buffer))
+            {
+                auto hash_tx = tx.get_hash();
+
+                transaction existing_tx;
+
+                sha256 hash_block = 0;
+
+                if (utility::get_transaction(hash_tx, existing_tx, hash_block))
+                {
+                    if (hash_block != 0)
+                    {
+                        auto pt_error = create_error_object(
+                            error_code_invalid_address_or_key,
+                            "transaction already in a block"
+                        );
+                    
+                        /**
+                         * error_code_invalid_address_or_key
+                         */
+                        return json_rpc_response_t{
+                            boost::property_tree::ptree(), pt_error,
+                            request.id
+                        };
+                    }
+                }
+                else
+                {
+                    db_tx tx_db("r");
+
+                    if (tx.accept_to_transaction_pool(tx_db).first)
+                    {
+                       /**
+                        * Inform the wallet_manager.
+                        */
+                        wallet_manager::instance().sync_with_wallets(
+                            tx, 0, true
+                        );
+                    }
+                    else
+                    {
+                        auto pt_error = create_error_object(
+                            error_code_invalid_address_or_key,
+                            "TX rejected"
+                        );
+                    
+                        /**
+                         * error_code_invalid_address_or_key
+                         */
+                        return json_rpc_response_t{
+                            boost::property_tree::ptree(), pt_error,
+                            request.id
+                        };
+                    }
+                    
+                    if (
+                        globals::instance().operation_mode() ==
+                        protocol::operation_mode_peer
+                        )
+                    {
+                        /**
+                         * Allocate the data_buffer.
+                         */
+                        data_buffer buffer;
+
+                        /**
+                         * Encode the transaction.
+                         */
+                        tx.encode(buffer);
+                            
+                        /**
+                         * Allocate the inventory_vector.
+                         */
+                        inventory_vector inv(
+                            inventory_vector::type_msg_tx,
+                            tx.get_hash()
+                        );
+
+                        log_debug(
+                            "rpc is relaying inv "
+                            "message, command = " << inv.command() <<
+                            "."
+                        );
+                                
+                        /**
+                         * Allocate the message.
+                         */
+                        message msg(inv.command(), buffer);
+
+                        /**
+                         * Encode the message.
+                         */
+                        msg.encode();
+
+                        /**
+                         * Broadcast the message to "all" connected
+                         * peers.
+                         */
+                        stack_impl_.get_tcp_connection_manager(
+                            )->broadcast(msg.data(), msg.size()
+                        );
+                    }
+
+                    ret.result.put(
+                        "", tx.get_hash().to_string(),
+                        rpc_json_parser::translator<std::string> ()
+                    );
+                }
+            }
+            else
+            {
+                auto pt_error = create_error_object(
+                    error_code_deserialization_error, "failed to decode transaction"
+                );
+                
+                /**
+                 * error_code_deserialization_error
+                 */
+                return json_rpc_response_t{
+                    boost::property_tree::ptree(), pt_error, request.id
+                };
+            }
+
+        }
+        else
+        {
+            auto pt_error = create_error_object(
+                error_code_misc_error, "invalid parameter count"
+            );
+            
+            /**
+             * error_code_misc_error
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
+        }
+    }
+    catch (std::exception & e)
+    {
+        log_error(
+            "RPC Connection failed to create json_sendrawtransaction, what = " <<
+            e.what() << "."
+        );
+    }
+    
     return ret;
 }
 

@@ -641,6 +641,14 @@ namespace coin {
             );
         
             /**
+             * Encodes sendrawtransaction data into JSON format.
+             * @param request The json_rpc_request_t.
+             */
+            json_rpc_response_t json_sendrawtransaction(
+                const json_rpc_request_t & request
+            );
+        
+            /**
              * Performs a sendtoaddress operation.
              * @param request The json_rpc_request_t.
              */
