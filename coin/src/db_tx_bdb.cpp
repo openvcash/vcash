@@ -1193,8 +1193,16 @@ bool db_tx::read_string(const std::string & key, std::string & val)
         return false;
     }
     
+    data_buffer key_data;
+    
+    key_data.reserve(1000);
+    
+    key_data.write_var_int(key.size());
+    
+    key_data.write_bytes(key.data(), key.size());
+
     Dbt dbt_key(
-        (void *)key.data(), static_cast<std::uint32_t> (key.size())
+        (void *)key_data.data(), static_cast<std::uint32_t> (key_data.size())
     );
     
     Dbt dbt_value;
@@ -1213,11 +1221,19 @@ bool db_tx::read_string(const std::string & key, std::string & val)
     try
     {
         /**
-         * Assign the string value.
+         * Allocate the data_buffer.
          */
-        val = std::string(
-            reinterpret_cast<char *>(dbt_value.get_data()),
-            dbt_value.get_size()
+        data_buffer buffer(
+            static_cast<char *>(dbt_value.get_data()), dbt_value.get_size()
+        );
+        
+        val.resize(buffer.read_var_int());
+        
+        /**
+         * Decode the value from the buffer.
+         */
+        buffer.read_bytes(
+            const_cast<char *> (val.data()), val.size()
         );
     }
     catch (std::exception & e)
@@ -1250,12 +1266,19 @@ bool db_tx::write_string(
     key_data.write_var_int(key.size());
     key_data.write((void *)key.data(), key.size());
 
+    data_buffer value_data;
+
+    value_data.reserve(10000);
+    
+    value_data.write_var_int(value.size());
+    value_data.write((void *)value.data(), value.size());
+
     Dbt dat_key(
         (void *)key_data.data(), static_cast<std::uint32_t> (key_data.size())
     );
 
     Dbt dat_value(
-        (void *)value.data(), static_cast<std::uint32_t> (value.size())
+        (void *)value_data.data(), static_cast<std::uint32_t> (value_data.size())
     );
 
     auto ret = m_Db->put(
