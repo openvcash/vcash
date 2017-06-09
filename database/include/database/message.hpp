@@ -41,12 +41,12 @@ namespace database {
             /**
              * The version.
              */
-            enum { version = 10004 };
+            enum { version = 10005 };
         
             /**
              * The minimum version.
              */
-            enum { version_minimum = 10003 };
+            enum { version_minimum = 10004 };
         
             /**
              * The attribute types.
