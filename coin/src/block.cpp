@@ -1951,26 +1951,52 @@ bool block::check_block(
                                                                 << addr << "."
                                                             );
 
-                                                            /**
-                                                             * Increment the
-                                                             * Denial-of-Service
-                                                             * score for the
-                                                             * connection.
-                                                             */
-                                                            if (connection)
+                                                            if (index_previous->height() + 1 >= 705000)
                                                             {
-                                                                connection->set_dos_score(
-                                                                    connection->dos_score(
-                                                                    ) + 1
-                                                                );
+#if 0
+                                                                /**
+                                                                 * Increment the
+                                                                 * Denial-of-Service
+                                                                 * score for the
+                                                                 * connection.
+                                                                 */
+                                                                if (connection)
+                                                                {
+                                                                    connection->set_dos_score(
+                                                                        connection->dos_score(
+                                                                        ) + 1
+                                                                    );
+                                                                }
+#endif
+                                                                /**
+                                                                 * Reject the
+                                                                 * block.
+                                                                 */
+                                                                return false;
                                                             }
-                                                            
-                                                            /**
-                                                             * We accept the
-                                                             * block as valid
-                                                             * since we lack
-                                                             * consensus.
-                                                             */
+                                                            else
+                                                            {
+                                                                /**
+                                                                 * Increment the
+                                                                 * Denial-of-Service
+                                                                 * score for the
+                                                                 * connection.
+                                                                 */
+                                                                if (connection)
+                                                                {
+                                                                    connection->set_dos_score(
+                                                                        connection->dos_score(
+                                                                        ) + 1
+                                                                    );
+                                                                }
+                                                                
+                                                                /**
+                                                                 * We accept the
+                                                                 * block as valid
+                                                                 * since we lack
+                                                                 * consensus.
+                                                                 */
+                                                            }
                                                         }
                                                     }
                                                     else
@@ -2085,48 +2111,18 @@ bool block::check_block(
                                         "from ???."
                                     );
                                 }
-
+#if 0
                                 /**
-                                 * Keep the current winner and increase
-                                 * Denial-of-Service score to avoid incentive
-                                 * raping.
+                                 * Set the Denial-of-Service score for the
+                                 * connection and reject the block.
                                  */
-                                if (index_previous->height() + 1 >= 658000)
+                                if (connection)
                                 {
-                                    /**
-                                     * Set the Denial-of-Service score for the
-                                     * connection and reject the block.
-                                     */
-                                    if (connection)
-                                    {
-                                        connection->set_dos_score(
-                                            connection->dos_score() + 50
-                                        );
-                                    }
-                                }
-                                else
-                                {
-                                    /**
-                                     * We have winners but got a block with an
-                                     * empty reward, clear the winner and reject
-                                     * the block.
-                                     */
-                                    incentive::instance().winners().erase(
-                                        index_previous->height() + 1
+                                    connection->set_dos_score(
+                                        connection->dos_score() + 1
                                     );
-                                    
-                                    /**
-                                     * Set the Denial-of-Service score for the
-                                     * connection.
-                                     */
-                                    if (connection)
-                                    {
-                                        connection->set_dos_score(
-                                            connection->dos_score() + 1
-                                        );
-                                    }
                                 }
-
+#endif
                                 /**
                                  * There was no incentive transaction found in
                                  * the block, reject it.
