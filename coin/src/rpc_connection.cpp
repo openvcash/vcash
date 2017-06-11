@@ -3817,7 +3817,13 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getnetworkinfo(
             }
             else
             {
-                ret.result.put("endpoints", "null");
+                boost::property_tree::ptree pt_empty;
+                
+                pt_empty.push_back(
+                    std::make_pair("", boost::property_tree::ptree())
+                );
+
+                ret.result.put_child("endpoints", pt_empty);
             }
         
             ret.result.put(
