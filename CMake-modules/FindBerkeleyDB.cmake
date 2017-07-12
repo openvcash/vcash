@@ -33,11 +33,9 @@ IF(UNIX)
     HINTS ${CMAKE_SOURCE_DIR}/../../.. $ENV{BERKELEYDB_ROOT} ${BERKELEYDB_ROOT}
     PATH_SUFFIXES include
     PATHS /usr /usr/local /opt /opt/local)
-    # Feed the DIR into vars, checking which file was found
-    IF(_BERKELEYDB_INCLUDE_DIR AND EXISTS "${_BERKELEYDB_INCLUDE_DIR}/db_cxx.h")
-      set(_BERKELEYDB_VERSION_file "${_BERKELEYDB_INCLUDE_DIR}/db_cxx.h")
 
-    ELSEIF(_BERKELEYDB_INCLUDE_DIR AND EXISTS "${_BERKELEYDB_INCLUDE_DIR}/db.h")
+    # Feed the DIR into vars, checking which file was found
+    IF(_BERKELEYDB_INCLUDE_DIR AND EXISTS "${_BERKELEYDB_INCLUDE_DIR}/db.h")
       set(_BERKELEYDB_VERSION_file "${_BERKELEYDB_INCLUDE_DIR}/db.h")
 
     ELSE()
@@ -45,7 +43,7 @@ IF(UNIX)
 
       IF(_BERKELEYDB_output)
         message(${_BERKELEYDB_output_type}
-        "Can't find berkeleydb header file db_cxx.h or db.h")
+        "Can't find berkeleydb header file db.h")
       ENDIF()
     ENDIF()
 ELSEIF(WIN32)
@@ -57,7 +55,7 @@ ENDIF()
 
 # System-independant stuff for after getting INCLUDES
 file(READ ${_BERKELEYDB_VERSION_file} _BERKELEYDB_header_contents)
-string(REGEX REPLACE ".*kMajorVersion = ([0-9]+).*kMinorVersion = ([0-9]+).*"
+string(REGEX REPLACE ".*DB_VERSION_MAJOR.+([0-9]+).*DB_VERSION_MINOR.+([0-9]+).*"
   "\\1.\\2" _BERKELEYDB_VERSION "${_BERKELEYDB_header_contents}")
 set(BERKELEYDB_VERSION ${_BERKELEYDB_VERSION} CACHE INTERNAL
 "The version of berkeleydb which was detected")
