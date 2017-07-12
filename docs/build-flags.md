@@ -9,4 +9,4 @@ Flags                   |Required|Notes
 `-DCMAKE_INSTALL_PREFIX`|  Yes   |On Linux, recommended to use `/usr`
 `-DCMAKE_INSTALL_BINDIR`|  Yes   |On Linux, recommended to use `bin`
 `-DCMAKE_INSTALL_LIBDIR`|  Yes   |On Linux, recommended to use `lib/vcash`
-`-DOPENSSL_COMPAT`      |  No    |[Workaround for OpenSSL](docs/build-problems.md)
+`-DOPENSSL_COMPAT`      |  No    |[Workaround for OpenSSL](build-problems.md)
