@@ -3,7 +3,7 @@ You should always use the highest version available that conforms to these depen
 
 |Dependency   |Minimum Version|Maximum Version|Links
 |:------------|:-------------:|:-------------:|:---:
-|Boost        |    `1.60.0`   |      N/A      |http://www.boost.org/users/download/#live
+|Boost        |    `1.54.0`   |      N/A      |http://www.boost.org/users/download/#live
 |Berkeley DB  |    `5.3.0`    |      N/A      |http://www.oracle.com/technetwork/database/database-technologies/berkeleydb/downloads/index-082944.html
 |Level DB     |    `1.18`     |      N/A      |https://github.com/google/leveldb/releases/
 |OpenSSL      |    `1.0.2a`   |    `1.0.2l`   |https://github.com/openssl/openssl/releases/

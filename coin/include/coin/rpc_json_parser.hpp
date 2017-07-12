@@ -24,20 +24,31 @@
 
 #include <string>
 
+#include <boost/version.hpp>
 #include <boost/property_tree/ptree.hpp>
+#if BOOST_VERSION <= 105800
+#include <boost/property_tree/detail/json_parser_read.hpp>
+#include <boost/property_tree/detail/json_parser_write.hpp>
+#include <boost/property_tree/detail/json_parser_error.hpp>
+#elif BOOST_VERSION <= 106000
+#include <boost/property_tree/detail/json_parser/read.hpp>
+#include <boost/property_tree/detail/json_parser_write.hpp>
+#include <boost/property_tree/detail/json_parser_error.hpp>
+#else
 #include <boost/property_tree/json_parser/detail/read.hpp>
 #include <boost/property_tree/json_parser/detail/write.hpp>
 #include <boost/property_tree/json_parser/error.hpp>
+#endif
 
 namespace coin {
 
-    /**
+    /** 
      * Implements a JSON-RPC parser.
      */
     class rpc_json_parser
     {
         public:
-
+        
             template <typename T>
             struct translator
             {
@@ -48,7 +59,7 @@ namespace coin {
                 {
                     return v.substr(1, v.size() - 2) ;
                 }
-
+                
                 boost::optional<T> put_value(const T & v)
                 {
                     return '"' + v + '"';
@@ -65,23 +76,23 @@ namespace coin {
                     stream, pt, std::string(), pretty
                 );
             }
-
+    
         private:
-
+        
             // ...
-
+        
         protected:
-
+        
             template<class Ch>
             static std::basic_string<Ch> create_escapes(
                 const std::basic_string<Ch> & s
                 )
             {
                 std::basic_string<Ch> result;
-
+                
                 auto b = s.begin();
                 auto e = s.end();
-
+                
                 while (b != e)
                 {
                     if (
@@ -124,19 +135,19 @@ namespace coin {
                     else
                     {
                         const char * hexdigits = "0123456789ABCDEF";
-
+                        
                         typedef typename boost::make_unsigned<Ch>::type UCh;
-
+                        
                         unsigned long u =
                             (std::min)(static_cast<unsigned long>(
                             static_cast<UCh>(*b)), 0xFFFFul
                         );
-
+                        
                         auto d1 = u / 4096; u -= d1 * 4096;
                         auto d2 = u / 256; u -= d2 * 256;
                         auto d3 = u / 16; u -= d3 * 16;
                         auto d4 = u;
-
+                        
                         result += Ch('\\'); result += Ch('u');
                         result += Ch(hexdigits[d1]); result += Ch(hexdigits[d2]);
                         result += Ch(hexdigits[d3]); result += Ch(hexdigits[d4]);
@@ -165,30 +176,30 @@ namespace coin {
                 else if (pt.count(Str()) == pt.size())
                 {
                     stream << Ch('[');
-
+                    
                     if (pretty)
                     {
                         stream << Ch('\n');
                     }
-
+                    
                     auto it = pt.begin();
-
+                    
                     for (; it != pt.end(); ++it)
                     {
                         if (pretty)
                         {
                             stream << Str(4 * (indent + 1), Ch(' '));
                         }
-
+                        
                         write_json_helper(
                             stream, it->second, indent + 1, pretty
                         );
-
+                        
                         if (boost::next(it) != pt.end())
                         {
                             stream << Ch(',');
                         }
-
+                        
                         if (pretty)
                         {
                             stream << Ch('\n');
@@ -200,25 +211,25 @@ namespace coin {
                 else
                 {
                     stream << Ch('{');
-
+                    
                     if (pretty)
                     {
                         stream << Ch('\n');
                     }
-
+                    
                     typename Ptree::const_iterator it = pt.begin();
-
+                    
                     for (; it != pt.end(); ++it)
                     {
                         if (pretty)
                         {
                             stream << Str(4 * (indent + 1), Ch(' '));
                         }
-
+                        
                         stream << Ch('"') <<
                             create_escapes(it->first) << Ch('"') << Ch(':')
                         ;
-
+                        
                         if (pretty)
                         {
                             if (it->second.empty())
@@ -232,22 +243,22 @@ namespace coin {
                                 ;
                             }
                         }
-
+                        
                         write_json_helper(
                             stream, it->second, indent + 1, pretty
                         );
-
+                        
                         if (boost::next(it) != pt.end())
                         {
                             stream << Ch(',');
                         }
-
+                        
                         if (pretty)
                         {
                             stream << Ch('\n');
                         }
                     }
-
+                    
                     if (pretty) stream << Str(4 * indent, Ch(' '));
                     {
                         stream << Ch('}');
@@ -266,14 +277,14 @@ namespace coin {
                 {
                     return false;
                 }
-
+                
                 if (!pt.template get_value<Str>().empty() && !pt.empty())
                 {
                     return false;
                 }
-
+                
                 typename Ptree::const_iterator it = pt.begin();
-
+                
                 for (; it != pt.end(); ++it)
                 {
                     if (!verify_json(it->second, depth + 1))
@@ -281,7 +292,7 @@ namespace coin {
                         return false;
                     }
                 }
-
+                
                 return true;
 
             }
@@ -300,10 +311,10 @@ namespace coin {
                         "in JSON format", filename, 0)
                     );
                 }
-
+                
                 write_json_helper(stream, pt, 0, pretty);
                 stream << std::endl;
-
+                
                 if (stream.good() == false)
                 {
                     BOOST_PROPERTY_TREE_THROW(
@@ -313,7 +324,7 @@ namespace coin {
                 }
             }
     };
-
+    
 } // namespace coin
 
 #endif // COIN_RPC_JSON_PARSER_HPP
