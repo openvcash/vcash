@@ -1,4 +1,5 @@
 # Vcash
+
 > A decentralized currency for the internet.
 
 This project is a codebase rewrite/enhancment using:
@@ -8,17 +9,15 @@ This project is a codebase rewrite/enhancment using:
 * an Incentive Reward voting system
 * a client-side blending system called ChainBlender
 
----
-## Where to download
-[The newest downloads can be found here](https://github.com/openvcash/vcash/releases) for Windows, Linux, and Mac.
+[The newest downloads can be found here.](https://github.com/openvcash/vcash/releases)
 
 ---
-### How to build from source
-If you have any issues with the build process, [read this.](docs/build-problems.md)
+## Building from source
+If you have any issues with the build process, [read the docs.](docs/build-problems.md)
 
 **The list of dependencies** [can be found here.](docs/dependencies.md)
 
-#### Windows
+### Windows
 1. Download and extract the newest [Source code zip](https://github.com/openvcash/vcash/releases)
 2. Install the [listed version of the dependencies](docs/dependencies.md) to their normal locations
 3. Download and install the latest release of [Cmake](https://cmake.org/download/)
@@ -26,29 +25,30 @@ If you have any issues with the build process, [read this.](docs/build-problems.
 
 **PLACEHOLDER, Windows section is unfinished**
 
-#### Linux
-Ubuntu used as an example.
+### Linux
+**Ubuntu** used as an example.
 
 1. Download the newest [Source code tar.gz](https://github.com/openvcash/vcash/releases) to your `~/Downloads` folder.
 2. Install [the correct dependencies](docs/dependencies.md).
 ```
-sudo apt-get update && sudo apt-get upgrade && sudo apt-get install cmake make libboost-all-dev libdb-dev libdb++-dev openssl leveldb
+sudo apt-get update && sudo apt-get upgrade
+sudo apt-get install cmake make libboost-all-dev libdb-dev libdb++-dev openssl leveldb
 ```
 3. Run the following commands from your terminal...
 ```
 tar -xzf ~/Downloads/vcash-*.tar.gz
 cd ~/Downloads/vcash-*/
-cmake CMakeLists.txt
+cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_BINDIR=bin -DCMAKE_INSTALL_LIBDIR=lib/vcash CMakeLists.txt
 make
 make install
 ```
 
-When finished, you should be able to run `vcashd` from your terminal.
+When finished, you should be able to run `vcashd` from your terminal.  
 
-###### Arch
+**Arch**  
 [Install from the AUR](https://aur.archlinux.org/packages/vcash/), which builds the latest release from the source code automatically.
 
 If you don't know how to install something from the Arch User Repository, [read this wiki post](https://wiki.archlinux.org/index.php/AUR_helpers) or [this post on the forums.](https://forum.vcash.info/d/56-arch-linux-aur-pkgbuild-s)
 
-#### Mac
+### Mac
 **PLACEHOLDER, Mac section is unfinished**

@@ -4,3 +4,5 @@ If you are having issues with CMake finding OpenSSL `1.0`, say, because you migh
 1. `ln -s /usr/include/openssl-1.0/openssl/bn.h /location/of/include/openssl-1.0/bn.h` Make sure that you are linking to the folder with `bn.h` in it.
 2. `ln -s /usr/lib/libcrypto.so.1.0.0 /location/of/lib/libcrypto.so.1.0.0` Make sure you are linking to the location of `libcrypto.so.1.0.0` and **not** the newer OpenSSL file, normally just named `libcrypto`
 3. `ln -s /usr/lib/libssl.so.1.0.0 /location/of/lib/libssl.so.1.0.0` Make sure you are linking to the location of `libssl.so.1.0.0` and **not** the newer OpenSSL file, normally just named `libssl.so`
+
+Afterwords, when you go to use cmake to build from source, use the `-DOPENSSL_COMPAT=ON` [build flag.](docs/build-flags.md)
