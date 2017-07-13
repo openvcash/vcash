@@ -31,7 +31,7 @@ If you have any issues with the build process, [read the docs.](docs/BUILDING.md
 2. Install [the correct dependencies](docs/DEPENDENCIES.md).
 ```
 sudo apt-get update && sudo apt-get upgrade
-sudo apt-get install cmake make libboost-all-dev libdb-dev libdb++-dev openssl leveldb
+sudo apt-get install cmake build-essential libboost-all-dev libdb-dev libdb++-dev openssl libssl-dev
 ```
 3. Run the following commands from your terminal...
 ```
@@ -39,7 +39,7 @@ tar -xzf ~/Downloads/vcash-*.tar.gz
 cd ~/Downloads/vcash-*/
 cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_BINDIR=bin -DCMAKE_INSTALL_LIBDIR=lib/vcash CMakeLists.txt
 make
-make install
+sudo make install
 ```
 
 When finished, you should be able to run `vcashd` from your terminal.  

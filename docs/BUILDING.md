@@ -22,3 +22,8 @@ If you are having issues with CMake finding OpenSSL `1.0`, say, because you migh
 3. `ln -s /usr/lib/libssl.so.1.0.0 /location/of/lib/libssl.so.1.0.0` Make sure you are linking to the location of `libssl.so.1.0.0` and **not** the newer OpenSSL file, normally just named `libssl.so`
 
 Afterwords, when you go to use cmake to build from source, use the `-DOPENSSL_COMPAT=ON` build flag.
+
+### Other Errors
+Problem|Solution
+:---:|:---:
+`c++: internal compiler error: Killed (program cc1plus)`|You ran out of RAM during building. Increase your swap partition to account for this.
