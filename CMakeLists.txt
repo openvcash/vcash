@@ -207,7 +207,7 @@ add_library(coin ${SOURCES}) # Optional: a STATIC/SHARED/MODULE before the sourc
 add_library(database ${DATABASE_SOURCES}) # Optional: a STATIC/SHARED/MODULE before the source | Not sure what it should be, so letting it auto-detect
 add_executable(vcashd ${CMAKE_CURRENT_SOURCE_DIR}/coin/test/main.cpp)
 
-target_link_libraries(vcashd coin database ${BERKELEYDB_LIBRARIES} ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(vcashd coin database ${BERKELEYDB_LIBRARIES} ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES} -lpthread)
 
 # Tells Make where to put the files when running Make install, might not be Windows-safe
 install(TARGETS vcashd database coin
