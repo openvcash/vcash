@@ -19,7 +19,7 @@ string(REGEX REPLACE ".*version_string = \"([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-
 "\\1.\\2.\\3.\\4" PROJECT_VER "${PROJECT_VER_STRING}")
 
 message("Vcash version: ${PROJECT_VER}")
-project(Vcash VERSION ${PROJECT_VER} LANGUAGES C CXX)#
+project(Vcash VERSION ${PROJECT_VER} LANGUAGES C CXX)
 
 # Adds an optional cmake build flag for machines with OpenSSL v1.1+
 option(OPENSSL_COMPAT "Target OpenSSL-1.0 on machines with 1.1+" OFF)
@@ -42,6 +42,8 @@ set(BERKELEYDB_MIN_VER "5.3.0") # Minimum
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/CMake-modules)
 
 # Start of finding dependencies
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
 find_package(Boost ${BOOST_MIN_VER} REQUIRED COMPONENTS system)# Is system needed?
 find_package(BerkeleyDB ${BERKELEYDB_MIN_VER} REQUIRED)
 
@@ -207,9 +209,9 @@ add_library(coin ${SOURCES}) # Optional: a STATIC/SHARED/MODULE before the sourc
 add_library(database ${DATABASE_SOURCES}) # Optional: a STATIC/SHARED/MODULE before the source | Not sure what it should be, so letting it auto-detect
 add_executable(vcashd ${CMAKE_CURRENT_SOURCE_DIR}/coin/test/main.cpp)
 
-target_link_libraries(vcashd coin database ${BERKELEYDB_LIBRARIES} ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES} -lpthread)
+target_link_libraries(vcashd coin database ${BERKELEYDB_LIBRARIES} ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES} Threads::Threads) # -lpthread) not cross-platform, use Threads::Threads unless problems happen.
 
-# Tells Make where to put the files when running Make install, might not be Windows-safe
+# Tells Make where to put the files when running Make install
 install(TARGETS vcashd database coin
   RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}
   LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}
