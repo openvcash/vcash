@@ -55,8 +55,10 @@ ENDIF()
 
 # System-independant stuff for after getting INCLUDES
 file(READ ${_BERKELEYDB_VERSION_file} _BERKELEYDB_header_contents)
-string(REGEX REPLACE ".*DB_VERSION_MAJOR.+([0-9]+).*DB_VERSION_MINOR.+([0-9]+).*"
-  "\\1.\\2" _BERKELEYDB_VERSION "${_BERKELEYDB_header_contents}")
+
+string(REGEX REPLACE ".*DB_VERSION_MAJOR	([0-9]+).*DB_VERSION_MINOR	([0-9]+).*DB_VERSION_PATCH	([0-9]+).*"
+"\\1.\\2.\\3" _BERKELEYDB_VERSION "${_BERKELEYDB_header_contents}")
+
 set(BERKELEYDB_VERSION ${_BERKELEYDB_VERSION} CACHE INTERNAL
 "The version of berkeleydb which was detected")
 

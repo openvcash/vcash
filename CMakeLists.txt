@@ -14,10 +14,15 @@ IF(NOT (CMAKE_INSTALL_PREFIX AND CMAKE_INSTALL_BINDIR AND CMAKE_INSTALL_LIBDIR))
 ENDIF()
 
 # Get version string from constants.hpp and feed it into the project var
-file(STRINGS ${CMAKE_CURRENT_SOURCE_DIR}/coin/include/coin/constants.hpp PROJECT_VER REGEX "^([0-9]+)\\.([0-9]+)\\.([0-9]+)$")
-project(Vcash VERSION ${PROJECT_VER} LANGUAGES C CXX)
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/coin/include/coin/constants.hpp" PROJECT_VER_STRING)
+string(REGEX REPLACE ".*version_string = \"([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-9]+).*"
+"\\1.\\2.\\3.\\4" PROJECT_VER "${PROJECT_VER_STRING}")
 
-option(OPENSSL_COMPAT "Target OpenSSL 1.0 on machines with 1.1+" OFF)
+message("Vcash version: ${PROJECT_VER}")
+project(Vcash VERSION ${PROJECT_VER} LANGUAGES C CXX)#
+
+# Adds an optional cmake build flag for machines with OpenSSL v1.1+
+option(OPENSSL_COMPAT "Target OpenSSL-1.0 on machines with 1.1+" OFF)
 
 # Default to a release build if nothing is specified
 IF(NOT CMAKE_BUILD_TYPE)
@@ -27,63 +32,24 @@ ENDIF()
 # Require/Build for C++11 | Consider changing to target_compile_features in the future -sum01
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-#set(CMAKE_CXX_EXTENSIONS OFF)
-#add_definitions("-D_FILE_OFFSET_BITS=64" "-DBOOST_NO_CXX11_NUMERIC_LIMITS") # Unsure if needed
-# Old comments taken out of add_definitions, unsure if important -sum01
-  # Temporarily disable Alerts
-  # "-DBYPASS_ALERTS"
-  # -DOLD_VCASH"
 
-# Dependency versions | Trying to keep them at the max of what's in Ubuntu repo's, but these are only used as minimums.
-# Someone good at REGEX should consider pulling these from docs/dependencies.md instead of manually entering them. -sum01
-set(OPENSSL_MIN_VER "1.0.2")
-set(BOOST_MIN_VER "1.60.0")
-set(BERKELEYDB_MIN_VER "5.3") # Probably fine to do 2 digits here, considering regex doesn't find more
-set(LEVELDB_MIN_VER "1.18") # Probably fine to do 2 digits here, considering regex doesn't find more
-# set(THREADS_MIN_VER "???")
+# Dependency versions
+set(OPENSSL_MIN_VER "1.0.2") # EXACT
+set(BOOST_MIN_VER "1.54.0") # Minimum
+set(BERKELEYDB_MIN_VER "5.3.0") # Minimum
 
-# Important settings for finding dependencies
-#set(CMAKE_FIND_PACKAGE_SORT_ORDER NATURAL) # Sort into order by ver
-#set(CMAKE_FIND_PACKAGE_SORT_DIRECTION DEC) # Pick the highest ver accepted
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/CMake-modules) # Adds our find_package modules to the list of modules available for cmake
-
-#set(CMAKE_THREAD_PREFER_PTHREAD ON) # Redundant with PTHREAD_FLAG most likely
-#set(THREADS_PREFER_PTHREAD_FLAG ON) # Tells find_package(Threads) to use pthread flags
+# Adds our find_package modules to the list of modules available for cmake
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/CMake-modules)
 
 # Start of finding dependencies
-find_package(Boost ${BOOST_MIN_VER} REQUIRED COMPONENTS system) #COMPONENTS system) # Is system needed?
-#find_package(Threads REQUIRED)
-find_package(LevelDB ${LEVELDB_MIN_VER} REQUIRED)
+find_package(Boost ${BOOST_MIN_VER} REQUIRED COMPONENTS system)# Is system needed?
 find_package(BerkeleyDB ${BERKELEYDB_MIN_VER} REQUIRED)
 
-# Work-around for Arch (and maybe other rolling-releases?) to get pre-1.1 OpenSSL -sum01
 IF(OPENSSL_COMPAT)
-  set(OPENSSL_ROOT_DIR "/usr/include/openssl-1.0")
-
-  find_path(OPENSSL_INCLUDE_DIR NAMES bn.h
-    PATH_SUFFIXES include/openssl-1.0/openssl
-    PATHS /usr /usr/local /opt /opt/local)
-
-  find_library(OPENSSL_CRYPTO_LIBRARY NAMES "libcrypto.so.1.0.0" "libcrypto.so.1.0.2" "libcrypto.so.1.0"
-    PATH_SUFFIXES lib lib64
-    PATHS /usr /usr/local /opt /opt/local)
-
-  find_library(OPENSSL_SSL_LIBRARY NAMES "libssl.so.1.0.0" "libssl.so.1.0.2" "libssl.so.1.0"
-    PATH_SUFFIXES lib lib64
-    PATHS /usr /usr/local /opt /opt/local)
-
-  IF(OPENSSL_INCLUDE_DIR AND OPENSSL_CRYPTO_LIBRARY AND OPENSSL_SSL_LIBRARY)
-    set(OPENSSL_FOUND TRUE)
-    set(OPENSSL_VERSION "1.0.2") # Doesn't get checked anywhere, probably pointless
-    set(OPENSSL_LIBRARIES ${OPENSSL_SSL_LIBRARY} ${OPENSSL_CRYPTO_LIBRARY})
-
-    message("Found OpenSSL: ${OPENSSL_VERSION} at ${OPENSSL_INCLUDE_DIR} with ${OPENSSL_LIBRARIES}")
-  ELSE()
-    message(FATAL_ERROR "Error: The OpenSSL dependency could not be found, even after trying the custom workaround.")
-  ENDIF()
-  
-# If no workaround required, find normally
+  # Work-around for Arch (and maybe other rolling-releases?) to get pre-1.1 OpenSSL -sum01
+  find_package(OpenSSLCompat ${OPENSSL_MIN_VER} EXACT REQUIRED)
 ELSE()
+  # If no workaround required, find normally
   find_package(OpenSSL ${OPENSSL_MIN_VER} EXACT REQUIRED)
 ENDIF()
 
@@ -234,19 +200,17 @@ include_directories(
 	${CMAKE_CURRENT_SOURCE_DIR}/database/include
 	${Boost_INCLUDE_DIRS}
   ${OPENSSL_INCLUDE_DIR}
-  ${LEVELDB_INCLUDE_DIR}
-  ${BERKELEYDB_INCLUDE_DIR}
+  ${BERKELEYDB_INCLUDE_DIRS}
   )
 
 add_library(coin ${SOURCES}) # Optional: a STATIC/SHARED/MODULE before the source | Not sure what it should be, so letting it auto-detect
 add_library(database ${DATABASE_SOURCES}) # Optional: a STATIC/SHARED/MODULE before the source | Not sure what it should be, so letting it auto-detect
 add_executable(vcashd ${CMAKE_CURRENT_SOURCE_DIR}/coin/test/main.cpp)
 
-#target_compile_definitions(vcashd PRIVATE -std=c++0x) # This forces -std=c++0x so that #include <thread> works on gcc builds -sum01
-target_link_libraries(vcashd coin database ${LEVELDB_LIBRARIES} ${BERKELEYDB_LIBRARIES} ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES}) #${CMAKE_THEAD_LIBS_INIT}) # Is Threads needed?
+target_link_libraries(vcashd coin database ${BERKELEYDB_LIBRARIES} ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES})
 
+# Tells Make where to put the files when running Make install, might not be Windows-safe
 install(TARGETS vcashd database coin
   RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}
   LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}
   ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR})
-#install(TARGETS database DESTINATION /some/full/path) # seems redundant, but it's shown in docs
