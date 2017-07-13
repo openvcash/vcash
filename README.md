@@ -11,15 +11,14 @@ This project is a codebase rewrite/enhancment using:
 
 [The newest downloads can be found here.](https://github.com/openvcash/vcash/releases)
 
----
 ## Building from source
-If you have any issues with the build process, [read the docs.](docs/build-problems.md)
+If you have any issues with the build process, [read the docs.](docs/BUILDING.md)
 
-**The list of dependencies** [can be found here.](docs/dependencies.md)
+**The list of dependencies** [can be found here.](docs/DEPENDENCIES.md)
 
 ### Windows
 1. Download and extract the newest [Source code zip](https://github.com/openvcash/vcash/releases)
-2. Install the [listed version of the dependencies](docs/dependencies.md) to their normal locations
+2. Install the [listed version of the dependencies](docs/DEPENDENCIES.md) to their normal locations
 3. Download and install the latest release of [Cmake](https://cmake.org/download/)
 4. Run the Cmake GUI on the `CMakeLists.txt` file inside of the source code to start the build/installation.
 
@@ -29,7 +28,7 @@ If you have any issues with the build process, [read the docs.](docs/build-probl
 **Ubuntu** used as an example.
 
 1. Download the newest [Source code tar.gz](https://github.com/openvcash/vcash/releases) to your `~/Downloads` folder.
-2. Install [the correct dependencies](docs/dependencies.md).
+2. Install [the correct dependencies](docs/DEPENDENCIES.md).
 ```
 sudo apt-get update && sudo apt-get upgrade
 sudo apt-get install cmake make libboost-all-dev libdb-dev libdb++-dev openssl leveldb

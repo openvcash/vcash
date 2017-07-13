@@ -7,7 +7,7 @@ Use these between `cmake` and `CMakeLists.txt` to trigger certain options, or to
 
 
 Flags                   |Required|Linux Rec. Setting|Windows Rec. Setting
-:-----------------------|:------:|:--------------------:|---:
+:-----------------------|:------:|:--------------------:|:---:
 `-DCMAKE_INSTALL_PREFIX`|  Yes   |`/usr`                |`C:\`
 `-DCMAKE_INSTALL_BINDIR`|  Yes   |`bin`                 |`"Program Files\Vcash"`
 `-DCMAKE_INSTALL_LIBDIR`|  Yes   |`lib/vcash`           |`"Program Files\Vcash"`
