@@ -171,6 +171,7 @@ local usage-requirements =
 
 	<toolset>msvc,<variant>debug:<include>$(BOOST_ROOT)/build/debug/include
 	<toolset>msvc,<variant>release:<include>$(BOOST_ROOT)/build/release/include
+	<toolset>gcc,<variant>release:<cxxflags>-O2
 	<variant>release:<define>NDEBUG
 	<define>_FILE_OFFSET_BITS=64
 	<toolset>clang-darwin:<define>BOOST_NO_CXX11_NUMERIC_LIMITS
