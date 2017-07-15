@@ -1,3 +1,7 @@
+deps/boost/
+deps/db/
+deps/openssl/
+deps/leveldb/bin/
 coin/bin/
 coin/test/bin/
 crawler/bin/

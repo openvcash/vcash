@@ -1,0 +1,202 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\database\include\database\block.hpp" />
+    <ClInclude Include="..\..\..\database\include\database\broadcast_operation.hpp" />
+    <ClInclude Include="..\..\..\database\include\database\byte_buffer.hpp" />
+    <ClInclude Include="..\..\..\database\include\database\compression.hpp" />
+    <ClInclude Include="..\..\..\database\include\database\constants.hpp" />
+    <ClInclude Include="..\..\..\database\include\database\cpu.hpp" />
+    <ClInclude Include="..\..\..\database\include\database\crypto.hpp" />
+    <ClInclude Include="..\..\..\database\include\database\ecdhe.h" />
+    <ClInclude Include="..\..\..\database\include\database\ecdhe.hpp" />
+    <ClInclude Include="..\..\..\database\include\database\ecrypt-config.h" />
+    <ClInclude Include="..\..\..\database\include\database\ecrypt-machine.h" />
+    <ClInclude Include="..\..\..\database\include\database\ecrypt-portable.h" />
+    <ClInclude Include="..\..\..\database\include\database\ecrypt-sync.h" />
+    <ClInclude Include="..\..\..\database\include\database\entry.hpp" />
+    <ClInclude Include="..\..\..\database\include\database\find_operation.hpp" />
+    <ClInclude Include="..\..\..\database\include\database\handler.hpp" />
+    <ClInclude Include="..\..\..\database\include\database\hc256.hpp" />
+    <ClInclude Include="..\..\..\database\include\database\key_pool.hpp" />
+    <ClInclude Include="..\..\..\database\include\database\logger.hpp" />
+    <ClInclude Include="..\..\..\database\include\database\message.hpp" />
+    <ClInclude Include="..\..\..\database\include\database\network.hpp" />
+    <ClInclude Include="..\..\..\database\include\database\node.hpp" />
+    <ClInclude Include="..\..\..\database\include\database\node_impl.hpp" />
+    <ClInclude Include="..\..\..\database\include\database\operation.hpp" />
+    <ClInclude Include="..\..\..\database\include\database\operation_queue.hpp" />
+    <ClInclude Include="..\..\..\database\include\database\ping_operation.hpp" />
+    <ClInclude Include="..\..\..\database\include\database\protocol.hpp" />
+    <ClInclude Include="..\..\..\database\include\database\query.hpp" />
+    <ClInclude Include="..\..\..\database\include\database\random.hpp" />
+    <ClInclude Include="..\..\..\database\include\database\routing_table.hpp" />
+    <ClInclude Include="..\..\..\database\include\database\rpc.hpp" />
+    <ClInclude Include="..\..\..\database\include\database\slot.hpp" />
+    <ClInclude Include="..\..\..\database\include\database\stack.hpp" />
+    <ClInclude Include="..\..\..\database\include\database\stack_impl.hpp" />
+    <ClInclude Include="..\..\..\database\include\database\storage.hpp" />
+    <ClInclude Include="..\..\..\database\include\database\storage_node.hpp" />
+    <ClInclude Include="..\..\..\database\include\database\store_operation.hpp" />
+    <ClInclude Include="..\..\..\database\include\database\udp_handler.hpp" />
+    <ClInclude Include="..\..\..\database\include\database\udp_multiplexor.hpp" />
+    <ClInclude Include="..\..\..\database\include\database\utility.hpp" />
+    <ClInclude Include="..\..\..\database\include\database\whirlpool.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\database\src\block.cpp" />
+    <ClCompile Include="..\..\..\database\src\broadcast_operation.cpp" />
+    <ClCompile Include="..\..\..\database\src\compression.cpp" />
+    <ClCompile Include="..\..\..\database\src\ecdhe.cpp" />
+    <ClCompile Include="..\..\..\database\src\entry.cpp" />
+    <ClCompile Include="..\..\..\database\src\find_operation.cpp" />
+    <ClCompile Include="..\..\..\database\src\hc256.cpp" />
+    <ClCompile Include="..\..\..\database\src\key_pool.cpp" />
+    <ClCompile Include="..\..\..\database\src\message.cpp" />
+    <ClCompile Include="..\..\..\database\src\node.cpp" />
+    <ClCompile Include="..\..\..\database\src\node_impl.cpp" />
+    <ClCompile Include="..\..\..\database\src\operation.cpp" />
+    <ClCompile Include="..\..\..\database\src\operation_queue.cpp" />
+    <ClCompile Include="..\..\..\database\src\ping_operation.cpp" />
+    <ClCompile Include="..\..\..\database\src\query.cpp" />
+    <ClCompile Include="..\..\..\database\src\routing_table.cpp" />
+    <ClCompile Include="..\..\..\database\src\rpc.cpp" />
+    <ClCompile Include="..\..\..\database\src\slot.cpp" />
+    <ClCompile Include="..\..\..\database\src\stack.cpp" />
+    <ClCompile Include="..\..\..\database\src\stack_impl.cpp" />
+    <ClCompile Include="..\..\..\database\src\storage.cpp" />
+    <ClCompile Include="..\..\..\database\src\store_operation.cpp" />
+    <ClCompile Include="..\..\..\database\src\udp_handler.cpp" />
+    <ClCompile Include="..\..\..\database\src\udp_multiplexor.cpp" />
+    <ClCompile Include="..\..\..\database\src\whirlpool.cpp" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{48591D35-96EC-4FBE-86A3-1E686B2886C4}</ProjectGuid>
+    <RootNamespace>libdatabase</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>..\..\..\database\include\;..\..\..\deps\boost\;..\..\..\deps\openssl\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_WIN32_WINNT=0x0501;_SCL_SECURE_NO_DEPRECATE;_CRT_SECURE_NO_DEPRECATE;BOOST_ALL_NO_LIB=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>..\..\..\database\include\;..\..\..\deps\boost\;..\..\..\deps\openssl\include64\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_WIN32_WINNT=0x0501;_SCL_SECURE_NO_DEPRECATE;_CRT_SECURE_NO_DEPRECATE;BOOST_ALL_NO_LIB=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>..\..\..\database\include\;..\..\..\deps\boost\;..\..\..\deps\openssl\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_WIN32_WINNT=0x0501;_SCL_SECURE_NO_DEPRECATE;_CRT_SECURE_NO_DEPRECATE;BOOST_ALL_NO_LIB=1;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>..\..\..\database\include\;..\..\..\deps\boost\;..\..\..\deps\openssl\include64\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_WIN32_WINNT=0x0501;_SCL_SECURE_NO_DEPRECATE;_CRT_SECURE_NO_DEPRECATE;BOOST_ALL_NO_LIB=1;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

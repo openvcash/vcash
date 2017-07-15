@@ -1,0 +1,380 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{03790E8A-D6B2-4E67-A15A-D3916642FE74}</ProjectGuid>
+    <RootNamespace>libcoin</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalIncludeDirectories>..\..\..\coin\include\;..\..\..\database\include\;..\..\..\deps\boost\;..\..\..\deps\db\build_windows\;..\..\..\deps\openssl\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_WIN32_WINNT=0x0501;_SCL_SECURE_NO_DEPRECATE;_CRT_SECURE_NO_DEPRECATE;BOOST_ALL_NO_LIB=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalIncludeDirectories>..\..\..\coin\include\;..\..\..\database\include\;..\..\..\deps\boost\;..\..\..\deps\db\build_windows\;..\..\..\deps\openssl\include64\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_WIN32_WINNT=0x0501;_SCL_SECURE_NO_DEPRECATE;_CRT_SECURE_NO_DEPRECATE;BOOST_ALL_NO_LIB=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalIncludeDirectories>..\..\..\coin\include\;..\..\..\database\include\;..\..\..\deps\boost\;..\..\..\deps\db\build_windows\;..\..\..\deps\openssl\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_WIN32_WINNT=0x0501;_SCL_SECURE_NO_DEPRECATE;_CRT_SECURE_NO_DEPRECATE;BOOST_ALL_NO_LIB=1;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalIncludeDirectories>..\..\..\coin\include\;..\..\..\database\include\;..\..\..\deps\boost\;..\..\..\deps\db\build_windows\;..\..\..\deps\openssl\include64\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_WIN32_WINNT=0x0501;_SCL_SECURE_NO_DEPRECATE;_CRT_SECURE_NO_DEPRECATE;BOOST_ALL_NO_LIB=1;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\coin\include\coin\account.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\accounting_entry.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\address.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\address_manager.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\alert.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\alert_manager.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\alert_unsigned.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\android.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\base58.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\big_number.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\blake256.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\block.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\block_index.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\block_index_disk.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\block_locator.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\block_merkle.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\block_orphan.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\chainblender.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\chainblender_broadcast.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\chainblender_join.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\chainblender_leave.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\chainblender_manager.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\chainblender_status.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\checkpoints.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\checkpoint_sync.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\checkpoint_sync_unsigned.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\coin_control.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\configuration.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\constants.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\crypter.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\crypto.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\database_stack.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\data_buffer.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\db.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\db_env.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\db_tx.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\db_tx_bdb.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\db_tx_ldb.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\db_wallet.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\destination.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\ecdhe.h" />
+    <ClInclude Include="..\..\..\coin\include\coin\ecdhe.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\ecrypt-config.h" />
+    <ClInclude Include="..\..\..\coin\include\coin\ecrypt-machine.h" />
+    <ClInclude Include="..\..\..\coin\include\coin\ecrypt-portable.h" />
+    <ClInclude Include="..\..\..\coin\include\coin\ecrypt-sync.h" />
+    <ClInclude Include="..\..\..\coin\include\coin\endian.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\file.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\filesystem.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\gateway.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\globals.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\hash.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\hc256.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\hd_configuration.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\hd_ecdsa.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\hd_keychain.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\http_transport.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\incentive.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\incentive_answer.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\incentive_collaterals.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\incentive_manager.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\incentive_question.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\incentive_sync.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\incentive_vote.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\inventory_vector.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\kernel.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\key.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\key_pool.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\key_public.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\key_reserved.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\key_store.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\key_store_basic.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\key_store_crypto.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\key_wallet.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\key_wallet_master.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\logger.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\median_filter.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\merkle_tree_partial.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\message.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\mining.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\mining_manager.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\nat_pmp.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\nat_pmp_client.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\network.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\output.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\pbkdf2.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\point_in.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\point_out.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\protocol.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\random.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\reward.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\ripemd160.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\rpc_connection.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\rpc_json_parser.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\rpc_manager.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\rpc_server.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\rpc_transport.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\script.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\script_checker.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\script_checker_queue.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\secret.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\sha256.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\signature_cache.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\sph_blake.h" />
+    <ClInclude Include="..\..\..\coin\include\coin\sph_types.h" />
+    <ClInclude Include="..\..\..\coin\include\coin\stack.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\stack_impl.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\status_manager.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\tcp_acceptor.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\tcp_connection.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\tcp_connection_manager.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\tcp_transport.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\time.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\transaction.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\transaction_bloom_filter.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\transaction_in.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\transaction_index.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\transaction_merkle.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\transaction_out.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\transaction_pool.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\transaction_position.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\transaction_wallet.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\types.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\upnp_client.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\utility.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\wallet.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\wallet_manager.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\whirlpool.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\zerotime.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\zerotime_answer.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\zerotime_lock.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\zerotime_manager.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\zerotime_question.hpp" />
+    <ClInclude Include="..\..\..\coin\include\coin\zerotime_vote.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\coin\src\account.cpp" />
+    <ClCompile Include="..\..\..\coin\src\accounting_entry.cpp" />
+    <ClCompile Include="..\..\..\coin\src\address.cpp" />
+    <ClCompile Include="..\..\..\coin\src\address_manager.cpp" />
+    <ClCompile Include="..\..\..\coin\src\alert.cpp" />
+    <ClCompile Include="..\..\..\coin\src\alert_manager.cpp" />
+    <ClCompile Include="..\..\..\coin\src\alert_unsigned.cpp" />
+    <ClCompile Include="..\..\..\coin\src\base58.cpp" />
+    <ClCompile Include="..\..\..\coin\src\big_number.cpp" />
+    <ClCompile Include="..\..\..\coin\src\blake256.cpp" />
+    <ClCompile Include="..\..\..\coin\src\block.cpp" />
+    <ClCompile Include="..\..\..\coin\src\block_index.cpp" />
+    <ClCompile Include="..\..\..\coin\src\block_index_disk.cpp" />
+    <ClCompile Include="..\..\..\coin\src\block_locator.cpp" />
+    <ClCompile Include="..\..\..\coin\src\block_merkle.cpp" />
+    <ClCompile Include="..\..\..\coin\src\chainblender.cpp" />
+    <ClCompile Include="..\..\..\coin\src\chainblender_broadcast.cpp" />
+    <ClCompile Include="..\..\..\coin\src\chainblender_join.cpp" />
+    <ClCompile Include="..\..\..\coin\src\chainblender_leave.cpp" />
+    <ClCompile Include="..\..\..\coin\src\chainblender_manager.cpp" />
+    <ClCompile Include="..\..\..\coin\src\chainblender_status.cpp" />
+    <ClCompile Include="..\..\..\coin\src\checkpoints.cpp" />
+    <ClCompile Include="..\..\..\coin\src\checkpoint_sync.cpp" />
+    <ClCompile Include="..\..\..\coin\src\checkpoint_sync_unsigned.cpp" />
+    <ClCompile Include="..\..\..\coin\src\configuration.cpp" />
+    <ClCompile Include="..\..\..\coin\src\crypter.cpp" />
+    <ClCompile Include="..\..\..\coin\src\database_stack.cpp" />
+    <ClCompile Include="..\..\..\coin\src\db.cpp" />
+    <ClCompile Include="..\..\..\coin\src\db_env.cpp" />
+    <ClCompile Include="..\..\..\coin\src\db_tx.cpp" />
+    <ClCompile Include="..\..\..\coin\src\db_tx_bdb.cpp" />
+    <ClCompile Include="..\..\..\coin\src\db_tx_ldb.cpp" />
+    <ClCompile Include="..\..\..\coin\src\db_wallet.cpp" />
+    <ClCompile Include="..\..\..\coin\src\ecdhe.cpp" />
+    <ClCompile Include="..\..\..\coin\src\file.cpp" />
+    <ClCompile Include="..\..\..\coin\src\filesystem.cpp" />
+    <ClCompile Include="..\..\..\coin\src\gateway.cpp" />
+    <ClCompile Include="..\..\..\coin\src\globals.cpp" />
+    <ClCompile Include="..\..\..\coin\src\hash.cpp" />
+    <ClCompile Include="..\..\..\coin\src\hc256.cpp" />
+    <ClCompile Include="..\..\..\coin\src\hd_configuration.cpp" />
+    <ClCompile Include="..\..\..\coin\src\hd_ecdsa.cpp" />
+    <ClCompile Include="..\..\..\coin\src\hd_keychain.cpp" />
+    <ClCompile Include="..\..\..\coin\src\http_transport.cpp" />
+    <ClCompile Include="..\..\..\coin\src\incentive.cpp" />
+    <ClCompile Include="..\..\..\coin\src\incentive_answer.cpp" />
+    <ClCompile Include="..\..\..\coin\src\incentive_collaterals.cpp" />
+    <ClCompile Include="..\..\..\coin\src\incentive_manager.cpp" />
+    <ClCompile Include="..\..\..\coin\src\incentive_question.cpp" />
+    <ClCompile Include="..\..\..\coin\src\incentive_sync.cpp" />
+    <ClCompile Include="..\..\..\coin\src\incentive_vote.cpp" />
+    <ClCompile Include="..\..\..\coin\src\inventory_vector.cpp" />
+    <ClCompile Include="..\..\..\coin\src\kernel.cpp" />
+    <ClCompile Include="..\..\..\coin\src\key.cpp" />
+    <ClCompile Include="..\..\..\coin\src\key_pool.cpp" />
+    <ClCompile Include="..\..\..\coin\src\key_public.cpp" />
+    <ClCompile Include="..\..\..\coin\src\key_reserved.cpp" />
+    <ClCompile Include="..\..\..\coin\src\key_store_basic.cpp" />
+    <ClCompile Include="..\..\..\coin\src\key_store_crypto.cpp" />
+    <ClCompile Include="..\..\..\coin\src\key_wallet.cpp" />
+    <ClCompile Include="..\..\..\coin\src\key_wallet_master.cpp" />
+    <ClCompile Include="..\..\..\coin\src\merkle_tree_partial.cpp" />
+    <ClCompile Include="..\..\..\coin\src\message.cpp" />
+    <ClCompile Include="..\..\..\coin\src\mining.cpp" />
+    <ClCompile Include="..\..\..\coin\src\mining_manager.cpp" />
+    <ClCompile Include="..\..\..\coin\src\nat_pmp.cpp" />
+    <ClCompile Include="..\..\..\coin\src\nat_pmp_client.cpp" />
+    <ClCompile Include="..\..\..\coin\src\pbkdf2.cpp" />
+    <ClCompile Include="..\..\..\coin\src\point_in.cpp" />
+    <ClCompile Include="..\..\..\coin\src\point_out.cpp" />
+    <ClCompile Include="..\..\..\coin\src\reward.cpp" />
+    <ClCompile Include="..\..\..\coin\src\ripemd160.cpp" />
+    <ClCompile Include="..\..\..\coin\src\rpc_connection.cpp" />
+    <ClCompile Include="..\..\..\coin\src\rpc_json_parser.cpp" />
+    <ClCompile Include="..\..\..\coin\src\rpc_manager.cpp" />
+    <ClCompile Include="..\..\..\coin\src\rpc_server.cpp" />
+    <ClCompile Include="..\..\..\coin\src\rpc_transport.cpp" />
+    <ClCompile Include="..\..\..\coin\src\script.cpp" />
+    <ClCompile Include="..\..\..\coin\src\script_checker.cpp" />
+    <ClCompile Include="..\..\..\coin\src\script_checker_queue.cpp" />
+    <ClCompile Include="..\..\..\coin\src\secret.cpp" />
+    <ClCompile Include="..\..\..\coin\src\sha256.cpp" />
+    <ClCompile Include="..\..\..\coin\src\signature_cache.cpp" />
+    <ClCompile Include="..\..\..\coin\src\stack.cpp" />
+    <ClCompile Include="..\..\..\coin\src\stack_impl.cpp" />
+    <ClCompile Include="..\..\..\coin\src\status_manager.cpp" />
+    <ClCompile Include="..\..\..\coin\src\tcp_acceptor.cpp" />
+    <ClCompile Include="..\..\..\coin\src\tcp_connection.cpp" />
+    <ClCompile Include="..\..\..\coin\src\tcp_connection_manager.cpp" />
+    <ClCompile Include="..\..\..\coin\src\tcp_transport.cpp" />
+    <ClCompile Include="..\..\..\coin\src\transaction.cpp" />
+    <ClCompile Include="..\..\..\coin\src\transaction_bloom_filter.cpp" />
+    <ClCompile Include="..\..\..\coin\src\transaction_in.cpp" />
+    <ClCompile Include="..\..\..\coin\src\transaction_index.cpp" />
+    <ClCompile Include="..\..\..\coin\src\transaction_merkle.cpp" />
+    <ClCompile Include="..\..\..\coin\src\transaction_out.cpp" />
+    <ClCompile Include="..\..\..\coin\src\transaction_pool.cpp" />
+    <ClCompile Include="..\..\..\coin\src\transaction_position.cpp" />
+    <ClCompile Include="..\..\..\coin\src\transaction_wallet.cpp" />
+    <ClCompile Include="..\..\..\coin\src\upnp_client.cpp" />
+    <ClCompile Include="..\..\..\coin\src\utility.cpp" />
+    <ClCompile Include="..\..\..\coin\src\wallet.cpp" />
+    <ClCompile Include="..\..\..\coin\src\wallet_manager.cpp" />
+    <ClCompile Include="..\..\..\coin\src\whirlpool.cpp" />
+    <ClCompile Include="..\..\..\coin\src\zerotime.cpp" />
+    <ClCompile Include="..\..\..\coin\src\zerotime_answer.cpp" />
+    <ClCompile Include="..\..\..\coin\src\zerotime_lock.cpp" />
+    <ClCompile Include="..\..\..\coin\src\zerotime_manager.cpp" />
+    <ClCompile Include="..\..\..\coin\src\zerotime_question.cpp" />
+    <ClCompile Include="..\..\..\coin\src\zerotime_vote.cpp" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

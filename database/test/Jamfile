@@ -1,0 +1,93 @@
+
+import modules ;
+import os ;
+
+lib advapi32 : : <name>Advapi32 ;
+lib user32 : : <name>User32 ;
+lib gdi32 : : <name>gdi32 ;
+lib iphlpapi : : <name>iphlpapi ;
+lib ole32 : : <name>ole32 ;
+
+lib pthread : : <name>pthread <link>shared ;
+lib dl : : <name>dl <link>shared ;
+
+lib crypto : : <name>crypto <link>static
+  <search>./../deps/openssl
+  <search>./../deps/openssl/lib
+  <search>./../../deps/openssl
+  <search>./../../deps/openssl/lib
+  <search>/usr/local/ssl/lib
+;
+lib ssl : : <name>ssl <link>static
+  <search>./../deps/openssl
+  <search>./../deps/openssl/lib
+  <search>./../deps/platforms/osx/openssl/lib
+  <search>./../deps/windows/osx/openssl/lib
+  <search>./../../deps/openssl
+  <search>./../../deps/openssl/lib
+  <search>./../../deps/platforms/osx/openssl/lib
+  <search>./../../deps/windows/osx/openssl/lib
+  <search>/usr/local/ssl/lib
+;
+
+rule linking ( properties * )
+{
+	local result ;
+	
+	if <target-os>windows in $(properties)
+	{
+	    result +=
+        <library>iphlpapi
+	    	<library>user32 <library>gdi32
+	    	<library>advapi32 <library>ole32
+		<define>WIN32_LEAN_AND_MEAN
+	    ;
+	}
+	else if <target-os>darwin in $(properties)
+	{
+		ECHO "Configuring for darwin..." ;
+		result +=
+			<library>crypto <library>ssl
+		;
+	}
+	else if <target-os>linux in $(properties)
+	{
+		result += 
+			<library>crypto <library>ssl
+			<library>pthread <library>dl
+		;
+	}
+	else
+	{
+		ECHO "Detected unsupported OS = " [ os.name ] ;
+	}
+	
+	return $(result) ;
+}
+ 
+local usage-requirements = 
+	<toolset>msvc,<variant>debug:<library-path>$(BOOST_ROOT)/build/debug/lib
+	<toolset>msvc,<variant>release:<library-path>$(BOOST_ROOT)/build/release/lib
+	<variant>release:<define>NDEBUG
+	<toolset>clang-darwin:<define>BOOST_NO_CXX11_NUMERIC_LIMITS
+	<toolset>msvc:<define>_SCL_SECURE_NO_DEPRECATE
+	<toolset>msvc:<define>_CRT_SECURE_NO_DEPRECATE
+	<toolset>msvc:<define>_WIN32_WINNT=0x0501
+    <toolset>msvc:<define>BOOST_ALL_NO_LIB=1
+	<toolset>msvc,<variant>release:<linkflags>/OPT:ICF=5
+	<toolset>msvc,<variant>release:<linkflags>/OPT:REF
+	;
+
+project stack
+	: requirements
+	<conditional>@linking
+;
+
+exe stack
+    : # sources
+    stack.cpp ./..//database /boost//system 
+    : <link>static
+    : <conditional>@linking
+	: # usage requirements
+	$(usage-requirements)
+;
