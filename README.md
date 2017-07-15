@@ -1,20 +1,22 @@
-# Vcash
-
+Vcash
+======
 > A decentralized currency for the internet.
 
-This project is a codebase rewrite/enhancment using:
-* [Peercoin](https://github.com/ppcoin/ppcoin) PoS & [Bitcoin](https://github.com/bitcoin/bitcoin) PoW consensus
-* an UDP layer
-* an off-chain transaction lock voting system called ZeroTime
-* an Incentive Reward voting system
-* a client-side blending system called ChainBlender
+# What is Vcash?
+Vcash is a decentralized currency for the internet. It enables you to send money to anywhere in the world instantly for almost no cost.
 
-[The newest downloads can be found here.](https://github.com/openvcash/vcash/releases)
+Vcash features include [Peercoin](https://github.com/ppcoin/ppcoin) PoS, [Bitcoin](https://github.com/bitcoin/bitcoin) PoW consensus, a UDP layer, an off-chain transaction lock voting system called ZeroTime, an Incentive Reward voting system, and a client-side blending system called ChainBlender.
+
+|Important links|
+|:---:|
+|[Official website](https://vcash.info/)|
+|[The newest downloads can be found here.](https://github.com/openvcash/vcash/releases)|
+|[The docs can be found here.](https://github.com/openvcash/docs.vcash.info)|
+|[The whitepapers can be found here.](https://github.com/openvcash/papers)|
 
 ## Building from source
-If you have any issues with the build process, [read the docs.](docs/BUILDING.md)
-
-**The list of dependencies** [can be found here.](docs/DEPENDENCIES.md)
+If you have any questions or issues with the build process, read [BUILDING.md](docs/BUILDING.md)  
+[The list of dependencies can be found here.](docs/DEPENDENCIES.md)
 
 ### Windows
 1. Download and extract the newest [Source code zip](https://github.com/openvcash/vcash/releases)
@@ -29,12 +31,12 @@ If you have any issues with the build process, [read the docs.](docs/BUILDING.md
 
 1. Download the newest [Source code tar.gz](https://github.com/openvcash/vcash/releases) to your `~/Downloads` folder.
 2. Install [the correct dependencies](docs/DEPENDENCIES.md).
-```
+```shell
 sudo apt-get update && sudo apt-get upgrade
-sudo apt-get install cmake build-essential libboost-all-dev libdb-dev libdb++-dev openssl libssl-dev
+sudo apt-get install build-essential cmake boost-defaults db-defaults openssl
 ```
 3. Run the following commands from your terminal...
-```
+```shell
 tar -xzf ~/Downloads/vcash-*.tar.gz
 cd ~/Downloads/vcash-*/
 cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_BINDIR=bin -DCMAKE_INSTALL_LIBDIR=lib/vcash CMakeLists.txt
