@@ -723,12 +723,10 @@ std::shared_ptr<block> block::create_new(
                         "Block, create new, transaction pool item is "
                         "missing input."
                     );
-#if (!defined _MSC_VER)
-#warning :TODO: https://github.com/bitcoin/bitcoin/pull/5267
-#endif
 #if 0
                     /**
                      * :JC: When issue 5267 is fixed uncomment this.
+                     * TODO: https://github.com/bitcoin/bitcoin/pull/5267
                      */
                     if (globals::instance().debug())
                     {

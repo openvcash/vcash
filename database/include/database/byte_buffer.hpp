@@ -265,7 +265,7 @@ namespace database {
 
 			        read_offset = m_read_position - m_data.get();
 
-			        std::auto_ptr<char> tmp(new char[new_length]);
+			        std::unique_ptr<char> tmp(new char[new_length]);
 
 			        std::memcpy(tmp.get(), m_data.get(), m_allocated);
 

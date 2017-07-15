@@ -1685,7 +1685,8 @@ bool script::evaluate(
                         std::vector<std::uint8_t> digest(
                             (opcode == op_ripemd160 || opcode == op_sha1 ||
                             opcode == op_hash160) ?
-                            ripemd160::digest_length : sha256::digest_length
+                            static_cast<std::uint8_t> (ripemd160::digest_length) :
+                            static_cast<std::uint8_t> (sha256::digest_length)
                         );
                         
                         if (opcode == op_ripemd160)
