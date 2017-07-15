@@ -10,7 +10,7 @@ CMAKE_MINIMUM_REQUIRED(VERSION 3.2.3)
 
 # Check for user-provided install/bin/lib paths
 IF(NOT (CMAKE_INSTALL_PREFIX AND CMAKE_INSTALL_BINDIR AND CMAKE_INSTALL_LIBDIR))
-  message(FATAL_ERROR "Error: You did not provide the needed installation/binary/library path(s).")
+  message(FATAL_ERROR "Error: You did not provide the needed installation/binary/library path(s). Read vcash/docs/BUILDING.md for help.")
 ENDIF()
 
 # Get version string from constants.hpp and feed it into the project var
@@ -18,7 +18,7 @@ file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/coin/include/coin/constants.hpp" PROJE
 string(REGEX REPLACE ".*version_string = \"([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-9]+).*"
 "\\1.\\2.\\3.\\4" PROJECT_VER "${PROJECT_VER_STRING}")
 
-message("Vcash version: ${PROJECT_VER}")
+message(STATUS "Starting CMake build of Vcash ${PROJECT_VER}")
 project(Vcash VERSION ${PROJECT_VER} LANGUAGES C CXX)
 
 # Adds an optional cmake build flag for machines with OpenSSL v1.1+
@@ -38,13 +38,13 @@ set(OPENSSL_MIN_VER "1.0.2") # EXACT
 set(BOOST_MIN_VER "1.54.0") # Minimum
 set(BERKELEYDB_MIN_VER "5.3.0") # Minimum
 
-# Adds our find_package modules to the list of modules available for cmake
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/CMake-modules)
+# Adds our custom find_package modules to the list of modules available for cmake
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/Modules)
 
 # Start of finding dependencies
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
-find_package(Boost ${BOOST_MIN_VER} REQUIRED COMPONENTS system)# Is system needed?
+find_package(Boost ${BOOST_MIN_VER} REQUIRED COMPONENTS system)
 find_package(BerkeleyDB ${BERKELEYDB_MIN_VER} REQUIRED)
 
 IF(OPENSSL_COMPAT)
@@ -55,7 +55,7 @@ ELSE()
   find_package(OpenSSL ${OPENSSL_MIN_VER} EXACT REQUIRED)
 ENDIF()
 
-# Sources for coin
+# Sources for libcoin
 SET(SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/coin/src/account.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/coin/src/accounting_entry.cpp
@@ -169,6 +169,7 @@ SET(SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/coin/src/zerotime_vote.cpp
 	)
 
+# Sources for libdatabase
 set(DATABASE_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/database/src/block.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/database/src/broadcast_operation.cpp
@@ -197,19 +198,54 @@ set(DATABASE_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/database/src/whirlpool.cpp
 	)
 
-include_directories(
-	${CMAKE_CURRENT_SOURCE_DIR}/coin/include
-	${CMAKE_CURRENT_SOURCE_DIR}/database/include
-	${Boost_INCLUDE_DIRS}
-  ${OPENSSL_INCLUDE_DIR}
-  ${BERKELEYDB_INCLUDE_DIRS}
-  )
+add_library(coin STATIC ${SOURCES})
+add_library(database STATIC ${DATABASE_SOURCES})
 
-add_library(coin ${SOURCES}) # Optional: a STATIC/SHARED/MODULE before the source | Not sure what it should be, so letting it auto-detect
-add_library(database ${DATABASE_SOURCES}) # Optional: a STATIC/SHARED/MODULE before the source | Not sure what it should be, so letting it auto-detect
+target_include_directories(coin
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/coin/include
+  PUBLIC  ${Boost_INCLUDE_DIRS}
+  PUBLIC  ${OPENSSL_INCLUDE_DIR}
+  INTERFACE  ${BERKELEYDB_INCLUDE_DIRS})
+
+# Check if using GCC
+IF(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+  EXEC_PROGRAM(gcc ARGS --version OUTPUT_VARIABLE GCC_VER_STRING)
+  # Grabs the MAJOR version from GCC
+  string(REGEX REPLACE ".* ([0-9]+)\\.[0-9]\\.[0-9].*" "\\1" GCC_VER_MAJOR ${GCC_VER_STRING})
+
+  # Fail if less than GCC version 4.8
+  IF(GCC_VER_MAJOR MATCHES "4")
+    # Grabs the MINOR version from GCC
+    string(REGEX REPLACE ".* [0-9]\\.([0-9]+)\\.[0-9].*" "\\1" GCC_VER_MINOR ${GCC_VER_STRING})
+
+    # Last accepted MINOR versions of gcc (8/9)
+    IF(NOT (GCC_VER_MINOR MATCHES "8" OR GCC_VER_MINOR MATCHES "9"))
+      message(FATAL_ERROR "Error: Minimum of version GCC 4.8 is required!")
+    ENDIF()
+
+  # Just making sure they aren't using an ancient GCC, because why not?
+  ELSEIF(GCC_VER_MAJOR MATCHES "1" OR GCC_VER_MAJOR MATCHES "2" OR GCC_VER_MAJOR MATCHES "3")
+    message(FATAL_ERROR "Error: Minimum of version GCC 4.8 is required!")
+  ENDIF()
+
+  # If GCC version not 4 or 5, add the flags to fix building on newer GCC
+  IF(NOT (GCC_VER_MAJOR MATCHES "4" OR GCC_VER_MAJOR MATCHES "5"))
+    message("GCC version ${GCC_VER_MAJOR} found, setting compile flags to fix building on newer versions...")
+    # target_compile_options recommended over other options https://stackoverflow.com/questions/23995019/what-is-the-modern-method-for-setting-general-compile-flags-in-cmake
+    target_compile_options(coin
+      PUBLIC "-O2"
+      PUBLIC "-DNDEBUG") # big_number is the problem file, which is part of coin | flags https://vcash.slack.com/archives/C3B7H53N0/p1500056978220682
+  ENDIF()
+ENDIF()
+
+target_include_directories(database
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/database/include
+  PUBLIC  ${Boost_INCLUDE_DIRS}
+  PUBLIC  ${OPENSSL_INCLUDE_DIR})
+
 add_executable(vcashd ${CMAKE_CURRENT_SOURCE_DIR}/coin/test/main.cpp)
 
-target_link_libraries(vcashd coin database ${BERKELEYDB_LIBRARIES} ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES} Threads::Threads) # -lpthread) not cross-platform, use Threads::Threads unless problems happen.
+target_link_libraries(vcashd coin database ${BERKELEYDB_LIBRARIES} ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES} Threads::Threads)
 
 # Tells Make where to put the files when running Make install
 install(TARGETS vcashd database coin
