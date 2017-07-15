@@ -5,4 +5,20 @@
 #~ Boost Software License, Version 1.0. (See accompanying file
 #~ LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
-boost-build  ./../deps/boost/tools/build/v2 ;
+local rule if-has-file ( file + : dir * )
+{
+    local result ;
+    if $(dir)
+    {
+        result = [ GLOB $(dir) : $(file) ] ;
+    }
+    return $(result[1]:P) ;
+}
+
+local boost-build-src = [ if-has-file bootstrap.jam :
+    [ MATCH --boost-build=(.*) : $(ARGV) ]
+    ./../deps/boost/tools/build/v2
+    ./../deps/boost/tools/build/src
+    ] ;
+
+boost-build $(boost-build-src) ;

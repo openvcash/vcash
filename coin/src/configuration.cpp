@@ -311,14 +311,13 @@ bool configuration::load()
     
         return false;
     }
-    
+#if 0
     if (m_args.size() > 0)
     {
-#if (!defined _MSC_VER)
-        #warning :TODO: Iterate the args and override the variables (if found).
-#endif
+        // :TODO: Iterate the args and override the variables. (if found).
+        // :TODO: Restrict to Windows, macOS, and GNU/Linux.
     }
-    
+#endif
     return true;
 }
 

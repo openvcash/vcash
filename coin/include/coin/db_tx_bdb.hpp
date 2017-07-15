@@ -34,9 +34,6 @@
 
 namespace coin {
     
-#if (defined USE_LEVELDB && USE_LEVELDB)
-    // ...
-#else
     class block_index;
     class block_index_disk;
     class point_out;
@@ -49,7 +46,6 @@ namespace coin {
      */
     class db_tx
         : public db
-        , private boost::noncopyable
     {
         public:
         
@@ -280,7 +276,6 @@ namespace coin {
             );
     
     };
-#endif // USE_LEVELDB
 } // namespace coin
 
 #endif // COIN_DB_TX_BDB_HPP

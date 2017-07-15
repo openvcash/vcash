@@ -205,7 +205,10 @@ namespace coin {
                             stream << Ch('\n');
                         }
                     }
-                    stream << Str(4 * indent, Ch(' ')) << Ch(']');
+                    if (pretty) stream << Str(4 * indent, Ch(' '));
+                    {
+                        stream << Ch(']');
+                    }
 
                 }
                 else

@@ -1011,8 +1011,8 @@ bool transaction::connect_inputs(
                     auto pindex = ptr_block_index;
                     pindex && ptr_block_index->height() - pindex->height() <
                     (constants::test_net ?
-                    constants::coinbase_maturity_test_network :
-                    constants::coinbase_maturity);
+                    static_cast<std::int32_t> (constants::coinbase_maturity_test_network) :
+                    static_cast<std::int32_t> (constants::coinbase_maturity));
                     pindex = pindex->block_index_previous()
                     )
                 {

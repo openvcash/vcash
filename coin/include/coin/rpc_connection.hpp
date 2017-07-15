@@ -159,6 +159,15 @@ namespace coin {
             bool parse_json_rpc_request(
                 const std::string & request_in, json_rpc_request_t & request_out
             );
+
+            /**
+             * Parses a JSON-RPC ptree.
+             * @param pt_in The ptree (in).
+             * @Param request_out The request (out).
+             */
+            bool check_json_rpc_request_members(
+                const boost::property_tree::ptree & request_in, json_rpc_request_t & request_out
+            );
         
         protected:
         

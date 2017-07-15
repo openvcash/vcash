@@ -49,7 +49,10 @@ operation::operation(
     , operation_queue_(queue)
     , node_impl_(impl)
 {
-    BOOST_STATIC_ASSERT(timeout_interval > rpc::timeout_interval);
+    BOOST_STATIC_ASSERT(
+        static_cast<uint8_t> (timeout_interval) > 
+        static_cast<uint8_t> (rpc::timeout_interval)
+    );
 }
 
 void operation::start()

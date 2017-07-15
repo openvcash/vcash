@@ -169,39 +169,32 @@ void rpc_connection::on_read(const char * buf, const std::size_t & len)
                          * Allocate the request.
                          */
                         json_rpc_request_t request;
-                        
-                        for (auto & j : i.second)
+
+                        if (check_json_rpc_request_members(i.second, request))
                         {
-                            if (j.first == "method")
+                            json_rpc_response_t response;
+                            
+                            if (handle_json_rpc_request(request, response))
                             {
-                                request.method = j.second.get<std::string> ("");
+                                responses.push_back(response);
                             }
-                            else if (j.first == "params")
+                            else
                             {
-                                request.params = j.second;
+                                log_error(
+                                    "RPC connection failed to handle "
+                                    "JSON-RPC message, request = " <<
+                                    body_out << "."
+                                );
                             }
-                            else if (j.first == "id")
-                            {
-                                request.id = j.second.get<std::string> ("");
-                            }
-                        }
-                        
-                        /**
-                         * Allocate the response.
-                         */
-                        json_rpc_response_t response;
-                        
-                        if (handle_json_rpc_request(request, response))
-                        {
-                            responses.push_back(response);
                         }
                         else
                         {
                             log_error(
-                                "RPC connection failed to handle "
-                                "JSON-RPC message, request = " <<
-                                request.id << "."
+                                "RPC connection failed to parse JSON-RPC message, "
+                                "request = " << body_out << "."
                             );
+                            
+                            stop();
                         }
                     }
                     
@@ -467,6 +460,8 @@ bool rpc_connection::parse_json_rpc_request(
     /**
      * Example: {"id":"2","method":"login","params":["first","second"]}
      */
+    bool ret = false;
+
     if (request_in.size() > 0)
     {
         std::stringstream ss;
@@ -481,17 +476,61 @@ bool rpc_connection::parse_json_rpc_request(
         {
             read_json(ss, pt);
 
-            auto & method = pt.get_child("method");
+            ret = check_json_rpc_request_members(pt, request_out);
+        }
+        catch (std::exception & e)
+        {
+            log_error(
+                "RPC connection failed to parse JSON-RPC request, what = " <<
+                e.what() << "."
+            );
+        }
+    }
+
+    return ret;
+}
+
+bool rpc_connection::check_json_rpc_request_members(
+    const boost::property_tree::ptree & pt_in, json_rpc_request_t & request_out
+    )
+{
+    /**
+     * Example: {"id":"2","method":"login","params":["first","second"]}
+     */
+    if (pt_in.size() > 0)
+    {
+        try
+        {
+            auto it_params = pt_in.find("params");
             
-            request_out.method = method.get<std::string> ("");
+            if (it_params != pt_in.not_found())
+            {
+                auto & params = pt_in.get_child("params");
+
+                request_out.params = params;
+            }
+
+            auto it_method = pt_in.find("method");
             
-            auto & params = pt.get_child("params");
+            if (it_method != pt_in.not_found())
+            {
+                auto & method = pt_in.get_child("method");
+
+                request_out.method = method.get<std::string> ("");
+            }
+            else
+            {
+                return false;
+            }
+
+            auto it_id = pt_in.find("id");
             
-            request_out.params = params;
-            
-            auto & id = pt.get_child("id");
-            
-            request_out.id = id.get<std::string> ("");
+            if (it_id != pt_in.not_found())
+            {
+                auto & id = pt_in.get_child("id");
+
+                request_out.id = id.get<std::string> ("");
+            }
         }
         catch (std::exception & e)
         {
@@ -764,6 +803,13 @@ bool rpc_connection::send_json_rpc_response(
         {
             boost::property_tree::ptree pt;
 
+            /**
+             * Put json-rpc version into property tree.
+             */
+            pt.put(
+                "jsonrpc", "2.0", rpc_json_parser::translator<std::string> ()
+            );
+
             if (response.error.size() > 0)
             {
                 /**
@@ -876,11 +922,13 @@ bool rpc_connection::send_json_rpc_responses(
             {
                 boost::property_tree::ptree pt_child;
                 
-                if (i.id.size() == 0)
-                {
-                    continue;
-                }
-                
+                /**
+                 * Put json-rpc version into property tree.
+                 */
+                pt_child.put(
+                    "jsonrpc", "2.0", rpc_json_parser::translator<std::string> ()
+                );
+
                 if (i.error.size() > 0)
                 {
                     /**
