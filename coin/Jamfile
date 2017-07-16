@@ -148,7 +148,7 @@ local usage-requirements =
     <include>./include
     <include>./../deps
     <include>./../database/include
-        <toolset>gcc:<include>$(BOOST_ROOT)
+    <toolset>gcc:<include>$(BOOST_ROOT)
     <toolset>clang-darwin:<include>$(BOOST_ROOT)
     <toolset>darwin:<include>$(BOOST_ROOT)
     <toolset>msvc:<include>$(BOOST_ROOT)
@@ -170,7 +170,7 @@ local usage-requirements =
 
     <toolset>msvc,<variant>debug:<include>$(BOOST_ROOT)/build/debug/include
     <toolset>msvc,<variant>release:<include>$(BOOST_ROOT)/build/release/include
-    <toolset>gcc,<variant>release:<cxxflags>"-O2 -Wno-sign-compare -Wno-reorder -Wno-strict-aliasing -Wno-unused-variable -Wno-unused-function -Wno-unused-but-set-variable -Wno-maybe-uninitialized -Wno-parentheses"
+    <toolset>gcc,<variant>release:<cxxflags>"-O2 -Wno-sign-compare -Wno-reorder -Wno-strict-aliasing -Wno-unused-variable -Wno-unused-function -Wno-unused-but-set-variable -Wno-maybe-uninitialized -Wno-parentheses -Wno-unused-local-typedefs"
     <variant>release:<define>NDEBUG
     <define>_FILE_OFFSET_BITS=64
     <toolset>clang-darwin:<define>BOOST_NO_CXX11_NUMERIC_LIMITS

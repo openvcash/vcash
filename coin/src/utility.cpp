@@ -100,7 +100,7 @@ utility::disk_info_t utility::disk_info(const std::string & path)
     return ret;
 }
 
-static const signed char g_hex_digit[256] =
+static const std::int8_t g_hex_digit[256] =
     {
     -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
     -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
@@ -124,7 +124,7 @@ bool utility::is_hex(const std::string & val)
 {
     for (auto & i : val)
     {
-        if (g_hex_digit[i] < 0)
+        if (g_hex_digit[(std::uint8_t)i] < 0)
         {
             return false;
         }
