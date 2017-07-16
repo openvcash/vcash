@@ -4,7 +4,8 @@ Vcash
 
 [![Donate](https://img.shields.io/badge/Donate-BTC-yellow.svg)](https://blockchain.info/address/3MTVHcDrbiwrp5N6rT2DwrMCXMBP3rT7ty) [![GitHub release](https://img.shields.io/github/release/openvcash/vcash.svg)](https://github.com/openvcash/vcash/releases/latest)  
 
-https://vcash.info/
+https://vcash.info/  
+
 What is Vcash?
 ---
 Vcash is a decentralized currency for the internet. It enables you to send money to anywhere in the world instantly for almost no cost.
