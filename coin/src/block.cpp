@@ -2578,8 +2578,6 @@ bool block::accept_block(
     
         return false;
     }
-
-    /**
     
     /**
      * Enforce rule that the coinbase starts with serialized block height.
