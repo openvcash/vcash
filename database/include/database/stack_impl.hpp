@@ -180,7 +180,7 @@ namespace database {
             /**
              * The node.
              */
-            std::auto_ptr<node> m_node;
+            std::shared_ptr<node> m_node;
             
         protected:
             

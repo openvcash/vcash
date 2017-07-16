@@ -81,6 +81,11 @@ bool key_store_basic::get_key(
 
 bool key_store_basic::add_c_script(const script & redeem_script)
 {
+    if (redeem_script.size() > script::max_element_size)
+    {
+        return false;
+    }
+
     std::lock_guard<std::mutex> m1(mutex_);
 
     m_scripts[redeem_script.get_id()] = redeem_script;
