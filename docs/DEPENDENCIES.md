@@ -1,23 +1,27 @@
-# Required dependencies
+Required dependencies
+======
 You should always use the highest version available that conforms to these dependencies.
 
 |Dependency   |Minimum Version|Maximum Version|Links and Notes
 |:------------|:-------------:|:-------------:|:---:
 |Boost        |    `1.54.0`   |      N/A      |http://www.boost.org/users/download/#live
-|Berkeley DB  |    `5.3.0`    |      N/A      |http://www.oracle.com/technetwork/database/database-technologies/berkeleydb/downloads/index-082944.html
-|OpenSSL      |    `1.0.2a`   |    `1.0.2l`   |https://github.com/openssl/openssl/releases/
-|Pthreads     |      N/A      |      N/A      |More than likely you already have it, and won't have to download anything.
+|Berkeley DB  |    `5.3.0`    |      N/A      |http://www.oracle.com/technetwork/database/database-technologies/berkeleydb/downloads/index-082944.html To download without an account, copy the package download link and remove `otn/` from the link.
+|OpenSSL      |    `1.0.2`    |    `1.0.2`    |https://github.com/openssl/openssl/releases/
+|Pthreads     |      N/A      |      N/A      |It should come with your systems C/C++ libraries.
 
-## Build-time dependencies
+Build-time dependencies
+---
 Dependency                                    |Notes
 :--------------------------------------------:|:---:
 CMake                                         |Minimum Version `3.2.3`
-Make                                          |Only for Unix-based (Linux & Mac) systems.
+Make/NMake                                    |`Make` for Linux & Mac, `NMake` (Included with Visual C++ build tools) for Windows
 C/C++ compiler compatible with CMake          |`GCC >= 4.8` on Linux, `MSVC` on Windows, `Clang` on Mac.
 
 
-### Alternative downloads for Windows
+Alternative downloads for Windows
+---
 [Boost binaries for Windows.](https://sourceforge.net/projects/boost/files/boost-binaries/)  
 [OpenSSL binaries for Windows.](https://slproweb.com/products/Win32OpenSSL.html)  
-[PThreads for Windows](https://sourceware.org/pthreads-win32/)  
-Optional: [MinGW, the GNU tools for Windows.](http://mingw.org/)  
+[Visual C++ (MSVC included) for Windows](https://blogs.msdn.microsoft.com/vcblog/2017/03/07/msvc-the-best-choice-for-windows/)  
+Optional: [MinGW-w64, the GNU tools for Windows.](http://mingw-w64.org)   
+Optional: [Pkg-Config to help the CMake find modules work better](https://www.freedesktop.org/wiki/Software/pkg-config/)

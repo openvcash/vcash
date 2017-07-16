@@ -34,14 +34,10 @@ ELSE()
   message(FATAL_ERROR "Error: Can't find OpenSSL-1.0 header file opensslv.h")
 ENDIF()
 
-# Parse the OpenSSL-1.0 version
+# Parse the OpenSSL-1.0 version, but ignore the letter
 file(READ ${_OPENSSL_VERSION_file} _OPENSSL_header_contents)
-string(REGEX REPLACE ".*OPENSSL_VERSION_TEXT    \"OpenSSL ([0-9]+)\\.([0-9]+)\\.([0-9]+)([a-z]).*"
-"\\1.\\2.\\3\\4" _OPENSSL_VERSION "${_OPENSSL_header_contents}")
-set(OPENSSL_VERSION ${_OPENSSL_VERSION} CACHE INTERNAL "The version of openssl which was detected")
-
-# Set root directory | Needed?
-#string(REGEX MATCH ".*/openssl-1.0" OPENSSL_ROOT_DIR ${_OPENSSL_INCLUDE_DIR})
+string(REGEX REPLACE ".*OPENSSL_VERSION_TEXT    \"OpenSSL ([0-9]+)\\.([0-9]+)\\.([0-9]+)[a-z].*"
+"\\1.\\2.\\3" OPENSSL_VERSION "${_OPENSSL_header_contents}")
 
 # Should fail if the vars aren't found | FOUND_VAR is obsolete and only for older versions of cmake.
 # Underscore in front of vars because the docs recommend it https://cmake.org/cmake/help/latest/module/FindPackageHandleStandardArgs.html
@@ -53,8 +49,7 @@ find_package_handle_standard_args(OpenSSL
   )
 
 # Sets the correct, non-cached variables that will be used in CMakeLists.txt
-# We CACHE and FORCE CMake to use them, considering this is a workaround...
-set(OPENSSL_INCLUDE_DIR ${_OPENSSL_INCLUDE_DIR} CACHE PATH "The include dir of openssl which was detected" FORCE)
-set(OPENSSL_SSL_LIBRARY ${_OPENSSL_SSL_LIBRARY} CACHE FILEPATH "The ssl lib of openssl which was detected" FORCE)
-set(OPENSSL_CRYPTO_LIBRARY ${_OPENSSL_CRYPTO_LIBRARY} CACHE FILEPATH "The crypto lib of openssl which was detected" FORCE)
-set(OPENSSL_LIBRARIES ${OPENSSL_SSL_LIBRARY} ${OPENSSL_CRYPTO_LIBRARY} CACHE PATH "The libraries of openssl which was detected" FORCE)
+set(OPENSSL_INCLUDE_DIR ${_OPENSSL_INCLUDE_DIR})
+set(OPENSSL_SSL_LIBRARY ${_OPENSSL_SSL_LIBRARY})
+set(OPENSSL_CRYPTO_LIBRARY ${_OPENSSL_CRYPTO_LIBRARY})
+set(OPENSSL_LIBRARIES ${OPENSSL_SSL_LIBRARY} ${OPENSSL_CRYPTO_LIBRARY})
