@@ -6651,10 +6651,7 @@ bool tcp_connection::insert_inventory_vector_seen(const inventory_vector & inv)
     
     if (ret.second == true)
     {
-        if (
-            inv_queue_max_len &&
-            inventory_vectors_seen_queue_.size() == inv_queue_max_len
-            )
+        if (inventory_vectors_seen_queue_.size() == inv_queue_max_len)
         {
             inventory_vectors_seen_set_.erase(
                 inventory_vectors_seen_queue_.front()
