@@ -43,11 +43,6 @@ ELSE()
   message(FATAL_ERROR "Error: Can't find BerkeleyDB header file db.h")
 ENDIF()
 
-# Fail if we don't find the correct paths.
-IF(NOT (_BERKELEYDB_INCLUDE_DIR AND _BERKELEYDB_LIBRARIES))
-  message(FATAL_ERROR "Error: Could not find the paths needed for BerkeleyDB!")
-ENDIF()
-
 # Parse the BerkeleyDB version
 file(READ ${_BERKELEYDB_VERSION_file} _BERKELEYDB_header_contents)
 string(REGEX REPLACE ".*DB_VERSION_MAJOR	([0-9]+).*DB_VERSION_MINOR	([0-9]+).*DB_VERSION_PATCH	([0-9]+).*"
@@ -66,7 +61,7 @@ find_package_handle_standard_args(BerkeleyDB
 string(REGEX REPLACE "([0-9]+)\\.[0-9]\\.[0-9]"
 "\\1" BERKELEYDB_VER_MAJOR "${BERKELEYDB_VERSION}")
 
-# Throw a WARNING to people using v5 DB, but continue building
+# Throw a WARNING to people using BerkeleyDB v5, but continue building
 IF(BERKELEYDB_VER_MAJOR MATCHES "5")
   message(WARNING
     "==WARNING== \
