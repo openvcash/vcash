@@ -8,7 +8,7 @@ https://vcash.info/
 
 What is Vcash?
 ---
-Vcash is a decentralized currency for the internet. It enables you to send money to anywhere in the world instantly for almost no cost.
+Vcash is a decentralized currency for the internet that enables you to send money to anywhere in the world instantly, for almost no cost.
 
 Vcash features include [Peercoin](https://github.com/ppcoin/ppcoin) PoS, [Bitcoin](https://github.com/bitcoin/bitcoin) PoW consensus, a UDP layer, an off-chain transaction lock voting system called ZeroTime, an Incentive Reward voting system, and a client-side blending system called ChainBlender.
 
