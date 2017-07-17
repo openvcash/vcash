@@ -24,7 +24,7 @@ IF(UNIX)
   )
 ELSE()
   # Fail if not Unix
-  message(FATAL_ERROR "Unsported operating system when using OPENSSL_COMPAT flag! UNIX only.")
+  message(FATAL_ERROR "Unsported operating system when using OPENSSL_COMPAT flag - Unix only!")
 ENDIF()
 
 # Checks if the version file exists, save the version file to a var, and fail if there's no version file

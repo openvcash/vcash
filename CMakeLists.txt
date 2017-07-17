@@ -8,11 +8,6 @@ CMAKE_MINIMUM_REQUIRED(VERSION 3.2.3)
 # EVENTUALLY: 3.9 for the addition of a DESCRIPTION to project()
 # == END Minimum version requirement list ==
 
-# Check for user-provided install/bin/lib paths
-IF(NOT (CMAKE_INSTALL_PREFIX AND CMAKE_INSTALL_BINDIR AND CMAKE_INSTALL_LIBDIR))
-  message(FATAL_ERROR "Error: You did not provide the needed installation/binary/library path(s). Read vcash/docs/BUILDING.md for help.")
-ENDIF()
-
 # Get version string from constants.hpp and feed it into the project var
 file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/coin/include/coin/constants.hpp" PROJECT_VER_STRING)
 string(REGEX REPLACE ".*version_string = \"([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-9]+).*"
@@ -248,7 +243,18 @@ add_executable(vcashd ${CMAKE_CURRENT_SOURCE_DIR}/coin/test/main.cpp)
 target_link_libraries(vcashd coin database ${BERKELEYDB_LIBRARIES} ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES} Threads::Threads)
 
 # Tells Make where to put the files when running Make install
-install(TARGETS vcashd database coin
-  RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}
-  LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}
-  ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR})
+# Check for user-provided install/bin/lib paths
+IF(CMAKE_INSTALL_PREFIX AND CMAKE_INSTALL_BINDIR AND CMAKE_INSTALL_LIBDIR)
+  install(TARGETS vcashd database coin
+    RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}
+  )
+ELSE()
+  message(STATUS "You did not provide installation/binary/library path(s), so the default paths will be used. Read vcash/docs/BUILDING.md for help.")
+  install(TARGETS vcashd database coin
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+  )
+ENDIF()

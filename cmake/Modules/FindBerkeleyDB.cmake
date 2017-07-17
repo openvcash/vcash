@@ -33,14 +33,14 @@ ELSEIF(WIN32)
   )
 ELSE()
   # Fail if not Unix/Windows
-  message(FATAL_ERROR "Unsported operating system when trying to find BerkeleyDB!")
+  message(FATAL_ERROR "Unsported operating system when trying to find Berkeley DB!")
 ENDIF()
 
 # Checks if the version file exists, save the version file to a var, and fail if there's no version file
 IF(_BERKELEYDB_INCLUDE_DIR AND EXISTS "${_BERKELEYDB_INCLUDE_DIR}/db.h")
   set(_BERKELEYDB_VERSION_file "${_BERKELEYDB_INCLUDE_DIR}/db.h")
 ELSE()
-  message(FATAL_ERROR "Error: Can't find BerkeleyDB header file db.h")
+  message(FATAL_ERROR "Error: Can't find Berkeley DB header file db.h")
 ENDIF()
 
 # Parse the BerkeleyDB version
@@ -58,15 +58,14 @@ find_package_handle_standard_args(BerkeleyDB
   )
 
 # Get MAJOR version of DB
-string(REGEX REPLACE "([0-9]+)\\.[0-9]\\.[0-9]"
-"\\1" BERKELEYDB_VER_MAJOR "${BERKELEYDB_VERSION}")
+string(REGEX REPLACE ".*DB_VERSION_MAJOR	([0-9]+).*"
+"\\1" BERKELEYDB_VER_MAJOR "${_BERKELEYDB_header_contents}")
 
 # Throw a WARNING to people using BerkeleyDB v5, but continue building
 IF(BERKELEYDB_VER_MAJOR MATCHES "5")
   message(WARNING
     "==WARNING== \
-    Pre-existing wallet data is not backwards compatible with version v5 of BerkeleyDB if it was originally built with v6. \
-    Building with v${BERKELEYDB_VER_MAJOR} will potentially break your wallet files! \
+    Pre-existing wallet data is not backwards compatible with version v5 of Berkeley DB if it was originally built with v6. \
     Read vcash/docs/BUILDING.md for more info. \
     ==WARNING==")
 ENDIF()
