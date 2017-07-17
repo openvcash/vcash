@@ -21,7 +21,7 @@ IF(UNIX)
 ELSEIF(WIN32)
   # Append the user-supplied prefix, before C:\, if it exists
   IF(BERKELEYDB_DRIVE_PREFIX)
-    list(APPEND DB_PATHS ${BERKELEYDB_DRIVE_PREFIX})
+    list(APPEND DB_PATHS "${BERKELEYDB_DRIVE_PREFIX}")
   ENDIF()
 
   list(APPEND DB_H_NAMES "db_cxx.h" "db.h")
