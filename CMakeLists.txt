@@ -16,8 +16,9 @@ string(REGEX REPLACE ".*version_string = \"([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-
 message(STATUS "Starting CMake build of Vcash ${PROJECT_VER}")
 project(Vcash VERSION ${PROJECT_VER} LANGUAGES C CXX)
 
-# Adds an optional cmake build flag for machines with OpenSSL v1.1+
+# Optional build flags
 option(OPENSSL_COMPAT "Target OpenSSL-1.0 on machines with 1.1+" OFF)
+option(BERKELEYDB_DRIVE_PREFIX "Tells CMake the drive letter where Berkeley DB is installed" OFF)
 
 # Default to a release build if nothing is specified
 IF(NOT CMAKE_BUILD_TYPE)

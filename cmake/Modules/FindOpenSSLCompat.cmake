@@ -1,31 +1,30 @@
 include(FindPackageHandleStandardArgs)
 
-# Find INCLUDES and LIBS
-IF(UNIX)
-  find_path(_OPENSSL_INCLUDE_DIR
-    NAMES bn.h
-    HINTS $ENV{OPENSSL-1.0_ROOT} $ENV{OPENSSL-1.0.2_ROOT} ${OPENSSL-1.0_ROOT} ${OPENSSL-1.0.2_ROOT} ${CMAKE_SOURCE_DIR}/deps
-    PATH_SUFFIXES include/openssl-1.0/openssl include/openssl-1.0
-    PATHS /usr /usr/local /opt /opt/local
-  )
-
-  find_library(_OPENSSL_CRYPTO_LIBRARY
-    NAMES "libcrypto.so.1.0.0" "libcrypto.so.1.0.2" "libcrypto.so.1.0"
-    HINTS $ENV{OPENSSL-1.0_ROOT} $ENV{OPENSSL-1.0.2_ROOT} ${OPENSSL-1.0_ROOT} ${OPENSSL-1.0.2_ROOT} ${CMAKE_SOURCE_DIR}/deps
-    PATH_SUFFIXES lib lib64
-    PATHS /usr /usr/local /opt /opt/local
-  )
-
-  find_library(_OPENSSL_SSL_LIBRARY
-    NAMES "libssl.so.1.0.0" "libssl.so.1.0.2" "libssl.so.1.0"
-    HINTS $ENV{OPENSSL-1.0_ROOT} $ENV{OPENSSL-1.0.2_ROOT} ${OPENSSL-1.0_ROOT} ${OPENSSL-1.0.2_ROOT} ${CMAKE_SOURCE_DIR}/deps
-    PATH_SUFFIXES lib lib64
-    PATHS /usr /usr/local /opt /opt/local
-  )
-ELSE()
-  # Fail if not Unix
+IF(NOT UNIX)
   message(FATAL_ERROR "Unsported operating system when using OPENSSL_COMPAT flag - Unix only!")
 ENDIF()
+
+# Find INCLUDES and LIBS
+find_path(_OPENSSL_INCLUDE_DIR
+  NAMES bn.h
+  HINTS $ENV{OPENSSL-1.0_ROOT} $ENV{OPENSSL-1.0.2_ROOT} ${OPENSSL-1.0_ROOT} ${OPENSSL-1.0.2_ROOT} ${CMAKE_SOURCE_DIR}/deps
+  PATH_SUFFIXES include/openssl-1.0/openssl include/openssl-1.0
+  PATHS /usr /usr/local /opt /opt/local
+)
+
+find_library(_OPENSSL_CRYPTO_LIBRARY
+  NAMES "libcrypto.so.1.0.0" "libcrypto.so.1.0.2" "libcrypto.so.1.0"
+  HINTS $ENV{OPENSSL-1.0_ROOT} $ENV{OPENSSL-1.0.2_ROOT} ${OPENSSL-1.0_ROOT} ${OPENSSL-1.0.2_ROOT} ${CMAKE_SOURCE_DIR}/deps
+  PATH_SUFFIXES lib lib64
+  PATHS /usr /usr/local /opt /opt/local
+)
+
+find_library(_OPENSSL_SSL_LIBRARY
+  NAMES "libssl.so.1.0.0" "libssl.so.1.0.2" "libssl.so.1.0"
+  HINTS $ENV{OPENSSL-1.0_ROOT} $ENV{OPENSSL-1.0.2_ROOT} ${OPENSSL-1.0_ROOT} ${OPENSSL-1.0.2_ROOT} ${CMAKE_SOURCE_DIR}/deps
+  PATH_SUFFIXES lib lib64
+  PATHS /usr /usr/local /opt /opt/local
+)
 
 # Checks if the version file exists, save the version file to a var, and fail if there's no version file
 IF(_OPENSSL_INCLUDE_DIR AND EXISTS "${_OPENSSL_INCLUDE_DIR}/opensslv.h")

@@ -17,20 +17,36 @@ IF(UNIX)
     PATHS /usr /usr/local /opt /opt/local
   )
 ELSEIF(WIN32)
-  # TEST/WIP
-  find_path(_BERKELEYDB_INCLUDE_DIR
-    NAMES db_cxx.h db.h
-    HINTS $ENV{BERKELEYDB_ROOT} $ENV{DB_ROOT} ${BERKELEYDB_ROOT} ${DB_ROOT} ${CMAKE_SOURCE_DIR}/deps/db
-    PATH_SUFFIXES "Program Files\\db" "Program Files (x86)\\db" berkeleydb db
-    PATHS C:\\
-  )
+  # Use their provided prefix if available
+  IF(BERKELEYDB_DRIVE_PREFIX)
+    find_path(_BERKELEYDB_INCLUDE_DIR
+      NAMES db_cxx.h db.h
+      HINTS $ENV{BERKELEYDB_ROOT} $ENV{DB_ROOT} ${BERKELEYDB_ROOT} ${DB_ROOT} ${CMAKE_SOURCE_DIR}/deps/db
+      PATH_SUFFIXES "Program Files\\db" "Program Files (x86)\\db" berkeleydb db
+      PATHS ${BERKELEYDB_DRIVE_PREFIX} C:\\
+    )
 
-  find_library(_BERKELEYDB_LIBRARIES
-    NAMES libdb_cxx.so
-    HINTS $ENV{BERKELEYDB_ROOT} $ENV{DB_ROOT} ${BERKELEYDB_ROOT} ${DB_ROOT} ${CMAKE_SOURCE_DIR}/deps/db
-    PATH_SUFFIXES "Program Files\\db" "Program Files (x86)\\db" berkeleydb db
-    PATHS C:\\
-  )
+    find_library(_BERKELEYDB_LIBRARIES
+      NAMES libdb_cxx.so
+      HINTS $ENV{BERKELEYDB_ROOT} $ENV{DB_ROOT} ${BERKELEYDB_ROOT} ${DB_ROOT} ${CMAKE_SOURCE_DIR}/deps/db
+      PATH_SUFFIXES "Program Files\\db" "Program Files (x86)\\db" berkeleydb db
+      PATHS ${BERKELEYDB_DRIVE_PREFIX} C:\\
+    )
+  ELSE()
+    find_path(_BERKELEYDB_INCLUDE_DIR
+      NAMES db_cxx.h db.h
+      HINTS $ENV{BERKELEYDB_ROOT} $ENV{DB_ROOT} ${BERKELEYDB_ROOT} ${DB_ROOT} ${CMAKE_SOURCE_DIR}/deps/db
+      PATH_SUFFIXES "Program Files\\db" "Program Files (x86)\\db" berkeleydb db
+      PATHS C:\\
+    )
+
+    find_library(_BERKELEYDB_LIBRARIES
+      NAMES libdb_cxx.so
+      HINTS $ENV{BERKELEYDB_ROOT} $ENV{DB_ROOT} ${BERKELEYDB_ROOT} ${DB_ROOT} ${CMAKE_SOURCE_DIR}/deps/db
+      PATH_SUFFIXES "Program Files\\db" "Program Files (x86)\\db" berkeleydb db
+      PATHS C:\\
+    )
+  ENDIF()
 ELSE()
   # Fail if not Unix/Windows
   message(FATAL_ERROR "Unsported operating system when trying to find Berkeley DB!")

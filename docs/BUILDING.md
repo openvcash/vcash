@@ -14,12 +14,13 @@ Use the build flags between `cmake` and `CMakeLists.txt` to trigger certain opti
 **Example:** `cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_BINDIR=bin -DCMAKE_INSTALL_LIBDIR=lib/vcash CMakeLists.txt`
 
 
-Flags                   |Required|Linux/Mac Rec. Setting|Windows Rec. Setting
-:-----------------------|:------:|:--------------------:|:---:
-`-DCMAKE_INSTALL_PREFIX`|  No   |       `/usr`         |`C:\`
-`-DCMAKE_INSTALL_BINDIR`|  No   |        `bin`         |`"Program Files\Vcash"`
-`-DCMAKE_INSTALL_LIBDIR`|  No   |     `lib/vcash`      |`"Program Files\Vcash"`
-`-DOPENSSL_COMPAT`      |  No   |  `ON` only if needed |Do not use
+Flags                      |Required|Linux/Mac Rec. Setting|Windows Rec. Setting
+:--------------------------|:------:|:--------------------:|:---:
+`-DCMAKE_INSTALL_PREFIX`   |   No   |       `/usr`         |`C:\`
+`-DCMAKE_INSTALL_BINDIR`   |   No   |        `bin`         |`"Program Files\Vcash"`
+`-DCMAKE_INSTALL_LIBDIR`   |   No   |     `lib/vcash`      |`"Program Files\Vcash"`
+`-DBERKELEYDB_DRIVE_PREFIX`|   No   |      Do not use      |Set to the drive letter of Berkeley DB, similar to `-DCMAKE_INSTALL_PREFIX`
+`-DOPENSSL_COMPAT`         |   No   |  `ON` only if needed |Do not use
 
 OpenSSL problems - Linux or Mac only
 ---
