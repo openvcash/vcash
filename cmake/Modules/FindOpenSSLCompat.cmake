@@ -5,12 +5,12 @@ IF(NOT UNIX)
 ENDIF()
 
 # Set the vars to search for
-set(OPENSSL_H_NAMES "")
-set(OPENSSL_L_CRYPT_NAMES "")
-set(OPENSSL_L_SSL_NAMES "")
+set(OPENSSL_H_NAMES "") # Header names
+set(OPENSSL_L_CRYPT_NAMES "")  # Library crypto names
+set(OPENSSL_L_SSL_NAMES "") # Library ssl names
 set(OPENSSL_HINTS "")
-set(OPENSSL_H_SUF "")
-set(OPENSSL_L_SUF "")
+set(OPENSSL_H_SUF "") # Header suffixes
+set(OPENSSL_L_SUF "") # Library suffixes
 set(OPENSSL_PATHS "")
 
 # While we could've just used set(), we used list() because reasons...

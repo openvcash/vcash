@@ -11,7 +11,7 @@ set(DB_L_SUF "") # Library suffixes
 # HINTS don't really change across OS's | BerkeleyDB is also known as DB, so we add DB_ROOT to HINTS
 list(APPEND DB_HINTS "$ENV{BERKELEYDB_ROOT}" "$ENV{DB_ROOT}" "${BERKELEYDB_ROOT}" "${DB_ROOT}" "${CMAKE_SOURCE_DIR}/deps/db")
 
-# Fill in the variables to search for Berkeley DB | Should these be strings?
+# Fill in the variables to search for Berkeley DB
 IF(UNIX)
   list(APPEND DB_H_NAMES "db_cxx.h" "db.h")
   list(APPEND DB_L_NAMES "libdb_cxx.so")
