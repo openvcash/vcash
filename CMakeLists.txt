@@ -198,6 +198,7 @@ add_library(database STATIC ${DATABASE_SOURCES})
 
 target_include_directories(coin
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/coin/include
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/database/include
   PUBLIC  ${Boost_INCLUDE_DIRS}
   PUBLIC  ${OPENSSL_INCLUDE_DIR}
   INTERFACE  ${BERKELEYDB_INCLUDE_DIRS})
