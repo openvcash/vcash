@@ -1,6 +1,6 @@
 Common Issues
 =====
-**This is not for problems with the build process.**
+This is not for problems with the build process. If you are having issues with the build process, [read this.](BUILDING.md)
 
 Wallet Problems
 ---

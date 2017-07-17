@@ -2,13 +2,13 @@ Vcash
 ======
 > A decentralized currency for the internet.
 
-[![Donate](https://img.shields.io/badge/Donate-BTC-yellow.svg)](https://blockchain.info/address/3MTVHcDrbiwrp5N6rT2DwrMCXMBP3rT7ty) [![GitHub release](https://img.shields.io/github/release/openvcash/vcash.svg)](https://github.com/openvcash/vcash/releases/latest)  
+[![Donate BTC](https://img.shields.io/badge/Donate-BTC-yellow.svg)](https://blockchain.info/address/3MTVHcDrbiwrp5N6rT2DwrMCXMBP3rT7ty) [![Latest GitHub release](https://img.shields.io/github/release/openvcash/vcash.svg)](https://github.com/openvcash/vcash/releases/latest)  
 
 https://vcash.info/  
 
 What is Vcash?
 ---
-Vcash is a decentralized currency for the internet that enables you to send money to anywhere in the world instantly, for almost no cost.
+Vcash is a decentralized internet currency that enables you to send money to anyone in the world, instantly, and at almost no cost.
 
 Vcash features include [Peercoin](https://github.com/ppcoin/ppcoin) PoS, [Bitcoin](https://github.com/bitcoin/bitcoin) PoW consensus, a UDP layer, an off-chain transaction lock voting system called ZeroTime, an Incentive Reward voting system, and a client-side blending system called ChainBlender.
 
@@ -48,7 +48,7 @@ sudo make install
 When finished, you should be able to run `vcashd` from your terminal.  
 
 **Arch-based**  
-[![AUR](https://img.shields.io/aur/version/vcash.svg)](https://aur.archlinux.org/packages/vcash/) is available, which builds and installs the source code from the latest release.
+[![The AUR PKGBUILD](https://img.shields.io/aur/version/vcash.svg)](https://aur.archlinux.org/packages/vcash/) is available, which builds and installs the source code from the latest release.
 
 If you don't know how to install something from the Arch User Repository, [read this Arch wiki post](https://wiki.archlinux.org/index.php/AUR_helpers) or [this post on the forums.](https://forum.vcash.info/d/56-arch-linux-aur-pkgbuild-s)
 

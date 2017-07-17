@@ -1,11 +1,11 @@
 General Build Info
 ======
 # WARNING
-**Pre-existing wallet data is not backwards compatible with version v5 of BerkeleyDB if it was originally built with v6.**
+**Pre-existing wallet data is not backwards compatible with version v5 of Berkeley DB if it was originally built with v6.**
 
-This will require you to delete your [Vcash data folder](COMMON_ISSUES.md), and recreate your wallet.
+If you build with v5 and have old wallet data that was built with v6, you will need to delete your [Vcash data folder](COMMON_ISSUES.md), and recreate your wallet.
 
-You can import your private keys or wallet seed into the new wallet, but if you do not have these then you will not be able to recover the wallet.
+You can import your private keys or recover from your wallet seed, but if you do not have these then you will not be able to recover the wallet.
 
 Build flags
 ---
