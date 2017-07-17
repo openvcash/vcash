@@ -1,56 +1,53 @@
 include(FindPackageHandleStandardArgs)
 
-# Find INCLUDES and LIBS
-# BerkeleyDB is also known as DB, so we add DB_ROOT to HINTS
+# Easier to change variables than going line by line should this ever need updating..
+set(DB_H_NAMES "") # Header names
+set(DB_L_NAMES "") # Library names
+set(DB_HINTS "")
+set(DB_PATHS "")
+set(DB_H_SUF "") # Header suffixes
+set(DB_L_SUF "") # Library suffixes
+
+# HINTS don't really change across OS's | BerkeleyDB is also known as DB, so we add DB_ROOT to HINTS
+list(APPEND DB_HINTS "$ENV{BERKELEYDB_ROOT}" "$ENV{DB_ROOT}" "${BERKELEYDB_ROOT}" "${DB_ROOT}" "${CMAKE_SOURCE_DIR}/deps/db")
+
+# Fill in the variables to search for Berkeley DB | Should these be strings?
 IF(UNIX)
-  find_path(_BERKELEYDB_INCLUDE_DIR
-    NAMES db_cxx.h db.h
-    HINTS $ENV{BERKELEYDB_ROOT} $ENV{DB_ROOT} ${BERKELEYDB_ROOT} ${DB_ROOT} ${CMAKE_SOURCE_DIR}/deps/db
-    PATH_SUFFIXES include
-    PATHS /usr /usr/local /opt /opt/local
-  )
-
-  find_library(_BERKELEYDB_LIBRARIES
-    NAMES libdb_cxx.so
-    HINTS $ENV{BERKELEYDB_ROOT} $ENV{DB_ROOT} ${BERKELEYDB_ROOT} ${DB_ROOT} ${CMAKE_SOURCE_DIR}/deps/db
-    PATH_SUFFIXES lib lib64
-    PATHS /usr /usr/local /opt /opt/local
-  )
+  list(APPEND DB_H_NAMES "db_cxx.h" "db.h")
+  list(APPEND DB_L_NAMES "libdb_cxx.so")
+  list(APPEND DB_PATHS "/usr" "/usr/local" "/opt" "/opt/local")
+  list(APPEND DB_H_SUF "include")
+  list(APPEND DB_L_SUF "lib" "lib64")
 ELSEIF(WIN32)
-  # Use their provided prefix if available
+  # Append the user-supplied prefix, before C:\, if it exists
   IF(BERKELEYDB_DRIVE_PREFIX)
-    find_path(_BERKELEYDB_INCLUDE_DIR
-      NAMES db_cxx.h db.h
-      HINTS $ENV{BERKELEYDB_ROOT} $ENV{DB_ROOT} ${BERKELEYDB_ROOT} ${DB_ROOT} ${CMAKE_SOURCE_DIR}/deps/db
-      PATH_SUFFIXES "Program Files\\db" "Program Files (x86)\\db" berkeleydb db
-      PATHS ${BERKELEYDB_DRIVE_PREFIX} C:\\
-    )
-
-    find_library(_BERKELEYDB_LIBRARIES
-      NAMES libdb_cxx.so
-      HINTS $ENV{BERKELEYDB_ROOT} $ENV{DB_ROOT} ${BERKELEYDB_ROOT} ${DB_ROOT} ${CMAKE_SOURCE_DIR}/deps/db
-      PATH_SUFFIXES "Program Files\\db" "Program Files (x86)\\db" berkeleydb db
-      PATHS ${BERKELEYDB_DRIVE_PREFIX} C:\\
-    )
-  ELSE()
-    find_path(_BERKELEYDB_INCLUDE_DIR
-      NAMES db_cxx.h db.h
-      HINTS $ENV{BERKELEYDB_ROOT} $ENV{DB_ROOT} ${BERKELEYDB_ROOT} ${DB_ROOT} ${CMAKE_SOURCE_DIR}/deps/db
-      PATH_SUFFIXES "Program Files\\db" "Program Files (x86)\\db" berkeleydb db
-      PATHS C:\\
-    )
-
-    find_library(_BERKELEYDB_LIBRARIES
-      NAMES libdb_cxx.so
-      HINTS $ENV{BERKELEYDB_ROOT} $ENV{DB_ROOT} ${BERKELEYDB_ROOT} ${DB_ROOT} ${CMAKE_SOURCE_DIR}/deps/db
-      PATH_SUFFIXES "Program Files\\db" "Program Files (x86)\\db" berkeleydb db
-      PATHS C:\\
-    )
+    list(APPEND DB_PATHS ${BERKELEYDB_DRIVE_PREFIX})
   ENDIF()
+
+  list(APPEND DB_H_NAMES "db_cxx.h" "db.h")
+  list(APPEND DB_L_NAMES "libdb_cxx.so")
+  list(APPEND DB_PATHS "C:\\")
+  list(APPEND DB_H_SUF "Program Files\\db" "Program Files (x86)\\db" "berkeleydb" "db")
+  list(APPEND DB_L_SUF ${DB_H_SUF}) # Just reusing DB_H_SUF because they contain the same things
 ELSE()
   # Fail if not Unix/Windows
   message(FATAL_ERROR "Unsported operating system when trying to find Berkeley DB!")
 ENDIF()
+
+# Find INCLUDES and LIBS
+find_path(_BERKELEYDB_INCLUDE_DIR
+  NAMES ${DB_H_NAMES}
+  HINTS ${DB_HINTS}
+  PATH_SUFFIXES ${DB_H_SUF}
+  PATHS ${DB_PATHS}
+)
+
+find_library(_BERKELEYDB_LIBRARIES
+  NAMES ${DB_L_NAMES}
+  HINTS ${DB_HINTS}
+  PATH_SUFFIXES ${DB_L_SUF}
+  PATHS ${DB_PATHS}
+)
 
 # Checks if the version file exists, save the version file to a var, and fail if there's no version file
 IF(_BERKELEYDB_INCLUDE_DIR AND EXISTS "${_BERKELEYDB_INCLUDE_DIR}/db.h")

@@ -9,7 +9,8 @@ You can import your private keys or recover from your wallet seed, but if you do
 
 Build flags
 ---
-Use the build flags between `cmake` and `CMakeLists.txt` to trigger certain options, or to choose where to install things. Note that if you use install prefixes, you will need to do `sudo make install` instead of just `make install`.
+Use the various build flags with `cmake` to trigger certain options, or to choose where to install things.   
+Note that if you use install prefixes, you will need to do `sudo make install` instead of just `make install` (Unix only).
 
 **Example:** `cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_BINDIR=bin -DCMAKE_INSTALL_LIBDIR=lib/vcash CMakeLists.txt`
 
