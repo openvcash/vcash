@@ -1,5 +1,4 @@
-Vcash
-======
+# Vcash
 > A decentralized currency for the internet.
 
 [![Donate BTC](https://img.shields.io/badge/Donate-BTC-yellow.svg)](https://blockchain.info/address/3MTVHcDrbiwrp5N6rT2DwrMCXMBP3rT7ty) [![Latest GitHub release](https://img.shields.io/github/release/openvcash/vcash.svg)](https://github.com/openvcash/vcash/releases/latest)  
@@ -12,8 +11,13 @@ Vcash is a decentralized internet currency that enables you to send money to any
 
 Vcash features include [Peercoin](https://github.com/ppcoin/ppcoin) PoS, [Bitcoin](https://github.com/bitcoin/bitcoin) PoW consensus, a UDP layer, an off-chain transaction lock voting system called ZeroTime, an Incentive Reward voting system, and a client-side blending system called ChainBlender.
 
-[The docs](https://docs.vcash.info/) [(source)](https://github.com/openvcash/docs.vcash.info), and [the whitepapers.](https://github.com/openvcash/papers)  
-Read [common issues](docs/COMMON_ISSUES.md) if you're having problems related to the features of the coin itself.
+Docs and whitepapers
+---
+[The docs](https://docs.vcash.info/), their [source on github,](https://github.com/openvcash/docs.vcash.info) and [the whitepapers.](https://github.com/openvcash/papers)  
+
+Read [common issues](docs/COMMON_ISSUES.md) if you're having problems related to the coin other than when trying to build from source.
+
+
 
 Building from source
 ---
@@ -43,7 +47,7 @@ sudo apt-get install build-essential cmake boost-defaults db-defaults openssl
 ```
 tar -xzf ~/Downloads/vcash-*.tar.gz
 cd ~/Downloads/vcash-*/
-cmake CMakeLists.txt
+cmake
 make
 make install
 ```
@@ -63,7 +67,11 @@ If you don't know how to install something from the Arch User Repository, [read 
 ```
 tar -xzf ~/Downloads/vcash-*.tar.gz
 cd ~/Downloads/vcash-*/
-cmake CMakeLists.txt
+cmake
 make
 make install
 ```
+
+License
+---
+Vcash is released under the terms of the AGPL-3.0 license. See [LICENSE](LICENSE) for more information.

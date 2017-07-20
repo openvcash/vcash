@@ -9,32 +9,37 @@ You can import your private keys or recover from your wallet seed, but if you do
 
 Build flags
 ---
-Use the various build flags with `cmake` to trigger certain options, or to choose where to install things.   
-Note that if you use install prefixes, you will need to do `sudo make install` instead of just `make install` (Unix only).
+Use the various build flags when initiating `cmake` to trigger certain options, or to choose where to install things.   
+**Example:** `cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_BINDIR=bin -DCMAKE_INSTALL_LIBDIR=lib/vcash`  
 
-**Example:** `cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_BINDIR=bin -DCMAKE_INSTALL_LIBDIR=lib/vcash CMakeLists.txt`
+Most of the flags shouldn't be used unless you are having problems, with the exception of the CMAKE_INSTALL_X flags, as those can be safely used without potentially messing up the build process.  
 
+If your path contains spaces, or any other weirdness, put double quotes around it. **Example:** `cmake -DBERKELEYDB_INCLUDES_PATH="Program Files (x86)"`
 
-Flags                      |Required|Linux/Mac Rec. Setting|Windows Rec. Setting
-:--------------------------|:------:|:--------------------:|:---:
-`-DCMAKE_INSTALL_PREFIX`   |   No   |       `/usr`         |`C:\`
-`-DCMAKE_INSTALL_BINDIR`   |   No   |        `bin`         |`"Program Files\Vcash"`
-`-DCMAKE_INSTALL_LIBDIR`   |   No   |     `lib/vcash`      |`"Program Files\Vcash"`
-`-DBERKELEYDB_DRIVE_PREFIX`|   No   |      Do not use      |Set to the drive letter of Berkeley DB, similar to `-DCMAKE_INSTALL_PREFIX`
-`-DOPENSSL_COMPAT`         |   No   |  `ON` only if needed |Do not use
+Note that, depending on the location, install prefixes might require doing `sudo make install` instead of `make install` (Unix only).
+None of these are required for the build process, and should only be used if you understand what they do.
 
-OpenSSL problems - Linux or Mac only
+Flags                          |Unix Example Setting|Windows Example Setting
+:------------------------------|:------------------:|:---:
+`-DCMAKE_INSTALL_PREFIX`       |`/usr`              |`C:/`
+`-DCMAKE_INSTALL_BINDIR`       |`bin`               |`"Program Files/Vcash"`
+`-DCMAKE_INSTALL_LIBDIR`       |`lib/vcash`         |`"Program Files/Vcash"`
+`-DBERKELEYDB_INCLUDES_PATH`   |`/usr/include/db`   |`"C:/Program Files/db/include"`
+`-DBERKELEYDB_LIB_PATH`        |`/usr/lib`          |`"C:/Program Files/db/lib"`
+`-DBERKELEYDB_LIB_NAME`        |`libdb_cxx.so`      |`db_cxx.lib`
+
+**If you use `-DBERKELEYDB_LIB_NAME` or `-DBERKELEYDB_LIB_SUFFIX` then they must both be used. You cannot use them independently from eachother.**
+
+OpenSSL problems
 ---
-If you are having issues with CMake finding OpenSSL `1.0.2`, say, because you might have version `1.1.0` (or higher) already installed, then try building with the `-DOPENSSL_COMPAT=ON` flag (Unix only). If that doesn't work, then create the following symlinks:
+If CMake is not finding the correct version of OpenSSL, perhaps because you have a newer version installed along side your older OpenSSL 1.0.2, then pass these flags when you run cmake `-DOPENSSL_ROOT_DIR -DCUSTOM_OPENSSL_LIBDIR`
 
-1. `ln -s /usr/include/openssl-1.0/openssl/bn.h /location/of/include/openssl-1.0/bn.h` Make sure that you are linking to the folder with `bn.h` in it.
-2. `ln -s /usr/lib/libcrypto.so.1.0.0 /location/of/lib/libcrypto.so.1.0.0` Make sure you are linking to the location of `libcrypto.so.1.0.0` and **not** the newer OpenSSL file, normally named `libcrypto`
-3. `ln -s /usr/lib/libssl.so.1.0.0 /location/of/lib/libssl.so.1.0.0` Make sure you are linking to the location of `libssl.so.1.0.0` and **not** the newer OpenSSL file, normally named `libssl.so`
+Make sure to pass the correct paths, as it expects to see `openssl/HEADERFILESHERE` in the includes path.  
 
-Afterwords, use the `-DOPENSSL_COMPAT=ON` build flag when building with cmake.
+**Example (on Arch Linux):** `cmake -DOPENSSL_ROOT_DIR="/usr/include/openssl-1.0" -DCUSTOM_OPENSSL_LIBDIR="/usr/lib/openssl-1.0"`
 
 Build Errors
 ---
 Problem|Solution
 :---:|:---:
-`c++: internal compiler error: Killed (program cc1plus)`|You ran out of RAM during building. Increase your swap partition to account for this, or add more RAM to your system. 1GB minimum, [2GB if you are running an incentive node.](https://docs.vcash.info/technologies/node-incentives/)
+`c++: internal compiler error: Killed (program cc1plus)`|You ran out of RAM during building. Increase your swap partition to account for this, or add more RAM to your system. 1GB minimum to build, [2GB if you are running an incentive node.](https://docs.vcash.info/technologies/node-incentives/)

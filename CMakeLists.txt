@@ -1,9 +1,8 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 3.2.3)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.1.3)
 # == START Minimum version requirement list ==
 # 3.0 for versioning inside of project()
 # 3.1 for set(THREADS_PREFER_PTHREAD_FLAG ON)
 # 3.1.3 for CMAKE_CXX_STANDARD
-# 3.2.3 for OPENSSL_CRYPTO_LIBRARY and OPENSSL_SSL_LIBRARY
 # EVENTUALLY: 3.7.2 for CMAKE_FIND_PACKAGE_SORT_ORDER and CMAKE_FIND_PACKAGE_SORT_DIRECTION
 # EVENTUALLY: 3.9 for the addition of a DESCRIPTION to project()
 # == END Minimum version requirement list ==
@@ -16,9 +15,11 @@ string(REGEX REPLACE ".*version_string = \"([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-
 message(STATUS "Starting CMake build of Vcash ${PROJECT_VER}")
 project(Vcash VERSION ${PROJECT_VER} LANGUAGES C CXX)
 
-# Optional build flags
-option(OPENSSL_COMPAT "Target OpenSSL-1.0 on machines with 1.1+" OFF)
-option(BERKELEYDB_DRIVE_PREFIX "Tells CMake the drive letter where Berkeley DB is installed" OFF)
+# Optional build flags to help find Berkeley DB and OpenSSL
+option(CUSTOM_OPENSSL_LIBDIR "Target your OpenSSL library path." OFF)
+option(BERKELEYDB_INCLUDES_PATH "Target your includes directory for Berkeley DB." OFF)
+option(BERKELEYDB_LIB_PATH "Target your libraries for Berkeley DB." OFF)
+option(BERKELEYDB_LIB_NAME "Hard-set a library name and suffix for Berkeley DB." OFF)
 
 # Default to a release build if nothing is specified
 IF(NOT CMAKE_BUILD_TYPE)
@@ -38,18 +39,14 @@ set(BERKELEYDB_MIN_VER "5.3.0") # Minimum
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/Modules)
 
 # Start of finding dependencies
+IF(OPENSSL_ROOT_DIR AND CUSTOM_OPENSSL_LIBDIR)
+  list(APPEND OPENSSL_ROOT_DIR "${CUSTOM_OPENSSL_LIBDIR}")
+ENDIF()
+find_package(OpenSSL ${OPENSSL_MIN_VER} EXACT REQUIRED)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 find_package(Boost ${BOOST_MIN_VER} REQUIRED COMPONENTS system)
 find_package(BerkeleyDB ${BERKELEYDB_MIN_VER} REQUIRED)
-
-IF(OPENSSL_COMPAT)
-  # Work-around for Arch (and maybe other rolling-releases?) to get pre-1.1 OpenSSL -sum01
-  find_package(OpenSSLCompat ${OPENSSL_MIN_VER} EXACT REQUIRED)
-ELSE()
-  # If no workaround required, find normally
-  find_package(OpenSSL ${OPENSSL_MIN_VER} EXACT REQUIRED)
-ENDIF()
 
 # Sources for libcoin
 SET(SOURCES
@@ -227,7 +224,7 @@ IF(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
 
   # If GCC version not 4 or 5, add the flags to fix building on newer GCC
   IF(NOT (GCC_VER_MAJOR MATCHES "4" OR GCC_VER_MAJOR MATCHES "5"))
-    message("GCC version ${GCC_VER_MAJOR} found, setting compile flags to fix building on newer versions...")
+    message(STATUS "GCC v${GCC_VER_MAJOR} found, setting compile flags to build with newer versions...")
     # target_compile_options recommended over other options https://stackoverflow.com/questions/23995019/what-is-the-modern-method-for-setting-general-compile-flags-in-cmake
     target_compile_options(coin
       PUBLIC "-O2"
@@ -244,16 +241,16 @@ add_executable(vcashd ${CMAKE_CURRENT_SOURCE_DIR}/coin/test/main.cpp)
 
 target_link_libraries(vcashd coin database ${BERKELEYDB_LIBRARIES} ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES} Threads::Threads)
 
-# Tells Make where to put the files when running Make install
 # Check for user-provided install/bin/lib paths
 IF(CMAKE_INSTALL_PREFIX AND CMAKE_INSTALL_BINDIR AND CMAKE_INSTALL_LIBDIR)
   install(TARGETS vcashd database coin
-    RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}
-    LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}"
+    LIBRARY DESTINATION "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}"
+    ARCHIVE DESTINATION "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}"
   )
 ELSE()
-  message(STATUS "You did not provide installation/binary/library path(s), so the default paths will be used. Read vcash/docs/BUILDING.md for help.")
+  message(STATUS "You did not provide all the installation paths, so the default paths will be used. \
+    Read vcash/docs/BUILDING.md for help.")
   install(TARGETS vcashd database coin
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib

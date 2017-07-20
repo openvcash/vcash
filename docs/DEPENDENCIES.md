@@ -2,19 +2,19 @@ Required dependencies
 ======
 You should always use the highest version available that conforms to these dependencies.
 
-|Dependency   |Minimum Version|Maximum Version|Links and Notes
-|:------------|:-------------:|:-------------:|:---:
-|Boost        |    `1.54.0`   |      N/A      |http://www.boost.org/users/download/#live
-|Berkeley DB  |    `5.3.0`    |      N/A      |http://www.oracle.com/technetwork/database/database-technologies/berkeleydb/downloads/index-082944.html To download without an account, copy the package download link and remove `otn/` from the link.
-|OpenSSL      |    `1.0.2`    |    `1.0.2`    |https://github.com/openssl/openssl/releases/
-|Pthreads     |      N/A      |      N/A      |It should come with your systems C/C++ libraries.
+|Dependency   |Version         |Name on Ubuntu  |Links and Notes
+|:------------|:--------------:|:--------------:|:--------------:|:---:
+|Boost        |minimum `1.54.0`|`boost-defaults`|http://www.boost.org/users/download/#live
+|Berkeley DB  |minimum `5.3.0` |`db-defaults`   |http://www.oracle.com/technetwork/database/database-technologies/berkeleydb/downloads/index-082944.html To download without an account, copy the package download link and remove `otn/` from the link.
+|OpenSSL      |exact `1.0.2`   |`openssl`       |https://github.com/openssl/openssl/releases/
+|Pthreads     |N/A             |`libc++`        |It should come with your systems C/C++ libraries.
 
 Build-time dependencies
 ---
 Dependency                                    |Notes
 :--------------------------------------------:|:---:
 CMake                                         |Minimum Version `3.2.3`
-Make/NMake                                    |`Make` for Linux & Mac, `NMake` for Windows
+Make                                          |`Make` for Linux & Mac, `NMake` for Windows
 C/C++ compiler compatible with CMake          |`GCC >= 4.8` on Linux, `MSVC` on Windows, `Clang` on Mac.
 
 
