@@ -32,11 +32,11 @@ Flags                          |Unix Example Setting|Windows Example Setting
 
 OpenSSL problems
 ---
-If CMake is not finding the correct version of OpenSSL, perhaps because you have a newer version installed along side your older OpenSSL 1.0.2, then pass these flags when you run cmake `-DOPENSSL_ROOT_DIR -DCUSTOM_OPENSSL_LIBDIR`
+If CMake is not finding the correct version of OpenSSL, perhaps because you have a newer version installed along side your older OpenSSL 1.0.2, then you need to pass their paths with cmake flags.  
+
+**Example for Arch Linux:** `cmake -DOPENSSL_INCLUDE_DIR=/usr/include/openssl-1.0 -DOPENSSL_SSL_LIBRARY=/usr/lib/openssl-1.0/libssl.so -DOPENSSL_CRYPTO_LIBRARY=/usr/lib/openssl-1.0/libcrypto.so`  
 
 Make sure to pass the correct paths, as it expects to see `openssl/HEADERFILESHERE` in the includes path.  
-
-**Example (on Arch Linux):** `cmake -DOPENSSL_ROOT_DIR="/usr/include/openssl-1.0" -DCUSTOM_OPENSSL_LIBDIR="/usr/lib/openssl-1.0"`
 
 Build Errors
 ---

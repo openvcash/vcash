@@ -16,7 +16,6 @@ message(STATUS "Starting CMake build of Vcash ${PROJECT_VER}")
 project(Vcash VERSION ${PROJECT_VER} LANGUAGES C CXX)
 
 # Optional build flags to help find Berkeley DB and OpenSSL
-option(CUSTOM_OPENSSL_LIBDIR "Target your OpenSSL library path." OFF)
 option(BERKELEYDB_INCLUDES_PATH "Target your includes directory for Berkeley DB." OFF)
 option(BERKELEYDB_LIB_PATH "Target your libraries for Berkeley DB." OFF)
 option(BERKELEYDB_LIB_NAME "Hard-set a library name and suffix for Berkeley DB." OFF)
@@ -39,9 +38,6 @@ set(BERKELEYDB_MIN_VER "5.3.0") # Minimum
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/Modules)
 
 # Start of finding dependencies
-IF(OPENSSL_ROOT_DIR AND CUSTOM_OPENSSL_LIBDIR)
-  list(APPEND OPENSSL_ROOT_DIR "${CUSTOM_OPENSSL_LIBDIR}")
-ENDIF()
 find_package(OpenSSL ${OPENSSL_MIN_VER} EXACT REQUIRED)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)

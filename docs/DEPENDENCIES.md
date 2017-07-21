@@ -17,7 +17,6 @@ CMake                                         |Minimum Version `3.1.3`
 Make                                          |`Make` for Linux & Mac, `NMake` for Windows
 C/C++ compiler compatible with CMake          |`GCC >= 4.8` on Linux, `MSVC` on Windows, `Clang` on Mac.
 
-
 Alternative downloads for Windows
 ---
 [Boost binaries for Windows.](https://sourceforge.net/projects/boost/files/boost-binaries/)  
