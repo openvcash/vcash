@@ -16,6 +16,7 @@ message(STATUS "Starting CMake build of Vcash ${PROJECT_VER}")
 project(Vcash VERSION ${PROJECT_VER} LANGUAGES C CXX)
 
 # Optional build flags to help find Berkeley DB and OpenSSL
+option(WITH_INCOMPATIBLE_BDB "Allows for building with Berkeley DB v5 instead of requiring v6." OFF)
 option(BERKELEYDB_INCLUDES_PATH "Target your includes directory for Berkeley DB." OFF)
 option(BERKELEYDB_LIB_PATH "Target your libraries for Berkeley DB." OFF)
 option(BERKELEYDB_LIB_NAME "Hard-set a library name and suffix for Berkeley DB." OFF)
@@ -32,7 +33,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Dependency versions
 set(OPENSSL_MIN_VER "1.0.2") # EXACT
 set(BOOST_MIN_VER "1.54.0") # Minimum
-set(BERKELEYDB_MIN_VER "5.3.0") # Minimum
+# Prevent accidental building with DB v5, which isn't compatible with the newer v6 wallets
+IF(WITH_INCOMPATIBLE_BDB)
+  set(BERKELEYDB_MIN_VER "5.0.0") # Minimum
+ELSE()
+  set(BERKELEYDB_MIN_VER "6.0.0") # Minimum
+ENDIF()
+
 
 # Adds our custom find_package modules to the list of modules available for cmake
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/Modules)
@@ -43,6 +50,7 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 find_package(Boost ${BOOST_MIN_VER} REQUIRED COMPONENTS system)
 find_package(BerkeleyDB ${BERKELEYDB_MIN_VER} REQUIRED)
+
 
 # Sources for libcoin
 SET(SOURCES

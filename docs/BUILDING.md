@@ -7,6 +7,8 @@ If you build with v5 and have old wallet data that was built with v6, you will n
 
 You can import your private keys or recover from your wallet seed, but if you do not have these then you will not be able to recover the wallet.
 
+If you are sure you want to build with Berkeley DB v5, and you understand the risks, then use the build flag listed below called `WITH_INCOMPATIBLE_BDB`
+
 Build flags
 ---
 Use the various build flags when initiating `cmake` to trigger certain options, or to choose where to install things.   
@@ -17,7 +19,8 @@ Most of the flags shouldn't be used unless you are having problems, with the exc
 If your path contains spaces, or any other weirdness, put double quotes around it. **Example:** `cmake -DBERKELEYDB_INCLUDES_PATH="Program Files (x86)"`
 
 Note that, depending on the location, install prefixes might require doing `sudo make install` instead of `make install` (Unix only).
-None of these are required for the build process, and should only be used if you understand what they do.
+
+**None of these are required for the build process, and should only be used if you understand what they do.**
 
 Flags                          |Unix Example Setting|Windows Example Setting
 :------------------------------|:------------------:|:---:
@@ -27,8 +30,7 @@ Flags                          |Unix Example Setting|Windows Example Setting
 `-DBERKELEYDB_INCLUDES_PATH`   |`/usr/include/db`   |`"C:/Program Files/db/include"`
 `-DBERKELEYDB_LIB_PATH`        |`/usr/lib`          |`"C:/Program Files/db/lib"`
 `-DBERKELEYDB_LIB_NAME`        |`libdb_cxx.so`      |`db_cxx.lib`
-
-**If you use `-DBERKELEYDB_LIB_NAME` or `-DBERKELEYDB_LIB_SUFFIX` then they must both be used. You cannot use them independently from eachother.**
+`-DWITH_INCOMPATIBLE_BDB`      |`ON`                |`ON`
 
 OpenSSL problems
 ---
