@@ -1,3 +1,4 @@
+# WARNING: DO NOT USE THIS BRANCH IN PRODUCTION!    
 # Vcash
 > A decentralized currency for the internet.
 
