@@ -114,7 +114,7 @@ string(REGEX REPLACE ".*DB_VERSION_MAJOR	([0-9]+).*DB_VERSION_MINOR	([0-9]+).*DB
 # so we put DB_L_NAMES after includes have been found, so we can use db.h to get the version numbers.
 IF(WIN32 AND NOT BERKELEYDB_LIB_NAME) # This doesn't run if they pass their own lib name, which is what we want.
   # Parse the Major and minor DB version into a string
-  string(REGEX REPLACE ".*DB_VERSION_MAJOR	([0-9]+).*DB_VERSION_MINOR	([0-9]+).*DB_VERSION_PATCH	([0-9]+).*"
+  string(REGEX REPLACE ".*DB_VERSION_MAJOR	([0-9]+).*DB_VERSION_MINOR	([0-9]+).*"
   "\\1\\2" DB_MAJORMINOR_VER "${_BERKELEYDB_header_contents}"
   )
   message(STATUS "Berkeley DB MAJORMINOR v${DB_MAJORMINOR_VER} found, searching for lib names...")
