@@ -14,9 +14,7 @@ Build flags
 Use the various build flags when initiating `cmake` to trigger certain options, or to choose where to install things.   
 **Example:** `cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_BINDIR=bin -DCMAKE_INSTALL_LIBDIR=lib/vcash`  
 
-Most of the flags shouldn't be used unless you are having problems, with the exception of the CMAKE_INSTALL_X flags, as those can be safely used without potentially messing up the build process.  
-
-If your path contains spaces, or any other weirdness, put double quotes around it. **Example:** `cmake -DBERKELEYDB_INCLUDES_PATH="Program Files (x86)"`
+If your path contains spaces (or any other weirdness), and you are using cmake in a terminal or command prompt, put double quotes around it. **Example:** `cmake -DBERKELEYDB_INCLUDES_PATH="Program Files (x86)"`
 
 Note that, depending on the location, install prefixes might require doing `sudo make install` instead of `make install` (Unix only).
 
@@ -25,14 +23,14 @@ Note that, depending on the location, install prefixes might require doing `sudo
 Flags                          |Unix Example Setting|Windows Example Setting
 :------------------------------|:------------------:|:---:
 `-DCMAKE_INSTALL_PREFIX`       |`/usr`              |`C:/`
-`-DCMAKE_INSTALL_BINDIR`       |`bin`               |`"Program Files/Vcash"`
-`-DCMAKE_INSTALL_LIBDIR`       |`lib/vcash`         |`"Program Files/Vcash"`
-`-DBERKELEYDB_INCLUDES_PATH`   |`/usr/include/db`   |`"C:/Program Files/db/include"`
-`-DBERKELEYDB_LIB_PATH`        |`/usr/lib`          |`"C:/Program Files/db/lib"`
-`-DBERKELEYDB_LIB_NAME`        |`libdb_cxx.so`      |`db_cxx.lib`
+`-DCMAKE_INSTALL_BINDIR`       |`bin`               |`Program Files/Vcash`
+`-DCMAKE_INSTALL_LIBDIR`       |`lib/vcash`         |`Program Files/Vcash`
+`-DBERKELEYDB_INCLUDES_PATH`   |`/usr/include/db`   |`C:/Program Files/Oracle/Berkeley DB/include`
+`-DBERKELEYDB_LIB_PATH`        |`/usr/lib`          |`C:/Program Files/Oracle/Berkeley DB/lib`
+`-DBERKELEYDB_LIB_NAME`        |`libdb_cxx.so`      |`libdb62.lib`
 `-DWITH_INCOMPATIBLE_BDB`      |`ON`                |`ON`
 
-OpenSSL problems
+OpenSSL not found
 ---
 If CMake is not finding the correct version of OpenSSL, perhaps because you have a newer version installed along side your older OpenSSL 1.0.2, then you need to pass their paths with cmake flags.  
 

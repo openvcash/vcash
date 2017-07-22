@@ -15,15 +15,18 @@ string(REGEX REPLACE ".*version_string = \"([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-
 message(STATUS "Starting CMake build of Vcash ${PROJECT_VER}")
 project(Vcash VERSION ${PROJECT_VER} LANGUAGES C CXX)
 
-# Optional build flags to help find Berkeley DB and OpenSSL
-option(WITH_INCOMPATIBLE_BDB "Allows for building with Berkeley DB v5 instead of requiring v6." OFF)
-option(BERKELEYDB_INCLUDES_PATH "Target your includes directory for Berkeley DB." OFF)
-option(BERKELEYDB_LIB_PATH "Target your libraries for Berkeley DB." OFF)
-option(BERKELEYDB_LIB_NAME "Hard-set a library name and suffix for Berkeley DB." OFF)
+# Optional build flag
+option(WITH_INCOMPATIBLE_BDB "Enables building with a Berkeley DB v5 minimum instead of v6 minimum." OFF)
 
-# Default to a release build if nothing is specified
-IF(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Release)
+# Build types/options
+IF(CMAKE_CONFIGURATION_TYPES) # Multi-config, aka Windows
+  # This will build both Debug and Release cmake files on Windows, assuming the user doesn't set it.
+  # Unsure how to (or if you even can) default to Release here while still leaving the option for Debug, as this tells cmake the available build types.
+  set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "The possible build types." FORCE)
+ELSE()
+  IF(NOT CMAKE_BUILD_TYPE) # Single-config, aka Unix | Default to a release build if nothing is specified
+    set(CMAKE_BUILD_TYPE Release)
+  ENDIF()
 ENDIF()
 
 # Require/Build for C++11 | Consider changing to target_compile_features in the future -sum01
@@ -40,17 +43,15 @@ ELSE()
   set(BERKELEYDB_MIN_VER "6.0.0") # Minimum
 ENDIF()
 
-
 # Adds our custom find_package modules to the list of modules available for cmake
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/Modules)
 
 # Start of finding dependencies
 find_package(OpenSSL ${OPENSSL_MIN_VER} EXACT REQUIRED)
-set(THREADS_PREFER_PTHREAD_FLAG ON)
+set(THREADS_PREFER_PTHREAD_FLAG ON) # Windows isn't POSIX, so this might/will throw an error, but that can be ignored. It's still needed (?) for Windows as it tells FindThreads what to look for.
 find_package(Threads REQUIRED)
 find_package(Boost ${BOOST_MIN_VER} REQUIRED COMPONENTS system)
 find_package(BerkeleyDB ${BERKELEYDB_MIN_VER} REQUIRED)
-
 
 # Sources for libcoin
 SET(SOURCES
@@ -195,51 +196,52 @@ set(DATABASE_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/database/src/whirlpool.cpp
 	)
 
+# "STATIC libraries are archives of object files for use when linking other targets."
 add_library(coin STATIC ${SOURCES})
 add_library(database STATIC ${DATABASE_SOURCES})
 
+# "If your source files and your headers include the headers of another library, then it is a PUBLIC dependency."
+# "If your header files but not your source files include the headers of another library, then it is an INTERFACE dependency."
 target_include_directories(coin
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/coin/include
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/database/include
-  PUBLIC  ${Boost_INCLUDE_DIRS}
-  PUBLIC  ${OPENSSL_INCLUDE_DIR}
-  INTERFACE  ${BERKELEYDB_INCLUDE_DIRS})
+  PUBLIC ${Boost_INCLUDE_DIRS}
+  PUBLIC ${OPENSSL_INCLUDE_DIR}
+  INTERFACE ${BERKELEYDB_INCLUDE_DIRS}
+)
+
+target_include_directories(database
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/database/include
+  PUBLIC ${Boost_INCLUDE_DIRS}
+  PUBLIC ${OPENSSL_INCLUDE_DIR}
+)
 
 # Check if using GCC
 IF(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+  # Get full GCC version
   EXEC_PROGRAM(gcc ARGS --version OUTPUT_VARIABLE GCC_VER_STRING)
-  # Grabs the MAJOR version from GCC
+  # Parse the MAJOR version from GCC version
   string(REGEX REPLACE ".* ([0-9]+)\\.[0-9]\\.[0-9].*" "\\1" GCC_VER_MAJOR ${GCC_VER_STRING})
 
+  # Just making sure they aren't using an ancient GCC
+  IF(GCC_VER_MAJOR MATCHES "1" OR GCC_VER_MAJOR MATCHES "2" OR GCC_VER_MAJOR MATCHES "3")
+    message(FATAL_ERROR "Error: Minimum of version GCC 4.8 is required!")
   # Fail if less than GCC version 4.8
-  IF(GCC_VER_MAJOR MATCHES "4")
+  ELSEIF(GCC_VER_MAJOR MATCHES "4")
     # Grabs the MINOR version from GCC
     string(REGEX REPLACE ".* [0-9]\\.([0-9]+)\\.[0-9].*" "\\1" GCC_VER_MINOR ${GCC_VER_STRING})
-
-    # Last accepted MINOR versions of gcc (8/9)
+    # Last accepted MINOR versions of gcc MAJOR v4
     IF(NOT (GCC_VER_MINOR MATCHES "8" OR GCC_VER_MINOR MATCHES "9"))
       message(FATAL_ERROR "Error: Minimum of version GCC 4.8 is required!")
     ENDIF()
-
-  # Just making sure they aren't using an ancient GCC, because why not?
-  ELSEIF(GCC_VER_MAJOR MATCHES "1" OR GCC_VER_MAJOR MATCHES "2" OR GCC_VER_MAJOR MATCHES "3")
-    message(FATAL_ERROR "Error: Minimum of version GCC 4.8 is required!")
-  ENDIF()
-
-  # If GCC version not 4 or 5, add the flags to fix building on newer GCC
-  IF(NOT (GCC_VER_MAJOR MATCHES "4" OR GCC_VER_MAJOR MATCHES "5"))
+  # If v6 or higher, set gcc build flags
+  ELSEIF(NOT (GCC_VER_MAJOR MATCHES "4" OR GCC_VER_MAJOR MATCHES "5"))
     message(STATUS "GCC v${GCC_VER_MAJOR} found, setting compile flags to build with newer versions...")
-    # target_compile_options recommended over other options https://stackoverflow.com/questions/23995019/what-is-the-modern-method-for-setting-general-compile-flags-in-cmake
     target_compile_options(coin
       PUBLIC "-O2"
       PUBLIC "-DNDEBUG") # big_number is the problem file, which is part of coin | flags https://vcash.slack.com/archives/C3B7H53N0/p1500056978220682
   ENDIF()
 ENDIF()
-
-target_include_directories(database
-  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/database/include
-  PUBLIC  ${Boost_INCLUDE_DIRS}
-  PUBLIC  ${OPENSSL_INCLUDE_DIR})
 
 add_executable(vcashd ${CMAKE_CURRENT_SOURCE_DIR}/coin/test/main.cpp)
 
@@ -253,8 +255,7 @@ IF(CMAKE_INSTALL_PREFIX AND CMAKE_INSTALL_BINDIR AND CMAKE_INSTALL_LIBDIR)
     ARCHIVE DESTINATION "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}"
   )
 ELSE()
-  message(STATUS "You did not provide all the installation paths, so the default paths will be used. \
-    Read vcash/docs/BUILDING.md for help.")
+  message(STATUS "No installation paths provided, so the default paths will be used.")
   install(TARGETS vcashd database coin
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
