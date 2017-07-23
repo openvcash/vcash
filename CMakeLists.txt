@@ -23,10 +23,9 @@ IF(CMAKE_CONFIGURATION_TYPES) # Multi-config, aka Windows
   # This will build both Debug and Release cmake files on Windows, assuming the user doesn't set it.
   # Unsure how to (or if you even can) default to Release here while still leaving the option for Debug, as this tells cmake the available build types.
   set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "The possible build types." FORCE)
-ELSE()
-  IF(NOT CMAKE_BUILD_TYPE) # Single-config, aka Unix | Default to a release build if nothing is specified
-    set(CMAKE_BUILD_TYPE Release)
-  ENDIF()
+ELSEIF(NOT CMAKE_BUILD_TYPE) # Single-config, aka Unix
+  # Default to a release build if nothing is specified
+  set(CMAKE_BUILD_TYPE Release)
 ENDIF()
 
 # Require/Build for C++11 | Consider changing to target_compile_features in the future -sum01
