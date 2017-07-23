@@ -5,9 +5,8 @@ Dependencies
 jq
 ```
 
-Get the script and make it executable
+Make it executable
 ```
-wget https://raw.githubusercontent.com/whphhg/vcash-bash-rpc/master/rpc.sh
 chmod +x rpc.sh
 ```
 
