@@ -36,7 +36,7 @@ CMake relies on the dependencies to be installed normally, while Boost-build req
 #### Linux & Mac
 1. Install [the dependencies](docs/DEPENDENCIES.md) with your package manager.
 2. Download the newest [Source code (tar.gz)](https://github.com/openvcash/vcash/releases/latest) to your `~/Downloads` folder.
-3. Setting [installation prefixes](docs/BUILDING.md) is recommend, but otherwise you can just run the following commands from your terminal...
+3. Run the following commands from your terminal...
 ```
 tar -xzf ~/Downloads/vcash-*.tar.gz
 cd ~/Downloads/vcash-*/
