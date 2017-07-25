@@ -74,6 +74,10 @@ ELSE()
   list(APPEND DB_PATHS
     "/usr"
     "/usr/local"
+    "/usr/local/Cellar"
+    "/usr/local/Cellar/berkeley-db"
+    "/usr/local/Cellar/Berkeley DB"
+    "/usr/local/Cellar/DB"
     "/opt"
     "/opt/local"
   )
@@ -160,7 +164,7 @@ IF(WITH_INCOMPATIBLE_BDB)
   "\\1" BERKELEYDB_VER_MAJOR "${_BERKELEYDB_header_contents}")
 
   # Throw a WARNING to people using BerkeleyDB v5, but continue building | This is a Vcash-specific warning, so remove it if you are using this module elsewhere.
-  IF(BERKELEYDB_VER_MAJOR MATCHES "5")
+  IF(BERKELEYDB_VER_MAJOR STREQUAL "5")
     message(WARNING
       "==WARNING== \
       Pre-existing wallet data is not backwards compatible with version v5 of Berkeley DB if it was originally built with v6. \

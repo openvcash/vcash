@@ -216,25 +216,25 @@ target_include_directories(database
 )
 
 # Check if using GCC
-IF(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+IF(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   # Get full GCC version
   EXEC_PROGRAM(gcc ARGS --version OUTPUT_VARIABLE GCC_VER_STRING)
   # Parse the MAJOR version from GCC version
   string(REGEX REPLACE ".* ([0-9]+)\\.[0-9]\\.[0-9].*" "\\1" GCC_VER_MAJOR ${GCC_VER_STRING})
 
   # Just making sure they aren't using an ancient GCC
-  IF(GCC_VER_MAJOR MATCHES "1" OR GCC_VER_MAJOR MATCHES "2" OR GCC_VER_MAJOR MATCHES "3")
+  IF(GCC_VER_MAJOR STREQUAL "1" OR GCC_VER_MAJOR STREQUAL "2" OR GCC_VER_MAJOR STREQUAL "3")
     message(FATAL_ERROR "Error: Minimum of version GCC 4.8 is required!")
   # Fail if less than GCC version 4.8
-  ELSEIF(GCC_VER_MAJOR MATCHES "4")
+  ELSEIF(GCC_VER_MAJOR STREQUAL "4")
     # Grabs the MINOR version from GCC
     string(REGEX REPLACE ".* [0-9]\\.([0-9]+)\\.[0-9].*" "\\1" GCC_VER_MINOR ${GCC_VER_STRING})
     # Last accepted MINOR versions of gcc MAJOR v4
-    IF(NOT (GCC_VER_MINOR MATCHES "8" OR GCC_VER_MINOR MATCHES "9"))
+    IF(NOT (GCC_VER_MINOR STREQUAL "8" OR GCC_VER_MINOR STREQUAL "9"))
       message(FATAL_ERROR "Error: Minimum of version GCC 4.8 is required!")
     ENDIF()
   # If v6 or higher, set gcc build flags
-  ELSEIF(NOT (GCC_VER_MAJOR MATCHES "4" OR GCC_VER_MAJOR MATCHES "5"))
+  ELSEIF(NOT (GCC_VER_MAJOR STREQUAL "4" OR GCC_VER_MAJOR STREQUAL "5"))
     message(STATUS "GCC v${GCC_VER_MAJOR} found, setting compile flags to build with newer versions...")
     target_compile_options(coin
       PUBLIC "-O2"
