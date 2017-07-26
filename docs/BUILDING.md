@@ -13,16 +13,22 @@ Build flags
 ---
 Use the various build flags when initiating `cmake` to trigger certain options, or to choose where to install things. A list of some of them [can be found here.](https://cmake.org/Wiki/CMake_Useful_Variables)
 
-Please note that none of these are required for the build process, and should only be used if you understand what they do.
+Please note that none of these are required for the build process.   
+A complete list of custom flags can be found in the comments of the [FindBerkeleyDB module.](../cmake/Modules/FindBerkeleyDB.cmake#L1-L20)
 
-Custom Flags                   |Unix Example Setting|Windows Example Setting
-:------------------------------|:------------------:|:---:
-`-DBERKELEYDB_INCLUDES_PATH`   |`/usr/include/db`   |`C:/Program Files/Oracle/Berkeley DB/include`
-`-DBERKELEYDB_LIB_PATH`        |`/usr/lib`          |`C:/Program Files/Oracle/Berkeley DB/lib`
-`-DBERKELEYDB_LIB_NAME`        |`libdb_cxx.so`      |`libdb62.lib`
-`-DWITH_INCOMPATIBLE_BDB`      |`ON`                |`ON`
+Custom Flags             |Unix Example Setting|Windows Example Setting
+:------------------------|:------------------:|:---:
+`-DBDB_ROOT_PATH`        |`/usr/include/db`   |`C:/Program Files/Oracle/Berkeley DB`
+`-DBDB_DB_LIBNAME`       |`libdb.so`          |`libdb62.lib`
+`-DWITH_INCOMPATIBLE_BDB`|`ON`                |`ON`
 
 If you have trouble getting CMake to find [OpenSSL](https://cmake.org/cmake/help/latest/module/FindOpenSSL.html), [Boost](https://cmake.org/cmake/help/latest/module/FindBoost.html), or [Threads](https://cmake.org/cmake/help/latest/module/FindThreads.html) dependencies, try setting their various path flags.
+
+Boost system not found
+---
+Set the build flag `BOOST_LIBRARYDIR` to your `lib64-msvc-vernNumHere`.  
+
+Example for Boost v1.64.0 on Win10: `BOOST_LIBRARYDIR:PATH=C:/local/boost_1_64_0/lib64-msvc-14.1`
 
 OpenSSL not found
 ---
@@ -34,6 +40,6 @@ Make sure to pass the correct paths, as it expects to see `openssl/HEADERFILESHE
 
 Build Errors
 ---
-Problem|Solution
-:---:|:---:
+Problem                                                 |Solution
+:------------------------------------------------------:|:---:
 `c++: internal compiler error: Killed (program cc1plus)`|You ran out of RAM during building. Increase your swap partition or add more RAM to your system -- 1GB minimum needed.

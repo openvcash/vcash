@@ -3,9 +3,11 @@ CMAKE_MINIMUM_REQUIRED(VERSION 3.1.3)
 # 3.0 for versioning inside of project()
 # 3.1 for set(THREADS_PREFER_PTHREAD_FLAG ON)
 # 3.1.3 for CMAKE_CXX_STANDARD
-# EVENTUALLY: 3.7.2 for CMAKE_FIND_PACKAGE_SORT_ORDER and CMAKE_FIND_PACKAGE_SORT_DIRECTION
+# EVENTUALLY: 3.7.2 for CMAKE_FIND_PACKAGE_SORT_ORDER and CMAKE_FIND_PACKAGE_SORT_DIRECTION and VERSION_GREATER_EQUAL
 # EVENTUALLY: 3.9 for the addition of a DESCRIPTION to project()
 # == END Minimum version requirement list ==
+#
+# For cross-compiling, read https://cmake.org/cmake/help/latest/manual/cmake-toolchains.7.html#cross-compiling-toolchain
 
 # Get version string from constants.hpp and feed it into the project var
 file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/coin/include/coin/constants.hpp" PROJECT_VER_STRING)
@@ -18,13 +20,12 @@ project(Vcash VERSION ${PROJECT_VER} LANGUAGES C CXX)
 # Optional build flag
 option(WITH_INCOMPATIBLE_BDB "Enables building with a Berkeley DB v5 minimum instead of v6 minimum." OFF)
 
-# Build types/options
-IF(CMAKE_CONFIGURATION_TYPES) # Multi-config, aka Windows
-  # This will build both Debug and Release cmake files on Windows, assuming the user doesn't set it.
-  # Unsure how to (or if you even can) default to Release here while still leaving the option for Debug, as this tells cmake the available build types.
-  set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "The possible build types." FORCE)
-ELSEIF(NOT CMAKE_BUILD_TYPE) # Single-config, aka Unix
-  # Default to a release build if nothing is specified
+# Build options for multi-config (aka Windows)
+IF(CMAKE_CONFIGURATION_TYPES)
+  set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "Available build types." FORCE)
+ENDIF()
+# Default to a release build if nothing is specified -- single-config (aka Unix)
+IF(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 ENDIF()
 
@@ -33,9 +34,9 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Dependency versions
-set(OPENSSL_MIN_VER "1.0.2") # EXACT
+set(OPENSSL_MIN_VER "1.0.2") # EXACT | Do not set letter (the "status" version)
 set(BOOST_MIN_VER "1.54.0") # Minimum
-# Prevent accidental building with DB v5, which isn't compatible with the newer v6 wallets
+# Prevent accidental building with DB v5, which isn't forwards-compatible with wallets built with DB v6
 IF(WITH_INCOMPATIBLE_BDB)
   set(BERKELEYDB_MIN_VER "5.0.0") # Minimum
 ELSE()
@@ -47,10 +48,20 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/Modules)
 
 # Start of finding dependencies
 find_package(OpenSSL ${OPENSSL_MIN_VER} EXACT REQUIRED)
-set(THREADS_PREFER_PTHREAD_FLAG ON) # Windows isn't POSIX, so this might/will throw an error, but that can be ignored. It's still needed (?) for Windows as it tells FindThreads what to look for.
+# Windows isn't POSIX
+IF(NOT (CMAKE_SYSTEM_NAME MATCHES ".*Windows.*")) # MATCHES is regex
+  # Tells find_package(Threads) to get pthread.h & use -lpthread compile flag
+  set(THREADS_PREFER_PTHREAD_FLAG ON)
+ENDIF()
 find_package(Threads REQUIRED)
 find_package(Boost ${BOOST_MIN_VER} REQUIRED COMPONENTS system)
 find_package(BerkeleyDB ${BERKELEYDB_MIN_VER} REQUIRED)
+
+# Throw a warning if the user has DB ver < 6 but continue building
+IF(BERKELEYDB_VERSION VERSION_LESS "6.0.0")
+  message(WARNING "Pre-existing wallet data is not backwards compatible with version v5 of Berkeley DB if it was originally built with v6. \
+    Read \"docs/BUILDING.md\" for more info.")
+ENDIF()
 
 # Sources for libcoin
 SET(SOURCES
@@ -195,6 +206,49 @@ set(DATABASE_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/database/src/whirlpool.cpp
 	)
 
+# Initial setting of compiler definitions | I believe this makes it 64-bit only, which should probably be noted in the README.
+set(_definitions "-D_FILE_OFFSET_BITS=64")
+
+IF(CMAKE_BUILD_TYPE STREQUAL "Release")
+  message(STATUS "Setting build flag for \"Release\" build-type...")
+  list(APPEND _definitions "-DNDEBUG")
+ENDIF()
+
+# Adds compile definitions for detected compiler
+# Windows
+IF(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+  message(STATUS "Setting build flags for MSVC compiler...")
+  # Maybe WIN32_WINNT should be handled better?
+  list(APPEND _definitions "-D_WIN32_WINNT=0x0501 -D_UNICODE -DUNICODE -D_SCL_SECURE_NO_DEPRECATE -D_CRT_SECURE_NO_DEPRECATE")
+# Mac
+ELSEIF(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  message(STATUS "Setting build flags for Clang compiler...")
+  list(APPEND _definitions "-DBOOST_NO_CXX11_NUMERIC_LIMITS")
+# Linux
+ELSEIF(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  # Get full GCC version and feed it into GCC_VER_STRING
+  EXEC_PROGRAM(gcc ARGS --version OUTPUT_VARIABLE GCC_VER_STRING)
+  # Parse the version into a useable x.x.x format, as it outputs unimportant extra junk into the string
+  string(REGEX REPLACE ".* ([0-9]+)\\.([0-9]+)\\.([0-9]+).*" "\\1.\\2.\\3" GCC_VER_STRING ${GCC_VER_STRING})
+
+  # Change these variable versions as needed
+  set(GCC_MIN_VER "4.8.0") # Minimum GCC version for compiling
+  set(GCC_FLAG_VER "6.0.0") # Minimum version to use special compile flags | v6 and up require flags to build libcoin -- big_number is the problem file, which is part of coin
+
+  # Fail if less than the minimum GCC version
+  IF(GCC_VER_STRING VERSION_LESS "${GCC_MIN_VER}")
+    message(FATAL_ERROR "Error: Minimum GCC v${GCC_MIN_VER} is required!")
+  # Set compile flags on GCC versions greater/equal to the GCC_FLAG_VER | VERSION_GREATER_EQUAL is available, but only on CMake v3.7+
+  ELSEIF(GCC_VER_STRING VERSION_EQUAL ${GCC_FLAG_VER} OR GCC_VER_STRING VERSION_GREATER ${GCC_FLAG_VER})
+    message(STATUS "Setting build flags for newer GCC compiler...")
+    list(APPEND _definitions "-O2") # flag recommended by xCore https://vcash.slack.com/archives/C3B7H53N0/p1500056978220682
+  ENDIF()
+ENDIF()
+
+# Set all our various definitions
+message(STATUS "List of build definitions to be used (delimited by semi-colon): ${_definitions}")
+add_definitions(${_definitions})
+
 # "STATIC libraries are archives of object files for use when linking other targets."
 add_library(coin STATIC ${SOURCES})
 add_library(database STATIC ${DATABASE_SOURCES})
@@ -215,33 +269,6 @@ target_include_directories(database
   PUBLIC ${OPENSSL_INCLUDE_DIR}
 )
 
-# Check if using GCC
-IF(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  # Get full GCC version
-  EXEC_PROGRAM(gcc ARGS --version OUTPUT_VARIABLE GCC_VER_STRING)
-  # Parse the MAJOR version from GCC version
-  string(REGEX REPLACE ".* ([0-9]+)\\.[0-9]\\.[0-9].*" "\\1" GCC_VER_MAJOR ${GCC_VER_STRING})
-
-  # Just making sure they aren't using an ancient GCC
-  IF(GCC_VER_MAJOR STREQUAL "1" OR GCC_VER_MAJOR STREQUAL "2" OR GCC_VER_MAJOR STREQUAL "3")
-    message(FATAL_ERROR "Error: Minimum of version GCC 4.8 is required!")
-  # Fail if less than GCC version 4.8
-  ELSEIF(GCC_VER_MAJOR STREQUAL "4")
-    # Grabs the MINOR version from GCC
-    string(REGEX REPLACE ".* [0-9]\\.([0-9]+)\\.[0-9].*" "\\1" GCC_VER_MINOR ${GCC_VER_STRING})
-    # Last accepted MINOR versions of gcc MAJOR v4
-    IF(NOT (GCC_VER_MINOR STREQUAL "8" OR GCC_VER_MINOR STREQUAL "9"))
-      message(FATAL_ERROR "Error: Minimum of version GCC 4.8 is required!")
-    ENDIF()
-  # If v6 or higher, set gcc build flags
-  ELSEIF(NOT (GCC_VER_MAJOR STREQUAL "4" OR GCC_VER_MAJOR STREQUAL "5"))
-    message(STATUS "GCC v${GCC_VER_MAJOR} found, setting compile flags to build with newer versions...")
-    target_compile_options(coin
-      PUBLIC "-O2"
-      PUBLIC "-DNDEBUG") # big_number is the problem file, which is part of coin | flags https://vcash.slack.com/archives/C3B7H53N0/p1500056978220682
-  ENDIF()
-ENDIF()
-
 add_executable(vcashd ${CMAKE_CURRENT_SOURCE_DIR}/coin/test/main.cpp)
 
 target_link_libraries(vcashd coin database ${BERKELEYDB_LIBRARIES} ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES} Threads::Threads)
@@ -255,6 +282,7 @@ IF(CMAKE_INSTALL_PREFIX AND CMAKE_INSTALL_BINDIR AND CMAKE_INSTALL_LIBDIR)
   )
 ELSE()
   message(STATUS "No installation paths provided, so the default paths will be used.")
+  # Note that bin and lib are not OS-specifc, but generic names used by cmake
   install(TARGETS vcashd database coin
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib

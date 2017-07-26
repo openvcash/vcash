@@ -2,20 +2,20 @@ Required dependencies
 ======
 You should always use the highest version available that conforms to these dependencies.
 
-|Dependency   |Version         |Name on Ubuntu  |Links and Notes
-|:------------|:--------------:|:--------------:|:---:
-|Boost        |minimum `1.54.0`|`boost-defaults`|http://www.boost.org/users/download/#live
-|Berkeley DB  |minimum `6.0.0` |`db-defaults`   |http://www.oracle.com/technetwork/database/database-technologies/berkeleydb/downloads/index-082944.html Copy the download link and remove `otn/` from the link.
-|OpenSSL      |exact `1.0.2`   |`openssl`       |https://github.com/openssl/openssl/releases/
-|Threads      |N/A             |`libc++`        |It should come with your systems C/C++ libraries.
+|Dependency |Version         |Name on Ubuntu  |Links and Notes
+|:----------|:--------------:|:--------------:|:---:
+|Boost      |minimum `1.54.0`|`boost-defaults`|http://www.boost.org/users/download/#live
+|Berkeley DB|minimum `6.0.0` |`db-defaults`   |http://www.oracle.com/technetwork/database/database-technologies/berkeleydb/downloads/index-082944.html Copy the download link and remove `otn/` from the link.
+|OpenSSL    |exact `1.0.2`   |`openssl`       |https://github.com/openssl/openssl/releases/
+|Threads    |N/A             |`libc++`        |It should come with your systems C/C++ libraries.
 
 Build-time dependencies
 ---
-Dependency                                    |Notes
-:--------------------------------------------:|:---:
-CMake                                         |Minimum Version `3.1.3`
-Make                                          |Linux & Mac only.
-C/C++ compiler compatible with CMake          |`GCC >= 4.8` on Linux, `MSVC` on Windows, `Clang` on Mac.
+Dependency                          |Notes
+:----------------------------------:|:---:
+CMake                               |Minimum Version `3.1.3`
+Make                                |Linux & Mac only -- alternatively `NMake` on Windows.
+C/C++ compiler compatible with CMake|`GCC >= 4.8` on Linux, `MSVC` on Windows, `Clang` on Mac.
 
 Windows downloads
 ---

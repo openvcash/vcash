@@ -1,48 +1,60 @@
-# This is a custom module that tries to find Berkeley DB's libraries and header files/paths.
-# If any paths/names/suffixes/etc. are missing, add them to the variables with a list(APPEND DB_x_x "missing_value")
-# Make sure to not affect the order things are added, as everything is appended to lists in specific orders.
+# Output vars ("db" library is required, but "db_cxx" "db_stl" "db_sql" are also included if they are found)
+# ^^^^^^^^^^^
+# BERKELEYDB_INCLUDE_DIRS
+# BERKELEYDB_LIBRARIES
+#
+# User-passable values
+# ^^^^^^^^^^^^^^^^^^^^
+# BDB_ROOT_PATH
+# BDB_DB_LIBNAME
+# BDB_DB_CXX_LIBNAME
+# BDB_DB_STL_LIBNAME
+# BDB_DB_SQL_LIBNAME
+#
+# If all else fails, set any of these manually (whatever is failing)
+# ^^^^^^^^^^^^^^^^^^^^
+# BERKELEYDB_INCLUDE_DIRS
+# DB_LIBRARY
+# DB_CXX
+# DB_STL
+# DB_SQL
 
 include(FindPackageHandleStandardArgs)
 
-# Easier to change variables than going line by line should this ever need updating..
-set(DB_H_NAMES "") # Header names
-set(DB_L_NAMES "") # Library names | Do not use prefixes or suffixes, cmake adds them based on the OS - ex: "db" gets changed to "libdb.so" on Linux -- But Windows doesn't add prefixes for some reason.
-set(DB_HINTS "") # "These should be paths computed by system introspection, such as a hint provided by the location of another item already found.
-set(DB_PATHS "") # "These are typically hard-coded guesses."
-set(DB_H_SUF "") # Header suffixes | These get appended onto the path for deeper searches
-set(DB_L_SUF "") # Library suffixes | These get appended onto the path for deeper searches
-
-# HINTS don't really change across OS's | BerkeleyDB is also known as DB, so we add DB_ROOT to HINTS
-list(APPEND DB_HINTS
-  "$ENV{BERKELEYDB_ROOT}"
-  "$ENV{DB_ROOT}"
-  "${BERKELEYDB_ROOT}"
-  "${DB_ROOT}"
-)
-
-# Allow user to pass specific values to find Berkeley DB
-# Path to users DB header files
-IF(BERKELEYDB_INCLUDES_PATHS)
-  list(APPEND DB_PATHS "${BERKELEYDB_INCLUDES_PATH}")
-ENDIF()
-# Path to users DB libs
-IF(BERKELEYDB_LIBS_PATHS)
-  list(APPEND DB_PATHS "${BERKELEYDB_LIB_PATH}")
+# HINTS don't change across OS's
+# Checks if evnironment paths are empty, set them if they aren't
+IF(NOT ("$ENV{BERKELEYDB_ROOT}" STREQUAL ""))
+  list(APPEND DB_HINTS "$ENV{BERKELEYDB_ROOT}")
+ELSEIF(NOT ("$ENV{DB_ROOT}" STREQUAL ""))
+  list(APPEND DB_HINTS "$ENV{DB_ROOT}")
 ENDIF()
 
-# Header names don't really change across OS's
+# Header names
 list(APPEND DB_H_NAMES
   "db_cxx.h"
   "db.h"
 )
 
-# Checks for if the user used custom flags for their library name
-IF(BERKELEYDB_LIB_NAME)
-    list(APPEND DB_L_NAMES "${BERKELEYDB_LIB_NAME}")
-ENDIF()
+# Header search suffixes | aka /usr/${DB_H_SUF} if searching /usr
+list(APPEND DB_H_SUF
+  "include"
+  "includes"
+)
 
-# Fill in the variables to search for Berkeley DB
-IF(WIN32)
+# Library search suffixes | aka /usr/${DB_L_SUF} if searching /usr
+list(APPEND DB_L_SUF
+  "lib"
+  "libs"
+  "lib64"
+  "libs64"
+)
+
+# Allow user to pass a path instead of guessing
+IF(BDB_ROOT_PATH)
+  list(APPEND DB_PATHS "${BDB_ROOT_PATH}")
+ENDIF()
+# Default paths to search for Berkeley DB, regardless of root path
+IF(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   # Shameless copy-paste from FindOpenSSL.cmake v3.8
   file(TO_CMAKE_PATH "$ENV{PROGRAMFILES}" _programfiles)
   list(APPEND DB_HINTS "${_programfiles}")
@@ -59,39 +71,23 @@ IF(WIN32)
     "C:/Berkeley DB"
     "C:/DB"
   )
-  list(APPEND DB_H_SUF
-    "include"
-  )
-  list(APPEND DB_L_SUF
-    "lib"
-  )
 ELSE()
-  list(APPEND DB_L_NAMES
-    "db_cxx"
-    "db"
-  )
-  # Variables for anything other than Windows
+  # Paths for anything other than Windows
+  # Cellar/berkeley-db is for macOS homebrew
   list(APPEND DB_PATHS
     "/usr"
     "/usr/local"
-    "/usr/local/Cellar"
-    "/usr/local/Cellar/berkeley-db"
-    "/usr/local/Cellar/Berkeley DB"
-    "/usr/local/Cellar/DB"
     "/opt"
     "/opt/local"
-  )
-  list(APPEND DB_H_SUF
-    "include"
-  )
-  list(APPEND DB_L_SUF
-    "lib"
-    "lib64"
+    "/usr/local/Cellar"
+    "/usr/local/Cellar/db"
+    "/usr/local/Cellar/berkeley-db"
+    "/usr/local/Cellar/Berkeley DB"
   )
 ENDIF()
 
-# Find includes path
-find_path(_BERKELEYDB_INCLUDE_DIR
+# Find includes path | This is passed directly to CMakeLists.txt without moving it into a different var.
+find_path(BERKELEYDB_INCLUDE_DIRS
   NAMES ${DB_H_NAMES}
   HINTS ${DB_HINTS}
   PATH_SUFFIXES ${DB_H_SUF}
@@ -99,80 +95,154 @@ find_path(_BERKELEYDB_INCLUDE_DIR
 )
 
 # Checks if the version file exists, save the version file to a var, and fail if there's no version file
-IF(_BERKELEYDB_INCLUDE_DIR AND EXISTS "${_BERKELEYDB_INCLUDE_DIR}/db.h")
-  set(_BERKELEYDB_VERSION_file "${_BERKELEYDB_INCLUDE_DIR}/db.h")
-ELSEIF(NOT _BERKELEYDB_INCLUDE_DIR) # Fail if not found. Only used to pass a helpful error message, instead of the generic failure message from find_package_handle_standard_args
-  message(FATAL_ERROR "Error: Failed to find Berkeley DB includes path. \
-  Try setting BERKELEYDB_INCLUDES_PATH and run cmake again.")
+IF(BERKELEYDB_INCLUDE_DIRS AND EXISTS "${BERKELEYDB_INCLUDE_DIRS}/db.h")
+  set(_BERKELEYDB_VERSION_file "${BERKELEYDB_INCLUDE_DIRS}/db.h")
 ELSE()
-  message(FATAL_ERROR "Error: FindBerkeleyDB failed to find the header file \"db.h\"")
+  message(FATAL_ERROR "Error: Failed to find the Berkeley DB header file \"db.h\"")
 ENDIF()
 
-# Parse the BerkeleyDB version
+# Parse the BerkeleyDB version to be eventually checked against the minimum
 file(READ ${_BERKELEYDB_VERSION_file} _BERKELEYDB_header_contents)
 string(REGEX REPLACE ".*DB_VERSION_MAJOR	([0-9]+).*DB_VERSION_MINOR	([0-9]+).*DB_VERSION_PATCH	([0-9]+).*"
 "\\1.\\2.\\3" BERKELEYDB_VERSION "${_BERKELEYDB_header_contents}"
 )
 
-# For some reason they thought it was a good idea to put MAJOR and MINOR version numbers in the lib name for Windows...
-# so we put DB_L_NAMES after includes have been found, so we can use db.h to get the version numbers.
-IF(WIN32 AND NOT BERKELEYDB_LIB_NAME) # This doesn't run if they pass their own lib name, which is what we want.
-  # Parse the Major and minor DB version into a string
-  string(REGEX REPLACE ".*DB_VERSION_MAJOR	([0-9]+).*DB_VERSION_MINOR	([0-9]+).*"
-  "\\1\\2" DB_MAJORMINOR_VER "${_BERKELEYDB_header_contents}"
-  )
-  message(STATUS "Berkeley DB MAJORMINOR v${DB_MAJORMINOR_VER} found, searching for lib names...")
-  # Lib name for Windows, example on DB v6.2: libdb62.lib
-  # For some reason cmake doesn't correctly append prefixes here, so we add them manually. Automatic suffixes still work.
-  list(APPEND DB_L_NAMES
-    "libdb${DB_MAJORMINOR_VER}"
-  	"libdb_cxx${DB_MAJORMINOR_VER}"
-  	"libdb"
-  	"libdb_cxx"
+# Parse the DB version into multiple strings to be used in lib names | Ex: DB v6.2 gets put into variables as 62 6.2 and 6
+string(REGEX REPLACE ".*DB_VERSION_MAJOR	([0-9]+).*DB_VERSION_MINOR	([0-9]+).*" "\\1\\2" DB_MAJORMINOR_VER "${_BERKELEYDB_header_contents}")
+string(REGEX REPLACE ".*DB_VERSION_MAJOR	([0-9]+).*DB_VERSION_MINOR	([0-9]+).*" "\\1.\\2" DB_MAJOR_DOT_MINOR_VER "${_BERKELEYDB_header_contents}")
+string(REGEX REPLACE ".*DB_VERSION_MAJOR	([0-9]+).*" "\\1" DB_MAJOR_VER "${_BERKELEYDB_header_contents}")
+
+# We put lib name vars after includes have been found, so we can use db.h to get the version numbers.
+# I would do some fancy macro/forloop stuff here, but uh.. Yeah..
+# Checks for if the user used custom flags for their "db" library name
+IF(BDB_DB_LIBNAME)
+    list(APPEND DB_LIBNAMES "${BDB_DB_LIBNAME}")
+ELSE()
+  # Start guessing names if no libname is passed
+  list(APPEND DB_LIBNAMES
     "db"
+    "libdb"
+    "libdb${DB_MAJOR_DOT_MINOR_VER}"
+    "libdb-${DB_MAJOR_DOT_MINOR_VER}"
+    "libdb_${DB_MAJOR_DOT_MINOR_VER}"
+    "libdb${DB_MAJORMINOR_VER}"
+    "libdb-${DB_MAJORMINOR_VER}"
+    "libdb_${DB_MAJORMINOR_VER}"
+    "libdb${DB_MAJOR_VER}"
+    "libdb-${DB_MAJOR_VER}"
+    "libdb_${DB_MAJOR_VER}"
+  )
+ENDIF()
+# Checks for if the user used custom flags for their "db_cxx" library name
+IF(BDB_DB_CXX_LIBNAME)
+  list(APPEND DB_CXX_LIBNAMES "${BDB_DB_CXX_LIBNAME}")
+ELSE()
+  # Start guessing names if no libname is passed
+  list(APPEND DB_CXX_LIBNAMES
     "db_cxx"
+    "libdb_cxx"
+    "libdb_cxx${DB_MAJOR_DOT_MINOR_VER}"
+    "libdb_cxx-${DB_MAJOR_DOT_MINOR_VER}"
+    "libdb_cxx_${DB_MAJOR_DOT_MINOR_VER}"
+    "libdb_cxx${DB_MAJORMINOR_VER}"
+    "libdb_cxx-${DB_MAJORMINOR_VER}"
+    "libdb_cxx_${DB_MAJORMINOR_VER}"
+    "libdb_cxx${DB_MAJOR_VER}"
+    "libdb_cxx-${DB_MAJOR_VER}"
+    "libdb_cxx_${DB_MAJOR_VER}"
+  )
+ENDIF()
+# Checks for if the user used custom flags for their "db_stl" library name
+IF(BDB_DB_STL_LIBNAME)
+  list(APPEND DB_STL_LIBNAMES "${BDB_DB_STL_LIBNAME}")
+ELSE()
+  # Start guessing names if no libname is passed
+  list(APPEND DB_STL_LIBNAMES
+    "db_stl"
+    "libdb_stl"
+    "libdb_stl${DB_MAJOR_DOT_MINOR_VER}"
+    "libdb_stl-${DB_MAJOR_DOT_MINOR_VER}"
+    "libdb_stl_${DB_MAJOR_DOT_MINOR_VER}"
+    "libdb_stl${DB_MAJORMINOR_VER}"
+    "libdb_stl-${DB_MAJORMINOR_VER}"
+    "libdb_stl_${DB_MAJORMINOR_VER}"
+    "libdb_stl${DB_MAJOR_VER}"
+    "libdb_stl-${DB_MAJOR_VER}"
+    "libdb_stl_${DB_MAJOR_VER}"
+  )
+ENDIF()
+# Checks for if the user used custom flags for their "db_stl" library name
+IF(BDB_DB_SQL_LIBNAME)
+  list(APPEND DB_SQL_LIBNAMES "${BDB_DB_SQL_LIBNAME}")
+ELSE()
+  # Start guessing names if no libname is passed
+  list(APPEND DB_SQL_LIBNAMES
+    "db_sql"
+    "libdb_sql"
+    "libdb_sql${DB_MAJOR_DOT_MINOR_VER}"
+    "libdb_sql-${DB_MAJOR_DOT_MINOR_VER}"
+    "libdb_sql_${DB_MAJOR_DOT_MINOR_VER}"
+    "libdb_sql${DB_MAJORMINOR_VER}"
+    "libdb_sql-${DB_MAJORMINOR_VER}"
+    "libdb_sql_${DB_MAJORMINOR_VER}"
+    "libdb_sql${DB_MAJOR_VER}"
+    "libdb_sql-${DB_MAJOR_VER}"
+    "libdb_sql_${DB_MAJOR_VER}"
   )
 ENDIF()
 
-# Find library filepath
-find_library(_BERKELEYDB_LIBRARIES
-  NAMES ${DB_L_NAMES}
+# Find "db" library filepath
+find_library(DB_LIBRARY
+  NAMES ${DB_LIBNAMES}
   HINTS ${DB_HINTS}
   PATH_SUFFIXES ${DB_L_SUF}
   PATHS ${DB_PATHS}
 )
 
-# Fail if not found. Only used to pass a helpful error message, instead of the generic failure message from find_package_handle_standard_args
-IF(NOT _BERKELEYDB_LIBRARIES)
-  message(FATAL_ERROR "Error: Failed to find Berkeley DB libs. \
-  Try setting BERKELEYDB_LIB_PATH and/or BERKELEYDB_LIB_NAME, then run cmake again.")
-ENDIF()
+# Find "db_cxx" library filepath
+find_library(DB_CXX
+  NAMES ${DB_CXX_LIBNAMES}
+  HINTS ${DB_HINTS}
+  PATH_SUFFIXES ${DB_L_SUF}
+  PATHS ${DB_PATHS}
+)
 
-# Should fail if the vars aren't found | FOUND_VAR is obsolete and only for older versions of cmake.
-# Underscore in front of vars because the docs recommend it https://cmake.org/cmake/help/latest/module/FindPackageHandleStandardArgs.html
-# "... these should typically be cache entries such as FOO_LIBRARY and not output variables like FOO_LIBRARIES."
+# Find "db_stl" library filepath
+find_library(DB_STL
+  NAMES ${DB_STL_LIBNAMES}
+  HINTS ${DB_HINTS}
+  PATH_SUFFIXES ${DB_L_SUF}
+  PATHS ${DB_PATHS}
+)
+
+# Find "db_sql" library filepath
+find_library(DB_SQL
+  NAMES ${DB_SQL_LIBNAMES}
+  HINTS ${DB_HINTS}
+  PATH_SUFFIXES ${DB_L_SUF}
+  PATHS ${DB_PATHS}
+)
+
+# Should fail if the vars aren't found, although there's pre-checks above this. | "FOUND_VAR is obsolete and only for older versions of cmake."
 find_package_handle_standard_args(BerkeleyDB
   FOUND_VAR BERKELEYDB_FOUND
-  REQUIRED_VARS _BERKELEYDB_LIBRARIES _BERKELEYDB_INCLUDE_DIR
+  REQUIRED_VARS DB_LIBRARY BERKELEYDB_INCLUDE_DIRS
   VERSION_VAR BERKELEYDB_VERSION
-  )
+)
 
-# Don't bother parsing the major version if the flag isn't set.
-IF(WITH_INCOMPATIBLE_BDB)
-  # Get MAJOR version of DB | This is only for the Vcash-specific warning, so remove it if you are using this module elsewhere.
-  string(REGEX REPLACE ".*DB_VERSION_MAJOR	([0-9]+).*"
-  "\\1" BERKELEYDB_VER_MAJOR "${_BERKELEYDB_header_contents}")
-
-  # Throw a WARNING to people using BerkeleyDB v5, but continue building | This is a Vcash-specific warning, so remove it if you are using this module elsewhere.
-  IF(BERKELEYDB_VER_MAJOR STREQUAL "5")
-    message(WARNING
-      "==WARNING== \
-      Pre-existing wallet data is not backwards compatible with version v5 of Berkeley DB if it was originally built with v6. \
-      Read vcash/docs/BUILDING.md for more info. \
-      ==WARNING==")
-  ENDIF()
+# Required lib set to temp var
+set(_dblibs "${DB_LIBRARY}")
+# Combine all found libs into temp var
+IF(DB_CXX)
+  list(APPEND _dblibs "${DB_CXX}")
+ENDIF()
+IF(DB_STL)
+  list(APPEND _dblibs "${DB_STL}")
+ENDIF()
+IF(DB_SQL)
+  list(APPEND _dblibs "${DB_SQL}")
 ENDIF()
 
-# Sets the correct, non-cached variables that will be used in CMakeLists.txt
-set(BERKELEYDB_INCLUDE_DIRS ${_BERKELEYDB_INCLUDE_DIR})
-set(BERKELEYDB_LIBRARIES ${_BERKELEYDB_LIBRARIES})
+# The actual var used outside of this find module | BERKELEYDB_INCLUDE_DIRS is already set from earlier.
+set(BERKELEYDB_LIBRARIES ${_dblibs})
+message(STATUS "All found Berkeley DB libs: ${BERKELEYDB_LIBRARIES}")
