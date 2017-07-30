@@ -464,6 +464,14 @@ namespace coin {
             );
         
             /**
+             * Encodes getbestblockhash data into JSON format.
+             * @param request The json_rpc_request_t.
+             */
+            json_rpc_response_t json_getbestblockhash(
+                const json_rpc_request_t & request
+            );
+        
+            /**
              * Encodes getblock data into JSON format.
              * @param request The json_rpc_request_t.
              */

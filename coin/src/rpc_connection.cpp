@@ -619,6 +619,10 @@ bool rpc_connection::handle_json_rpc_request(
         {
             response = json_getbalance(request);
         }
+        else if (request.method == "getbestblockhash")
+        {
+            response = json_getbestblockhash(request);
+        }
         else if (request.method == "getblock")
         {
             response = json_getblock(request);
@@ -2646,6 +2650,57 @@ rpc_connection::json_rpc_response_t rpc_connection::json_getdifficulty(
             ret.result.put(
                 "search-interval",
                 globals::instance().last_coin_stake_search_interval()
+            );
+        }
+        else
+        {
+            auto pt_error = create_error_object(
+                error_code_invalid_params, "invalid parameter count"
+            );
+            
+            /**
+             * error_code_invalid_params
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
+        }
+    }
+    catch (std::exception & e)
+    {
+        auto pt_error = create_error_object(
+            error_code_internal_error, e.what()
+        );
+        
+        /**
+         * error_code_internal_error
+         */
+        return json_rpc_response_t{
+            boost::property_tree::ptree(), pt_error, request.id
+        };
+    }
+    
+    return ret;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_getbestblockhash(
+    const json_rpc_request_t & request
+    )
+{
+    json_rpc_response_t ret;
+    
+    /**
+     * Set the id from the request.
+     */
+    ret.id = request.id;
+
+    try
+    {
+        if (request.params.size() == 0)
+        {
+            ret.result.put(
+                "", globals::instance().hash_best_chain().to_string(),
+                rpc_json_parser::translator<std::string> ()
             );
         }
         else
