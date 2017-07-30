@@ -75,14 +75,14 @@ namespace coin {
              * @param len
              */
             static std::string base64_encode(
-                const char * buf, const std::size_t & len
+                const uint8_t * buf, const std::size_t & len
                 )
             {
                 static const char b64_forward_table[65] =
                     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
                     "0123456789+/"
                 ;
-                std::string bindata(buf, len);
+                std::string bindata((char *)buf, len);
 
                 if (
                     bindata.size() > (

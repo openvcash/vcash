@@ -715,6 +715,10 @@ bool rpc_connection::handle_json_rpc_request(
         {
             response = json_repairwallet(request);
         }
+        else if (request.method == "signmessage")
+        {
+            response = json_signmessage(request);
+        }
         else if (request.method == "submitblock")
         {
             response = json_submitblock(request);
@@ -734,6 +738,10 @@ bool rpc_connection::handle_json_rpc_request(
         else if (request.method == "sendtoaddress")
         {
             response = json_sendtoaddress(request);
+        }
+        else if (request.method == "verifymessage")
+        {
+            response = json_verifymessage(request);
         }
         else if (request.method == "walletdenominate")
         {
@@ -6575,6 +6583,175 @@ rpc_connection::json_rpc_response_t rpc_connection::json_sendtoaddress(
     return ret;
 }
 
+rpc_connection::json_rpc_response_t rpc_connection::json_signmessage(
+    const json_rpc_request_t & request
+    )
+{
+    json_rpc_response_t ret;
+
+    try
+    {
+        if (request.params.size() == 2)
+        {
+            auto param_addr =
+                request.params.front().second.get<std::string> ("")
+            ;
+
+            auto param_msg =
+                request.params.back().second.get<std::string> ("")
+            ;
+
+            if (globals::instance().wallet_main()->is_locked())
+            {
+                auto pt_error = create_error_object(
+                    error_code_wallet_unlock_needed, "wallet is locked"
+                );
+                
+                /**
+                 * error_code_wallet_unlock_needed
+                 */
+                return json_rpc_response_t{
+                    boost::property_tree::ptree(), pt_error, request.id
+                };
+            }
+            else if (globals::instance().wallet_unlocked_mint_only())
+            {
+                auto pt_error = create_error_object(
+                    error_code_wallet_unlock_needed,
+                    "wallet is unlocked for minting only"
+                );
+                
+                /**
+                 * error_code_wallet_unlock_needed
+                 */
+                return json_rpc_response_t{
+                    boost::property_tree::ptree(), pt_error, request.id
+                };
+            }
+            
+            address addr(param_addr);
+
+            if (addr.is_valid() == false)
+            {
+                auto pt_error = create_error_object(
+                    error_code_invalid_address_or_key, "invalid address"
+                );
+                
+                /**
+                 * error_code_invalid_address_or_key
+                 */
+                return json_rpc_response_t{
+                    boost::property_tree::ptree(), pt_error, request.id
+                };
+            }
+
+            types::id_key_t key_id;
+            
+            if (addr.get_id_key(key_id) == false)
+            {
+                auto pt_error = create_error_object(
+                    error_code_type_error, "failed to get key id"
+                );
+                
+                /**
+                 * error_code_type_error
+                 */
+                return json_rpc_response_t{
+                    boost::property_tree::ptree(), pt_error, request.id
+                };
+            }
+            
+            key k;
+            
+            if (
+                globals::instance().wallet_main()->get_key(
+                key_id, k) == false
+                )
+            {
+                auto pt_error = create_error_object(
+                    error_code_type_error, "failed to get key"
+                );
+                
+                /**
+                 * error_code_type_error
+                 */
+                return json_rpc_response_t{
+                    boost::property_tree::ptree(), pt_error, request.id
+                };  
+            }
+
+            data_buffer buffer;
+                    
+            std::string msg_magic = "Vcash Signed Message:\n";
+            buffer.write_var_int(msg_magic.size());
+            buffer.write((void *)msg_magic.data(), msg_magic.size());
+
+            buffer.write_var_int(param_msg.size());
+            buffer.write((void *)param_msg.data(), param_msg.size());
+            
+            auto hash_msg = sha256::from_digest(&hash::sha256d(
+                reinterpret_cast<std::uint8_t *>(buffer.data()),
+                buffer.size())[0]
+            );
+
+            std::vector<std::uint8_t> sign;
+
+            if (k.sign_compact(hash_msg, sign) == false)
+            {
+                auto pt_error = create_error_object(
+                    error_code_type_error, "sign failed"
+                );
+                
+                /**
+                 * error_code_type_error
+                 */
+                return json_rpc_response_t{
+                    boost::property_tree::ptree(), pt_error, request.id
+                };
+            }
+
+            ret.result.put(
+                "", 
+                crypto::base64_encode(&sign[0], sign.size()),
+                rpc_json_parser::translator<std::string> ()
+            );
+        }
+        else
+        {
+            auto pt_error = create_error_object(
+                error_code_invalid_params, "invalid parameter count"
+            );
+            
+            /**
+             * error_code_invalid_params
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
+        }
+    }
+    catch (std::exception & e)
+    {
+        log_error(
+            "RPC Connection failed to create json_signmessage, what = " <<
+            e.what() << "."
+        );
+        
+        auto pt_error = create_error_object(
+            error_code_internal_error, e.what()
+        );
+        
+        /**
+         * error_code_internal_error
+         */
+        return json_rpc_response_t{
+            boost::property_tree::ptree(), pt_error, request.id
+        };
+    }
+
+    return ret;
+}
+
 rpc_connection::json_rpc_response_t rpc_connection::json_submitblock(
     const json_rpc_request_t & request
     )
@@ -6817,6 +6994,142 @@ rpc_connection::json_rpc_response_t rpc_connection::json_validateaddress(
         };
     }
     
+    return ret;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_verifymessage(
+    const json_rpc_request_t & request
+    )
+{
+    json_rpc_response_t ret;
+
+    try
+    {
+        if (request.params.size() == 3)
+        {
+            std::string param_addr;
+            std::string param_sign;
+            std::string param_msg;
+            
+            auto index = 0;
+            
+            for (auto & i : request.params)
+            {
+                if (index == 0)
+                {
+                    param_addr = i.second.get<std::string> ("");
+                }
+                else if (index == 1)
+                {
+                    param_sign = i.second.get<std::string> ("");
+                }
+                else if (index == 2)
+                {
+                    param_msg = i.second.get<std::string> ("");
+                }
+
+                index++;
+            }
+
+            address addr(param_addr);
+
+            if (addr.is_valid() == false)
+            {
+                auto pt_error = create_error_object(
+                    error_code_invalid_address_or_key, "invalid address"
+                );
+                
+                /**
+                 * error_code_invalid_address_or_key
+                 */
+                return json_rpc_response_t{
+                    boost::property_tree::ptree(), pt_error, request.id
+                };
+            }
+
+            types::id_key_t key_id;
+            
+            if (addr.get_id_key(key_id) == false)
+            {
+                auto pt_error = create_error_object(
+                    error_code_type_error, "failed to get key id"
+                );
+                
+                /**
+                 * error_code_type_error
+                 */
+                return json_rpc_response_t{
+                    boost::property_tree::ptree(), pt_error, request.id
+                };
+            }
+
+            data_buffer buffer;
+                    
+            std::string msg_magic = "Vcash Signed Message:\n";
+            buffer.write_var_int(msg_magic.size());
+            buffer.write((void *)msg_magic.data(), msg_magic.size());
+
+            buffer.write_var_int(param_msg.size());
+            buffer.write((void *)param_msg.data(), param_msg.size());
+
+            
+            
+            auto b64d = crypto::base64_decode(param_sign.c_str(), param_sign.size());
+            
+            std::vector<std::uint8_t> sign(b64d.begin(), b64d.end());
+
+            key k;
+
+            auto hash_msg = sha256::from_digest(&hash::sha256d(
+                reinterpret_cast<std::uint8_t *>(buffer.data()),
+                buffer.size())[0]
+            );
+
+            if (k.set_compact_signature(hash_msg, sign) == false)
+            {
+                ret.result.put("", false);
+            }
+            else
+            {
+                ret.result.put(
+                    "", 
+                    k.get_public_key().get_id() == key_id
+                ); 
+            }
+        }
+        else
+        {
+            auto pt_error = create_error_object(
+                error_code_invalid_params, "invalid parameter count"
+            );
+            
+            /**
+             * error_code_invalid_params
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
+        }
+    }
+    catch (std::exception & e)
+    {
+        log_error(
+            "RPC Connection failed to create json_verifymessage, what = " <<
+            e.what() << "."
+        );
+        
+        auto pt_error = create_error_object(
+            error_code_internal_error, e.what()
+        );
+        
+        /**
+         * error_code_internal_error
+         */
+        return json_rpc_response_t{
+            boost::property_tree::ptree(), pt_error, request.id
+        };
+    }
+
     return ret;
 }
 

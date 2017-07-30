@@ -674,6 +674,14 @@ namespace coin {
             );
         
             /**
+             * Performs a signmessage operation.
+             * @param request The json_rpc_request_t.
+             */
+            json_rpc_response_t json_signmessage(
+                const json_rpc_request_t & request
+            );
+
+            /**
              * Performs a submitblock operation.
              * @param request The json_rpc_request_t.
              */
@@ -689,6 +697,14 @@ namespace coin {
                 const json_rpc_request_t & request
             );
         
+            /**
+             * Performs a verifymessage operation.
+             * @param request The json_rpc_request_t.
+             */
+            json_rpc_response_t json_verifymessage(
+                const json_rpc_request_t & request
+            );
+
             /**
              * Performs a walletdenominate operation.
              * @param request The json_rpc_request_t.
