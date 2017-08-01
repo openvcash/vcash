@@ -25,22 +25,23 @@ Read [BUILDING](docs/BUILDING.md) before attempting to build from source.
 
 There are currently two ways to build the source code: [CMake](https://cmake.org/) and [Boost.](http://www.boost.org/build/)
 
-CMake relies on the dependencies to be installed normally, while Boost-build requires you to build and compile dependencies into the [vcash/deps](deps) folder.
+CMake relies on the dependencies to be installed normally, while Boost-build requires you to build and compile dependencies into the [vcash/deps](deps) folder.  
+The following instructions are only for CMake.
 
 #### Windows
 1. Install [the dependencies](docs/DEPENDENCIES.md) to their default locations.
-2. Download and extract the newest [Source code (zip).](https://github.com/openvcash/vcash/releases/latest)
+2. Download and extract the [Source code (zip).](https://github.com/openvcash/vcash/releases/latest)
 3. Run `cmake-gui`, select the source code and target build folders, any needed flags, then click configure/generate to start the build process.
 4. Open `Vcash.sln` with Visual Studio, select `Release` as build type, and then press the build button to start building Vcash.
 
 #### Linux & Mac
 1. Install [the dependencies](docs/DEPENDENCIES.md) with your package manager.
-2. Download the newest [Source code (tar.gz)](https://github.com/openvcash/vcash/releases/latest) to your `~/Downloads` folder.
+2. Download the [Source code (tar.gz)](https://github.com/openvcash/vcash/releases/latest) to your `~/Downloads` folder.
 3. Run the following commands from your terminal...
 ```
 tar -xzf ~/Downloads/vcash-*.tar.gz
 cd ~/Downloads/vcash-*/
-cmake
+cmake CMakeLists.txt
 make
 make install
 ```

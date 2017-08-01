@@ -14,7 +14,7 @@ Build flags
 Use the various build flags when initiating `cmake` to trigger certain options, or to choose where to install things. A list of some of them [can be found here.](https://cmake.org/Wiki/CMake_Useful_Variables)
 
 Please note that none of these are required for the build process.   
-A complete list of custom flags can be found in the comments of the [FindBerkeleyDB module.](../cmake/Modules/FindBerkeleyDB.cmake#L1-L20)
+A complete list of custom flags can be found in the comments of the [FindBerkeleyDB module.](../cmake/Modules/FindBerkeleyDB.cmake#L1-L23)
 
 Custom Flags             |Unix Example Setting|Windows Example Setting
 :------------------------|:------------------:|:---:

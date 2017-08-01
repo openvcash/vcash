@@ -10,12 +10,12 @@ CMAKE_MINIMUM_REQUIRED(VERSION 3.1.3)
 # For cross-compiling, read https://cmake.org/cmake/help/latest/manual/cmake-toolchains.7.html#cross-compiling-toolchain
 
 # Get version string from constants.hpp and feed it into the project var
-file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/coin/include/coin/constants.hpp" PROJECT_VER_STRING)
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/coin/include/coin/constants.hpp" VCASH_VERSION)
 string(REGEX REPLACE ".*version_string = \"([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-9]+).*"
-"\\1.\\2.\\3.\\4" PROJECT_VER "${PROJECT_VER_STRING}")
+"\\1.\\2.\\3.\\4" VCASH_VERSION "${VCASH_VERSION}")
 
-message(STATUS "Starting CMake build of Vcash ${PROJECT_VER}")
-project(Vcash VERSION ${PROJECT_VER} LANGUAGES C CXX)
+message(STATUS "Starting build of Vcash v${VCASH_VERSION}")
+project(Vcash VERSION ${VCASH_VERSION} LANGUAGES C CXX)
 
 # Optional build flag
 option(WITH_INCOMPATIBLE_BDB "Enables building with a Berkeley DB v5 minimum instead of v6 minimum." OFF)
@@ -29,14 +29,16 @@ IF(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 ENDIF()
 
-# Require/Build for C++11 | Consider changing to target_compile_features in the future -sum01
+# Require/Build for C++11
+# Consider changing to target_compile_features in the future. Links below for feature lists...
+# https://cmake.org/cmake/help/latest/prop_gbl/CMAKE_C_KNOWN_FEATURES.html#prop_gbl:CMAKE_C_KNOWN_FEATURES and https://cmake.org/cmake/help/latest/prop_gbl/CMAKE_CXX_KNOWN_FEATURES.html#prop_gbl:CMAKE_CXX_KNOWN_FEATURES
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Dependency versions
 set(OPENSSL_MIN_VER "1.0.2") # EXACT | Do not set letter (the "status" version)
 set(BOOST_MIN_VER "1.54.0") # Minimum
-# Prevent accidental building with DB v5, which isn't forwards-compatible with wallets built with DB v6
+# Prevent accidental building with DB v5, which isn't compatible with wallets built with DB v6
 IF(WITH_INCOMPATIBLE_BDB)
   set(BERKELEYDB_MIN_VER "5.0.0") # Minimum
 ELSE()
@@ -63,8 +65,60 @@ IF(BERKELEYDB_VERSION VERSION_LESS "6.0.0")
     Read \"docs/BUILDING.md\" for more info.")
 ENDIF()
 
-# Sources for libcoin
-SET(SOURCES
+# Initial setting of compiler definitions
+# I believe this makes the binary 64-bit only, which should be noted somewhere.
+set(_definitions "-D_FILE_OFFSET_BITS=64")
+
+IF(CMAKE_BUILD_TYPE STREQUAL "Release")
+  message(STATUS "Setting build flag for \"Release\" build-type...")
+  list(APPEND _definitions "-DNDEBUG")
+ENDIF()
+
+# Adds compile definitions for detected compiler
+# Windows
+IF(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+  message(STATUS "Setting build flags for MSVC compiler...")
+  # Maybe WIN32_WINNT should be handled better?
+  # The number changes across platform versions, which might (does?) result in lost performance when forcing a WinXP compile.
+  list(APPEND _definitions
+    "-D_WIN32_WINNT=0x0501"
+    "-D_UNICODE -DUNICODE"
+    "-D_SCL_SECURE_NO_DEPRECATE"
+    "-D_CRT_SECURE_NO_DEPRECATE"
+  )
+# Mac
+ELSEIF(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  message(STATUS "Setting build flags for Clang compiler...")
+  list(APPEND _definitions "-DBOOST_NO_CXX11_NUMERIC_LIMITS")
+# Linux
+ELSEIF(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  # Get full GCC version and feed it into GCC_VER_STRING
+  EXEC_PROGRAM(gcc ARGS --version OUTPUT_VARIABLE GCC_VER_STRING)
+  # Parse the version into a useable x.x.x format, as it outputs unimportant extra junk into the string
+  string(REGEX REPLACE ".* ([0-9]+)\\.([0-9]+)\\.([0-9]+).*" "\\1.\\2.\\3" GCC_VER_STRING ${GCC_VER_STRING})
+
+  # Change these variable versions as needed
+  set(GCC_MIN_VER "4.8.0") # Minimum GCC version for compiling
+  set(GCC_FLAG_VER "6.0.0") # Minimum version to use -02 optimization flag
+
+  # Fail if less than the minimum GCC version
+  IF(GCC_VER_STRING VERSION_LESS "${GCC_MIN_VER}")
+    message(FATAL_ERROR "Error: Minimum GCC v${GCC_MIN_VER} is required!")
+  # Set compile flags on GCC versions greater/equal to the GCC_FLAG_VER | VERSION_GREATER_EQUAL is available, but only on CMake v3.7+
+  ELSEIF(GCC_VER_STRING VERSION_EQUAL ${GCC_FLAG_VER} OR GCC_VER_STRING VERSION_GREATER ${GCC_FLAG_VER})
+    message(STATUS "Setting build flags for newer GCC compiler...")
+    # v6 and up require -02 to build libcoin | big_number is the problem file, which is part of libcoin
+    list(APPEND _definitions "-O2") # flag recommended by xCore https://vcash.slack.com/archives/C3B7H53N0/p1500056978220682
+  ENDIF()
+ENDIF()
+
+# Set all our various definitions
+message(STATUS "List of build definitions to be used (delimited by semi-colon): ${_definitions}")
+add_definitions(${_definitions})
+
+# "STATIC libraries are archives of object files for use when linking other targets."
+# Libcoin
+add_library(coin STATIC
   ${CMAKE_CURRENT_SOURCE_DIR}/coin/src/account.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/coin/src/accounting_entry.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/coin/src/address.cpp
@@ -175,10 +229,9 @@ SET(SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/coin/src/zerotime_manager.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/coin/src/zerotime_question.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/coin/src/zerotime_vote.cpp
-	)
-
-# Sources for libdatabase
-set(DATABASE_SOURCES
+)
+# Libdatabase
+add_library(database STATIC
   ${CMAKE_CURRENT_SOURCE_DIR}/database/src/block.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/database/src/broadcast_operation.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/database/src/compression.cpp
@@ -204,54 +257,7 @@ set(DATABASE_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/database/src/udp_handler.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/database/src/udp_multiplexor.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/database/src/whirlpool.cpp
-	)
-
-# Initial setting of compiler definitions | I believe this makes it 64-bit only, which should probably be noted in the README.
-set(_definitions "-D_FILE_OFFSET_BITS=64")
-
-IF(CMAKE_BUILD_TYPE STREQUAL "Release")
-  message(STATUS "Setting build flag for \"Release\" build-type...")
-  list(APPEND _definitions "-DNDEBUG")
-ENDIF()
-
-# Adds compile definitions for detected compiler
-# Windows
-IF(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-  message(STATUS "Setting build flags for MSVC compiler...")
-  # Maybe WIN32_WINNT should be handled better?
-  list(APPEND _definitions "-D_WIN32_WINNT=0x0501 -D_UNICODE -DUNICODE -D_SCL_SECURE_NO_DEPRECATE -D_CRT_SECURE_NO_DEPRECATE")
-# Mac
-ELSEIF(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  message(STATUS "Setting build flags for Clang compiler...")
-  list(APPEND _definitions "-DBOOST_NO_CXX11_NUMERIC_LIMITS")
-# Linux
-ELSEIF(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  # Get full GCC version and feed it into GCC_VER_STRING
-  EXEC_PROGRAM(gcc ARGS --version OUTPUT_VARIABLE GCC_VER_STRING)
-  # Parse the version into a useable x.x.x format, as it outputs unimportant extra junk into the string
-  string(REGEX REPLACE ".* ([0-9]+)\\.([0-9]+)\\.([0-9]+).*" "\\1.\\2.\\3" GCC_VER_STRING ${GCC_VER_STRING})
-
-  # Change these variable versions as needed
-  set(GCC_MIN_VER "4.8.0") # Minimum GCC version for compiling
-  set(GCC_FLAG_VER "6.0.0") # Minimum version to use special compile flags | v6 and up require flags to build libcoin -- big_number is the problem file, which is part of coin
-
-  # Fail if less than the minimum GCC version
-  IF(GCC_VER_STRING VERSION_LESS "${GCC_MIN_VER}")
-    message(FATAL_ERROR "Error: Minimum GCC v${GCC_MIN_VER} is required!")
-  # Set compile flags on GCC versions greater/equal to the GCC_FLAG_VER | VERSION_GREATER_EQUAL is available, but only on CMake v3.7+
-  ELSEIF(GCC_VER_STRING VERSION_EQUAL ${GCC_FLAG_VER} OR GCC_VER_STRING VERSION_GREATER ${GCC_FLAG_VER})
-    message(STATUS "Setting build flags for newer GCC compiler...")
-    list(APPEND _definitions "-O2") # flag recommended by xCore https://vcash.slack.com/archives/C3B7H53N0/p1500056978220682
-  ENDIF()
-ENDIF()
-
-# Set all our various definitions
-message(STATUS "List of build definitions to be used (delimited by semi-colon): ${_definitions}")
-add_definitions(${_definitions})
-
-# "STATIC libraries are archives of object files for use when linking other targets."
-add_library(coin STATIC ${SOURCES})
-add_library(database STATIC ${DATABASE_SOURCES})
+)
 
 # "If your source files and your headers include the headers of another library, then it is a PUBLIC dependency."
 # "If your header files but not your source files include the headers of another library, then it is an INTERFACE dependency."
@@ -275,6 +281,7 @@ target_link_libraries(vcashd coin database ${BERKELEYDB_LIBRARIES} ${OPENSSL_LIB
 
 # Check for user-provided install/bin/lib paths
 IF(CMAKE_INSTALL_PREFIX AND CMAKE_INSTALL_BINDIR AND CMAKE_INSTALL_LIBDIR)
+  message(STATUS "Provided installation paths found, setting them now...")
   install(TARGETS vcashd database coin
     RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}"
     LIBRARY DESTINATION "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}"

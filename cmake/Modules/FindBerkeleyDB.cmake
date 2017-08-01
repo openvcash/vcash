@@ -2,6 +2,9 @@
 # ^^^^^^^^^^^
 # BERKELEYDB_INCLUDE_DIRS
 # BERKELEYDB_LIBRARIES
+# BDB_MAJOR_VER
+# BDB_MINOR_VER
+# BDB_PATCH_VER
 #
 # User-passable values
 # ^^^^^^^^^^^^^^^^^^^^
@@ -101,18 +104,15 @@ ELSE()
   message(FATAL_ERROR "Error: Failed to find the Berkeley DB header file \"db.h\"")
 ENDIF()
 
-# Parse the BerkeleyDB version to be eventually checked against the minimum
+# Read the version file db.h into a variable
 file(READ ${_BERKELEYDB_VERSION_file} _BERKELEYDB_header_contents)
-string(REGEX REPLACE ".*DB_VERSION_MAJOR	([0-9]+).*DB_VERSION_MINOR	([0-9]+).*DB_VERSION_PATCH	([0-9]+).*"
-"\\1.\\2.\\3" BERKELEYDB_VERSION "${_BERKELEYDB_header_contents}"
-)
+# Parse the DB version into variables to be used in the lib names
+string(REGEX REPLACE ".*DB_VERSION_MAJOR	([0-9]+).*" "\\1" BDB_MAJOR_VER "${_BERKELEYDB_header_contents}")
+string(REGEX REPLACE ".*DB_VERSION_MINOR	([0-9]+).*" "\\1" BDB_MINOR_VER "${_BERKELEYDB_header_contents}")
+string(REGEX REPLACE ".*DB_VERSION_PATCH	([0-9]+).*" "\\1" BDB_PATCH_VER "${_BERKELEYDB_header_contents}")
+set(BERKELEYDB_VERSION "${BDB_MAJOR_VER}.${BDB_MINOR_VER}.${BDB_PATCH_VER}")
 
-# Parse the DB version into multiple strings to be used in lib names | Ex: DB v6.2 gets put into variables as 62 6.2 and 6
-string(REGEX REPLACE ".*DB_VERSION_MAJOR	([0-9]+).*DB_VERSION_MINOR	([0-9]+).*" "\\1\\2" DB_MAJORMINOR_VER "${_BERKELEYDB_header_contents}")
-string(REGEX REPLACE ".*DB_VERSION_MAJOR	([0-9]+).*DB_VERSION_MINOR	([0-9]+).*" "\\1.\\2" DB_MAJOR_DOT_MINOR_VER "${_BERKELEYDB_header_contents}")
-string(REGEX REPLACE ".*DB_VERSION_MAJOR	([0-9]+).*" "\\1" DB_MAJOR_VER "${_BERKELEYDB_header_contents}")
-
-# We put lib name vars after includes have been found, so we can use db.h to get the version numbers.
+# CMake recommends to put unversioned names before versioned names
 # I would do some fancy macro/forloop stuff here, but uh.. Yeah..
 # Checks for if the user used custom flags for their "db" library name
 IF(BDB_DB_LIBNAME)
@@ -122,15 +122,15 @@ ELSE()
   list(APPEND DB_LIBNAMES
     "db"
     "libdb"
-    "libdb${DB_MAJOR_DOT_MINOR_VER}"
-    "libdb-${DB_MAJOR_DOT_MINOR_VER}"
-    "libdb_${DB_MAJOR_DOT_MINOR_VER}"
-    "libdb${DB_MAJORMINOR_VER}"
-    "libdb-${DB_MAJORMINOR_VER}"
-    "libdb_${DB_MAJORMINOR_VER}"
-    "libdb${DB_MAJOR_VER}"
-    "libdb-${DB_MAJOR_VER}"
-    "libdb_${DB_MAJOR_VER}"
+    "libdb${BDB_MAJOR_VER}.${BDB_MINOR_VER}"
+    "libdb-${BDB_MAJOR_VER}.${BDB_MINOR_VER}"
+    "libdb_${BDB_MAJOR_VER}.${BDB_MINOR_VER}"
+    "libdb${BDB_MAJOR_VER}${BDB_MINOR_VER}"
+    "libdb-${BDB_MAJOR_VER}${BDB_MINOR_VER}"
+    "libdb_${BDB_MAJOR_VER}${BDB_MINOR_VER}"
+    "libdb${BDB_MAJOR_VER}"
+    "libdb-${BDB_MAJOR_VER}"
+    "libdb_${BDB_MAJOR_VER}"
   )
 ENDIF()
 # Checks for if the user used custom flags for their "db_cxx" library name
@@ -141,15 +141,15 @@ ELSE()
   list(APPEND DB_CXX_LIBNAMES
     "db_cxx"
     "libdb_cxx"
-    "libdb_cxx${DB_MAJOR_DOT_MINOR_VER}"
-    "libdb_cxx-${DB_MAJOR_DOT_MINOR_VER}"
-    "libdb_cxx_${DB_MAJOR_DOT_MINOR_VER}"
-    "libdb_cxx${DB_MAJORMINOR_VER}"
-    "libdb_cxx-${DB_MAJORMINOR_VER}"
-    "libdb_cxx_${DB_MAJORMINOR_VER}"
-    "libdb_cxx${DB_MAJOR_VER}"
-    "libdb_cxx-${DB_MAJOR_VER}"
-    "libdb_cxx_${DB_MAJOR_VER}"
+    "libdb_cxx${BDB_MAJOR_VER}.${BDB_MINOR_VER}"
+    "libdb_cxx-${BDB_MAJOR_VER}.${BDB_MINOR_VER}"
+    "libdb_cxx_${BDB_MAJOR_VER}.${BDB_MINOR_VER}"
+    "libdb_cxx${BDB_MAJOR_VER}${BDB_MINOR_VER}"
+    "libdb_cxx-${BDB_MAJOR_VER}${BDB_MINOR_VER}"
+    "libdb_cxx_${BDB_MAJOR_VER}${BDB_MINOR_VER}"
+    "libdb_cxx${BDB_MAJOR_VER}"
+    "libdb_cxx-${BDB_MAJOR_VER}"
+    "libdb_cxx_${BDB_MAJOR_VER}"
   )
 ENDIF()
 # Checks for if the user used custom flags for their "db_stl" library name
@@ -160,15 +160,15 @@ ELSE()
   list(APPEND DB_STL_LIBNAMES
     "db_stl"
     "libdb_stl"
-    "libdb_stl${DB_MAJOR_DOT_MINOR_VER}"
-    "libdb_stl-${DB_MAJOR_DOT_MINOR_VER}"
-    "libdb_stl_${DB_MAJOR_DOT_MINOR_VER}"
-    "libdb_stl${DB_MAJORMINOR_VER}"
-    "libdb_stl-${DB_MAJORMINOR_VER}"
-    "libdb_stl_${DB_MAJORMINOR_VER}"
-    "libdb_stl${DB_MAJOR_VER}"
-    "libdb_stl-${DB_MAJOR_VER}"
-    "libdb_stl_${DB_MAJOR_VER}"
+    "libdb_stl${BDB_MAJOR_VER}.${BDB_MINOR_VER}"
+    "libdb_stl-${BDB_MAJOR_VER}.${BDB_MINOR_VER}"
+    "libdb_stl_${BDB_MAJOR_VER}.${BDB_MINOR_VER}"
+    "libdb_stl${BDB_MAJOR_VER}${BDB_MINOR_VER}"
+    "libdb_stl-${BDB_MAJOR_VER}${BDB_MINOR_VER}"
+    "libdb_stl_${BDB_MAJOR_VER}${BDB_MINOR_VER}"
+    "libdb_stl${BDB_MAJOR_VER}"
+    "libdb_stl-${BDB_MAJOR_VER}"
+    "libdb_stl_${BDB_MAJOR_VER}"
   )
 ENDIF()
 # Checks for if the user used custom flags for their "db_stl" library name
@@ -179,19 +179,19 @@ ELSE()
   list(APPEND DB_SQL_LIBNAMES
     "db_sql"
     "libdb_sql"
-    "libdb_sql${DB_MAJOR_DOT_MINOR_VER}"
-    "libdb_sql-${DB_MAJOR_DOT_MINOR_VER}"
-    "libdb_sql_${DB_MAJOR_DOT_MINOR_VER}"
-    "libdb_sql${DB_MAJORMINOR_VER}"
-    "libdb_sql-${DB_MAJORMINOR_VER}"
-    "libdb_sql_${DB_MAJORMINOR_VER}"
-    "libdb_sql${DB_MAJOR_VER}"
-    "libdb_sql-${DB_MAJOR_VER}"
-    "libdb_sql_${DB_MAJOR_VER}"
+    "libdb_sql${BDB_MAJOR_VER}.${BDB_MINOR_VER}"
+    "libdb_sql-${BDB_MAJOR_VER}.${BDB_MINOR_VER}"
+    "libdb_sql_${BDB_MAJOR_VER}.${BDB_MINOR_VER}"
+    "libdb_sql${BDB_MAJOR_VER}${BDB_MINOR_VER}"
+    "libdb_sql-${BDB_MAJOR_VER}${BDB_MINOR_VER}"
+    "libdb_sql_${BDB_MAJOR_VER}${BDB_MINOR_VER}"
+    "libdb_sql${BDB_MAJOR_VER}"
+    "libdb_sql-${BDB_MAJOR_VER}"
+    "libdb_sql_${BDB_MAJOR_VER}"
   )
 ENDIF()
 
-# Find "db" library filepath
+# Find "db" library filepath | Only "required" lib
 find_library(DB_LIBRARY
   NAMES ${DB_LIBNAMES}
   HINTS ${DB_HINTS}
@@ -223,7 +223,7 @@ find_library(DB_SQL
   PATHS ${DB_PATHS}
 )
 
-# Should fail if the vars aren't found, although there's pre-checks above this. | "FOUND_VAR is obsolete and only for older versions of cmake."
+# Fails if required vars aren't found. | "FOUND_VAR is obsolete and only for older versions of cmake."
 find_package_handle_standard_args(BerkeleyDB
   FOUND_VAR BERKELEYDB_FOUND
   REQUIRED_VARS DB_LIBRARY BERKELEYDB_INCLUDE_DIRS
@@ -231,16 +231,16 @@ find_package_handle_standard_args(BerkeleyDB
 )
 
 # Required lib set to temp var
-set(_dblibs "${DB_LIBRARY}")
+set(_dblibs ${DB_LIBRARY})
 # Combine all found libs into temp var
 IF(DB_CXX)
-  list(APPEND _dblibs "${DB_CXX}")
+  list(APPEND _dblibs ${DB_CXX})
 ENDIF()
 IF(DB_STL)
-  list(APPEND _dblibs "${DB_STL}")
+  list(APPEND _dblibs ${DB_STL})
 ENDIF()
 IF(DB_SQL)
-  list(APPEND _dblibs "${DB_SQL}")
+  list(APPEND _dblibs ${DB_SQL})
 ENDIF()
 
 # The actual var used outside of this find module | BERKELEYDB_INCLUDE_DIRS is already set from earlier.
