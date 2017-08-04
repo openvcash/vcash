@@ -691,6 +691,10 @@ bool rpc_connection::handle_json_rpc_request(
         {
             response = json_gettransaction(request);
         }
+        else if (request.method == "getunconfirmedbalance")
+        {
+            response = json_getunconfirmedbalance(request);
+        }
         else if (request.method == "settxfee")
         {
             response = json_settxfee(request);
@@ -5058,6 +5062,59 @@ rpc_connection::json_rpc_response_t rpc_connection::json_gettransaction(
             "RPC Connection failed to create json_gettransaction, what = " <<
             e.what() << "."
         );
+    }
+
+    return ret;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_getunconfirmedbalance(
+    const json_rpc_request_t & request
+    )
+{
+    json_rpc_response_t ret;
+
+    try
+    {
+        if (request.params.size() == 0)
+        {
+            ret.result.put(
+                "",
+                static_cast<double> (
+                globals::instance().wallet_main()->get_unconfirmed_balance()) /
+                constants::coin
+            );
+        }
+        else
+        {
+            auto pt_error = create_error_object(
+                error_code_invalid_params, "invalid parameter count"
+            );
+            
+            /**
+             * error_code_invalid_params
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
+        }
+    }
+    catch (std::exception & e)
+    {
+        log_error(
+            "RPC Connection failed to create json_getunconfirmedbalance, what = " <<
+            e.what() << "."
+        );
+        
+        auto pt_error = create_error_object(
+            error_code_internal_error, e.what()
+        );
+        
+        /**
+         * error_code_internal_error
+         */
+        return json_rpc_response_t{
+            boost::property_tree::ptree(), pt_error, request.id
+        };
     }
 
     return ret;
