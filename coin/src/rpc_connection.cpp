@@ -567,6 +567,10 @@ bool rpc_connection::handle_json_rpc_request(
         {
             response = json_checkwallet(request);
         }
+        else if (request.method == "createrawtransaction")
+        {
+            response = json_createrawtransaction(request);
+        }
         else if (request.method == "databaseenv")
         {
             response = json_databaseenv(request);
@@ -1359,6 +1363,305 @@ rpc_connection::json_rpc_response_t rpc_connection::json_checkwallet(
     {
         log_error(
             "RPC Connection failed to create json_checkwallet, what = " <<
+            e.what() << "."
+        );
+        
+        auto pt_error = create_error_object(
+            error_code_internal_error, e.what()
+        );
+        
+        /**
+         * error_code_internal_error
+         */
+        return json_rpc_response_t{
+            boost::property_tree::ptree(), pt_error, request.id
+        };
+    }
+
+    return ret;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_createrawtransaction(
+    const json_rpc_request_t & request
+    )
+{
+    json_rpc_response_t ret;
+
+    try
+    {
+        if (request.params.size() == 2)
+        {
+            boost::property_tree::ptree pt_inputs;
+
+            boost::property_tree::ptree pt_addresses_and_amounts;
+                        
+            auto index = 0;
+            
+            for (auto & i : request.params)
+            {
+                if (index == 0)
+                {
+                    pt_inputs = i.second;
+                }
+                else if (index == 1)
+                {
+                    pt_addresses_and_amounts = i.second;
+                }
+
+                index++;
+            }
+
+            transaction raw_tx;
+
+            for (auto & input : pt_inputs)
+            {
+                auto it_input = input.second.find("txid");
+
+                std::string txid;
+                
+                if (it_input != input.second.not_found())
+                {
+                    auto & pt_txid = input.second.get_child("txid");
+
+                    txid = pt_txid.get<std::string> ("");
+                }
+                else
+                {
+                    auto pt_error = create_error_object(
+                        error_code_invalid_params, "invalid parameter, missing txid key"
+                    );
+                    
+                    /**
+                     * error_code_invalid_params
+                     */
+                    return json_rpc_response_t{
+                        boost::property_tree::ptree(), pt_error, request.id
+                    };
+                }
+
+                if (!utility::is_hex(txid))
+                {
+                    auto pt_error = create_error_object(
+                        error_code_invalid_params, "invalid parameter, expected hex txid"
+                    );
+                    
+                    /**
+                     * error_code_invalid_params
+                     */
+                    return json_rpc_response_t{
+                        boost::property_tree::ptree(), pt_error, request.id
+                    }; 
+                }
+
+                auto it_vout = input.second.find("vout");
+
+                std::uint32_t vout;
+                
+                if (it_vout != input.second.not_found())
+                {
+                    auto & pt_vout = input.second.get_child("vout");
+
+                    vout = pt_vout.get<std::uint32_t> ("");
+                }
+                else
+                {
+                    auto pt_error = create_error_object(
+                        error_code_invalid_params, "invalid parameter, missing vout key"
+                    );
+                    
+                    /**
+                     * error_code_invalid_params
+                     */
+                    return json_rpc_response_t{
+                        boost::property_tree::ptree(), pt_error, request.id
+                    };
+                }
+
+                if (vout < 0)
+                {
+                    auto pt_error = create_error_object(
+                        error_code_invalid_params, "invalid parameter, vout must be positive"
+                    );
+                    
+                    /**
+                     * error_code_invalid_params
+                     */
+                    return json_rpc_response_t{
+                        boost::property_tree::ptree(), pt_error, request.id
+                    };
+                }
+
+                transaction_in tx_in(point_out(sha256(txid), vout));
+
+                raw_tx.transactions_in().push_back(tx_in);
+
+            }
+
+            std::set<address> addresses;
+            
+            std::vector< std::pair<script, std::int64_t> > to_send;
+            
+            std::int64_t total_amount = 0;
+            
+            for (auto & i : pt_addresses_and_amounts)
+            {
+                address addr(i.first);
+                
+                if (addr.is_valid())
+                {
+                    /**
+                     * Do not allow duplicate addresses.
+                     */
+                    if (addresses.count(addr) > 0)
+                    {
+                        auto pt_error = create_error_object(
+                        error_code_invalid_parameter,
+                        "invalid parameter"
+                        );
+                        
+                        /**
+                         * error_code_invalid_parameter
+                         */
+                        return json_rpc_response_t{
+                        boost::property_tree::ptree(), pt_error,
+                        request.id
+                        };
+                    }
+                    else
+                    {
+                        addresses.insert(addr);
+
+                        script script_pub_key;
+                        
+                        /**
+                         * Set the destination.
+                         */
+                        script_pub_key.set_destination(addr.get());
+
+                        /**
+                         * Get the double value.
+                         */
+                        double value = i.second.get<double> ("");
+                        
+                        /**
+                         * Make sure the value is within limits.
+                         */
+                        if (
+                            value < 0.0f ||
+                            value > constants::max_money_supply
+                            )
+                        {
+                            auto pt_error = create_error_object(
+                                error_code_type_error, "invalid amount"
+                            );
+                            
+                            /**
+                             * error_code_type_error
+                             */
+                            return json_rpc_response_t{
+                                boost::property_tree::ptree(), pt_error,
+                                request.id
+                            };
+                        }
+                            
+                        /**
+                         * Round the amount.
+                         */
+                        auto amount = static_cast<std::int64_t> (
+                            (value * constants::coin) > 0 ?
+                            (value * constants::coin) + 0.5 :
+                            (value * constants::coin) - 0.5
+                        );
+                        
+                        /**
+                         * Check that the amount is within the money range.
+                         */
+                            if (utility::money_range(amount) == false)
+                            {
+                                auto pt_error = create_error_object(
+                                    error_code_type_error,
+                                    "invalid amount"
+                                );
+                                
+                                /**
+                                 * error_code_type_error
+                                 */
+                                return json_rpc_response_t{
+                                    boost::property_tree::ptree(), pt_error,
+                                    request.id
+                                };
+                            }
+
+                            /**
+                             * Make sure the amount is not less than the
+                             * minimum transaction fee.
+                             */
+                            if (amount < constants::min_tx_fee)
+                            {
+                                auto pt_error = create_error_object(
+                                    error_code_amount_too_small,
+                                    "amount too small"
+                                );
+                                
+                                /**
+                                 * error_code_amount_too_small
+                                 */
+                                return json_rpc_response_t{
+                                    boost::property_tree::ptree(), pt_error,
+                                request.id
+                            };
+                        }
+                        
+                        transaction_out tx_out(amount, script_pub_key);
+
+                        raw_tx.transactions_out().push_back(tx_out);
+                    }
+                }
+                else
+                {
+                    auto pt_error = create_error_object(
+                        error_code_invalid_address_or_key,
+                        "error_code_invalid_address_or_key(" + i.first +
+                        ")"
+                    );
+                    
+                    /**
+                     * error_code_invalid_address_or_key
+                     */
+                    return json_rpc_response_t{
+                        boost::property_tree::ptree(), pt_error, request.id
+                    };
+                }
+            }
+
+            data_buffer buffer;
+
+            raw_tx.encode(buffer);
+
+            ret.result.put(
+                "", utility::hex_string(buffer.data(),
+                buffer.data() + buffer.size()),
+                rpc_json_parser::translator<std::string> ()
+            );
+        }
+        else
+        {
+            auto pt_error = create_error_object(
+                error_code_invalid_params, "invalid parameter count"
+            );
+            
+            /**
+             * error_code_invalid_params
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
+        }
+    }
+    catch (std::exception & e)
+    {
+        log_error(
+            "RPC Connection failed to create json_createrawtransaction, what = " <<
             e.what() << "."
         );
         
