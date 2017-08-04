@@ -711,6 +711,10 @@ bool rpc_connection::handle_json_rpc_request(
         {
             response = json_listreceivedbyaccount(request);
         }
+        else if (request.method == "listunspent")
+        {
+            response = json_listunspent(request);
+        }
         else if (request.method == "repairwallet")
         {
             response = json_repairwallet(request);
@@ -5445,6 +5449,226 @@ rpc_connection::json_rpc_response_t rpc_connection::json_listreceivedbyaccount(
         log_error(
             "RPC Connection failed to create json_listreceivedbyaccount, "
             "what = " << e.what() << "."
+        );
+        
+        auto pt_error = create_error_object(
+            error_code_internal_error, e.what()
+        );
+        
+        /**
+         * error_code_internal_error
+         */
+        return json_rpc_response_t{
+            boost::property_tree::ptree(), pt_error, request.id
+        };
+    }
+
+    return ret;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_listunspent(
+    const json_rpc_request_t & request
+    )
+{
+    json_rpc_response_t ret;
+
+    try
+    {
+        if (request.params.size() <= 3)
+        {
+            boost::property_tree::ptree pt_minconf;
+            boost::property_tree::ptree pt_maxconf;
+            boost::property_tree::ptree pt_addresses;
+                        
+            auto index = 0;
+            
+            for (auto & i : request.params)
+            {
+                if (index == 0)
+                {
+                    pt_minconf = i.second;
+                }
+                else if (index == 1)
+                {
+                    pt_maxconf = i.second;
+                }
+                else if (index == 2)
+                {
+                    pt_addresses = i.second;
+                }
+
+                index++;
+            }
+            /**
+             * Get the minimum depth in the main chain.
+             */
+            auto param_minconf =
+                pt_minconf.get<std::uint32_t> ("", 1
+            );
+
+            auto param_maxconf =
+                pt_maxconf.get<std::uint32_t> ("", 9999999
+            );
+
+            std::set<address> addresses;
+
+            for (auto & i : pt_addresses)
+            {
+                address addr(i.second.get<std::string> (""));
+
+                if (addr.is_valid())
+                {
+                    /**
+                     * Do not allow duplicate addresses.
+                     */
+                    if (addresses.count(addr) > 0)
+                    {
+                        auto pt_error = create_error_object(
+                            error_code_invalid_parameter,
+                            "invalid parameter"
+                        );
+                        
+                        /**
+                         * error_code_invalid_parameter
+                         */
+                        return json_rpc_response_t{
+                            boost::property_tree::ptree(), pt_error,
+                            request.id
+                        };
+                    }
+                    else
+                    {
+                        addresses.insert(addr);
+                    }
+                }
+                else
+                {
+                    auto pt_error = create_error_object(
+                        error_code_invalid_address_or_key,
+                        "error_code_invalid_address_or_key(" + i.first +
+                        ")"
+                    );
+                    
+                    /**
+                     * error_code_invalid_address_or_key
+                     */
+                    return json_rpc_response_t{
+                        boost::property_tree::ptree(), pt_error, request.id
+                    };
+                }
+            }
+
+            std::vector<output> coins;
+            
+            auto use_zerotime = false;
+            
+            std::set<std::int64_t> filter;
+
+            globals::instance().wallet_main()->available_coins(
+                coins, false, filter, 0, use_zerotime
+            );
+
+            for (auto & coin : coins)
+            {
+                if (coin.get_depth() < param_minconf || coin.get_depth() > param_maxconf)
+                {
+                    continue;
+                }
+
+                if (addresses.size() > 0)
+                {
+                    destination::tx_t dest;
+
+                    if (
+                        !script::extract_destination(
+                            coin.get_transaction_wallet().transactions_out()[coin.get_i()].script_public_key(),
+                            dest
+                        ))
+                    {
+                        continue;
+                    }
+
+                    if (!addresses.count(dest))
+                    {
+                        continue;
+                    }
+                }
+
+                auto value = coin.get_transaction_wallet().transactions_out()[coin.get_i()].value();
+
+                const auto & script_previous = coin.get_transaction_wallet().transactions_out()[coin.get_i()].script_public_key();
+
+                destination::tx_t dest;
+
+                boost::property_tree::ptree pt_child;
+
+                pt_child.put(
+                    "txid", coin.get_transaction_wallet().get_hash().to_string(), 
+                    rpc_json_parser::translator<std::string> ()
+                );
+
+                pt_child.put("vout", coin.get_i());
+
+                if (script::extract_destination(script_previous, dest))
+                {   
+                    pt_child.put(
+                        "address", address(dest).to_string(), 
+                        rpc_json_parser::translator<std::string> ()
+                    );
+
+                    auto it = globals::instance().wallet_main()->address_book().find(dest);
+
+                    if (it != globals::instance().wallet_main()->address_book().end())
+                    {
+                        pt_child.put(
+                            "account", it->second, 
+                            rpc_json_parser::translator<std::string> ()
+                        );
+                    }
+                }
+
+                pt_child.put(
+                    "scriptPubKey", utility::hex_string(script_previous.begin(),
+                    script_previous.end()),
+                    rpc_json_parser::translator<std::string> ()
+                );
+
+                pt_child.put(
+                    "amount", static_cast<double> (value) / 
+                    constants::coin
+                );
+                
+                pt_child.put("confirmations", coin.get_depth());
+
+                ret.result.push_back(std::make_pair("", pt_child));
+            }
+
+            if (ret.result.size() == 0)
+            {
+                boost::property_tree::ptree pt_empty;
+
+                ret.result.push_back(std::make_pair("", pt_empty));
+            }
+        }
+        else
+        {
+            auto pt_error = create_error_object(
+                error_code_invalid_params, "invalid parameter count"
+            );
+            
+            /**
+             * error_code_invalid_params
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
+        }
+    }
+    catch (std::exception & e)
+    {
+        log_error(
+            "RPC Connection failed to create json_listunspent, what = " <<
+            e.what() << "."
         );
         
         auto pt_error = create_error_object(

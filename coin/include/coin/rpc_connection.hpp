@@ -634,6 +634,14 @@ namespace coin {
             );
         
             /**
+             * Performs a listunspent operation.
+             * @param request The json_rpc_request_t.
+             */
+            json_rpc_response_t json_listunspent(
+                const json_rpc_request_t & request
+            );
+        
+            /**
              * Performs a repairwallet operation.
              * @param request The json_rpc_request_t.
              */
