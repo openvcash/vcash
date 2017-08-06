@@ -3,7 +3,7 @@ CMAKE_MINIMUM_REQUIRED(VERSION 3.1.3)
 # 3.0 for versioning inside of project()
 # 3.1 for set(THREADS_PREFER_PTHREAD_FLAG ON)
 # 3.1.3 for CMAKE_CXX_STANDARD
-# EVENTUALLY: 3.7.2 for CMAKE_FIND_PACKAGE_SORT_ORDER and CMAKE_FIND_PACKAGE_SORT_DIRECTION and VERSION_GREATER_EQUAL
+# EVENTUALLY: 3.7.2 for CMAKE_FIND_PACKAGE_SORT_ORDER and CMAKE_FIND_PACKAGE_SORT_DIRECTION
 # EVENTUALLY: 3.9 for the addition of a DESCRIPTION to project()
 # == END Minimum version requirement list ==
 #
@@ -31,7 +31,8 @@ ENDIF()
 
 # Require/Build for C++11
 # Consider changing to target_compile_features in the future. Links below for feature lists...
-# https://cmake.org/cmake/help/latest/prop_gbl/CMAKE_C_KNOWN_FEATURES.html#prop_gbl:CMAKE_C_KNOWN_FEATURES and https://cmake.org/cmake/help/latest/prop_gbl/CMAKE_CXX_KNOWN_FEATURES.html#prop_gbl:CMAKE_CXX_KNOWN_FEATURES
+# https://cmake.org/cmake/help/latest/prop_gbl/CMAKE_C_KNOWN_FEATURES.html#prop_gbl:CMAKE_C_KNOWN_FEATURES
+# https://cmake.org/cmake/help/latest/prop_gbl/CMAKE_CXX_KNOWN_FEATURES.html#prop_gbl:CMAKE_CXX_KNOWN_FEATURES
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -51,10 +52,11 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/Modules)
 # Start of finding dependencies
 find_package(OpenSSL ${OPENSSL_MIN_VER} EXACT REQUIRED)
 # Windows isn't POSIX
-IF(NOT (CMAKE_SYSTEM_NAME MATCHES ".*Windows.*")) # MATCHES is regex
+IF(NOT (CMAKE_SYSTEM_NAME MATCHES "Windows"))
   # Tells find_package(Threads) to get pthread.h & use -lpthread compile flag
   set(THREADS_PREFER_PTHREAD_FLAG ON)
 ENDIF()
+
 find_package(Threads REQUIRED)
 find_package(Boost ${BOOST_MIN_VER} REQUIRED COMPONENTS system)
 find_package(BerkeleyDB ${BERKELEYDB_MIN_VER} REQUIRED)
@@ -66,7 +68,7 @@ IF(BERKELEYDB_VERSION VERSION_LESS "6.0.0")
 ENDIF()
 
 # Initial setting of compiler definitions
-# I believe this makes the binary 64-bit only, which should be noted somewhere.
+# I believe this makes the binary 64-bit only, which should be noted somewhere...
 set(_definitions "-D_FILE_OFFSET_BITS=64")
 
 IF(CMAKE_BUILD_TYPE STREQUAL "Release")
@@ -74,8 +76,8 @@ IF(CMAKE_BUILD_TYPE STREQUAL "Release")
   list(APPEND _definitions "-DNDEBUG")
 ENDIF()
 
-# Adds compile definitions for detected compiler
-# Windows
+# Adds compile definitions for the detected compiler
+# MSVC compiler
 IF(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
   message(STATUS "Setting build flags for MSVC compiler...")
   # Maybe WIN32_WINNT should be handled better?
@@ -86,30 +88,14 @@ IF(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     "-D_SCL_SECURE_NO_DEPRECATE"
     "-D_CRT_SECURE_NO_DEPRECATE"
   )
-# Mac
-ELSEIF(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+# Clang/AppleClang compiler
+ELSEIF(CMAKE_CXX_COMPILER_ID MATCHES "Clang") # MATCHES Clang and AppleClang
   message(STATUS "Setting build flags for Clang compiler...")
   list(APPEND _definitions "-DBOOST_NO_CXX11_NUMERIC_LIMITS")
-# Linux
+# GCC compiler
 ELSEIF(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  # Get full GCC version and feed it into GCC_VER_STRING
-  EXEC_PROGRAM(gcc ARGS --version OUTPUT_VARIABLE GCC_VER_STRING)
-  # Parse the version into a useable x.x.x format, as it outputs unimportant extra junk into the string
-  string(REGEX REPLACE ".* ([0-9]+)\\.([0-9]+)\\.([0-9]+).*" "\\1.\\2.\\3" GCC_VER_STRING ${GCC_VER_STRING})
-
-  # Change these variable versions as needed
-  set(GCC_MIN_VER "4.8.0") # Minimum GCC version for compiling
-  set(GCC_FLAG_VER "6.0.0") # Minimum version to use -02 optimization flag
-
-  # Fail if less than the minimum GCC version
-  IF(GCC_VER_STRING VERSION_LESS "${GCC_MIN_VER}")
-    message(FATAL_ERROR "Error: Minimum GCC v${GCC_MIN_VER} is required!")
-  # Set compile flags on GCC versions greater/equal to the GCC_FLAG_VER | VERSION_GREATER_EQUAL is available, but only on CMake v3.7+
-  ELSEIF(GCC_VER_STRING VERSION_EQUAL ${GCC_FLAG_VER} OR GCC_VER_STRING VERSION_GREATER ${GCC_FLAG_VER})
-    message(STATUS "Setting build flags for newer GCC compiler...")
-    # v6 and up require -02 to build libcoin | big_number is the problem file, which is part of libcoin
-    list(APPEND _definitions "-O2") # flag recommended by xCore https://vcash.slack.com/archives/C3B7H53N0/p1500056978220682
-  ENDIF()
+  message(STATUS "Setting build flags for GCC compiler...")
+  list(APPEND _definitions "-O2")
 ENDIF()
 
 # Set all our various definitions
@@ -296,3 +282,7 @@ ELSE()
     ARCHIVE DESTINATION lib
   )
 ENDIF()
+
+# Consider adding the following functions..
+# add_test https://cmake.org/cmake/help/latest/command/add_test.html If added, then TravisCI needs `make test` added to `.travis.yml`
+# export https://cmake.org/cmake/help/latest/command/export.html Makes it easy for external CMake projects to import Vcash

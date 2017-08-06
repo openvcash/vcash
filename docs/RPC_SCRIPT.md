@@ -2,7 +2,7 @@
 The Bash RPC script is used to send commands, and read out information from the Vcash daemon.  
 Please note that `.sh` files do not work natively on Windows.
 
-**Dependency:** `curl` and [jq](https://stedolan.github.io/jq/)
+**Dependencies:** `curl` and [jq](https://stedolan.github.io/jq/)
 
 **Usage:** Run `./rpc.sh -m <method>` or `./rpc.sh -m <method> -p <params>` with Bash (your terminal).
 

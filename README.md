@@ -2,7 +2,7 @@
 # Vcash
 > A decentralized currency for the internet.
 
-[![Donate BTC](https://img.shields.io/badge/Donate-BTC-yellow.svg)](https://blockchain.info/address/3MTVHcDrbiwrp5N6rT2DwrMCXMBP3rT7ty) [![Latest GitHub release](https://img.shields.io/github/release/openvcash/vcash.svg)](https://github.com/openvcash/vcash/releases/latest)  
+[![Donate BTC](https://img.shields.io/badge/Donate-BTC-yellow.svg)](https://blockchain.info/address/3MTVHcDrbiwrp5N6rT2DwrMCXMBP3rT7ty) [![Latest GitHub release](https://img.shields.io/github/release/openvcash/vcash.svg)](https://github.com/openvcash/vcash/releases/latest) [![Build status](https://travis-ci.org/openvcash/vcash.svg?branch=master)](https://travis-ci.org/openvcash/vcash)  
 
 https://vcash.info/  
 

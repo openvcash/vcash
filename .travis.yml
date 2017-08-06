@@ -1,0 +1,18 @@
+language: cpp
+os:
+  - linux
+  - osx
+compiler:
+  - gcc
+  - clang
+before_install:
+  - if [ $TRAVIS_OS_NAME = linux ]; then sudo add-apt-repository ppa:0k53d-karl-f830m/openssl -y; fi
+install:
+  - if [ $TRAVIS_OS_NAME = linux ]; then sudo apt-get -qq update && sudo apt-get install -y libdb++-dev libdb-dev openssl libboost-all-dev; fi
+  - if [ $TRAVIS_OS_NAME = osx ]; then brew list openssl &>/dev/null || brew install openssl; fi
+  - if [ $TRAVIS_OS_NAME = osx ]; then brew list boost &>/dev/null || brew install boost; fi
+  - if [ $TRAVIS_OS_NAME = osx ]; then brew list berkeley-db &>/dev/null || brew install https://raw.githubusercontent.com/Homebrew/homebrew-core/1e62c645b2fc2d82042d9f7c364c6a246f2e11ed/Formula/berkeley-db.rb; fi
+script:
+  - if [ $TRAVIS_OS_NAME = linux ]; then cmake -DWITH_INCOMPATIBLE_BDB=ON CMakeLists.txt; fi
+  - if [ $TRAVIS_OS_NAME = osx ]; then cmake -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl CMakeLists.txt; fi
+  - make

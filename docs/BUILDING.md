@@ -16,7 +16,7 @@ Use the various build flags when initiating `cmake` to trigger certain options, 
 Please note that none of these are required for the build process.   
 A complete list of custom flags can be found in the comments of the [FindBerkeleyDB module.](../cmake/Modules/FindBerkeleyDB.cmake#L1-L23)
 
-Custom Flags             |Unix Example Setting|Windows Example Setting
+Custom Flags             |Linux Example Setting|Windows Example Setting
 :------------------------|:------------------:|:---:
 `-DBDB_ROOT_PATH`        |`/usr/include/db`   |`C:/Program Files/Oracle/Berkeley DB`
 `-DBDB_DB_LIBNAME`       |`libdb.so`          |`libdb62.lib`
@@ -34,9 +34,9 @@ OpenSSL not found
 ---
 If CMake is not finding the correct version of OpenSSL, perhaps because you have a newer version installed along side your older OpenSSL 1.0.2, then you need to pass their paths with cmake flags.  
 
-**Example for Arch Linux:** `cmake -DOPENSSL_INCLUDE_DIR=/usr/include/openssl-1.0 -DOPENSSL_SSL_LIBRARY=/usr/lib/libssl.so.1.0.0 -DOPENSSL_CRYPTO_LIBRARY=/usr/lib/libcrypto.so.1.0.0`  
+**Example for Arch Linux:** `cmake -DOPENSSL_INCLUDE_DIR=/usr/include/openssl-1.0 -DOPENSSL_SSL_LIBRARY=/usr/lib/libssl.so.1.0.0 -DOPENSSL_CRYPTO_LIBRARY=/usr/lib/libcrypto.so.1.0.0`
 
-Make sure to pass the correct paths, as it expects to see `openssl/HEADERFILESHERE` in the includes path.  
+**Example for OSX:** `cmake -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl CMakeLists.txt`
 
 Build Errors
 ---
