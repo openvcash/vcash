@@ -8412,60 +8412,8 @@ boost::property_tree::ptree rpc_connection::transaction_to_ptree(
             
             boost::property_tree::ptree pt_o;
             
-            types::tx_out_t type;
-            
-            std::vector<destination::tx_t> addresses;
-            
-            int required;
-
-            pt_o.put(
-                "asm", tx_out.script_public_key().to_string(),
-                rpc_json_parser::translator<std::string> ()
-            );
-            pt_o.put(
-                "hex", utility::hex_string(
-                tx_out.script_public_key().begin(),
-                tx_out.script_public_key().end()),
-                rpc_json_parser::translator<std::string> ()
-            );
-
-            if (
-                script::extract_destinations(tx_out.script_public_key(),
-                type, addresses, required) == false
-                )
-            {
-                pt_o.put(
-                    "type",
-                    script::get_txn_output_type(
-                    types::tx_out_nonstandard),
-                    rpc_json_parser::translator<std::string> ()
-                );
-            }
-            else
-            {
-                pt_o.put("reqSigs", required);
-                pt_o.put(
-                    "type", script::get_txn_output_type(type),
-                    rpc_json_parser::translator<std::string> ()
-                );
-
-                boost::property_tree::ptree pt_a;
-                
-                for (auto & i : addresses)
-                {
-                    boost::property_tree::ptree pt_tmp;
-                    
-                    pt_tmp.put(
-                        "", address(i).to_string(),
-                        rpc_json_parser::translator<std::string> ()
-                    );
-    
-                    pt_a.push_back(std::make_pair("", pt_tmp));
-                }
-                
-                pt_o.put_child("addresses", pt_a);
-            }
-            
+            pt_o = script_to_ptree(tx_out.script_public_key(), true);
+                        
             if (pt_o.size() > 0)
             {
                 pt_out.put_child("scriptPubKey", pt_o);
