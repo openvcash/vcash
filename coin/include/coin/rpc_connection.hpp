@@ -400,6 +400,14 @@ namespace coin {
             );
         
             /**
+             * Encodes decodescript data into JSON format.
+             * @param request The json_rpc_request_t.
+             */
+            json_rpc_response_t json_decodescript(
+                const json_rpc_request_t & request
+            );
+        
+            /**
              * Encodes wallet seed into JSON format.
              * @param request The json_rpc_request_t.
              */
@@ -812,6 +820,15 @@ namespace coin {
                 const bool & by_accounts
             );
         
+            /**
+             * Encodes a redeem script.
+             * @param redeem_script The redeem script.
+             * @param inc_hex If true includes hex.
+             */
+            boost::property_tree::ptree script_to_ptree(
+                const script & redeem_script, const bool & include_hex
+            );
+
             /**
              * Creates a JSON-RPC 2.0 error object.
              * @param code The error_code_t.

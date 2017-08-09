@@ -587,6 +587,10 @@ bool rpc_connection::handle_json_rpc_request(
         {
             response = json_decoderawtransaction(request);
         }
+        else if (request.method == "decodescript")
+        {
+            response = json_decodescript(request);
+        }
         else if (request.method == "dumpwalletseed")
         {
             response = json_dumpwalletseed(request);
@@ -2089,6 +2093,71 @@ rpc_connection::json_rpc_response_t rpc_connection::json_decoderawtransaction(
     {
         log_error(
             "RPC Connection failed to create json_decoderawtransaction, what = " <<
+            e.what() << "."
+        );
+    }
+    
+    return ret;
+}
+
+rpc_connection::json_rpc_response_t rpc_connection::json_decodescript(
+    const json_rpc_request_t & request
+    )
+{
+    rpc_connection::json_rpc_response_t ret;
+
+    try
+    {
+        if (request.params.size() == 1)
+        {
+            boost::property_tree::ptree pt_script;
+
+            script redeem_script;
+
+            auto param_script = request.params.front().second.get<std::string> ("");
+
+            if (param_script.size() > 0)
+            {
+                if (utility::is_hex(param_script))
+                {
+                    auto data(
+                        utility::from_hex(param_script)
+                    );
+                    
+                    redeem_script = script(data.begin(), data.end());
+                }
+            }
+
+            pt_script = script_to_ptree(redeem_script, false);
+
+            ret.result.insert(
+                ret.result.begin(), pt_script.begin(),
+                pt_script.end()
+            );
+
+            ret.result.put(
+                "p2sh", address(redeem_script.get_id()).to_string(),
+                rpc_json_parser::translator<std::string> ()
+            );
+        }
+        else
+        {
+            auto pt_error = create_error_object(
+                error_code_misc_error, "invalid parameter count"
+            );
+            
+            /**
+             * error_code_misc_error
+             */
+            return json_rpc_response_t{
+                boost::property_tree::ptree(), pt_error, request.id
+            };
+        }
+    }
+    catch (std::exception & e)
+    {
+        log_error(
+            "RPC Connection failed to create json_decodescript, what = " <<
             e.what() << "."
         );
     }
@@ -8838,6 +8907,73 @@ boost::property_tree::ptree rpc_connection::received_to_ptree(
         );
     }
     
+    return ret;
+}
+
+boost::property_tree::ptree rpc_connection::script_to_ptree(
+    const script & redeem_script, const bool & include_hex
+    )
+{
+    boost::property_tree::ptree ret;
+    
+    types::tx_out_t type;
+    
+    std::vector<destination::tx_t> addresses;
+    
+    std::int32_t required;
+
+    ret.put(
+        "asm", redeem_script.to_string(),
+        rpc_json_parser::translator<std::string> ()
+    );
+
+    if (include_hex)
+    {
+        ret.put(
+            "hex", utility::hex_string(
+            redeem_script.begin(),
+            redeem_script.end()),
+            rpc_json_parser::translator<std::string> ()
+        );
+    }
+
+    if (
+        script::extract_destinations(redeem_script,
+        type, addresses, required) == false
+        )
+    {
+        ret.put(
+            "type",
+            script::get_txn_output_type(
+            types::tx_out_nonstandard),
+            rpc_json_parser::translator<std::string> ()
+        );
+    }
+    else
+    {
+        ret.put("reqSigs", required);
+        ret.put(
+            "type", script::get_txn_output_type(type),
+            rpc_json_parser::translator<std::string> ()
+        );
+
+        boost::property_tree::ptree pt_a;
+        
+        for (auto & i : addresses)
+        {
+            boost::property_tree::ptree pt_tmp;
+            
+            pt_tmp.put(
+                "", address(i).to_string(),
+                rpc_json_parser::translator<std::string> ()
+            );
+    
+            pt_a.push_back(std::make_pair("", pt_tmp));
+        }
+            
+        ret.put_child("addresses", pt_a);
+    }
+
     return ret;
 }
 
