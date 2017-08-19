@@ -24,7 +24,9 @@
 
 #include <openssl/bn.h>
 #include <openssl/ec.h>
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 #include <openssl/ecdsa.h>
+#endif
 #include <openssl/evp.h>
 
 #include <cassert>

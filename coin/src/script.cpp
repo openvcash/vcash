@@ -1517,7 +1517,7 @@ bool script::evaluate(
                             break;
                             case op_mul:
                             {
-                                if (!BN_mul(&val, &bn1, &bn2, bn_ctx))
+                                if (!BN_mul(val.get(), bn1.cget(), bn2.cget(), bn_ctx))
                                 {
                                     return false;
                                 }
@@ -1525,7 +1525,7 @@ bool script::evaluate(
                             break;
                             case op_div:
                             {
-                                if (!BN_div(&val, NULL, &bn1, &bn2, bn_ctx))
+                                if (!BN_div(val.get(), NULL, bn1.cget(), bn2.cget(), bn_ctx))
                                 {
                                     return false;
                                 }
@@ -1533,7 +1533,7 @@ bool script::evaluate(
                             break;
                             case op_mod:
                             {
-                                if (!BN_mod(&val, &bn1, &bn2, bn_ctx))
+                                if (!BN_mod(val.get(), bn1.cget(), bn2.cget(), bn_ctx))
                                 {
                                     return false;
                                 }

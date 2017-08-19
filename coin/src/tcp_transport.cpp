@@ -37,7 +37,17 @@ using namespace coin;
 boost::system::error_code use_private_key(SSL_CTX * ctx, char * buf)
 {
     boost::system::error_code ec;
-    
+
+#if (OPENSSL_VERSION_NUMBER >= 0x10100000L)
+    pem_password_cb * callback = SSL_CTX_get_default_passwd_cb(ctx);
+
+    void * cb_userdata = SSL_CTX_get_default_passwd_cb_userdata(ctx);
+#else // (OPENSSL_VERSION_NUMBER >= 0x10100000L)
+    pem_password_cb * callback = ctx->default_passwd_callback;
+
+    void * cb_userdata = ctx->default_passwd_callback_userdata;
+#endif // (OPENSSL_VERSION_NUMBER >= 0x10100000L)
+
     BIO * bio = ::BIO_new_mem_buf(buf, -1);
     
     if (bio == 0)
@@ -47,8 +57,7 @@ boost::system::error_code use_private_key(SSL_CTX * ctx, char * buf)
     }
 
     EVP_PKEY * pkey = PEM_read_bio_PrivateKey(
-        bio, 0, ctx->default_passwd_callback,
-        ctx->default_passwd_callback_userdata
+        bio, 0, callback, cb_userdata
     );
     
     BIO_free(bio);
@@ -128,6 +137,16 @@ boost::system::error_code use_certificate_chain(SSL_CTX * ctx, char * buf)
         
         return ec;
     }
+
+#if (OPENSSL_VERSION_NUMBER >= 0x10100000L)
+    pem_password_cb * callback = SSL_CTX_get_default_passwd_cb(ctx);
+
+    void * cb_userdata = SSL_CTX_get_default_passwd_cb_userdata(ctx);
+#else // (OPENSSL_VERSION_NUMBER >= 0x10100000L)
+    pem_password_cb * callback = ctx->default_passwd_callback;
+
+    void * cb_userdata = ctx->default_passwd_callback_userdata;
+#endif // (OPENSSL_VERSION_NUMBER >= 0x10100000L)
     
 	X509 * x = PEM_read_bio_X509(bio, 0, 0, 0);
     
@@ -148,16 +167,17 @@ boost::system::error_code use_certificate_chain(SSL_CTX * ctx, char * buf)
     X509_free(x);
 
     X509 * ca = 0;
-		
+
+#if (OPENSSL_VERSION_NUMBER >= 0x10002000L)
+    SSL_CTX_clear_chain_certs(ctx);
+#else
     if (ctx->extra_certs != 0)
     {
         sk_X509_pop_free(ctx->extra_certs, X509_free), ctx->extra_certs = 0;
     }
+#endif
 
-    while (
-        (ca = PEM_read_bio_X509( bio, 0, ctx->default_passwd_callback,
-        ctx->default_passwd_callback_userdata)
-        ) != 0)
+    while ((ca = PEM_read_bio_X509( bio, 0, callback, cb_userdata)) != 0)
     {
         if (SSL_CTX_add_extra_chain_cert(ctx, ca) != 1)
         {

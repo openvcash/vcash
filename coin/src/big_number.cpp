@@ -26,16 +26,16 @@ using namespace coin;
 
 big_number::big_number()
 {
-    BN_init(this);
+    init();
 }
 
 big_number::big_number(const big_number & b)
 {
-    BN_init(this);
+    init();
     
-    if (!BN_copy(this, &b))
+    if (!BN_copy(self, b.cget()))
     {
-        BN_clear_free(this);
+        BN_clear_free(self);
         
         throw std::runtime_error("BN_copy failed");
     }
@@ -43,7 +43,7 @@ big_number::big_number(const big_number & b)
 
 big_number::big_number(std::int8_t n)
 {
-    BN_init(this);
+    init();
     
     if (n >= 0)
     {
@@ -57,7 +57,7 @@ big_number::big_number(std::int8_t n)
 
 big_number::big_number(std::int16_t n)
 {
-    BN_init(this);
+    init();
     
     if (n >= 0)
     {
@@ -71,7 +71,7 @@ big_number::big_number(std::int16_t n)
 
 big_number::big_number(std::int32_t n)
 {
-    BN_init(this);
+    init();
     
     if (n >= 0)
     {
@@ -85,63 +85,63 @@ big_number::big_number(std::int32_t n)
 
 big_number::big_number(std::int64_t n)
 {
-    BN_init(this);
+    init();
     
     set_int64(n);
 }
 
 big_number::big_number(std::uint8_t n)
 {
-    BN_init(this);
+    init();
     
     set_ulong(n);
 }
 
 big_number::big_number(std::uint16_t n)
 {
-    BN_init(this);
+    init();
     
     set_ulong(n);
 }
 
 big_number::big_number(std::uint32_t n)
 {
-    BN_init(this);
+    init();
     
     set_ulong(n);
 }
 
 big_number::big_number(std::uint64_t n)
 {
-    BN_init(this);
+    init();
     
     set_uint64(n);
 }
 
 big_number::big_number(sha256 n)
 {
-    BN_init(this);
+    init();
     
     set_sha256(n);
 }
 
 big_number::big_number(const std::vector<std::uint8_t> & vch)
 {
-    BN_init(this);
+    init();
     
     set_vector(vch);
 }
 
 big_number::big_number(const std::string & hex)
 {
-    BN_init(this);
+    init();
     
     set_hex(hex);
 }
 
 big_number::~big_number()
 {
-    BN_clear_free(this);
+    if (self) BN_clear_free(self);
 }
 
 void big_number::encode(data_buffer & buffer)
@@ -168,12 +168,12 @@ void big_number::decode(data_buffer & buffer)
 
 bool big_number::is_zero() const
 {
-    return BN_is_zero(this);
+    return BN_is_zero(self);
 }
 
 void big_number::set_ulong(unsigned long n)
 {
-    auto err = BN_set_word(this, n);
+    auto err = BN_set_word(self, n);
     
     if (!err)
     {
@@ -183,19 +183,19 @@ void big_number::set_ulong(unsigned long n)
 
 unsigned long big_number::get_ulong() const
 {
-    return BN_get_word(this);
+    return BN_get_word(self);
 }
 
 unsigned int big_number::get_uint() const
 {
-    return static_cast<unsigned int> (BN_get_word(this));
+    return static_cast<unsigned int> (BN_get_word(self));
 }
 
 int big_number::get_int() const
 {
-    unsigned long n = BN_get_word(this);
+    unsigned long n = BN_get_word(self);
     
-    if (!BN_is_negative(this))
+    if (!BN_is_negative(self))
     {
         return
             (n > std::numeric_limits<int>::max() ?
@@ -268,12 +268,12 @@ void big_number::set_int64(std::int64_t val)
     pch[2] = (size >> 8) & 0xff;
     pch[3] = (size) & 0xff;
     
-    BN_mpi2bn(pch, static_cast<int> (p - pch), this);
+    BN_mpi2bn(pch, static_cast<int> (p - pch), self);
 }
 
 std::uint64_t big_number::get_uint64()
 {
-    unsigned int size = BN_bn2mpi(this, NULL);
+    unsigned int size = BN_bn2mpi(self, NULL);
     
     if (size < 4)
     {
@@ -282,7 +282,7 @@ std::uint64_t big_number::get_uint64()
     
     std::vector<std::uint8_t> vch(size);
     
-    BN_bn2mpi(this, &vch[0]);
+    BN_bn2mpi(self, &vch[0]);
     
     if (vch.size() > 4)
     {
@@ -337,7 +337,7 @@ void big_number::set_uint64(std::uint64_t n)
     pch[2] = (size >> 8) & 0xff;
     pch[3] = (size) & 0xff;
     
-    BN_mpi2bn(pch, static_cast<int> (p - pch), this);
+    BN_mpi2bn(pch, static_cast<int> (p - pch), self);
 }
 
 void big_number::set_sha256(sha256 val)
@@ -378,12 +378,12 @@ void big_number::set_sha256(sha256 val)
     pch[2] = (size >> 8) & 0xff;
     pch[3] = (size >> 0) & 0xff;
     
-    BN_mpi2bn(pch, static_cast<int> (p - pch), this);
+    BN_mpi2bn(pch, static_cast<int> (p - pch), self);
 }
 
 sha256 big_number::get_sha256()
 {
-    unsigned int size = BN_bn2mpi(this, 0);
+    unsigned int size = BN_bn2mpi(self, 0);
     
     if (size < 4)
     {
@@ -392,7 +392,7 @@ sha256 big_number::get_sha256()
 
     std::vector<std::uint8_t> vch(size);
     
-    BN_bn2mpi(this, &vch[0]);
+    BN_bn2mpi(self, &vch[0]);
     
     if (vch.size() > 4)
     {
@@ -427,12 +427,12 @@ void big_number::set_vector(const std::vector<std::uint8_t> & val)
 
     std::reverse_copy(val.begin(), val.end(), val2.begin() + 4);
     
-    BN_mpi2bn(&val2[0], static_cast<int> (val2.size()), this);
+    BN_mpi2bn(&val2[0], static_cast<int> (val2.size()), self);
 }
 
 std::vector<std::uint8_t> big_number::get_vector() const
 {
-    unsigned int size = BN_bn2mpi(this, 0);
+    unsigned int size = BN_bn2mpi(self, 0);
     
     if (size <= 4)
     {
@@ -441,7 +441,7 @@ std::vector<std::uint8_t> big_number::get_vector() const
     
     std::vector<std::uint8_t> vch(size);
     
-    BN_bn2mpi(this, &vch[0]);
+    BN_bn2mpi(self, &vch[0]);
     
     vch.erase(vch.begin(), vch.begin() + 4);
     
@@ -454,16 +454,16 @@ void big_number::set_vector_no_reverse(
     const std::vector<std::uint8_t> & bytes
     )
 {
-    BN_bin2bn(&bytes[0], bytes.size(), this);
+    BN_bin2bn(&bytes[0], bytes.size(), self);
 }
 
 std::vector<std::uint8_t> big_number::get_vector_no_reverse() const
 {
     std::vector<std::uint8_t> ret;
 
-    ret.resize(BN_num_bytes(this));
+    ret.resize(BN_num_bytes(self));
 
-    BN_bn2bin(this, &ret[0]);
+    BN_bn2bin(self, &ret[0]);
 
     return ret;
 }
@@ -480,20 +480,20 @@ big_number & big_number::set_compact(unsigned int val)
     if (size >= 2) vch[5] = (val >> 8) & 0xff;
     if (size >= 3) vch[6] = (val >> 0) & 0xff;
     
-    BN_mpi2bn(&vch[0], static_cast<int> (vch.size()), this);
+    BN_mpi2bn(&vch[0], static_cast<int> (vch.size()), self);
     
     return *this;
 }
 
 unsigned int big_number::get_compact() const
 {
-    unsigned int size = BN_bn2mpi(this, 0);
+    unsigned int size = BN_bn2mpi(self, 0);
     
     std::vector<std::uint8_t> vch(size);
     
     size -= 4;
     
-    BN_bn2mpi(this, &vch[0]);
+    BN_bn2mpi(self, &vch[0]);
     
     unsigned int val = size << 24;
     
@@ -561,18 +561,18 @@ std::string big_number::to_string(int base) const
     big_number bn0 = 0;
     std::string str;
     big_number bn = *this;
-    BN_set_negative(&bn, false);
+    BN_set_negative(bn.get(), false);
     big_number dv;
     big_number rem;
     
-    if (BN_cmp(&bn, &bn0) == 0)
+    if (BN_cmp(bn.get(), bn0.cget()) == 0)
     {
         return "0";
     }
     
-    while (BN_cmp(&bn, &bn0) > 0)
+    while (BN_cmp(bn.get(), bn.cget()) > 0)
     {
-        if (!BN_div(&dv, &rem, &bn, &bbase, pctx))
+        if (!BN_div(dv.get(), rem.get(), bn.cget(), bbase.cget(), pctx))
         {
             throw std::runtime_error("BN_div failed");
         }
@@ -584,7 +584,7 @@ std::string big_number::to_string(int base) const
         str += "0123456789abcdef"[c];
     }
     
-    if (BN_is_negative(this))
+    if (BN_is_negative(self))
     {
         str += "-";
     }

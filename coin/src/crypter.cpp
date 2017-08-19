@@ -88,30 +88,35 @@ bool crypter::encrypt(
     
     cipher_text = std::vector<std::uint8_t> (clen);
 
-    EVP_CIPHER_CTX ctx;
+    EVP_CIPHER_CTX * ctx = EVP_CIPHER_CTX_new();
+
+    if (!ctx)
+    {
+        return false;
+    }
 
     bool ok = true;
 
-    EVP_CIPHER_CTX_init(&ctx);
+    EVP_CIPHER_CTX_init(ctx);
     
     if (ok)
     {
-        ok = EVP_EncryptInit_ex(&ctx, EVP_aes_256_cbc(), 0, key_, iv_);
+        ok = EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), 0, key_, iv_);
     }
     
     if (ok)
     {
         ok = EVP_EncryptUpdate(
-            &ctx, &cipher_text[0], &clen, &plain_text[0], len
+            ctx, &cipher_text[0], &clen, &plain_text[0], len
         );
     }
     
     if (ok)
     {
-        ok = EVP_EncryptFinal_ex(&ctx, &cipher_text[0] + clen, &flen);
+        ok = EVP_EncryptFinal_ex(ctx, &cipher_text[0] + clen, &flen);
     }
     
-    EVP_CIPHER_CTX_cleanup(&ctx);
+    EVP_CIPHER_CTX_cleanup(ctx);
 
     if (ok == false)
     {
@@ -139,30 +144,35 @@ bool crypter::decrypt(
 
     plain_text.resize(plen);
 
-    EVP_CIPHER_CTX ctx;
+    EVP_CIPHER_CTX * ctx = EVP_CIPHER_CTX_new();
+
+    if (!ctx)
+    {
+        return false;
+    }
 
     bool ok = true;
 
-    EVP_CIPHER_CTX_init(&ctx);
+    EVP_CIPHER_CTX_init(ctx);
     
     if (ok)
     {
-        ok = EVP_DecryptInit_ex(&ctx, EVP_aes_256_cbc(), 0, key_, iv_);
+        ok = EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), 0, key_, iv_);
     }
     
     if (ok)
     {
         ok = EVP_DecryptUpdate(
-            &ctx, &plain_text[0], &plen, &cipher_text[0], len
+            ctx, &plain_text[0], &plen, &cipher_text[0], len
         );
     }
     
     if (ok)
     {
-        ok = EVP_DecryptFinal_ex(&ctx, &plain_text[0] + plen, &flen);
+        ok = EVP_DecryptFinal_ex(ctx, &plain_text[0] + plen, &flen);
     }
     
-    EVP_CIPHER_CTX_cleanup(&ctx);
+    EVP_CIPHER_CTX_cleanup(ctx);
 
     if (ok == false)
     {

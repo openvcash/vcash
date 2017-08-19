@@ -37,7 +37,7 @@ namespace coin {
     /**
      * Implements a big number.
      */
-    class big_number : public BIGNUM
+    class big_number
     {
         public:
         
@@ -118,6 +118,16 @@ namespace coin {
                     }
             };
         
+            BIGNUM * get()
+            {
+                return self;
+            }
+
+            const BIGNUM * cget() const
+            {
+                return self;
+            }
+
             /**
              * Constructor
              */
@@ -205,7 +215,7 @@ namespace coin {
              */
             big_number & operator = (const big_number & b)
             {
-                if (!BN_copy((BIGNUM *)this, (BIGNUM *)&b))
+                if (!BN_copy(self, b.cget()))
                 {
                     throw std::runtime_error("BN_copy failed");
                 }
@@ -217,7 +227,7 @@ namespace coin {
              */
             bool operator ! () const
             {
-                return BN_is_zero(this);
+                return BN_is_zero(self);
             }
 
             /**
@@ -225,7 +235,7 @@ namespace coin {
              */
             big_number & operator += (const big_number & b)
             {
-                if (!BN_add((BIGNUM *)this, (BIGNUM *)this, (BIGNUM *)&b))
+                if (!BN_add(self, self, b.cget()))
                 {
                     throw std::runtime_error("BN_add failed");
                 }
@@ -249,7 +259,7 @@ namespace coin {
             {
                 context pctx;
                 
-                if (!BN_mul((BIGNUM *)this, (BIGNUM *)this, (BIGNUM *)&b, pctx))
+                if (!BN_mul(self, self, b.cget(), pctx))
                 {
                     throw std::runtime_error("BN_mul failed");
                 }
@@ -280,7 +290,7 @@ namespace coin {
              */
             big_number & operator <<= (unsigned int shift)
             {
-                if (!BN_lshift((BIGNUM *)this, (BIGNUM *)this, shift))
+                if (!BN_lshift(self, self, shift))
                 {
                     throw std::runtime_error("BN_lshift failed");
                 }
@@ -297,13 +307,13 @@ namespace coin {
                 
                 a <<= shift;
                 
-                if (BN_cmp((BIGNUM *)&a, (BIGNUM *)this) > 0)
+                if (BN_cmp(a.cget(), self) > 0)
                 {
                     *this = 0;
                     return *this;
                 }
 
-                if (!BN_rshift((BIGNUM *)this, (BIGNUM *)this, shift))
+                if (!BN_rshift(self, self, shift))
                 {
                     throw std::runtime_error("BN_rshift failed");
                 }
@@ -316,7 +326,7 @@ namespace coin {
              */
             big_number & operator ++ ()
             {
-                if (!BN_add((BIGNUM *)this, (BIGNUM *)this, BN_value_one()))
+                if (!BN_add(self, self, BN_value_one()))
                 {
                     throw std::runtime_error("BN_add failed");
                 }
@@ -341,7 +351,7 @@ namespace coin {
             {
                 big_number r;
                 
-                if (!BN_sub((BIGNUM *)&r, (BIGNUM *)this, BN_value_one()))
+                if (!BN_sub(r.get(), self, BN_value_one()))
                 {
                     throw std::runtime_error("BN_sub failed");
                 }
@@ -491,7 +501,22 @@ namespace coin {
         
         private:
         
-            // ...
+            BIGNUM * self = nullptr;
+
+            void init()
+            {
+                if (self)
+                {
+                    BN_clear_free(self);
+                }
+
+                self = BN_new();
+
+                if (!self)
+                {
+                    throw std::runtime_error("BN_new() returned NULL");
+                }
+            }
         
         protected:
         
@@ -509,7 +534,7 @@ namespace coin {
     {
         big_number r;
         
-        if (!BN_add(&r, &a, &b))
+        if (!BN_add(r.get(), a.cget(), b.cget()))
         {
             throw std::runtime_error("BN_add failed");
         }
@@ -526,7 +551,7 @@ namespace coin {
     {
         big_number r;
         
-        if (!BN_sub(&r, &a, &b))
+        if (!BN_sub(r.get(), a.cget(), b.cget()))
         {
             throw std::runtime_error("BN_sub failed");
         }
@@ -541,7 +566,7 @@ namespace coin {
     {
         big_number r(a);
         
-        BN_set_negative(&r, !BN_is_negative(&r));
+        BN_set_negative(r.get(), !BN_is_negative(r.cget()));
         
         return r;
     }
@@ -556,7 +581,7 @@ namespace coin {
         big_number::context pctx;
         big_number r;
         
-        if (!BN_mul(&r, &a, &b, pctx))
+        if (!BN_mul(r.get(), a.cget(), b.cget(), pctx))
         {
             throw std::runtime_error("BN_mul failed");
         }
@@ -573,7 +598,7 @@ namespace coin {
         big_number::context pctx;
         big_number r;
         
-        if (!BN_div(&r, NULL, &a, &b, pctx))
+        if (!BN_div(r.get(), NULL, a.cget(), b.cget(), pctx))
         {
             throw std::runtime_error("BN_div failed");
         }
@@ -590,7 +615,7 @@ namespace coin {
         big_number::context pctx;
         big_number r;
         
-        if (!BN_mod(&r, &a, &b, pctx))
+        if (!BN_mod(r.get(), a.cget(), b.cget(), pctx))
         {
             throw std::runtime_error("BN_div failed");
         }
@@ -606,7 +631,7 @@ namespace coin {
     {
         big_number r;
         
-        if (!BN_lshift(&r, &a, shift))
+        if (!BN_lshift(r.get(), a.cget(), shift))
         {
             throw std::runtime_error("BN_lshift failed");
         }
@@ -631,7 +656,7 @@ namespace coin {
      */
     inline bool operator == (const big_number & a, const big_number & b)
     {
-        return BN_cmp(&a, &b) == 0;
+        return BN_cmp(a.cget(), b.cget()) == 0;
     }
 
     /**
@@ -639,7 +664,7 @@ namespace coin {
      */
     inline bool operator != (const big_number & a, const big_number & b)
     {
-        return BN_cmp(&a, &b) != 0;
+        return BN_cmp(a.cget(), b.cget()) != 0;
     }
 
     /**
@@ -647,7 +672,7 @@ namespace coin {
      */
     inline bool operator <= (const big_number & a, const big_number & b)
     {
-        return BN_cmp(&a, &b) <= 0;
+        return BN_cmp(a.cget(), b.cget()) <= 0;
     }
 
     /**
@@ -655,7 +680,7 @@ namespace coin {
      */
     inline bool operator >= (const big_number & a, const big_number & b)
     {
-        return BN_cmp(&a, &b) >= 0;
+        return BN_cmp(a.cget(), b.cget()) >= 0;
     }
 
     /**
@@ -663,7 +688,7 @@ namespace coin {
      */
     inline bool operator < (const big_number & a, const big_number & b)
     {
-        return BN_cmp(&a, &b) < 0;
+        return BN_cmp(a.cget(), b.cget()) < 0;
     }
 
     /**
@@ -671,7 +696,7 @@ namespace coin {
      */
     inline bool operator > (const big_number & a, const big_number & b)
     {
-        return BN_cmp(&a, &b) > 0;
+        return BN_cmp(a.cget(), b.cget()) > 0;
     }
 
 } // namespace coin

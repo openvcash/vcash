@@ -77,7 +77,7 @@ inline std::string encode_base58(
     
     while (bn > bn0)
     {
-        if (!BN_div(&dv, &rem, &bn, &bn58, pctx))
+        if (!BN_div(dv.get(), rem.get(), bn.cget(), bn58.cget(), pctx))
         {
             throw std::runtime_error("BN_div failed");
         }
@@ -155,7 +155,7 @@ inline bool decode_base58(const char * str, std::vector<std::uint8_t> & value)
         
         bn_char.set_ulong(p1 - g_base58);
         
-        if (!BN_mul(&bn, &bn, &bn58, pctx))
+        if (!BN_mul(bn.get(), bn.cget(), bn58.cget(), pctx))
         {
             throw std::runtime_error("BN_mul failed");
         }

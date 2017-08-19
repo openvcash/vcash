@@ -22,7 +22,9 @@
 #include <cassert>
 #include <stdexcept>
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 #include <openssl/ecdsa.h>
+#endif
 #include <openssl/obj_mac.h>
 
 #include <coin/android.hpp>
@@ -93,6 +95,15 @@ int ECDSA_SIG_recover_key_GFp(
         return 0;
     }
     
+    const BIGNUM * sig_r, * sig_s;
+
+#if OPENSSL_VERSION_NUMBER > 0x1000ffffL
+    ECDSA_SIG_get0(ecsig, &sig_r, &sig_s);
+#else
+    sig_r = ecsig->r;
+    sig_s = ecsig->s;
+#endif
+
     int ret = 0;
     
     BN_CTX * ctx = 0;
@@ -146,7 +157,7 @@ int ECDSA_SIG_recover_key_GFp(
         goto err;
     }
     
-    if (!BN_add(x, x, ecsig->r))
+    if (!BN_add(x, x, sig_r))
     {
         ret = -1;
         
@@ -249,7 +260,7 @@ int ECDSA_SIG_recover_key_GFp(
     
     rr = BN_CTX_get(ctx);
     
-    if (!BN_mod_inverse(rr, ecsig->r, order, ctx))
+    if (!BN_mod_inverse(rr, sig_r, order, ctx))
     {
         ret= -1;
         
@@ -258,7 +269,7 @@ int ECDSA_SIG_recover_key_GFp(
     
     sor = BN_CTX_get(ctx);
     
-    if (!BN_mod_mul(sor, ecsig->s, rr, order, ctx))
+    if (!BN_mod_mul(sor, sig_r, rr, order, ctx))
     {
         ret = -1;
         
@@ -601,8 +612,17 @@ bool key::sign_compact(
     signature.clear();
     signature.resize(65, 0);
     
-    int nBitsR = BN_num_bits(sig->r);
-    int nBitsS = BN_num_bits(sig->s);
+    const BIGNUM * sig_r, * sig_s;
+
+    #if OPENSSL_VERSION_NUMBER > 0x1000ffffL
+    ECDSA_SIG_get0(sig, &sig_r, &sig_s);
+    #else
+    sig_r = sig->r;
+    sig_s = sig->s;
+    #endif
+
+    int nBitsR = BN_num_bits(sig_r);
+    int nBitsS = BN_num_bits(sig_s);
     
     if (nBitsR <= 256 && nBitsS <= 256)
     {
@@ -635,13 +655,14 @@ bool key::sign_compact(
 
         if (nRecId == -1)
         {
+            ECDSA_SIG_free(sig);
             throw std::runtime_error("unable to construct recoverable key");
         }
         
         signature[0] = nRecId + 27 + (m_compressed ? 4 : 0);
         
-        BN_bn2bin(sig->r, &signature[33 - (nBitsR + 7) / 8]);
-        BN_bn2bin(sig->s, &signature[65 - (nBitsS + 7) / 8]);
+        BN_bn2bin(sig_r, &signature[33 - (nBitsR + 7) / 8]);
+        BN_bn2bin(sig_s, &signature[65 - (nBitsS + 7) / 8]);
         
         ret = true;
     }
@@ -669,8 +690,22 @@ bool key::set_compact_signature(
     
     ECDSA_SIG * sig = ECDSA_SIG_new();
     
+    if (!sig) return false;
+
+#if OPENSSL_VERSION_NUMBER > 0x1000ffffL
+    BIGNUM * sig_r = BN_bin2bn(&signature[1],32,BN_new());
+    BIGNUM * sig_s = BN_bin2bn(&signature[33],32,BN_new());
+
+    if (!sig_r || !sig_s)
+    {
+        return false;
+    }
+
+    ECDSA_SIG_set0(sig, sig_r, sig_s);
+#else
     BN_bin2bn(&signature[1], 32, sig->r);
     BN_bin2bn(&signature[33], 32, sig->s);
+#endif
 
     EC_KEY_free(m_EC_KEY);
     
@@ -695,6 +730,8 @@ bool key::set_compact_signature(
         return true;
     }
     
+    ECDSA_SIG_free(sig);
+
     return false;
 }
 
