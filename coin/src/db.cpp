@@ -376,7 +376,7 @@ bool db::rewrite(const std::string & file_name, const char * key_skip)
                     
                     if (
                         key_skip && std::strncmp(key.data(), key_skip,
-                        std::min(key.size(), std::strlen(key_skip))) == 0
+                        (std::min)(key.size(), std::strlen(key_skip))) == 0
                         )
                     {
                         continue;
