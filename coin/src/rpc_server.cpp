@@ -220,6 +220,11 @@ bool rpc_server::open(const std::uint16_t & port)
         acceptor_ipv6_.close();
         
         /**
+         * Allocate the thread.
+         */
+        thread_ = std::thread(&rpc_server::loop, this);
+        
+        /**
          * This is not a failure.
          */
         return true;
