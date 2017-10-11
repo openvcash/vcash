@@ -515,11 +515,11 @@ void incentive_manager::do_tick(const std::uint32_t & interval)
             {
                 if (incentive::instance().get_key().is_null())
                 {
-                    log_info("Incentive manager key is null, trying wallet.");
+                    log_debug("Incentive manager key is null, trying wallet.");
                     
                     if (globals::instance().wallet_main()->is_locked())
                     {
-                        log_info(
+                        log_debug(
                             "Incentive manager wallet is locked, will try "
                             "again."
                         );
