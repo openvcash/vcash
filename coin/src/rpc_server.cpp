@@ -79,28 +79,14 @@ bool rpc_server::open(const std::uint16_t & port)
     
             for (auto & i : parts)
             {
-                try
-                {
-                    boost::asio::ip::address addr(
-                        boost::asio::ip::address::from_string(i.c_str())
-                    );
-                    
-                    log_info(
-                        "RPC server got allow-ip = " << addr.to_string() << "."
-                    );
-                    
-                    /**
-                     * Insert the address into the allowed list.
-                     */
-                    network::instance().allowed_addresses_rpc().insert(i);
-                }
-                catch (std::exception & e)
-                {
-                    log_error(
-                        "RPC server failed to parse ip = " << i <<
-                        ", what = " << e.what() << "."
-                    );
-                }
+                log_info(
+                    "RPC server got allow-ip = " << i << "."
+                );
+                
+                /**
+                 * Insert the address into the allowed list.
+                 */
+                network::instance().allowed_addresses_rpc().insert(i);
             }
             
             ipv4_endpoint = boost::asio::ip::tcp::endpoint(

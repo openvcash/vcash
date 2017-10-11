@@ -175,10 +175,56 @@ namespace coin {
              */
             bool is_address_rpc_allowed(const std::string & addr)
             {
-                return
-                    m_allowed_addresses_rpc.find(addr) !=
-                    m_allowed_addresses_rpc.end()
-                ;
+                for (auto & i : m_allowed_addresses_rpc)
+                {
+                    if (wildcard_match(addr, i))
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            /**
+             * If true the address matched.
+             * @param addr The address.
+             * @param mask The mask.
+             */
+            bool wildcard_match(const char * addr, const char * mask)
+            {
+                for ( ; ; )
+                {
+                    switch (*mask)
+                    {
+                        case '\0':
+                            return (*addr == '\0');
+                        case '*':
+                            return wildcard_match(addr, mask + 1) || (*addr && wildcard_match(addr + 1, mask));
+                        case '?':
+                            if (*addr == '\0')
+                                return false;
+                            break;
+                        default:
+                            if (*addr != *mask)
+                                return false;
+                            break;
+                    }
+
+                    addr++;
+
+                    mask++;
+                }
+            }
+
+            /**
+             * If true the address matched.
+             * @param addr The address.
+             * @param mask The mask.
+             */
+            bool wildcard_match(const std::string & addr, const std::string & mask)
+            {
+                return wildcard_match(addr.c_str(), mask.c_str());
             }
         
         private:
