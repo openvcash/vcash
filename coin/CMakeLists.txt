@@ -1,0 +1,128 @@
+# Builds the coin library
+# Add/delete paths to .cpp files when more are created/deleted.
+
+add_library(coin STATIC
+  src/account.cpp
+  src/accounting_entry.cpp
+  src/address.cpp
+  src/address_manager.cpp
+  src/alert.cpp
+  src/alert_manager.cpp
+  src/alert_unsigned.cpp
+  src/base58.cpp
+  src/big_number.cpp
+  src/blake256.cpp
+  src/block.cpp
+  src/block_index.cpp
+  src/block_index_disk.cpp
+  src/block_locator.cpp
+  src/block_merkle.cpp
+  src/chainblender_broadcast.cpp
+  src/chainblender.cpp
+  src/chainblender_join.cpp
+  src/chainblender_leave.cpp
+  src/chainblender_manager.cpp
+  src/chainblender_status.cpp
+  src/checkpoints.cpp
+  src/checkpoint_sync.cpp
+  src/checkpoint_sync_unsigned.cpp
+  src/configuration.cpp
+  src/crypter.cpp
+  src/database_stack.cpp
+  src/db.cpp
+  src/db_env.cpp
+  src/db_tx_bdb.cpp
+  src/db_tx.cpp
+  src/db_tx_ldb.cpp
+  src/db_wallet.cpp
+  src/ecdhe.cpp
+  src/file.cpp
+  src/filesystem.cpp
+  src/gateway.cpp
+  src/globals.cpp
+  src/hash.cpp
+  src/hc256.cpp
+  src/hd_configuration.cpp
+  src/hd_ecdsa.cpp
+  src/hd_keychain.cpp
+  src/http_transport.cpp
+  src/incentive_answer.cpp
+  src/incentive_collaterals.cpp
+  src/incentive.cpp
+  src/incentive_manager.cpp
+  src/incentive_question.cpp
+  src/incentive_sync.cpp
+  src/incentive_vote.cpp
+  src/inventory_vector.cpp
+  src/kernel.cpp
+  src/key.cpp
+  src/key_pool.cpp
+  src/key_public.cpp
+  src/key_reserved.cpp
+  src/key_store_basic.cpp
+  src/key_store_crypto.cpp
+  src/key_wallet.cpp
+  src/key_wallet_master.cpp
+  src/merkle_tree_partial.cpp
+  src/message.cpp
+  src/mining.cpp
+  src/mining_manager.cpp
+  src/nat_pmp_client.cpp
+  src/nat_pmp.cpp
+  src/pbkdf2.cpp
+  src/point_in.cpp
+  src/point_out.cpp
+  src/reward.cpp
+  src/ripemd160.cpp
+  src/rpc_connection.cpp
+  src/rpc_json_parser.cpp
+  src/rpc_manager.cpp
+  src/rpc_server.cpp
+  src/rpc_transport.cpp
+  src/script_checker.cpp
+  src/script_checker_queue.cpp
+  src/script.cpp
+  src/secret.cpp
+  src/sha256.cpp
+  src/signature_cache.cpp
+  src/stack.cpp
+  src/stack_impl.cpp
+  src/status_manager.cpp
+  src/tcp_acceptor.cpp
+  src/tcp_connection.cpp
+  src/tcp_connection_manager.cpp
+  src/tcp_transport.cpp
+  src/transaction_bloom_filter.cpp
+  src/transaction.cpp
+  src/transaction_in.cpp
+  src/transaction_index.cpp
+  src/transaction_merkle.cpp
+  src/transaction_out.cpp
+  src/transaction_pool.cpp
+  src/transaction_position.cpp
+  src/transaction_wallet.cpp
+  src/upnp_client.cpp
+  src/utility.cpp
+  src/wallet.cpp
+  src/wallet_manager.cpp
+  src/whirlpool.cpp
+  src/zerotime_answer.cpp
+  src/zerotime.cpp
+  src/zerotime_lock.cpp
+  src/zerotime_manager.cpp
+  src/zerotime_question.cpp
+  src/zerotime_vote.cpp
+)
+target_link_libraries(coin
+  PUBLIC database
+  PUBLIC ${BERKELEYDB_LIBRARIES}
+)
+
+target_include_directories(coin
+  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  PUBLIC ${BERKELEYDB_INCLUDE_DIRS}
+)
+
+IF(INSTALL_LIBCOIN)
+  install_and_export("coin")
+ENDIF()
