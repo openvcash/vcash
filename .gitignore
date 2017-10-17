@@ -1,10 +1,31 @@
-deps/boost/
-deps/db/
-deps/openssl/
-deps/leveldb/bin/
-coin/bin/
-coin/test/bin/
-crawler/bin/
-crawler/test/bin/
-database/bin/
-database/test/bin/
+deps/*
+build/
+!deps/README.md
+!deps/leveldb/
+bin/
+# Cmake-generated files
+CMakeCache.txt
+CMakeFiles/
+*-exports.cmake
+compile_commands.json
+# GCC/Clang Cmake-generated files
+Makefile
+install_manifest.txt
+cmake_install.cmake
+lib*.a
+# MSVC Cmake-generated files
+Vcash.sln
+*.vcxproj
+*.vcxproj.filters
+x64/
+*.dir/
+**/Debug/
+**/Release/
+# Executables that can be built
+vcashd
+vcashc
+vcashdb
+vcashd.exe
+vcashc.exe
+vcashdb.exe
+!platforms/*
