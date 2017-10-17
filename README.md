@@ -1,22 +1,28 @@
-V(anilla)cash
-===========
+# WARNING: DO NOT USE THIS BRANCH IN PRODUCTION!    
+# Vcash
+> A decentralized currency for the internet.
 
-A decentralized currency for the internet.
-
+[![Release](https://img.shields.io/github/release/openvcash/vcash.svg)](https://github.com/openvcash/vcash/releases/latest)
+[![TravisCI](https://img.shields.io/travis/openvcash/vcash/master.svg?label=Unix%20build)](https://travis-ci.org/openvcash/vcash)\
+[![Donate](https://img.shields.io/badge/donate-BTC-ff9900.svg)](https://blockchain.info/address/35nXEZoiZCVQKGTLR63XUhPfqWszBihFkd)
+[![AUR](https://img.shields.io/aur/version/vcash.svg)](https://aur.archlinux.org/packages/vcash/)
 [![Gitter](https://badges.gitter.im/openvcash/vcash.svg)](https://gitter.im/openvcash/vcash?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
-This project is a codebase rewrite/enhancment using:
-* [Peercoin](https://github.com/ppcoin/ppcoin) PoS & [Bitcoin](https://github.com/bitcoin/bitcoin) PoW consensus
-* an UDP layer
-* an off-chain transaction lock voting system called ZeroTime
-* an Incentive Reward voting system
-* a client-side blending system called ChainBlender
+https://vcash.info/  
 
+## What is Vcash?
+Vcash is a decentralized internet currency that enables you to send money to anyone in the world, instantly, and at almost no cost.
 
-Dependencies:
+### Features of Vcash
+- 3-tiered network using [PoW](https://github.com/openvcash/papers/blob/master/rewardv3.pdf), [PoS](https://github.com/openvcash/docs.vcash.info/blob/master/docs/block/generation/proof-of-stake.md), and [incentive nodes](https://github.com/openvcash/papers/blob/master/incentive.pdf).
+- [Zerotime:](https://github.com/openvcash/papers/blob/master/zerotime.pdf) a near-instantaneous off-chain transaction protocol.
+- [Chainblender:](https://github.com/openvcash/papers/blob/master/chainblender.pdf) an (optional) client-side blending system to protect your anonymity.
+- [An average block time of 100 seconds.](https://github.com/openvcash/papers/blob/master/scaling_the_blockchain.pdf)
+- Fully encrypted network, a UDP layer, and port randomization.
+- Blake256 8-rounds hash.
 
-* Boost == 1.53.0
-* Berkeley DB == 6.1.29.NC
-* OpenSSL == 1.0.2k
+## Docs, building, etc.
+If you want to build from source, or you need any other info, [read the wiki!](https://github.com/openvcash/vcash/wiki)
 
-Linux: use https://github.com/openvcash/vcash-scripts
+## License
+Vcash is released under the terms of the AGPL-3.0 license. See [LICENSE](./LICENSE) for more information.
