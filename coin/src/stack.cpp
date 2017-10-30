@@ -269,7 +269,7 @@ void stack::chainblender_start()
 {
     if (stack_impl_)
     {
-        stack_impl_->chainblender_stop();
+        stack_impl_->chainblender_start();
     }
     else
     {
