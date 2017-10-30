@@ -7,20 +7,18 @@ compiler:
   - clang
 # Installing deps
 install:
-  - if [ $TRAVIS_OS_NAME = linux ]; then sudo apt-get -qq update && sudo apt-get install -y libdb++-dev libdb-dev openssl libssl-dev libboost-all-dev libboost-system-dev; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get -qq update; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get install -y libdb++-dev libdb-dev openssl libssl-dev libboost-all-dev libboost-system-dev; fi
+  # Update slows the process a lot, but is required to fix recent issues...
   # brew list depName &>/dev/null avoids errors with homebrew if the dep is already installed, otherwise it stops without completing the commands
   # The URL links to v6.1.26 BerkeleyDB on Homebrew's gihtub, as doing brew install berkeley-db installs v6.2
-  - if [ $TRAVIS_OS_NAME = osx ]; then brew list openssl &>/dev/null || brew install openssl && brew list boost &>/dev/null || brew install boost && brew list berkeley-db &>/dev/null || brew install https://raw.githubusercontent.com/Homebrew/homebrew-core/1e62c645b2fc2d82042d9f7c364c6a246f2e11ed/Formula/berkeley-db.rb; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew list openssl &>/dev/null || brew install openssl; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew list boost &>/dev/null || brew install boost; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew list berkeley-db &>/dev/null || brew install https://raw.githubusercontent.com/Homebrew/homebrew-core/1e62c645b2fc2d82042d9f7c364c6a246f2e11ed/Formula/berkeley-db.rb; fi
 script:
   # WITH_INCOMPATIBLE_BDB is needed because Ubuntu is on v5 Berkeley DB
   # OPENSSL_ROOT_DIR is needed because FindOpenSSL fails on macOS without it
   - _sharedsettings="-DCMAKE_BUILD_TYPE=Debug -DBUILD_VCASH_CRAWLER=ON -DBUILD_VCASH_DATABASE=ON"
-  - if [ $TRAVIS_OS_NAME = linux ]; then cmake -DWITH_INCOMPATIBLE_BDB=ON ${_sharedsettings} CMakeLists.txt; elif [ $TRAVIS_OS_NAME = osx ]; then cmake -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl ${_sharedsettings} CMakeLists.txt; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cmake -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl ${_sharedsettings} CMakeLists.txt; else cmake -DWITH_INCOMPATIBLE_BDB=ON ${_sharedsettings} CMakeLists.txt; fi
   - make
-notifications:
-  slack:
-    rooms:
-      # Token to send messages to the slack #dev channel
-      secure: R/TKJUqgDOEtdoGo+1Zz59ePLOdL427EzNQAHvR1I2Q+UT3IJF/lHPSFq1J9KlHab/N/umEEjg/RssYa65kNC8Fr5VUROIZlOjIX/P9b/AYSzC8GMUaWoDHWWf5LDwDlNWO4f7pc1xhZB/JCTB65dhMc3yAApwJYiohcB+U7Noob+G38hG7rKP1bxZtYlmC3Xk7uNNdMuN55q8/nKE62xO9Dt3+yN7vAuPIbT69YKC4NPEJxYN/VbM0MVyAlbV0vjnvS6r1PvFhx51S25aof22X3m94b5mHlup9l8821hJMQcK2EjFEDfZBGKiXmImtFp2d4a9NgwCH9agOAt+9pMTMuuxOTsSSejAjK0IniaOMVtpndFLVKloDVLmi/HZ7OVD7aEJ6NYRx6EfnMlWj4/RnR8jHfZjCqCkJSVPfSs8T4pLSJ6hhLnhKKXM9uOWDDnd9WIelap2e5M/gcH0lPGwJdxRYRx/7/KmofOQpXp11hiptIyZexf18Iri0UkIjTW+U8IjfUNsnr76IiO4S/RTZ7tZ9F+95gl2NzconhC7DKMY45EJ28rWHIo3O1DYgXzf2aDKwgd6dayAdFI6naGw575t260FeMVToG4OdnRq17MZhKV/D2tvLEJgT0Z7Scy0Imv+o2X2SxWs7msDT3XkakbGiuqM3je6b7Wck7VjY=
-    on_success: change
-    on_failure: always
