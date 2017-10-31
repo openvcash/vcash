@@ -17,7 +17,7 @@ IF(OPENSSL_VERSION VERSION_GREATER ${OPENSSL_MAX_VER})
 ENDIF()
 
 # Only libcoin needs Berkeley DB
-IF(BUILD_VCASH_DAEMON)
+IF(BUILD_VCASH_DAEMON OR INSTALL_LIBCOIN)
   # ~~ Berkeley DB ~~
   # Prevent accidental building with DB v5, which isn't compatible with wallets built with DB v6
   option(WITH_INCOMPATIBLE_BDB "Enables building with a Berkeley DB v5 minimum instead of v6 minimum." OFF)
