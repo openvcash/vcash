@@ -52,8 +52,8 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/modules")
 include(vcash_dependencies)
 # Adds our list of custom definitions to the compiler definitions to correctly build Vcash
 include(vcash_definitions)
-# Installs vcashrpc (if on right OS) and initialize our install_and_export macro
-include(vcash_install)
+# Initialize our install_and_export macro
+include(install_and_export)
 
 # Build libdatabase | All executables use libdatabase, so we declare outside IF() checks
 add_subdirectory(database)
@@ -71,6 +71,16 @@ IF(BUILD_VCASH_DAEMON)
   )
 
   install_and_export("vcashd")
+
+  # Installs vcashrpc if not on Windows, and only if building daemon
+  IF(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    message(STATUS "The vcashrpc script will be installed.")
+    # install_and_export scope already includes GNUInstallDirs, so not needed here
+    install(FILES vcashrpc
+      PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE # Basically chmod 755
+      DESTINATION "${CMAKE_INSTALL_BINDIR}"
+    )
+  ENDIF()
 ENDIF()
 
 IF(BUILD_VCASH_CRAWLER OR INSTALL_LIBCRAWLER)
