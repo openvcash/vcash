@@ -1,4 +1,7 @@
-# FindBerkeleyDB.cmake - version 2.0.1
+# FindBerkeleyDB.cmake - version 2.0.2
+# Author: sum01 <sum01@protonmail.com>
+# Git: https://github.com/sum01/cmake-modules
+#
 # This module finds the BerkeleyDB includes and libraries ("db" "db_cxx" "db_stl" "db_sql"). Minimum 1 library found or it fails.
 #
 # Output variables to be used in CMakeLists.txt
@@ -84,11 +87,6 @@ string(REGEX REPLACE ".*DB_VERSION_PATCH	([0-9]+(NC)?).*" "\\1" BERKELEYDB_PATCH
 set(BERKELEYDB_VERSION "${BERKELEYDB_MAJOR_VERSION}.${BERKELEYDB_MINOR_VERSION}.${BERKELEYDB_PATCH_VERSION}")
 
 foreach(_TARGET_BERKELEYDB_LIB "db" "db_cxx" "db_sql" "db_stl")
-  IF(_BERKELEYDB_LIBNAMES)
-    # Clear out leftover names before setting them
-    unset(_BERKELEYDB_LIBNAMES)
-  ENDIF()
-
   # Sets the various libnames for the variable used in find_library.
   # Different systems sometimes have a version in the lib name...
   # and some have a dash or underscore before the versions.
@@ -107,11 +105,6 @@ foreach(_TARGET_BERKELEYDB_LIB "db" "db_cxx" "db_sql" "db_stl")
     "lib${_TARGET_BERKELEYDB_LIB}_${BERKELEYDB_MAJOR_VERSION}"
   )
 
-  IF(_BERKELEYDB_LIB)
-    # The library seems to get cached instead of only set in scope, so we unset the CACHE
-    unset(_BERKELEYDB_LIB CACHE)
-  ENDIF()
-
   find_library(_BERKELEYDB_LIB
     NAMES ${_BERKELEYDB_LIBNAMES}
     HINTS ${_BERKELEYDB_HINTS}
@@ -122,7 +115,11 @@ foreach(_TARGET_BERKELEYDB_LIB "db" "db_cxx" "db_sql" "db_stl")
   # If anything is found, append to BERKELEYDB_LIBRARIES
   IF(_BERKELEYDB_LIB)
     list(APPEND BERKELEYDB_LIBRARIES "${_BERKELEYDB_LIB}")
+    # The library seems to get cached instead of only set in scope, so we unset the CACHE
+    unset(_BERKELEYDB_LIB CACHE)
   ENDIF()
+  # Clear out leftover names before setting them
+  unset(_BERKELEYDB_LIBNAMES)
 endforeach()
 
 # Needed for find_package_handle_standard_args()
