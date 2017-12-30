@@ -46,8 +46,10 @@ option(INSTALL_LIBCOIN "Installs libcoin for dev use." OFF)
 option(INSTALL_LIBCRAWLER "Installs libcrawler for dev use." OFF)
 option(INSTALL_LIBDATABASE "Installs libdatabase for dev use." OFF)
 
-# Adds our custom find_package modules to the list of modules available for cmake
+# Adds our custom modules to the list of modules available for cmake
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/modules")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/modules/FindBerkeleyDB")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/modules/install_and_export")
 # Runs find_package() commands and checks if versions are compatible
 include(vcash_dependencies)
 # Adds our list of custom definitions to the compiler definitions to correctly build Vcash

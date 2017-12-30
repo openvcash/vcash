@@ -1,0 +1,6 @@
+[submodule "cmake/modules/install_and_export"]
+	path = cmake/modules/install_and_export
+	url = https://github.com/sum01/install_and_export.git
+[submodule "cmake/modules/FindBerkeleyDB"]
+	path = cmake/modules/FindBerkeleyDB
+	url = https://github.com/sum01/FindBerkeleyDB.git
