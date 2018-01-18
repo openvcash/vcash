@@ -5,6 +5,13 @@
 
 # ~~ Boost ~~
 find_package(Boost "1.54.0" COMPONENTS system REQUIRED)
+# v1.66.0 removed a lot of previously working (but deprecated) things
+# TODO: Remove when https://github.com/openvcash/vcash/issues/38 is fixed
+set(BOOST_MAX_VER "1.65.1")
+# Max version check
+IF(Boost_VERSION VERSION_GREATER ${BOOST_MAX_VER})
+	message(FATAL_ERROR "The detected Boost v${Boost_VERSION} isn't compatible! Maximum of v${BOOST_MAX_VER} is compatible")
+ENDIF()
 
 # ~~ OpenSSL ~~
 # Do not set the letter ("status") version for OpenSSL!
