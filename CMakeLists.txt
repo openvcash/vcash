@@ -1,17 +1,25 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.1 FATAL_ERROR)
-# == START Minimum version requirement list ==
-# 3.0 for versioning inside of project()
-# 3.1 for THREADS_PREFER_PTHREAD_FLAG | CMAKE_CXX_STANDARD | CMAKE_CXX_STANDARD_REQUIRED
-# EVENTUALLY: 3.9 for the addition of a DESCRIPTION to project()
-# == END Minimum version requirement list ==
-#
-# For cross-compiling, read https://cmake.org/cmake/help/latest/manual/cmake-toolchains.7.html#cross-compiling-toolchain ...
-# and when cross-compiling for Windows, use the Cmake flag -D_WIN32_WINNT=XXXXX | literal format expected, ex: "0x0501" ...
-# Accepted values for _WIN32_WINNT are here https://docs.microsoft.com/en-us/cpp/porting/modifying-winver-and-win32-winnt
-#
-# Use -DBUILD_VCASH_CRAWLER=ON to build the crawler (OFF by default)
-# Use -DBUILD_VCASH_DATABASE=ON to build to database (OFF by default)
-# Use -DBUILD_VCASH_DAEMON=OFF to NOT build the daemon (ON by default)
+#[[
+Minimum version requirement list:
+- 3.0 for versioning inside of project()
+- 3.1 for THREADS_PREFER_PTHREAD_FLAG | CMAKE_CXX_STANDARD | CMAKE_CXX_STANDARD_REQUIRED
+- EVENTUALLY: 3.9 for the addition of a DESCRIPTION to project()
+
+For cross-compiling, read https://cmake.org/cmake/help/latest/manual/cmake-toolchains.7.html#cross-compiling-toolchain ...
+and when cross-compiling for Windows, use the Cmake flag -D_WIN32_WINNT=XXXXX | literal format expected, ex: "0x0501" ...
+Accepted values for _WIN32_WINNT are here https://docs.microsoft.com/en-us/cpp/porting/modifying-winver-and-win32-winnt
+
+Use -DBUILD_VCASH_CRAWLER=ON to build the crawler (OFF by default)
+Use -DBUILD_VCASH_DATABASE=ON to build to database (OFF by default)
+Use -DBUILD_VCASH_DAEMON=OFF to NOT build the daemon (ON by default)
+
+For devs...
+Use -DINSTALL_LIBCOIN=ON to install the "coin" library
+Use -DINSTALL_LIBCRAWLER=ON to install the "crawler" library
+Use -DINSTALL_LIBDATABASE=ON to install the "database" library
+
+Everything is built static, so headers aren't provided/installed.
+]]
 
 # Get version string from constants.hpp
 file(STRINGS "coin/include/coin/constants.hpp" _VCASH_CONSTANTS)
@@ -21,10 +29,12 @@ string(REGEX REPLACE ".*version_string = \"([0-9]+).([0-9]+).([0-9]+).([0-9]+)\"
 project(Vcash VERSION "${_VCASH_VERSION}" LANGUAGES C CXX)
 message(STATUS "Starting Cmake build of ${CMAKE_PROJECT_NAME} v${PROJECT_VERSION}")
 
-# Require/Build for C++11
-# Consider changing to target_compile_features in the future. Links below for feature lists...
-# https://cmake.org/cmake/help/latest/prop_gbl/CMAKE_C_KNOWN_FEATURES.html#prop_gbl:CMAKE_C_KNOWN_FEATURES
-# https://cmake.org/cmake/help/latest/prop_gbl/CMAKE_CXX_KNOWN_FEATURES.html#prop_gbl:CMAKE_CXX_KNOWN_FEATURES
+#[[ Require/Build for C++11
+TODO: Change to target_compile_features. Links below for feature lists...
+https://cmake.org/cmake/help/latest/prop_gbl/CMAKE_C_KNOWN_FEATURES.html#prop_gbl:CMAKE_C_KNOWN_FEATURES
+https://cmake.org/cmake/help/latest/prop_gbl/CMAKE_CXX_KNOWN_FEATURES.html#prop_gbl:CMAKE_CXX_KNOWN_FEATURES
+]]
+
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -53,6 +63,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/modules/install_and_exp
 # Runs find_package() commands and checks if versions are compatible
 include(vcash_dependencies)
 # Adds our list of custom definitions to the compiler definitions to correctly build Vcash
+# TODO: Remove this module after implementing target_compile_features
 include(vcash_definitions)
 # Initialize our install_and_export macro
 include(install_and_export)
