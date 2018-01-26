@@ -1,31 +1,30 @@
 #!/bin/bash
 method='getinfo'
 params='[]'
-id=`od -A n -t d -N 1 /dev/urandom | sed 's/ //g'`
+id=$(od -A n -t d -N 1 /dev/urandom | sed 's/ //g')
 
 while getopts ":m:p:" o; do
-  case "${o}" in
-    m)
-      method=${OPTARG}
-    ;;
-    p)
-      if [[ "${OPTARG}" =~ ^\{.* || "${OPTARG}" =~ ^\[.* ]] ;
-      then
-        params=${OPTARG}
-      else
-        params="[\"${OPTARG}\"]"
-      fi
-    ;;
-    *)
-      printf "\nUsage: vcashrpc -m <method> -p <params>\n
+	case "${o}" in
+	m)
+		method=${OPTARG}
+		;;
+	p)
+		if [[ ${OPTARG} =~ ^\{.* || ${OPTARG} =~ ^\[.* ]]; then
+			params=${OPTARG}
+		else
+			params="[\"${OPTARG}\"]"
+		fi
+		;;
+	*)
+		printf "\nUsage: vcashrpc -m <method> -p <params>\n
       Example commands:\n
         vcashrpc -m getincentiveinfo\n
         vcashrpc -m getblockhash -p 1\n
         vcashrpc -m sendtoaddress -p '[\"address\",amount]'\n
         vcashrpc -m listreceivedbyaccount -p '{\"minconf\":1,\"includeempty\":true}'\n"
-      exit 1
-    ;;
-  esac
+		exit 1
+		;;
+	esac
 done
 
 #set -x
