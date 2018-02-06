@@ -4,7 +4,7 @@
 
 [![Release](https://img.shields.io/github/release/openvcash/vcash.svg)](https://github.com/openvcash/vcash/releases/latest)
 [![TravisCI](https://img.shields.io/travis/openvcash/vcash/master.svg?label=Unix%20build)](https://travis-ci.org/openvcash/vcash)\
-[![Donate](https://img.shields.io/badge/donate-BTC-ff9900.svg)](https://blockchain.info/address/35nXEZoiZCVQKGTLR63XUhPfqWszBihFkd)
+[![Donate](https://img.shields.io/badge/donate-BTC-ff9900.svg)](https://blockchain.info/address/3GWHaCaSiwzDMh5xKqoWUndrf4TspHCWku)
 [![AUR](https://img.shields.io/aur/version/vcash.svg)](https://aur.archlinux.org/packages/vcash/)
 [![Gitter](https://badges.gitter.im/openvcash/vcash.svg)](https://gitter.im/openvcash/vcash?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
