@@ -635,6 +635,8 @@ bool key::sign_compact(
 
         if (nRecId == -1)
         {
+            ECDSA_SIG_free(sig);
+
             throw std::runtime_error("unable to construct recoverable key");
         }
         
@@ -694,6 +696,8 @@ bool key::set_compact_signature(
         
         return true;
     }
+
+    ECDSA_SIG_free(sig);
     
     return false;
 }
